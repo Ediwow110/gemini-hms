@@ -23,7 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any): Promise<RequestUser & { email?: string }> {
+  async validate(payload: any): Promise<RequestUser> {
     // This return value is injected into Request as 'user'
     // All fields use camelCase consistently
     return {
