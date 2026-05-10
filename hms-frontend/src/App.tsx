@@ -25,7 +25,17 @@ import { LabResultList } from './features/laboratory/LabResultList';
 import { LabApproval } from './features/laboratory/LabApproval';
 import { PrintPreview } from './features/laboratory/PrintPreview';
 
-import { Settings } from './features/admin/Settings';
+import {
+  SettingsDashboard,
+  SettingsLayout,
+  BranchSettings,
+  DepartmentSettings,
+  ServiceSettings,
+  NumberingSettings,
+  TemplateSettings,
+  NotificationSettings,
+  SecuritySettings,
+} from './features/settings';
 import { ComingSoon } from './components/ui/coming-soon';
 
 const router = createBrowserRouter([
@@ -54,7 +64,20 @@ const router = createBrowserRouter([
           { path: 'admin/users/:id', element: <UserDetail /> },
           { path: 'admin/roles', element: <RoleList /> },
           { path: 'admin/roles/:id', element: <RoleDetail /> },
-          { path: 'settings', element: <Settings /> },
+          {
+            path: 'settings',
+            element: <SettingsLayout />,
+            children: [
+              { index: true, element: <SettingsDashboard /> },
+              { path: 'branches', element: <BranchSettings /> },
+              { path: 'departments', element: <DepartmentSettings /> },
+              { path: 'services', element: <ServiceSettings /> },
+              { path: 'numbering', element: <NumberingSettings /> },
+              { path: 'templates', element: <TemplateSettings /> },
+              { path: 'notifications', element: <NotificationSettings /> },
+              { path: 'security', element: <SecuritySettings /> },
+            ],
+          },
           { path: 'reports', element: <Reports /> },
           { path: 'inventory', element: <Inventory /> },
           { path: 'inventory/:id', element: <InventoryDetail /> },
