@@ -24,11 +24,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     // This return value is injected into Request as 'user'
-    // We include sub (userId), email, tenant_id, and roles
+    // All fields use camelCase consistently
     return {
       userId: payload.sub,
       email: payload.email,
-      tenantId: payload.tenant_id,
+      tenantId: payload.tenantId,
       roles: payload.roles,
     };
   }

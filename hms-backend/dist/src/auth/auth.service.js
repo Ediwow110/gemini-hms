@@ -91,7 +91,7 @@ let AuthService = class AuthService {
             user: {
                 id: user.id,
                 email: user.email,
-                tenant_id: user.tenantId,
+                tenantId: user.tenantId,
                 roles: roles,
             },
         };

@@ -8,7 +8,7 @@ export declare class AuthController {
         user: {
             id: any;
             email: any;
-            tenant_id: any;
+            tenantId: any;
             roles: any;
         };
     }>;

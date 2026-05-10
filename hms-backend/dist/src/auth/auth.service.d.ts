@@ -10,7 +10,7 @@ export declare class AuthService {
         user: {
             id: any;
             email: any;
-            tenant_id: any;
+            tenantId: any;
             roles: any;
         };
     }>;
