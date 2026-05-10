@@ -1,0 +1,487 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  branches           Branch[]
+  users              User[]
+  patients           Patient[]
+  roles              Role[]
+  permissions        Permission[]
+  approvalRequests   ApprovalRequest[]
+  notifications      Notification[]
+  files              File[]
+  cashierSessions    CashierSession[]
+  numberingSequences NumberingSequence[]
+  orders             Order[]
+  auditLogs          AuditLog[]
+  inventoryItems     InventoryItem[]
+  stockLogs          StockLog[]
+  departments        Department[]
+  employees          Employee[]
+  payslips           Payslip[]
+  queueEntries       QueueEntry[]
+  hmoPartners        HmoPartner[]
+  claims             Claim[]
+
+  @@map("tenants")
+}
+
+model Branch {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  code      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  orders Order[]
+
+  @@map("branches")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  email        String
+  passwordHash String   @map("password_hash")
+  isMfaEnabled Boolean  @default(false) @map("is_mfa_enabled")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  auditLogs AuditLog[]
+  userRoles UserRole[]
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+model Role {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  name     String
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId String @map("user_id") @db.Uuid
+  roleId String @map("role_id") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model Patient {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  patientNumber String   @map("patient_number")
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  dob           DateTime @db.Date
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  orders Order[]
+
+  @@unique([tenantId, patientNumber])
+  @@map("patients")
+}
+
+model Order {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  branchId    String   @map("branch_id") @db.Uuid
+  patientId   String   @map("patient_id") @db.Uuid
+  orderNumber String   @map("order_number")
+  status      String   @default("DRAFT")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  branch    Branch     @relation(fields: [branchId], references: [id])
+  patient   Patient    @relation(fields: [patientId], references: [id])
+  invoice   Invoice?
+  labResult LabResult?
+
+  @@map("orders")
+}
+
+model Invoice {
+  id            String   @id @default(uuid()) @db.Uuid
+  orderId       String   @unique @map("order_id") @db.Uuid
+  invoiceNumber String?  @unique @map("invoice_number")
+  totalAmount   Decimal  @map("total_amount") @db.Decimal(12, 2)
+  paidAmount    Decimal  @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  status        String   @default("UNPAID")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  order    Order     @relation(fields: [orderId], references: [id])
+  payments Payment[]
+  claims   Claim[]
+
+  @@map("invoices")
+}
+
+model Payment {
+  id               String   @id @default(uuid()) @db.Uuid
+  invoiceId        String   @map("invoice_id") @db.Uuid
+  cashierSessionId String   @map("cashier_session_id") @db.Uuid
+  receiptNumber    String?  @unique @map("receipt_number")
+  amount           Decimal  @db.Decimal(12, 2)
+  paymentMethod    String   @map("payment_method")
+  status           String   @default("POSTED")
+  idempotencyKey   String   @unique @map("idempotency_key")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  invoice        Invoice        @relation(fields: [invoiceId], references: [id])
+  cashierSession CashierSession @relation(fields: [cashierSessionId], references: [id])
+
+  @@map("payments")
+}
+
+model LabResult {
+  id           String    @id @default(uuid()) @db.Uuid
+  orderId      String    @unique @map("order_id") @db.Uuid
+  status       String    @default("PENDING_COLLECTION")
+  approvedById String?   @map("approved_by_id") @db.Uuid
+  lockedAt     DateTime? @map("locked_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  order    Order              @relation(fields: [orderId], references: [id])
+  versions LabResultVersion[]
+
+  @@map("lab_results")
+}
+
+model LabResultVersion {
+  id          String   @id @default(uuid()) @db.Uuid
+  labResultId String   @map("lab_result_id") @db.Uuid
+  version     Int      @default(1)
+  oldStatus   String   @map("old_status")
+  newStatus   String   @map("new_status")
+  amendedById String   @map("amended_by_id") @db.Uuid
+  reason      String
+  oldData     Json?    @map("old_data") // Stores the previous results snapshot
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  labResult LabResult @relation(fields: [labResultId], references: [id])
+
+  @@map("lab_result_versions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  eventKey   String   @map("event_key")
+  recordType String   @map("record_type")
+  recordId   String   @map("record_id") @db.Uuid
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// --- MODULE 4: INVENTORY & PHARMACY ---
+
+model InventoryItem {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  name         String
+  sku          String?
+  category     String // DRUG, SUPPLY, EQUIPMENT
+  unit         String // TABLET, BOX, PIECE
+  reorderLevel Int      @default(10) @map("reorder_level")
+  currentStock Int      @default(0) @map("current_stock")
+  price        Decimal  @db.Decimal(12, 2)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  stockLogs StockLog[]
+
+  @@unique([tenantId, sku])
+  @@map("inventory_items")
+}
+
+model StockLog {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  inventoryItemId String   @map("inventory_item_id") @db.Uuid
+  type            String // IN, OUT, ADJUSTMENT, RETURN
+  quantity        Int
+  previousStock   Int      @map("previous_stock")
+  newStock        Int      @map("new_stock")
+  referenceType   String?  @map("reference_type") // PURCHASE_ORDER, DISPENSING
+  referenceId     String?  @map("reference_id") @db.Uuid
+  remarks         String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id])
+  item   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@map("stock_logs")
+}
+
+// --- MODULE 5: HUMAN RESOURCES & PAYROLL ---
+
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  code      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  employees Employee[]
+
+  @@unique([tenantId, code])
+  @@map("departments")
+}
+
+model Employee {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  departmentId   String?  @map("department_id") @db.Uuid
+  employeeNumber String   @map("employee_number")
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
+  jobTitle       String   @map("job_title")
+  status         String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  joiningDate    DateTime @map("joining_date") @db.Date
+  salary         Decimal  @db.Decimal(12, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  payslips   Payslip[]
+
+  @@unique([tenantId, employeeNumber])
+  @@map("employees")
+}
+
+model Payslip {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  employeeId      String   @map("employee_id") @db.Uuid
+  periodStart     DateTime @map("period_start") @db.Date
+  periodEnd       DateTime @map("period_end") @db.Date
+  basicSalary     Decimal  @map("basic_salary") @db.Decimal(12, 2)
+  totalAllowances Decimal  @map("total_allowances") @db.Decimal(12, 2)
+  totalDeductions Decimal  @map("total_deductions") @db.Decimal(12, 2)
+  netSalary       Decimal  @map("net_salary") @db.Decimal(12, 2)
+  status          String   @default("DRAFT") // DRAFT, PAID
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("payslips")
+}
+
+// --- MODULE 10: QUEUEING & PATIENT FLOW ---
+
+model QueueEntry {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  branchId      String   @map("branch_id") @db.Uuid
+  patientId     String?  @map("patient_id") @db.Uuid
+  patientName   String?  @map("patient_name")
+  queueNumber   String   @map("queue_number")
+  category      String   @default("REGULAR") // REGULAR, PRIORITY, EMERGENCY
+  serviceType   String   @map("service_type") // RECEPTION, CASHIER, LABORATORY, DOCTOR
+  status        String   @default("WAITING") // WAITING, CALLING, SERVING, COMPLETED, CANCELLED
+  counterNumber String?  @map("counter_number")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("queue_entries")
+}
+
+// --- MODULE 11: HMO & PHILHEALTH CLAIMS ---
+
+model HmoPartner {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  name          String
+  code          String
+  contactPerson String?  @map("contact_person")
+  email         String?
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  claims Claim[]
+
+  @@unique([tenantId, code])
+  @@map("hmo_partners")
+}
+
+model Claim {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  hmoPartnerId   String   @map("hmo_partner_id") @db.Uuid
+  invoiceId      String   @map("invoice_id") @db.Uuid
+  claimNumber    String   @map("claim_number")
+  loaNumber      String?  @map("loa_number")
+  amountClaimed  Decimal  @map("amount_claimed") @db.Decimal(12, 2)
+  amountApproved Decimal? @map("amount_approved") @db.Decimal(12, 2)
+  status         String   @default("PENDING") // PENDING, SUBMITTED, APPROVED, DENIED, PAID
+  remarks        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  hmoPartner HmoPartner @relation(fields: [hmoPartnerId], references: [id])
+  invoice    Invoice    @relation(fields: [invoiceId], references: [id])
+
+  @@unique([tenantId, claimNumber])
+  @@map("claims")
+}
+
+// --- MODULE: FOUNDATION & SECURITY ---
+
+model Permission {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  name     String // e.g. patient.view, billing.refund.approve
+  scope    String? // e.g. branch, department, tenant
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  rolePermissions RolePermission[]
+
+  @@unique([tenantId, name])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model ApprovalRequest {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  requesterId String   @map("requester_id") @db.Uuid
+  approverId  String?  @map("approver_id") @db.Uuid
+  type        String // e.g. REFUND, ROLE_CHANGE, RESULT_AMENDMENT
+  riskLevel   String // LOW, MEDIUM, HIGH, CRITICAL
+  recordId    String   @map("record_id")
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  reason      String?
+  remarks     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("approval_requests")
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  patientId String?  @map("patient_id") @db.Uuid
+  type      String // SMS, EMAIL, IN_APP
+  status    String   @default("PENDING") // PENDING, SENT, FAILED
+  recipient String
+  subject   String?
+  content   String // Keep this safe (no PHI based on rules)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("notifications")
+}
+
+model File {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  recordType   String   @map("record_type") // e.g. Patient, LabResult
+  recordId     String   @map("record_id") @db.Uuid
+  fileName     String   @map("file_name")
+  fileSize     Int      @map("file_size")
+  mimeType     String   @map("mime_type")
+  storagePath  String   @map("storage_path")
+  uploadedById String   @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("files")
+}
+
+model CashierSession {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  branchId       String    @map("branch_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  status         String    @default("OPEN") // OPEN, PENDING_REVIEW, CLOSED
+  openingBalance Decimal   @map("opening_balance") @db.Decimal(12, 2)
+  closingBalance Decimal?  @map("closing_balance") @db.Decimal(12, 2)
+  openedAt       DateTime  @default(now()) @map("opened_at")
+  closedAt       DateTime? @map("closed_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  payments Payment[]
+
+  @@map("cashier_sessions")
+}
+
+model NumberingSequence {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  branchId   String?  @map("branch_id") @db.Uuid // Optional, for branch-specific sequences
+  entityType String   @map("entity_type") // e.g., PATIENT, INVOICE, RECEIPT, ORDER
+  prefix     String
+  currentVal Int      @default(0) @map("current_val")
+  padding    Int      @default(6) // e.g., 6 -> 000001
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, branchId, entityType])
+  @@map("numbering_sequences")
+}
