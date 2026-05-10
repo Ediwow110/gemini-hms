@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
 
 export class JoinQueueDto {
   @IsUUID()

@@ -1,6 +1,10 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { HrService } from './hr.service';
-import { CreateEmployeeDto, CreateDepartmentDto, CreatePayslipDto } from './dto/hr.dto';
+import {
+  CreateEmployeeDto,
+  CreateDepartmentDto,
+  CreatePayslipDto,
+} from './dto/hr.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -22,7 +26,7 @@ export class HrController {
   createDepartment(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Body() dto: CreateDepartmentDto
+    @Body() dto: CreateDepartmentDto,
   ) {
     return this.hrService.createDepartment(tenantId, userId, dto);
   }
@@ -38,7 +42,7 @@ export class HrController {
   createEmployee(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Body() dto: CreateEmployeeDto
+    @Body() dto: CreateEmployeeDto,
   ) {
     return this.hrService.createEmployee(tenantId, userId, dto);
   }
@@ -48,7 +52,7 @@ export class HrController {
   generatePayslip(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Body() dto: CreatePayslipDto
+    @Body() dto: CreatePayslipDto,
   ) {
     return this.hrService.generatePayslip(tenantId, userId, dto);
   }

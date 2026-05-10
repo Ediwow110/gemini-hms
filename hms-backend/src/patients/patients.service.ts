@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePatientDto, UpdatePatientDto } from './dto/patient.dto';
 import { AuditService } from '../audit/audit.service';
@@ -9,12 +13,15 @@ export class PatientsService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
-    private numbering: NumberingService
+    private numbering: NumberingService,
   ) {}
 
   async create(tenantId: string, userId: string, dto: CreatePatientDto) {
     // 1. Generate unique patient number using Numbering Engine
-    const patientNumber = await this.numbering.generateNumber(tenantId, 'PATIENT');
+    const patientNumber = await this.numbering.generateNumber(
+      tenantId,
+      'PATIENT',
+    );
 
     // 2. Check for duplicate (Basic check)
     const existing = await this.prisma.patient.findFirst({
@@ -27,7 +34,9 @@ export class PatientsService {
     });
 
     if (existing) {
-      throw new ConflictException('A patient with this name and birthdate already exists');
+      throw new ConflictException(
+        'A patient with this name and birthdate already exists',
+      );
     }
 
     // 3. Create Patient inside a transaction
@@ -74,7 +83,12 @@ export class PatientsService {
     return patient;
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdatePatientDto) {
+  async update(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: UpdatePatientDto,
+  ) {
     const existing = await this.findOne(tenantId, id);
 
     const updated = await this.prisma.patient.update({

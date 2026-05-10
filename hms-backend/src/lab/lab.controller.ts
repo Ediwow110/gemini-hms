@@ -1,6 +1,18 @@
-import { Controller, Get, Post, Body, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { LabService } from './lab.service';
-import { EncodeLabResultDto, ApproveLabResultDto, AmendLabResultDto } from './dto/lab.dto';
+import {
+  EncodeLabResultDto,
+  ApproveLabResultDto,
+  AmendLabResultDto,
+} from './dto/lab.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -19,10 +31,7 @@ export class LabController {
 
   @Get('results/:id')
   @RequirePermissions('lab.result.view')
-  findOne(
-    @GetUser('tenantId') tenantId: string,
-    @Param('id') id: string
-  ) {
+  findOne(@GetUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.labService.findOne(tenantId, id);
   }
 
@@ -32,7 +41,7 @@ export class LabController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @Param('id') id: string,
-    @Body() dto: EncodeLabResultDto
+    @Body() dto: EncodeLabResultDto,
   ) {
     return this.labService.encodeResult(tenantId, userId, id, dto);
   }
@@ -43,7 +52,7 @@ export class LabController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @Param('id') id: string,
-    @Body() dto: ApproveLabResultDto
+    @Body() dto: ApproveLabResultDto,
   ) {
     return this.labService.approveResult(tenantId, userId, id, dto);
   }
@@ -53,7 +62,7 @@ export class LabController {
   release(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Param('id') id: string
+    @Param('id') id: string,
   ) {
     return this.labService.releaseResult(tenantId, userId, id);
   }
@@ -64,7 +73,7 @@ export class LabController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @Param('id') id: string,
-    @Body() dto: AmendLabResultDto
+    @Body() dto: AmendLabResultDto,
   ) {
     return this.labService.requestAmendment(tenantId, userId, id, dto);
   }

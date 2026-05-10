@@ -1,16 +1,28 @@
-import { Injectable, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { CreateApprovalRequestDto, ProcessApprovalRequestDto } from './dto/approval.dto';
+import {
+  CreateApprovalRequestDto,
+  ProcessApprovalRequestDto,
+} from './dto/approval.dto';
 
 @Injectable()
 export class ApprovalsService {
   constructor(
     private prisma: PrismaService,
-    private audit: AuditService
+    private audit: AuditService,
   ) {}
 
-  async createRequest(tenantId: string, userId: string, dto: CreateApprovalRequestDto) {
+  async createRequest(
+    tenantId: string,
+    userId: string,
+    dto: CreateApprovalRequestDto,
+  ) {
     const request = await this.prisma.approvalRequest.create({
       data: {
         tenantId,
@@ -19,8 +31,8 @@ export class ApprovalsService {
         riskLevel: dto.riskLevel,
         recordId: dto.recordId,
         reason: dto.reason,
-        status: 'PENDING'
-      }
+        status: 'PENDING',
+      },
     });
 
     await this.audit.log({
@@ -29,7 +41,7 @@ export class ApprovalsService {
       eventKey: 'APPROVAL_REQUESTED',
       recordType: 'ApprovalRequest',
       recordId: request.id,
-      newValues: request
+      newValues: request,
     });
 
     return request;
@@ -38,13 +50,19 @@ export class ApprovalsService {
   async getRequests(tenantId: string) {
     return this.prisma.approvalRequest.findMany({
       where: { tenantId },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  async processRequest(tenantId: string, userId: string, id: string, action: 'APPROVED' | 'REJECTED', dto: ProcessApprovalRequestDto) {
+  async processRequest(
+    tenantId: string,
+    userId: string,
+    id: string,
+    action: 'APPROVED' | 'REJECTED',
+    dto: ProcessApprovalRequestDto,
+  ) {
     const request = await this.prisma.approvalRequest.findFirst({
-      where: { id, tenantId }
+      where: { id, tenantId },
     });
 
     if (!request) {
@@ -52,12 +70,16 @@ export class ApprovalsService {
     }
 
     if (request.status !== 'PENDING') {
-      throw new ConflictException('invalid_workflow_transition: Request is already processed');
+      throw new ConflictException(
+        'invalid_workflow_transition: Request is already processed',
+      );
     }
 
     // Maker-checker rule (Section 15: self_approval_blocked)
     if (request.requesterId === userId) {
-      throw new ForbiddenException('self_approval_blocked: You cannot approve or reject your own request');
+      throw new ForbiddenException(
+        'self_approval_blocked: You cannot approve or reject your own request',
+      );
     }
 
     // Process inside a transaction
@@ -67,8 +89,8 @@ export class ApprovalsService {
         data: {
           status: action,
           approverId: userId,
-          remarks: dto.remarks
-        }
+          remarks: dto.remarks,
+        },
       });
 
       await this.audit.log({
@@ -78,7 +100,7 @@ export class ApprovalsService {
         recordType: 'ApprovalRequest',
         recordId: id,
         oldValues: { status: request.status },
-        newValues: updated
+        newValues: updated,
       });
 
       return updated;

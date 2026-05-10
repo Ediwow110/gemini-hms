@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsString, IsNumber, Min, IsOptional, IsUUID } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  Min,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateInventoryItemDto {
   @IsString()

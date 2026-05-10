@@ -47,6 +47,7 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../prisma/prisma.service");
 const bcrypt = __importStar(require("bcrypt"));
+const crypto = __importStar(require("crypto"));
 let AuthService = class AuthService {
     prisma;
     jwtService;
@@ -54,17 +55,17 @@ let AuthService = class AuthService {
         this.prisma = prisma;
         this.jwtService = jwtService;
     }
-    async validateUser(email, pass) {
+    async validateUser(tenantId, email, pass) {
         const user = await this.prisma.user.findFirst({
-            where: { email },
+            where: { tenantId, email },
             include: {
                 tenant: true,
                 userRoles: {
-                    include: { role: true }
-                }
-            }
+                    include: { role: true },
+                },
+            },
         });
-        if (user && await bcrypt.compare(pass, user.passwordHash)) {
+        if (user && (await bcrypt.compare(pass, user.passwordHash))) {
             const { passwordHash, ...result } = user;
             return result;
         }
@@ -75,8 +76,10 @@ let AuthService = class AuthService {
         const payload = {
             sub: user.id,
             email: user.email,
-            tenant_id: user.tenantId,
-            roles: roles
+            tenantId: user.tenantId,
+            branchId: '00000000-0000-0000-0000-000000000000',
+            roles: roles,
+            jti: crypto.randomUUID(),
         };
         return {
             access_token: this.jwtService.sign(payload),
@@ -84,8 +87,8 @@ let AuthService = class AuthService {
                 id: user.id,
                 email: user.email,
                 tenant_id: user.tenantId,
-                roles: roles
-            }
+                roles: roles,
+            },
         };
     }
 };

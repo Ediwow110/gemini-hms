@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { CreateInventoryItemDto, ReceiveStockDto } from './dto/inventory.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -22,7 +30,7 @@ export class InventoryController {
   createItem(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Body() dto: CreateInventoryItemDto
+    @Body() dto: CreateInventoryItemDto,
   ) {
     return this.inventoryService.createItem(tenantId, userId, dto);
   }
@@ -33,17 +41,14 @@ export class InventoryController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @Param('id') id: string,
-    @Body() dto: ReceiveStockDto
+    @Body() dto: ReceiveStockDto,
   ) {
     return this.inventoryService.receiveStock(tenantId, userId, id, dto);
   }
 
   @Get('items/:id/logs')
   @RequirePermissions('inventory.item.view')
-  getLogs(
-    @GetUser('tenantId') tenantId: string,
-    @Param('id') id: string
-  ) {
+  getLogs(@GetUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.inventoryService.getStockLogs(tenantId, id);
   }
 
@@ -54,9 +59,15 @@ export class InventoryController {
     @GetUser('userId') userId: string,
     @Param('id') id: string,
     @Body('quantity') quantity: number,
-    @Body('orderId') orderId?: string
+    @Body('orderId') orderId?: string,
   ) {
-    return this.inventoryService.dispenseItem(tenantId, userId, id, quantity, orderId);
+    return this.inventoryService.dispenseItem(
+      tenantId,
+      userId,
+      id,
+      quantity,
+      orderId,
+    );
   }
 
   @Get('alerts/low-stock')

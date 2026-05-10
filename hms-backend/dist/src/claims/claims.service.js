@@ -48,7 +48,7 @@ let ClaimsService = class ClaimsService {
     }
     async updateStatus(tenantId, userId, id, dto) {
         const claim = await this.prisma.claim.findFirst({
-            where: { id, tenantId }
+            where: { id, tenantId },
         });
         if (!claim) {
             throw new common_1.NotFoundException('Claim not found');
@@ -83,11 +83,11 @@ let ClaimsService = class ClaimsService {
                 hmoPartner: true,
                 invoice: {
                     include: {
-                        order: { include: { patient: true } }
-                    }
-                }
+                        order: { include: { patient: true } },
+                    },
+                },
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
         });
     }
 };

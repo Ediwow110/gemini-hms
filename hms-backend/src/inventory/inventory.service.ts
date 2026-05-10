@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInventoryItemDto, ReceiveStockDto } from './dto/inventory.dto';
 import { AuditService } from '../audit/audit.service';
@@ -7,10 +11,14 @@ import { AuditService } from '../audit/audit.service';
 export class InventoryService {
   constructor(
     private prisma: PrismaService,
-    private audit: AuditService
+    private audit: AuditService,
   ) {}
 
-  async createItem(tenantId: string, userId: string, dto: CreateInventoryItemDto) {
+  async createItem(
+    tenantId: string,
+    userId: string,
+    dto: CreateInventoryItemDto,
+  ) {
     const item = await this.prisma.inventoryItem.create({
       data: {
         tenantId,
@@ -30,7 +38,12 @@ export class InventoryService {
     return item;
   }
 
-  async receiveStock(tenantId: string, userId: string, id: string, dto: ReceiveStockDto) {
+  async receiveStock(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: ReceiveStockDto,
+  ) {
     const item = await this.prisma.inventoryItem.findFirst({
       where: { id, tenantId },
     });
@@ -59,19 +72,24 @@ export class InventoryService {
           quantity: dto.quantity,
           previousStock,
           newStock,
-          remarks: dto.remarks || `Stock received from ${dto.supplierName || 'unknown'}`,
+          remarks:
+            dto.remarks ||
+            `Stock received from ${dto.supplierName || 'unknown'}`,
         },
       });
 
       // 3. Log System Audit
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'STOCK_RECEIVED',
-        recordType: 'InventoryItem',
-        recordId: id,
-        newValues: { log, updatedItem },
-      });
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'STOCK_RECEIVED',
+          recordType: 'InventoryItem',
+          recordId: id,
+          newValues: { log, updatedItem },
+        },
+        tx,
+      );
 
       return updatedItem;
     });
@@ -91,7 +109,13 @@ export class InventoryService {
     });
   }
 
-  async dispenseItem(tenantId: string, userId: string, id: string, quantity: number, orderId?: string) {
+  async dispenseItem(
+    tenantId: string,
+    userId: string,
+    id: string,
+    quantity: number,
+    orderId?: string,
+  ) {
     const item = await this.prisma.inventoryItem.findFirst({
       where: { id, tenantId },
     });
@@ -102,7 +126,9 @@ export class InventoryService {
 
     // Guardrail (Section 15): Insufficient stock
     if (item.currentStock < quantity) {
-      throw new BadRequestException(`insufficient_stock: Only ${item.currentStock} ${item.unit} available`);
+      throw new BadRequestException(
+        `insufficient_stock: Only ${item.currentStock} ${item.unit} available`,
+      );
     }
 
     // Atomic Stock Transaction
@@ -133,27 +159,40 @@ export class InventoryService {
 
       // 3. Trigger Low-Stock Notification if crossing threshold
       if (newStock <= item.reorderLevel && previousStock > item.reorderLevel) {
-        await tx.notification.create({
-          data: {
+        const existingAlert = await tx.notification.findFirst({
+          where: {
             tenantId,
-            type: 'IN_APP',
-            recipient: 'PHARMACY_MANAGER', // Would be a role or specific user ID
-            subject: 'LOW STOCK ALERT: ' + item.name,
-            content: `Item ${item.name} (SKU: ${item.sku}) has fallen to ${newStock} ${item.unit}. Reorder level is ${item.reorderLevel}.`,
             status: 'PENDING',
-          }
+            content: { contains: `(SKU: ${item.sku})` }, // Identify specific item
+          },
         });
+
+        if (!existingAlert) {
+          await tx.notification.create({
+            data: {
+              tenantId,
+              type: 'IN_APP',
+              recipient: 'ROLE:Pharmacist', // Role-based routing instead of hardcoded string
+              subject: 'LOW STOCK ALERT: ' + item.name,
+              content: `Item ${item.name} (SKU: ${item.sku}) has fallen to ${newStock} ${item.unit}. Reorder level is ${item.reorderLevel}.`,
+              status: 'PENDING',
+            },
+          });
+        }
       }
 
       // 4. Log System Audit
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'STOCK_DISPENSED',
-        recordType: 'InventoryItem',
-        recordId: id,
-        newValues: { log, updatedItem },
-      });
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'STOCK_DISPENSED',
+          recordType: 'InventoryItem',
+          recordId: id,
+          newValues: { log, updatedItem },
+        },
+        tx,
+      );
 
       return updatedItem;
     });
@@ -164,7 +203,7 @@ export class InventoryService {
     return this.prisma.inventoryItem.findMany({
       where: {
         tenantId,
-        currentStock: { lte: this.prisma.inventoryItem.fields.reorderLevel } // Prisma 4.3.0+ feature
+        currentStock: { lte: this.prisma.inventoryItem.fields.reorderLevel }, // Prisma 4.3.0+ feature
       },
       orderBy: { currentStock: 'asc' },
     });

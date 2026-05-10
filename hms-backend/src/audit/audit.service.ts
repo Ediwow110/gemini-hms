@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 export interface AuditLogData {
   tenantId: string;
@@ -15,8 +16,9 @@ export interface AuditLogData {
 export class AuditService {
   constructor(private prisma: PrismaService) {}
 
-  async log(data: AuditLogData) {
-    return this.prisma.auditLog.create({
+  async log(data: AuditLogData, tx?: Prisma.TransactionClient) {
+    const db = tx || this.prisma;
+    return db.auditLog.create({
       data: {
         tenantId: data.tenantId,
         userId: data.userId,

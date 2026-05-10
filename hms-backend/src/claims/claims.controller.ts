@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { ClaimsService } from './claims.service';
 import { CreateClaimDto, UpdateClaimStatusDto } from './dto/claims.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -28,7 +36,7 @@ export class ClaimsController {
   createClaim(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Body() dto: CreateClaimDto
+    @Body() dto: CreateClaimDto,
   ) {
     return this.claimsService.createClaim(tenantId, userId, dto);
   }
@@ -39,7 +47,7 @@ export class ClaimsController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @Param('id') id: string,
-    @Body() dto: UpdateClaimStatusDto
+    @Body() dto: UpdateClaimStatusDto,
   ) {
     return this.claimsService.updateStatus(tenantId, userId, id, dto);
   }

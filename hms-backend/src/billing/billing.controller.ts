@@ -1,6 +1,18 @@
-import { Controller, Get, Post, Body, UseGuards, Param, Patch } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Param,
+  Patch,
+} from '@nestjs/common';
 import { BillingService } from './billing.service';
-import { CreatePaymentDto, OpenSessionDto, CloseSessionDto } from './dto/payment.dto';
+import {
+  CreatePaymentDto,
+  OpenSessionDto,
+  CloseSessionDto,
+} from './dto/payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -16,7 +28,7 @@ export class BillingController {
   postPayment(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Body() createPaymentDto: CreatePaymentDto
+    @Body() createPaymentDto: CreatePaymentDto,
   ) {
     return this.billingService.postPayment(tenantId, userId, createPaymentDto);
   }
@@ -34,7 +46,7 @@ export class BillingController {
   openSession(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Body() dto: OpenSessionDto
+    @Body() dto: OpenSessionDto,
   ) {
     return this.billingService.openSession(tenantId, userId, dto);
   }
@@ -45,7 +57,7 @@ export class BillingController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @Param('id') sessionId: string,
-    @Body() dto: CloseSessionDto
+    @Body() dto: CloseSessionDto,
   ) {
     return this.billingService.closeSession(tenantId, userId, sessionId, dto);
   }
@@ -54,7 +66,7 @@ export class BillingController {
   @RequirePermissions('billing.payment.create')
   getActiveSession(
     @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string
+    @GetUser('userId') userId: string,
   ) {
     return this.billingService.getActiveSession(tenantId, userId);
   }

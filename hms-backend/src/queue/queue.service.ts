@@ -7,7 +7,7 @@ import { AuditService } from '../audit/audit.service';
 export class QueueService {
   constructor(
     private prisma: PrismaService,
-    private audit: AuditService
+    private audit: AuditService,
   ) {}
 
   async joinQueue(tenantId: string, dto: JoinQueueDto) {
@@ -20,8 +20,8 @@ export class QueueService {
       where: {
         tenantId,
         serviceType: dto.serviceType,
-        createdAt: { gte: today }
-      }
+        createdAt: { gte: today },
+      },
     });
 
     const queueNumber = `${prefix}-${(count + 1).toString().padStart(3, '0')}`;
@@ -50,16 +50,21 @@ export class QueueService {
         tenantId,
         branchId,
         status: { in: ['CALLING', 'SERVING'] },
-        createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+        createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
       },
       orderBy: { updatedAt: 'desc' },
-      take: 10
+      take: 10,
     });
   }
 
-  async updateStatus(tenantId: string, userId: string, id: string, dto: UpdateQueueStatusDto) {
+  async updateStatus(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: UpdateQueueStatusDto,
+  ) {
     const entry = await this.prisma.queueEntry.findFirst({
-      where: { id, tenantId }
+      where: { id, tenantId },
     });
 
     if (!entry) {
@@ -71,7 +76,7 @@ export class QueueService {
       data: {
         status: dto.status,
         counterNumber: dto.counterNumber,
-      }
+      },
     });
 
     // Optional: Log calling/completion in audit
@@ -82,7 +87,7 @@ export class QueueService {
         eventKey: `QUEUE_${dto.status}`,
         recordType: 'QueueEntry',
         recordId: id,
-        newValues: updated
+        newValues: updated,
       });
     }
 
@@ -95,12 +100,12 @@ export class QueueService {
         tenantId,
         serviceType,
         status: { in: ['WAITING', 'CALLING', 'SERVING'] },
-        createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+        createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
       },
       orderBy: [
         { category: 'desc' }, // PRIORITY first
-        { createdAt: 'asc' }
-      ]
+        { createdAt: 'asc' },
+      ],
     });
   }
 }

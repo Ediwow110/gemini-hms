@@ -13,6 +13,15 @@ const passport_1 = require("@nestjs/passport");
 const auth_service_1 = require("./auth.service");
 const auth_controller_1 = require("./auth.controller");
 const jwt_strategy_1 = require("./jwt.strategy");
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret ||
+        secret.length < 32 ||
+        secret === 'SUPER_SECRET_TEMP_KEY_DO_NOT_USE_IN_PROD') {
+        throw new Error('CRITICAL: Valid JWT_SECRET (min 32 chars) is required in environment variables.');
+    }
+    return secret;
+};
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -21,7 +30,7 @@ exports.AuthModule = AuthModule = __decorate([
         imports: [
             passport_1.PassportModule,
             jwt_1.JwtModule.register({
-                secret: process.env.JWT_SECRET || 'SUPER_SECRET_TEMP_KEY_DO_NOT_USE_IN_PROD',
+                secret: getJwtSecret(),
                 signOptions: { expiresIn: '12h' },
             }),
         ],

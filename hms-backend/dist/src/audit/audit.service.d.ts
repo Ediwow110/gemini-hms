@@ -1,4 +1,5 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 export interface AuditLogData {
     tenantId: string;
     userId: string;
@@ -11,7 +12,7 @@ export interface AuditLogData {
 export declare class AuditService {
     private prisma;
     constructor(prisma: PrismaService);
-    log(data: AuditLogData): Promise<{
+    log(data: AuditLogData, tx?: Prisma.TransactionClient): Promise<{
         id: string;
         createdAt: Date;
         tenantId: string;
@@ -19,7 +20,7 @@ export declare class AuditService {
         eventKey: string;
         recordType: string;
         recordId: string;
-        oldValues: import("@prisma/client/runtime/client").JsonValue | null;
-        newValues: import("@prisma/client/runtime/client").JsonValue | null;
+        oldValues: Prisma.JsonValue | null;
+        newValues: Prisma.JsonValue | null;
     }>;
 }

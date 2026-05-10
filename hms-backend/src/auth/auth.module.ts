@@ -5,11 +5,25 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (
+    !secret ||
+    secret.length < 32 ||
+    secret === 'SUPER_SECRET_TEMP_KEY_DO_NOT_USE_IN_PROD'
+  ) {
+    throw new Error(
+      'CRITICAL: Valid JWT_SECRET (min 32 chars) is required in environment variables.',
+    );
+  }
+  return secret;
+};
+
 @Module({
   imports: [
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'SUPER_SECRET_TEMP_KEY_DO_NOT_USE_IN_PROD',
+      secret: getJwtSecret(),
       signOptions: { expiresIn: '12h' },
     }),
   ],

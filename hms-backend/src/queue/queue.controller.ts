@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, Patch, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { QueueService } from './queue.service';
 import { JoinQueueDto, UpdateQueueStatusDto } from './dto/queue.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -20,14 +29,20 @@ export class QueueController {
 
   @Get('display')
   @RequirePermissions('queue.view')
-  getDisplay(@GetUser('tenantId') tenantId: string, @Query('branchId') branchId: string) {
+  getDisplay(
+    @GetUser('tenantId') tenantId: string,
+    @Query('branchId') branchId: string,
+  ) {
     // Polling endpoint for TV display
     return this.queueService.getActiveDisplay(tenantId, branchId);
   }
 
   @Get('worklist')
   @RequirePermissions('queue.view')
-  getWorklist(@GetUser('tenantId') tenantId: string, @Query('serviceType') serviceType: string) {
+  getWorklist(
+    @GetUser('tenantId') tenantId: string,
+    @Query('serviceType') serviceType: string,
+  ) {
     return this.queueService.getWorklist(tenantId, serviceType);
   }
 
@@ -37,7 +52,7 @@ export class QueueController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @Param('id') id: string,
-    @Body() dto: UpdateQueueStatusDto
+    @Body() dto: UpdateQueueStatusDto,
   ) {
     return this.queueService.updateStatus(tenantId, userId, id, dto);
   }

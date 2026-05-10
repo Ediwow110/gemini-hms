@@ -10,20 +10,23 @@ export class NumberingService {
    * Atomic increments prevent race conditions.
    */
   async generateNumber(
-    tenantId: string, 
-    entityType: string, 
-    branchId?: string
+    tenantId: string,
+    entityType: string,
+    branchId?: string,
   ): Promise<string> {
     const defaults: Record<string, { prefix: string; padding: number }> = {
-      'PATIENT': { prefix: 'PT-', padding: 6 },
-      'ORDER': { prefix: 'ORD-', padding: 6 },
-      'INVOICE': { prefix: 'INV-', padding: 6 },
-      'RECEIPT': { prefix: 'RCP-', padding: 6 },
-      'LAB_RESULT': { prefix: 'LAB-', padding: 6 },
-      'CLAIM': { prefix: 'CLM-', padding: 6 },
+      PATIENT: { prefix: 'PT-', padding: 6 },
+      ORDER: { prefix: 'ORD-', padding: 6 },
+      INVOICE: { prefix: 'INV-', padding: 6 },
+      RECEIPT: { prefix: 'RCP-', padding: 6 },
+      LAB_RESULT: { prefix: 'LAB-', padding: 6 },
+      CLAIM: { prefix: 'CLM-', padding: 6 },
     };
 
-    const config = defaults[entityType] || { prefix: `${entityType}-`, padding: 6 };
+    const config = defaults[entityType] || {
+      prefix: `${entityType}-`,
+      padding: 6,
+    };
     const safeBranchId = branchId || null;
 
     // Use a transaction to ensure we can create or increment safely
@@ -34,14 +37,14 @@ export class NumberingService {
           tenantId,
           branchId: safeBranchId,
           entityType,
-        }
+        },
       });
 
       if (sequence) {
         // Atomically increment
         sequence = await tx.numberingSequence.update({
           where: { id: sequence.id },
-          data: { currentVal: { increment: 1 } }
+          data: { currentVal: { increment: 1 } },
         });
       } else {
         // Create new
@@ -53,11 +56,14 @@ export class NumberingService {
             prefix: config.prefix,
             currentVal: 1,
             padding: config.padding,
-          }
+          },
         });
       }
 
-      const paddedValue = String(sequence.currentVal).padStart(sequence.padding, '0');
+      const paddedValue = String(sequence.currentVal).padStart(
+        sequence.padding,
+        '0',
+      );
       return `${sequence.prefix}${paddedValue}`;
     });
   }

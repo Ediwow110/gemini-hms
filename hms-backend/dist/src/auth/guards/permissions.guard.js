@@ -22,29 +22,29 @@ let PermissionsGuard = class PermissionsGuard {
         this.prisma = prisma;
     }
     async canActivate(context) {
-        const requiredPermissions = this.reflector.getAllAndOverride(permissions_decorator_1.PERMISSIONS_KEY, [
-            context.getHandler(),
-            context.getClass(),
-        ]);
+        const requiredPermissions = this.reflector.getAllAndOverride(permissions_decorator_1.PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
         if (!requiredPermissions || requiredPermissions.length === 0) {
             return true;
         }
         const request = context.switchToHttp().getRequest();
         const user = request.user;
-        if (!user || !user.userId) {
-            throw new common_1.ForbiddenException('unauthenticated: User not authenticated');
+        if (!user || !user.userId || !user.tenantId) {
+            throw new common_1.ForbiddenException('unauthenticated: User not authenticated or missing tenant context');
         }
         const userRoles = await this.prisma.userRole.findMany({
-            where: { userId: user.userId },
+            where: {
+                userId: user.userId,
+                role: { tenantId: user.tenantId },
+            },
             include: {
                 role: {
                     include: {
                         rolePermissions: {
-                            include: { permission: true }
-                        }
-                    }
-                }
-            }
+                            include: { permission: true },
+                        },
+                    },
+                },
+            },
         });
         const userPermissions = new Set();
         for (const ur of userRoles) {
@@ -62,7 +62,7 @@ let PermissionsGuard = class PermissionsGuard {
                 statusCode: 403,
                 error: 'Forbidden',
                 message: 'permission_denied',
-                details: 'You lack the required permissions to perform this action'
+                details: 'You lack the required permissions to perform this action',
             });
         }
         return true;
@@ -71,6 +71,7 @@ let PermissionsGuard = class PermissionsGuard {
 exports.PermissionsGuard = PermissionsGuard;
 exports.PermissionsGuard = PermissionsGuard = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [core_1.Reflector, prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [core_1.Reflector,
+        prisma_service_1.PrismaService])
 ], PermissionsGuard);
 //# sourceMappingURL=permissions.guard.js.map

@@ -26,7 +26,7 @@ let LabService = class LabService {
     async findOne(tenantId, id) {
         const result = await this.prisma.labResult.findFirst({
             where: { id, order: { tenantId } },
-            include: { order: { include: { patient: true } } }
+            include: { order: { include: { patient: true } } },
         });
         if (!result) {
             throw new common_1.NotFoundException('Lab result not found');
@@ -94,7 +94,9 @@ let LabService = class LabService {
             throw new common_1.BadRequestException('Result must be released to apply an amendment');
         }
         return this.prisma.$transaction(async (tx) => {
-            const versionCount = await tx.labResultVersion.count({ where: { labResultId: id } });
+            const versionCount = await tx.labResultVersion.count({
+                where: { labResultId: id },
+            });
             const version = await tx.labResultVersion.create({
                 data: {
                     labResultId: id,
@@ -103,7 +105,7 @@ let LabService = class LabService {
                     newStatus: 'AMENDED',
                     amendedById: userId,
                     reason: reason,
-                }
+                },
             });
             const updated = await tx.labResult.update({
                 where: { id },
@@ -111,7 +113,7 @@ let LabService = class LabService {
                     status: 'AMENDED',
                     lockedAt: null,
                     approvedById: null,
-                }
+                },
             });
             await this.audit.log({
                 tenantId,
@@ -152,12 +154,12 @@ let LabService = class LabService {
         return this.prisma.labResult.findMany({
             where: {
                 order: { tenantId },
-                status: { in: ['PENDING_COLLECTION', 'ENCODED', 'APPROVED'] }
+                status: { in: ['PENDING_COLLECTION', 'ENCODED', 'APPROVED'] },
             },
             include: {
-                order: { include: { patient: true } }
+                order: { include: { patient: true } },
             },
-            orderBy: { createdAt: 'asc' }
+            orderBy: { createdAt: 'asc' },
         });
     }
 };

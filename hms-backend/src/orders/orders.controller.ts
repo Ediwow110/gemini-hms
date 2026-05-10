@@ -16,7 +16,7 @@ export class OrdersController {
   create(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Body() createOrderDto: CreateOrderDto
+    @Body() createOrderDto: CreateOrderDto,
   ) {
     return this.ordersService.create(tenantId, userId, createOrderDto);
   }
@@ -29,10 +29,7 @@ export class OrdersController {
 
   @Get(':id')
   @RequirePermissions('order.view')
-  findOne(
-    @GetUser('tenantId') tenantId: string,
-    @Param('id') id: string
-  ) {
+  findOne(@GetUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.ordersService.findOne(tenantId, id);
   }
 }

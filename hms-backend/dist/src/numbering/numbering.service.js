@@ -19,14 +19,17 @@ let NumberingService = class NumberingService {
     }
     async generateNumber(tenantId, entityType, branchId) {
         const defaults = {
-            'PATIENT': { prefix: 'PT-', padding: 6 },
-            'ORDER': { prefix: 'ORD-', padding: 6 },
-            'INVOICE': { prefix: 'INV-', padding: 6 },
-            'RECEIPT': { prefix: 'RCP-', padding: 6 },
-            'LAB_RESULT': { prefix: 'LAB-', padding: 6 },
-            'CLAIM': { prefix: 'CLM-', padding: 6 },
+            PATIENT: { prefix: 'PT-', padding: 6 },
+            ORDER: { prefix: 'ORD-', padding: 6 },
+            INVOICE: { prefix: 'INV-', padding: 6 },
+            RECEIPT: { prefix: 'RCP-', padding: 6 },
+            LAB_RESULT: { prefix: 'LAB-', padding: 6 },
+            CLAIM: { prefix: 'CLM-', padding: 6 },
         };
-        const config = defaults[entityType] || { prefix: `${entityType}-`, padding: 6 };
+        const config = defaults[entityType] || {
+            prefix: `${entityType}-`,
+            padding: 6,
+        };
         const safeBranchId = branchId || null;
         return this.prisma.$transaction(async (tx) => {
             let sequence = await tx.numberingSequence.findFirst({
@@ -34,12 +37,12 @@ let NumberingService = class NumberingService {
                     tenantId,
                     branchId: safeBranchId,
                     entityType,
-                }
+                },
             });
             if (sequence) {
                 sequence = await tx.numberingSequence.update({
                     where: { id: sequence.id },
-                    data: { currentVal: { increment: 1 } }
+                    data: { currentVal: { increment: 1 } },
                 });
             }
             else {
@@ -51,7 +54,7 @@ let NumberingService = class NumberingService {
                         prefix: config.prefix,
                         currentVal: 1,
                         padding: config.padding,
-                    }
+                    },
                 });
             }
             const paddedValue = String(sequence.currentVal).padStart(sequence.padding, '0');

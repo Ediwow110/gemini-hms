@@ -9,7 +9,7 @@ export class ClaimsService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
-    private numbering: NumberingService
+    private numbering: NumberingService,
   ) {}
 
   async createClaim(tenantId: string, userId: string, dto: CreateClaimDto) {
@@ -41,9 +41,14 @@ export class ClaimsService {
     return claim;
   }
 
-  async updateStatus(tenantId: string, userId: string, id: string, dto: UpdateClaimStatusDto) {
+  async updateStatus(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: UpdateClaimStatusDto,
+  ) {
     const claim = await this.prisma.claim.findFirst({
-      where: { id, tenantId }
+      where: { id, tenantId },
     });
 
     if (!claim) {
@@ -84,11 +89,11 @@ export class ClaimsService {
         hmoPartner: true,
         invoice: {
           include: {
-            order: { include: { patient: true } }
-          }
-        }
+            order: { include: { patient: true } },
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 }

@@ -17,8 +17,9 @@ let AuditService = class AuditService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async log(data) {
-        return this.prisma.auditLog.create({
+    async log(data, tx) {
+        const db = tx || this.prisma;
+        return db.auditLog.create({
             data: {
                 tenantId: data.tenantId,
                 userId: data.userId,

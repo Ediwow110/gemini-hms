@@ -28,8 +28,8 @@ let QueueService = class QueueService {
             where: {
                 tenantId,
                 serviceType: dto.serviceType,
-                createdAt: { gte: today }
-            }
+                createdAt: { gte: today },
+            },
         });
         const queueNumber = `${prefix}-${(count + 1).toString().padStart(3, '0')}`;
         const entry = await this.prisma.queueEntry.create({
@@ -52,15 +52,15 @@ let QueueService = class QueueService {
                 tenantId,
                 branchId,
                 status: { in: ['CALLING', 'SERVING'] },
-                createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+                createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
             },
             orderBy: { updatedAt: 'desc' },
-            take: 10
+            take: 10,
         });
     }
     async updateStatus(tenantId, userId, id, dto) {
         const entry = await this.prisma.queueEntry.findFirst({
-            where: { id, tenantId }
+            where: { id, tenantId },
         });
         if (!entry) {
             throw new common_1.NotFoundException('Queue entry not found');
@@ -70,7 +70,7 @@ let QueueService = class QueueService {
             data: {
                 status: dto.status,
                 counterNumber: dto.counterNumber,
-            }
+            },
         });
         if (dto.status === 'CALLING' || dto.status === 'COMPLETED') {
             await this.audit.log({
@@ -79,7 +79,7 @@ let QueueService = class QueueService {
                 eventKey: `QUEUE_${dto.status}`,
                 recordType: 'QueueEntry',
                 recordId: id,
-                newValues: updated
+                newValues: updated,
             });
         }
         return updated;
@@ -90,12 +90,12 @@ let QueueService = class QueueService {
                 tenantId,
                 serviceType,
                 status: { in: ['WAITING', 'CALLING', 'SERVING'] },
-                createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+                createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
             },
             orderBy: [
                 { category: 'desc' },
-                { createdAt: 'asc' }
-            ]
+                { createdAt: 'asc' },
+            ],
         });
     }
 };

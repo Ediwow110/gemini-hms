@@ -9,7 +9,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
-    private numbering: NumberingService
+    private numbering: NumberingService,
   ) {}
 
   async create(tenantId: string, userId: string, dto: CreateOrderDto) {
@@ -19,12 +19,19 @@ export class OrdersService {
     }
 
     // 2. Calculate total amount
-    const totalAmount = dto.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const totalAmount = dto.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    );
 
     // 3. START TRANSACTION (Section 13 Boundary)
     return this.prisma.$transaction(async (tx) => {
       // 4. Generate Order Number
-      const orderNumber = await this.numbering.generateNumber(tenantId, 'ORDER', dto.branchId);
+      const orderNumber = await this.numbering.generateNumber(
+        tenantId,
+        'ORDER',
+        dto.branchId,
+      );
 
       // 5. Create Order
       const order = await tx.order.create({
@@ -38,7 +45,11 @@ export class OrdersService {
       });
 
       // 6. Generate Invoice Number
-      const invoiceNumber = await this.numbering.generateNumber(tenantId, 'INVOICE', dto.branchId);
+      const invoiceNumber = await this.numbering.generateNumber(
+        tenantId,
+        'INVOICE',
+        dto.branchId,
+      );
 
       // 7. Create Invoice (Automatically linked to order)
       const invoice = await tx.invoice.create({
@@ -83,8 +94,8 @@ export class OrdersService {
         patient: true,
         invoice: {
           include: {
-            payments: true
-          }
+            payments: true,
+          },
         },
       },
     });

@@ -13,12 +13,21 @@ exports.JwtStrategy = void 0;
 const passport_jwt_1 = require("passport-jwt");
 const passport_1 = require("@nestjs/passport");
 const common_1 = require("@nestjs/common");
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret ||
+        secret.length < 32 ||
+        secret === 'SUPER_SECRET_TEMP_KEY_DO_NOT_USE_IN_PROD') {
+        throw new Error('CRITICAL: Valid JWT_SECRET (min 32 chars) is required in environment variables.');
+    }
+    return secret;
+};
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     constructor() {
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: process.env.JWT_SECRET || 'SUPER_SECRET_TEMP_KEY_DO_NOT_USE_IN_PROD',
+            secretOrKey: getJwtSecret(),
         });
     }
     async validate(payload) {
@@ -26,7 +35,7 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
             userId: payload.sub,
             email: payload.email,
             tenantId: payload.tenant_id,
-            roles: payload.roles
+            roles: payload.roles,
         };
     }
 };

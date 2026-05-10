@@ -255,6 +255,7 @@ model StockLog {
 }
 
 // --- MODULE 5: HUMAN RESOURCES & PAYROLL ---
+// DEFERRED: HR & Payroll module not currently wired/supported. Do not implement.
 
 model Department {
   id        String   @id @default(uuid()) @db.Uuid

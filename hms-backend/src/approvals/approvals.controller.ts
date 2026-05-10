@@ -1,6 +1,17 @@
-import { Controller, Get, Post, Body, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { ApprovalsService } from './approvals.service';
-import { CreateApprovalRequestDto, ProcessApprovalRequestDto } from './dto/approval.dto';
+import {
+  CreateApprovalRequestDto,
+  ProcessApprovalRequestDto,
+} from './dto/approval.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
@@ -16,7 +27,7 @@ export class ApprovalsController {
   create(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Body() dto: CreateApprovalRequestDto
+    @Body() dto: CreateApprovalRequestDto,
   ) {
     return this.approvalsService.createRequest(tenantId, userId, dto);
   }
@@ -33,9 +44,15 @@ export class ApprovalsController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @Param('id') id: string,
-    @Body() dto: ProcessApprovalRequestDto
+    @Body() dto: ProcessApprovalRequestDto,
   ) {
-    return this.approvalsService.processRequest(tenantId, userId, id, 'APPROVED', dto);
+    return this.approvalsService.processRequest(
+      tenantId,
+      userId,
+      id,
+      'APPROVED',
+      dto,
+    );
   }
 
   @Patch(':id/reject')
@@ -44,8 +61,14 @@ export class ApprovalsController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @Param('id') id: string,
-    @Body() dto: ProcessApprovalRequestDto
+    @Body() dto: ProcessApprovalRequestDto,
   ) {
-    return this.approvalsService.processRequest(tenantId, userId, id, 'REJECTED', dto);
+    return this.approvalsService.processRequest(
+      tenantId,
+      userId,
+      id,
+      'REJECTED',
+      dto,
+    );
   }
 }

@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto, UpdatePatientDto } from './dto/patient.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -16,7 +24,7 @@ export class PatientsController {
   create(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
-    @Body() createPatientDto: CreatePatientDto
+    @Body() createPatientDto: CreatePatientDto,
   ) {
     return this.patientsService.create(tenantId, userId, createPatientDto);
   }
@@ -29,10 +37,7 @@ export class PatientsController {
 
   @Get(':id')
   @RequirePermissions('patient.view')
-  findOne(
-    @GetUser('tenantId') tenantId: string,
-    @Param('id') id: string
-  ) {
+  findOne(@GetUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.patientsService.findOne(tenantId, id);
   }
 
@@ -42,7 +47,7 @@ export class PatientsController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @Param('id') id: string,
-    @Body() updatePatientDto: UpdatePatientDto
+    @Body() updatePatientDto: UpdatePatientDto,
   ) {
     return this.patientsService.update(tenantId, userId, id, updatePatientDto);
   }

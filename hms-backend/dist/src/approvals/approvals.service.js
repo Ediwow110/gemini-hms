@@ -29,8 +29,8 @@ let ApprovalsService = class ApprovalsService {
                 riskLevel: dto.riskLevel,
                 recordId: dto.recordId,
                 reason: dto.reason,
-                status: 'PENDING'
-            }
+                status: 'PENDING',
+            },
         });
         await this.audit.log({
             tenantId,
@@ -38,19 +38,19 @@ let ApprovalsService = class ApprovalsService {
             eventKey: 'APPROVAL_REQUESTED',
             recordType: 'ApprovalRequest',
             recordId: request.id,
-            newValues: request
+            newValues: request,
         });
         return request;
     }
     async getRequests(tenantId) {
         return this.prisma.approvalRequest.findMany({
             where: { tenantId },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
         });
     }
     async processRequest(tenantId, userId, id, action, dto) {
         const request = await this.prisma.approvalRequest.findFirst({
-            where: { id, tenantId }
+            where: { id, tenantId },
         });
         if (!request) {
             throw new common_1.NotFoundException('Approval request not found');
@@ -67,8 +67,8 @@ let ApprovalsService = class ApprovalsService {
                 data: {
                     status: action,
                     approverId: userId,
-                    remarks: dto.remarks
-                }
+                    remarks: dto.remarks,
+                },
             });
             await this.audit.log({
                 tenantId,
@@ -77,7 +77,7 @@ let ApprovalsService = class ApprovalsService {
                 recordType: 'ApprovalRequest',
                 recordId: id,
                 oldValues: { status: request.status },
-                newValues: updated
+                newValues: updated,
             });
             return updated;
         });

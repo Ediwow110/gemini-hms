@@ -59,7 +59,8 @@ let InventoryService = class InventoryService {
                     quantity: dto.quantity,
                     previousStock,
                     newStock,
-                    remarks: dto.remarks || `Stock received from ${dto.supplierName || 'unknown'}`,
+                    remarks: dto.remarks ||
+                        `Stock received from ${dto.supplierName || 'unknown'}`,
                 },
             });
             await this.audit.log({
@@ -69,7 +70,7 @@ let InventoryService = class InventoryService {
                 recordType: 'InventoryItem',
                 recordId: id,
                 newValues: { log, updatedItem },
-            });
+            }, tx);
             return updatedItem;
         });
     }
@@ -116,16 +117,25 @@ let InventoryService = class InventoryService {
                 },
             });
             if (newStock <= item.reorderLevel && previousStock > item.reorderLevel) {
-                await tx.notification.create({
-                    data: {
+                const existingAlert = await tx.notification.findFirst({
+                    where: {
                         tenantId,
-                        type: 'IN_APP',
-                        recipient: 'PHARMACY_MANAGER',
-                        subject: 'LOW STOCK ALERT: ' + item.name,
-                        content: `Item ${item.name} (SKU: ${item.sku}) has fallen to ${newStock} ${item.unit}. Reorder level is ${item.reorderLevel}.`,
                         status: 'PENDING',
-                    }
+                        content: { contains: `(SKU: ${item.sku})` },
+                    },
                 });
+                if (!existingAlert) {
+                    await tx.notification.create({
+                        data: {
+                            tenantId,
+                            type: 'IN_APP',
+                            recipient: 'ROLE:Pharmacist',
+                            subject: 'LOW STOCK ALERT: ' + item.name,
+                            content: `Item ${item.name} (SKU: ${item.sku}) has fallen to ${newStock} ${item.unit}. Reorder level is ${item.reorderLevel}.`,
+                            status: 'PENDING',
+                        },
+                    });
+                }
             }
             await this.audit.log({
                 tenantId,
@@ -134,7 +144,7 @@ let InventoryService = class InventoryService {
                 recordType: 'InventoryItem',
                 recordId: id,
                 newValues: { log, updatedItem },
-            });
+            }, tx);
             return updatedItem;
         });
     }
@@ -142,7 +152,7 @@ let InventoryService = class InventoryService {
         return this.prisma.inventoryItem.findMany({
             where: {
                 tenantId,
-                currentStock: { lte: this.prisma.inventoryItem.fields.reorderLevel }
+                currentStock: { lte: this.prisma.inventoryItem.fields.reorderLevel },
             },
             orderBy: { currentStock: 'asc' },
         });

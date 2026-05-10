@@ -1,16 +1,28 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateEmployeeDto, CreateDepartmentDto, CreatePayslipDto } from './dto/hr.dto';
+import {
+  CreateEmployeeDto,
+  CreateDepartmentDto,
+  CreatePayslipDto,
+} from './dto/hr.dto';
 import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class HrService {
   constructor(
     private prisma: PrismaService,
-    private audit: AuditService
+    private audit: AuditService,
   ) {}
 
-  async createDepartment(tenantId: string, userId: string, dto: CreateDepartmentDto) {
+  async createDepartment(
+    tenantId: string,
+    userId: string,
+    dto: CreateDepartmentDto,
+  ) {
     const department = await this.prisma.department.create({
       data: {
         tenantId,
@@ -30,7 +42,11 @@ export class HrService {
     return department;
   }
 
-  async createEmployee(tenantId: string, userId: string, dto: CreateEmployeeDto) {
+  async createEmployee(
+    tenantId: string,
+    userId: string,
+    dto: CreateEmployeeDto,
+  ) {
     // 1. Generate employee number
     const count = await this.prisma.employee.count({ where: { tenantId } });
     const employeeNumber = `EMP-${(count + 1).toString().padStart(5, '0')}`;
@@ -62,7 +78,11 @@ export class HrService {
     return employee;
   }
 
-  async generatePayslip(tenantId: string, userId: string, dto: CreatePayslipDto) {
+  async generatePayslip(
+    tenantId: string,
+    userId: string,
+    dto: CreatePayslipDto,
+  ) {
     const employee = await this.prisma.employee.findFirst({
       where: { id: dto.employeeId, tenantId },
     });

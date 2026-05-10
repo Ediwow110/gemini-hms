@@ -27,7 +27,7 @@ let OrdersService = class OrdersService {
         if (dto.items.length === 0) {
             throw new common_1.BadRequestException('Order must contain at least one item');
         }
-        const totalAmount = dto.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const totalAmount = dto.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
         return this.prisma.$transaction(async (tx) => {
             const orderNumber = await this.numbering.generateNumber(tenantId, 'ORDER', dto.branchId);
             const order = await tx.order.create({
@@ -77,8 +77,8 @@ let OrdersService = class OrdersService {
                 patient: true,
                 invoice: {
                     include: {
-                        payments: true
-                    }
+                        payments: true,
+                    },
                 },
             },
         });

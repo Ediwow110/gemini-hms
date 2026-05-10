@@ -27,9 +27,9 @@ let BillingService = class BillingService {
         const invoice = await this.prisma.invoice.findFirst({
             where: {
                 id: dto.invoiceId,
-                order: { tenantId }
+                order: { tenantId },
             },
-            include: { order: true }
+            include: { order: true },
         });
         if (!invoice) {
             throw new common_1.BadRequestException('Invoice not found or access denied');
@@ -52,7 +52,9 @@ let BillingService = class BillingService {
                     },
                 });
                 const newPaidAmount = Number(invoice.paidAmount) + dto.amount;
-                const newStatus = newPaidAmount >= Number(invoice.totalAmount) ? 'PAID' : 'PARTIALLY_PAID';
+                const newStatus = newPaidAmount >= Number(invoice.totalAmount)
+                    ? 'PAID'
+                    : 'PARTIALLY_PAID';
                 const updatedInvoice = await tx.invoice.update({
                     where: { id: dto.invoiceId },
                     data: {
@@ -87,19 +89,19 @@ let BillingService = class BillingService {
     async getInvoices(tenantId) {
         return this.prisma.invoice.findMany({
             where: {
-                order: { tenantId }
+                order: { tenantId },
             },
             include: {
                 order: {
-                    include: { patient: true }
-                }
+                    include: { patient: true },
+                },
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
         });
     }
     async openSession(tenantId, userId, dto) {
         const existing = await this.prisma.cashierSession.findFirst({
-            where: { tenantId, userId, status: 'OPEN' }
+            where: { tenantId, userId, status: 'OPEN' },
         });
         if (existing) {
             throw new common_1.ConflictException('You already have an open cashier session');
@@ -111,7 +113,7 @@ let BillingService = class BillingService {
                 userId,
                 openingBalance: dto.openingBalance,
                 status: 'OPEN',
-            }
+            },
         });
         await this.audit.log({
             tenantId,
@@ -126,13 +128,13 @@ let BillingService = class BillingService {
     async closeSession(tenantId, userId, sessionId, dto) {
         const session = await this.prisma.cashierSession.findFirst({
             where: { id: sessionId, tenantId, userId, status: 'OPEN' },
-            include: { payments: true }
+            include: { payments: true },
         });
         if (!session) {
             throw new common_1.BadRequestException('Active session not found or already closed');
         }
         const cashPayments = session.payments
-            .filter(p => p.paymentMethod === 'CASH')
+            .filter((p) => p.paymentMethod === 'CASH')
             .reduce((sum, p) => sum + Number(p.amount), 0);
         const expectedCash = Number(session.openingBalance) + cashPayments;
         const variance = dto.actualClosingBalance - expectedCash;
@@ -146,7 +148,7 @@ let BillingService = class BillingService {
                     status: 'CLOSED',
                     closingBalance: dto.actualClosingBalance,
                     closedAt: new Date(),
-                }
+                },
             });
             await this.audit.log({
                 tenantId,
@@ -158,7 +160,7 @@ let BillingService = class BillingService {
                     expectedCash,
                     actualCash: dto.actualClosingBalance,
                     variance,
-                    remarks: dto.remarks
+                    remarks: dto.remarks,
                 },
             });
             return { session: closed, variance, expectedCash };
@@ -169,9 +171,11 @@ let BillingService = class BillingService {
             where: { tenantId, userId, status: 'OPEN' },
             include: {
                 payments: {
-                    include: { invoice: { include: { order: { include: { patient: true } } } } }
-                }
-            }
+                    include: {
+                        invoice: { include: { order: { include: { patient: true } } } },
+                    },
+                },
+            },
         });
     }
 };

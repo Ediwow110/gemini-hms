@@ -1,6 +1,15 @@
-import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EncodeLabResultDto, ApproveLabResultDto, AmendLabResultDto } from './dto/lab.dto';
+import {
+  EncodeLabResultDto,
+  ApproveLabResultDto,
+  AmendLabResultDto,
+} from './dto/lab.dto';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { AuditService } from '../audit/audit.service';
 
@@ -9,13 +18,13 @@ export class LabService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
-    private approvals: ApprovalsService
+    private approvals: ApprovalsService,
   ) {}
 
   async findOne(tenantId: string, id: string) {
     const result = await this.prisma.labResult.findFirst({
       where: { id, order: { tenantId } },
-      include: { order: { include: { patient: true } } }
+      include: { order: { include: { patient: true } } },
     });
 
     if (!result) {
@@ -25,12 +34,19 @@ export class LabService {
     return result;
   }
 
-  async encodeResult(tenantId: string, userId: string, id: string, dto: EncodeLabResultDto) {
+  async encodeResult(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: EncodeLabResultDto,
+  ) {
     const result = await this.findOne(tenantId, id);
 
     // Guardrail (Section 15): Cannot edit released results
     if (result.status === 'RELEASED') {
-      throw new ConflictException('released_result_immutable: Cannot edit a result that has already been released');
+      throw new ConflictException(
+        'released_result_immutable: Cannot edit a result that has already been released',
+      );
     }
 
     const updated = await this.prisma.labResult.update({
@@ -54,11 +70,18 @@ export class LabService {
     return updated;
   }
 
-  async approveResult(tenantId: string, userId: string, id: string, dto: ApproveLabResultDto) {
+  async approveResult(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: ApproveLabResultDto,
+  ) {
     const result = await this.findOne(tenantId, id);
 
     if (result.status === 'RELEASED') {
-      throw new ConflictException('Cannot approve a result that is already released');
+      throw new ConflictException(
+        'Cannot approve a result that is already released',
+      );
     }
 
     const updated = await this.prisma.labResult.update({
@@ -81,7 +104,12 @@ export class LabService {
     return updated;
   }
 
-  async requestAmendment(tenantId: string, userId: string, id: string, dto: AmendLabResultDto) {
+  async requestAmendment(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: AmendLabResultDto,
+  ) {
     const result = await this.findOne(tenantId, id);
 
     if (result.status !== 'RELEASED') {
@@ -97,16 +125,25 @@ export class LabService {
     });
   }
 
-  async applyAmendment(tenantId: string, userId: string, id: string, reason: string) {
+  async applyAmendment(
+    tenantId: string,
+    userId: string,
+    id: string,
+    reason: string,
+  ) {
     const result = await this.findOne(tenantId, id);
 
     if (result.status !== 'RELEASED') {
-      throw new BadRequestException('Result must be released to apply an amendment');
+      throw new BadRequestException(
+        'Result must be released to apply an amendment',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
       // 1. Get current version count to increment
-      const versionCount = await tx.labResultVersion.count({ where: { labResultId: id } });
+      const versionCount = await tx.labResultVersion.count({
+        where: { labResultId: id },
+      });
 
       // 2. Archive current state (Versioning rule)
       const version = await tx.labResultVersion.create({
@@ -118,7 +155,7 @@ export class LabService {
           amendedById: userId,
           reason: reason,
           // oldData: In a full implementation, this would store the snapshot of the results JSON
-        }
+        },
       });
 
       // 3. Unlock and reset the lab result
@@ -128,7 +165,7 @@ export class LabService {
           status: 'AMENDED', // Resetting to allow re-encoding/re-approval
           lockedAt: null,
           approvedById: null,
-        }
+        },
       });
 
       // 4. System Audit
@@ -179,12 +216,12 @@ export class LabService {
     return this.prisma.labResult.findMany({
       where: {
         order: { tenantId },
-        status: { in: ['PENDING_COLLECTION', 'ENCODED', 'APPROVED'] }
+        status: { in: ['PENDING_COLLECTION', 'ENCODED', 'APPROVED'] },
       },
       include: {
-        order: { include: { patient: true } }
+        order: { include: { patient: true } },
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
   }
 }
