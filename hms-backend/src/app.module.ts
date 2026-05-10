@@ -14,6 +14,7 @@ import { QueueModule } from './queue/queue.module';
 import { ClaimsModule } from './claims/claims.module';
 import { ApprovalsModule } from './approvals/approvals.module';
 import { NumberingModule } from './numbering/numbering.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { NumberingModule } from './numbering/numbering.module';
     ClaimsModule,
     ApprovalsModule,
     NumberingModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

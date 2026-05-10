@@ -36,6 +36,11 @@ import {
   NotificationSettings,
   SecuritySettings,
 } from './features/settings';
+import {
+  NotificationCenter,
+  NotificationTemplates,
+  NotificationSettingsPage,
+} from './features/notifications';
 import { ComingSoon } from './components/ui/coming-soon';
 
 const router = createBrowserRouter([
@@ -91,7 +96,9 @@ const router = createBrowserRouter([
           { path: 'radiology', element: <ComingSoon moduleName="Radiology Imaging" /> },
           { path: 'pharmacy', element: <ComingSoon moduleName="Pharmacy Management" /> },
           { path: 'hr', element: <ComingSoon moduleName="HR Management" /> },
-          { path: 'notifications', element: <ComingSoon moduleName="Notifications Engine" /> },
+          { path: 'notifications', element: <NotificationCenter /> },
+          { path: 'notifications/templates', element: <NotificationTemplates /> },
+          { path: 'notifications/settings', element: <NotificationSettingsPage /> },
         ],
       },
     ],
