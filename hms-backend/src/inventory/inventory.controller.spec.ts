@@ -4,6 +4,7 @@ import { InventoryService } from './inventory.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { ExecutionContext } from '@nestjs/common';
+import { AuthenticatedRequest } from '../common/types/authenticated-request.type';
 
 describe('InventoryController', () => {
   let controller: InventoryController;
@@ -23,7 +24,7 @@ describe('InventoryController', () => {
       .overrideGuard(PermissionsGuard)
       .useValue({
         canActivate: (context: ExecutionContext) => {
-          const req = context.switchToHttp().getRequest();
+          const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
           if (
             !req.user ||
             !req.user.permissions?.includes('inventory.item.view')
