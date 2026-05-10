@@ -3,13 +3,12 @@ import {
   IsNotEmpty,
   IsString,
   MinLength,
-  IsUUID,
 } from 'class-validator';
 
 export class LoginDto {
-  @IsUUID()
+  @IsString()
   @IsNotEmpty()
-  tenantId: string;
+  tenantCode: string;
   @IsEmail({}, { message: 'Must be a valid email address' })
   @IsNotEmpty()
   email: string;

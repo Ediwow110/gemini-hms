@@ -12,13 +12,20 @@ export class AuthService {
   ) {}
 
   async validateUser(
-    tenantId: string,
+    tenantCode: string,
     email: string,
     pass: string,
   ): Promise<any> {
+    // Resolve tenantCode to tenantId first
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { name: tenantCode },
+    });
+
+    if (!tenant) return null;
+
     // Tenant-scoped lookup
     const user = await this.prisma.user.findFirst({
-      where: { tenantId, email },
+      where: { tenantId: tenant.id, email },
       include: {
         tenant: true,
         userRoles: {
