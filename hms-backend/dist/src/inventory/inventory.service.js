@@ -21,21 +21,23 @@ let InventoryService = class InventoryService {
         this.audit = audit;
     }
     async createItem(tenantId, userId, dto) {
-        const item = await this.prisma.inventoryItem.create({
-            data: {
+        return this.prisma.$transaction(async (tx) => {
+            const item = await tx.inventoryItem.create({
+                data: {
+                    tenantId,
+                    ...dto,
+                },
+            });
+            await this.audit.log({
                 tenantId,
-                ...dto,
-            },
+                userId,
+                eventKey: 'INVENTORY_ITEM_CREATED',
+                recordType: 'InventoryItem',
+                recordId: item.id,
+                newValues: item,
+            }, tx);
+            return item;
         });
-        await this.audit.log({
-            tenantId,
-            userId,
-            eventKey: 'INVENTORY_ITEM_CREATED',
-            recordType: 'InventoryItem',
-            recordId: item.id,
-            newValues: item,
-        });
-        return item;
     }
     async receiveStock(tenantId, userId, id, dto) {
         const item = await this.prisma.inventoryItem.findFirst({

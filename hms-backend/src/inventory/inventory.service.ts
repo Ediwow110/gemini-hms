@@ -19,23 +19,28 @@ export class InventoryService {
     userId: string,
     dto: CreateInventoryItemDto,
   ) {
-    const item = await this.prisma.inventoryItem.create({
-      data: {
-        tenantId,
-        ...dto,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.inventoryItem.create({
+        data: {
+          tenantId,
+          ...dto,
+        },
+      });
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'INVENTORY_ITEM_CREATED',
-      recordType: 'InventoryItem',
-      recordId: item.id,
-      newValues: item,
-    });
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'INVENTORY_ITEM_CREATED',
+          recordType: 'InventoryItem',
+          recordId: item.id,
+          newValues: item,
+        },
+        tx,
+      );
 
-    return item;
+      return item;
+    });
   }
 
   async receiveStock(
