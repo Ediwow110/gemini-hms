@@ -12,16 +12,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LoginDto = void 0;
 const class_validator_1 = require("class-validator");
 class LoginDto {
-    tenantId;
+    tenantCode;
     email;
     password;
 }
 exports.LoginDto = LoginDto;
 __decorate([
-    (0, class_validator_1.IsUUID)(),
+    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], LoginDto.prototype, "tenantId", void 0);
+], LoginDto.prototype, "tenantCode", void 0);
 __decorate([
     (0, class_validator_1.IsEmail)({}, { message: 'Must be a valid email address' }),
     (0, class_validator_1.IsNotEmpty)(),

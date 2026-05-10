@@ -55,9 +55,14 @@ let AuthService = class AuthService {
         this.prisma = prisma;
         this.jwtService = jwtService;
     }
-    async validateUser(tenantId, email, pass) {
+    async validateUser(tenantCode, email, pass) {
+        const tenant = await this.prisma.tenant.findFirst({
+            where: { name: tenantCode },
+        });
+        if (!tenant)
+            return null;
         const user = await this.prisma.user.findFirst({
-            where: { tenantId, email },
+            where: { tenantId: tenant.id, email },
             include: {
                 tenant: true,
                 userRoles: {

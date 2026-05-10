@@ -1,5 +1,5 @@
 export declare class LoginDto {
-    tenantId: string;
+    tenantCode: string;
     email: string;
     password: string;
 }

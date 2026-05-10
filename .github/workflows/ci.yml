@@ -18,6 +18,17 @@ jobs:
             exit 1
           fi
 
+      - name: Hardening Verification Guards
+        run: |
+          if grep -rn 'SUPER_SECRET_TEMP_KEY_DO_NOT_USE_IN_PROD' hms-backend/src/; then echo "Fallback secret found" && exit 1; fi
+          if grep -rn 'process.env.JWT_SECRET ||' hms-backend/src/; then echo "Fallback logic found" && exit 1; fi
+          if grep -rn "recipient: 'PHARMACY_MANAGER'" hms-backend/src/; then echo "Hardcoded PHARMACY_MANAGER found" && exit 1; fi
+          if grep -rn "findFirst({ where: { email }" hms-backend/src/auth/auth.service.ts; then echo "Email-only lookup found" && exit 1; fi
+          if ! grep -rn 'tenantCode' hms-backend/src/auth/dto/login.dto.ts && ! grep -rn 'tenantId' hms-backend/src/auth/dto/login.dto.ts; then echo "tenantCode/tenantId missing in login.dto.ts" && exit 1; fi
+          if ! grep -rn 'role: { tenantId' hms-backend/src/auth/guards/permissions.guard.ts; then echo "tenantId missing in permissions.guard.ts role lookup" && exit 1; fi
+          if grep -rn "this.audit.log({" hms-backend/src/inventory/inventory.service.ts | grep -v "tx"; then echo "audit.log without tx found in inventory.service.ts" && exit 1; fi
+          echo "All hardening guards passed!"
+
   frontend:
     runs-on: ubuntu-latest
     needs: guard
