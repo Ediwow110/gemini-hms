@@ -1,21 +1,42 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import {
-  MockEmailProvider,
-  MockSmsProvider,
   EmailProvider,
   SmsProvider,
+  NotificationProviderFactory,
 } from './notification-providers';
 
 @Injectable()
 export class NotificationDispatcherService {
+  private readonly logger = new Logger(NotificationDispatcherService.name);
   private emailProvider: EmailProvider;
   private smsProvider: SmsProvider;
+  private readonly MAX_ATTEMPTS = 3;
 
   constructor(private prisma: PrismaService) {
-    // Default to mock providers. Swap with real adapters via DI or config.
-    this.emailProvider = new MockEmailProvider();
-    this.smsProvider = new MockSmsProvider();
+    try {
+      this.emailProvider = NotificationProviderFactory.createEmailProvider();
+      this.smsProvider = NotificationProviderFactory.createSmsProvider();
+    } catch (e) {
+      this.logger.error(`Provider initialization failed: ${e.message}`);
+      throw e;
+    }
+  }
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async handleCron() {
+    this.logger.log('Running scheduled notification dispatch...');
+    try {
+      const allTenants = await this.prisma.tenant.findMany({
+        select: { id: true },
+      });
+      for (const t of allTenants) {
+        await this.dispatchPending(t.id);
+      }
+    } catch (e) {
+      this.logger.error(`Error during scheduled dispatch: ${e.message}`);
+    }
   }
 
   /**
@@ -51,6 +72,13 @@ export class NotificationDispatcherService {
     });
 
     if (!notification) return false;
+
+    if (notification.attempts >= this.MAX_ATTEMPTS) {
+      this.logger.warn(
+        `Notification ${id} has reached max attempts (${this.MAX_ATTEMPTS})`,
+      );
+      return false;
+    }
 
     // Reset to PENDING and dispatch
     const updated = await this.prisma.notification.update({

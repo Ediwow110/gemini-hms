@@ -6,6 +6,7 @@ import {
   MockEmailProvider,
   MockSmsProvider,
   FailingMockEmailProvider,
+  NotificationProviderFactory,
 } from './notification-providers';
 
 describe('Notification Templates', () => {
@@ -94,5 +95,40 @@ describe('Mock Providers', () => {
     });
     expect(result.success).toBe(false);
     expect(result.error).toContain('connection refused');
+  });
+});
+
+describe('Provider Validation', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  it('allows mock provider in development', () => {
+    process.env.EMAIL_PROVIDER = 'mock';
+    const provider = NotificationProviderFactory.createEmailProvider();
+    expect(provider).toBeInstanceOf(MockEmailProvider);
+  });
+
+  it('fails if mailrelay is missing credentials', () => {
+    process.env.EMAIL_PROVIDER = 'mailrelay';
+    delete process.env.MAILRELAY_API_KEY;
+    delete process.env.MAILRELAY_SMTP_PASS;
+    expect(() => {
+      NotificationProviderFactory.createEmailProvider();
+    }).toThrow('Mailrelay API Key or SMTP Pass is missing');
+  });
+
+  it('fails if ses is missing credentials', () => {
+    process.env.EMAIL_PROVIDER = 'ses';
+    delete process.env.AWS_REGION;
+    expect(() => {
+      NotificationProviderFactory.createEmailProvider();
+    }).toThrow('AWS_REGION is missing for SES provider');
   });
 });

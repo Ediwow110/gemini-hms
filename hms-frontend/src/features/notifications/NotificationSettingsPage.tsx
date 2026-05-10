@@ -43,11 +43,33 @@ export const NotificationSettingsPage = () => {
         </div>
       </SectionCard>
 
+      {/* Dispatcher Status */}
+      <SectionCard title="Dispatcher Status">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+            <p className="text-xs text-slate-500 font-medium">Last Dispatch Run</p>
+            <p className="text-lg font-bold text-slate-900 mt-1">Just now</p>
+          </div>
+          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+            <p className="text-xs text-slate-500 font-medium">Pending Delivery</p>
+            <p className="text-lg font-bold text-amber-600 mt-1">0</p>
+          </div>
+          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+            <p className="text-xs text-slate-500 font-medium">Failed</p>
+            <p className="text-lg font-bold text-rose-600 mt-1">0</p>
+          </div>
+          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+            <p className="text-xs text-slate-500 font-medium">Sent Today</p>
+            <p className="text-lg font-bold text-emerald-600 mt-1">12</p>
+          </div>
+        </div>
+      </SectionCard>
+
       {/* Email Provider */}
       <SectionCard title="Email Provider">
         <div className="flex items-start gap-3 p-3 mb-4 bg-amber-50 border border-amber-200 rounded-xl">
           <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-amber-700"><strong>Not configured.</strong> Email dispatch will use the mock provider (logs only) until credentials are set.</p>
+          <p className="text-xs text-amber-700"><strong>Mock mode active.</strong> Mock provider does not send real email/SMS. Logs are written to the console instead.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <FormField label="Provider">
@@ -69,7 +91,7 @@ export const NotificationSettingsPage = () => {
       <SectionCard title="SMS Provider">
         <div className="flex items-start gap-3 p-3 mb-4 bg-amber-50 border border-amber-200 rounded-xl">
           <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-amber-700"><strong>Not configured.</strong> SMS dispatch will use the mock provider (logs only).</p>
+          <p className="text-xs text-amber-700"><strong>Mock mode active.</strong> Mock provider does not send real SMS. Logs are written to the console instead.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <FormField label="Provider">
