@@ -46,6 +46,7 @@ export class MockSmsProvider implements SmsProvider {
 }
 
 export class FailingMockEmailProvider implements EmailProvider {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async sendEmail(_payload: EmailPayload) {
     return { success: false, error: 'SMTP connection refused (mock failure)' };
   }

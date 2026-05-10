@@ -4,7 +4,6 @@ import {
   IsNumber,
   Min,
   IsOptional,
-  IsUUID,
 } from 'class-validator';
 
 export class CreateInventoryItemDto {

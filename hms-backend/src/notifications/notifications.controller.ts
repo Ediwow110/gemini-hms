@@ -21,7 +21,7 @@ export class NotificationsController {
 
   @Get()
   async list(
-    @Request() req: any,
+    @Request() req: { user: { tenantId: string } },
     @Query('status') status?: string,
     @Query('category') category?: string,
     @Query('priority') priority?: string,
@@ -39,27 +39,33 @@ export class NotificationsController {
   }
 
   @Get('stats')
-  async stats(@Request() req: any) {
+  async stats(@Request() req: { user: { tenantId: string } }) {
     return this.notificationsService.getStats(req.user.tenantId);
   }
 
   @Post(':id/read')
-  async markAsRead(@Param('id') id: string, @Request() req: any) {
+  async markAsRead(
+    @Param('id') id: string,
+    @Request() req: { user: { tenantId: string } },
+  ) {
     return this.notificationsService.markAsRead(id, req.user.tenantId);
   }
 
   @Post('read-all')
-  async markAllAsRead(@Request() req: any) {
+  async markAllAsRead(@Request() req: { user: { tenantId: string } }) {
     return this.notificationsService.markAllAsRead(req.user.tenantId);
   }
 
   @Post('dispatch-pending')
-  async dispatchPending(@Request() req: any) {
+  async dispatchPending(@Request() req: { user: { tenantId: string } }) {
     return this.dispatcher.dispatchPending(req.user.tenantId);
   }
 
   @Post(':id/retry')
-  async retry(@Param('id') id: string, @Request() req: any) {
+  async retry(
+    @Param('id') id: string,
+    @Request() req: { user: { tenantId: string } },
+  ) {
     const result = await this.dispatcher.retryFailed(id, req.user.tenantId);
     return { success: result };
   }

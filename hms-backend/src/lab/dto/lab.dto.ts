@@ -1,10 +1,4 @@
-import {
-  IsNotEmpty,
-  IsString,
-  IsObject,
-  IsOptional,
-  IsUUID,
-} from 'class-validator';
+import { IsNotEmpty, IsString, IsObject, IsOptional } from 'class-validator';
 
 export class EncodeLabResultDto {
   @IsObject()

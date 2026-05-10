@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InventoryService } from './inventory.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { BadRequestException } from '@nestjs/common';
 
 describe('InventoryService Alerts', () => {
   let service: InventoryService;

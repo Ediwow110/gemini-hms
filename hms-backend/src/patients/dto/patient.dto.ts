@@ -3,7 +3,6 @@ import {
   IsString,
   IsDateString,
   IsOptional,
-  IsEnum,
 } from 'class-validator';
 
 export class CreatePatientDto {
