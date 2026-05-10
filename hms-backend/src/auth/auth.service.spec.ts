@@ -59,4 +59,32 @@ describe('JWT Claim Consistency', () => {
     const wouldReject = !user || !user.userId || !user.tenantId;
     expect(wouldReject).toBe(false);
   });
+
+  it('JwtStrategy.validate() should propagate branchId when present in payload', async () => {
+    const payload = {
+      sub: 'user-uuid-123',
+      email: 'test@hospital.com',
+      tenantId: 'tenant-uuid-456',
+      branchId: 'branch-uuid-789',
+      roles: ['Doctor'],
+    };
+
+    const result = await strategy.validate(payload);
+
+    expect(result.branchId).toBeDefined();
+    expect(result.branchId).toBe('branch-uuid-789');
+  });
+
+  it('JwtStrategy.validate() should safely omit branchId when missing in payload', async () => {
+    const payload = {
+      sub: 'user-uuid-123',
+      email: 'test@hospital.com',
+      tenantId: 'tenant-uuid-456',
+      roles: ['Doctor'],
+    };
+
+    const result = await strategy.validate(payload);
+
+    expect(result.branchId).toBeUndefined();
+  });
 });

@@ -1,6 +1,7 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
+import type { RequestUser } from '../common/types/authenticated-request.type';
 
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
@@ -22,7 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
+  async validate(payload: any): Promise<RequestUser & { email?: string }> {
     // This return value is injected into Request as 'user'
     // All fields use camelCase consistently
     return {
@@ -30,6 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: payload.email,
       tenantId: payload.tenantId,
       roles: payload.roles,
+      ...(payload.branchId ? { branchId: payload.branchId } : {}),
     };
   }
 }
