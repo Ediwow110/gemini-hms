@@ -11,6 +11,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NotificationsService } from './notifications.service';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
 
+import type { AuthenticatedRequest } from '../common/types/authenticated-request.type';
+
 @Controller('api/v1/notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationsController {
@@ -21,7 +23,7 @@ export class NotificationsController {
 
   @Get()
   async list(
-    @Request() req: { user: { tenantId: string } },
+    @Request() req: AuthenticatedRequest,
     @Query('status') status?: string,
     @Query('category') category?: string,
     @Query('priority') priority?: string,
@@ -39,33 +41,30 @@ export class NotificationsController {
   }
 
   @Get('stats')
-  async stats(@Request() req: { user: { tenantId: string } }) {
+  async stats(@Request() req: AuthenticatedRequest) {
     return this.notificationsService.getStats(req.user.tenantId);
   }
 
   @Post(':id/read')
   async markAsRead(
     @Param('id') id: string,
-    @Request() req: { user: { tenantId: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.notificationsService.markAsRead(id, req.user.tenantId);
   }
 
   @Post('read-all')
-  async markAllAsRead(@Request() req: { user: { tenantId: string } }) {
+  async markAllAsRead(@Request() req: AuthenticatedRequest) {
     return this.notificationsService.markAllAsRead(req.user.tenantId);
   }
 
   @Post('dispatch-pending')
-  async dispatchPending(@Request() req: { user: { tenantId: string } }) {
+  async dispatchPending(@Request() req: AuthenticatedRequest) {
     return this.dispatcher.dispatchPending(req.user.tenantId);
   }
 
   @Post(':id/retry')
-  async retry(
-    @Param('id') id: string,
-    @Request() req: { user: { tenantId: string } },
-  ) {
+  async retry(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     const result = await this.dispatcher.retryFailed(id, req.user.tenantId);
     return { success: result };
   }
