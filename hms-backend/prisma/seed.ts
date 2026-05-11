@@ -1,13 +1,12 @@
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from './generated/client/client';
-import type { PermissionModel as Permission, RoleModel as Role } from './generated/client/models';
+import { PrismaClient } from '@prisma/client';
+import type { Permission, Role } from '@prisma/client';  
 import * as bcrypt from 'bcrypt';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
-
 async function main() {
   console.log('Seed started...');
 
