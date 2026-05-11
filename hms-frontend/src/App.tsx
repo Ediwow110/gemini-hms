@@ -105,6 +105,14 @@ const router = createBrowserRouter([
   },
 ]);
 
+import { AuthProvider } from './hooks/use-user';
+
+// ... (router definition)
+
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }

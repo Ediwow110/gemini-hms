@@ -100,6 +100,27 @@ export class AuthService {
     return this.generateTokenResponse(user, roles, branchId);
   }
 
+  async getUserBranches(userId: string, tenantId: string) {
+    const assignments = await this.prisma.userBranch.findMany({
+      where: {
+        userId,
+        tenantId,
+        isActive: true,
+      },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+    });
+
+    return assignments.map((a) => a.branch);
+  }
+
   private generateTokenResponse(user: any, roles: string[], branchId?: string) {
     // Inject required fields into the JWT payload (CRITICAL for Section 7 Tenant Isolation)
     const payload = {

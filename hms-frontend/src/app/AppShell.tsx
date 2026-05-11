@@ -76,8 +76,12 @@ const navigation: NavGroup[] = [
   }
 ];
 
+import { useUser, useAuth } from '../hooks/use-user';
+
 function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick?: () => void }) {
   const isActive = (path: string) => pathname === path;
+  const user = useUser();
+  const { logout } = useAuth();
 
   return (
     <>
@@ -119,16 +123,19 @@ function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick
 
       {/* User card */}
       <div className="p-3 border-t border-slate-100">
-        <Link to="/login" className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100/80 hover:from-slate-100 hover:to-slate-100 transition-all duration-200 cursor-pointer group">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-indigo-200">
-            DS
+        <div 
+          onClick={logout}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100/80 hover:from-slate-100 hover:to-slate-100 transition-all duration-200 cursor-pointer group"
+        >
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-indigo-200 uppercase">
+            {user?.email?.[0] || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 truncate">Dr. Smith</p>
-            <p className="text-[11px] text-slate-500 truncate">Administrator</p>
+            <p className="text-sm font-semibold text-slate-900 truncate">{user?.email}</p>
+            <p className="text-[11px] text-slate-500 truncate">{user?.roles?.[0]}</p>
           </div>
           <LogOut className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
-        </Link>
+        </div>
       </div>
     </>
   );
@@ -138,6 +145,7 @@ export const AppShell = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const user = useUser();
 
   return (
     <div className="min-h-screen flex bg-[#f0f2f7]">
@@ -210,10 +218,9 @@ export const AppShell = () => {
             </Link>
 
             {/* Branch selector */}
-            <button onClick={() => alert("Branch switching is coming soon.")} className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
+            <button className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
               <Briefcase className="h-4 w-4 text-slate-400" />
-              <span className="font-medium text-xs">Main Branch</span>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+              <span className="font-medium text-xs">Branch: {user?.branchId || 'None'}</span>
             </button>
             
             {/* Notifications */}
@@ -230,11 +237,11 @@ export const AppShell = () => {
             {/* User */}
             <div className="flex items-center gap-3 pl-1 cursor-pointer group">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-900 leading-none group-hover:text-indigo-700 transition-colors">Dr. Smith</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Administrator</p>
+                <p className="text-sm font-semibold text-slate-900 leading-none group-hover:text-indigo-700 transition-colors">{user?.email}</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">{user?.roles?.[0]}</p>
               </div>
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-indigo-200/50 group-hover:shadow-lg group-hover:shadow-indigo-300/50 transition-all duration-200">
-                DS
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-indigo-200/50 group-hover:shadow-lg group-hover:shadow-indigo-300/50 transition-all duration-200 uppercase">
+                {user?.email?.[0] || 'U'}
               </div>
             </div>
           </div>
