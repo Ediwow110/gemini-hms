@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Co-locating context and hooks is acceptable for this prototype */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../lib/api';
 
@@ -46,8 +47,19 @@ export const usePermissions = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<UserState | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<UserState | null>(() => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      if (storedUser && token) {
+        return JSON.parse(storedUser);
+      }
+    } catch {
+      console.error('Failed to parse user from localStorage');
+    }
+    return null;
+  });
+  const [isLoading] = useState(false);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
@@ -57,19 +69,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-
-    if (storedUser && token) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (_e) {
-        console.error('Failed to parse user from localStorage');
-        logout();
-      }
-    }
-    setIsLoading(false);
-
     // Set up interceptor for 401s
     const interceptor = apiClient.interceptors.response.use(
       (response) => response,

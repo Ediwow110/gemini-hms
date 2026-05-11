@@ -42,8 +42,9 @@ export const LoginForm = () => {
         const branchesRes = await apiClient.get("/v1/auth/branches");
         setAvailableBranches(branchesRes.data);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Login failed. Please check your credentials.");
+    } catch (err: unknown) {
+      const errorResponse = err as { response?: { data?: { message?: string } } };
+      setError(errorResponse.response?.data?.message || "Login failed. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +59,7 @@ export const LoginForm = () => {
       localStorage.setItem("token", access_token);
       localStorage.setItem("user", JSON.stringify(user));
       window.location.assign("/");
-    } catch (err: any) {
+    } catch {
       setError("Failed to select branch. Please try again.");
     } finally {
       setIsLoading(false);

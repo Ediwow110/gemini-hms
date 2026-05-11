@@ -3,12 +3,13 @@ process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-characters-long';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Auth (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let jwtService: JwtService;
   let prisma: PrismaService;
 
