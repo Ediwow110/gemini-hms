@@ -36,6 +36,7 @@ model Tenant {
   queueEntries       QueueEntry[]
   hmoPartners        HmoPartner[]
   claims             Claim[]
+  userBranches       UserBranch[]
 
   @@map("tenants")
 }
@@ -48,8 +49,9 @@ model Branch {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  tenant Tenant  @relation(fields: [tenantId], references: [id])
-  orders Order[]
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  orders       Order[]
+  userBranches UserBranch[]
 
   @@map("branches")
 }
@@ -63,9 +65,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id])
-  auditLogs AuditLog[]
-  userRoles UserRole[]
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  auditLogs    AuditLog[]
+  userRoles    UserRole[]
+  userBranches UserBranch[]
 
   @@unique([tenantId, email])
   @@map("users")
@@ -92,6 +95,28 @@ model UserRole {
 
   @@id([userId, roleId])
   @@map("user_roles")
+}
+
+model UserBranch {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  branchId  String   @map("branch_id") @db.Uuid
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, branchId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([branchId])
+  @@index([tenantId, userId])
+  @@index([tenantId, branchId])
+  @@map("user_branches")
 }
 
 model Patient {

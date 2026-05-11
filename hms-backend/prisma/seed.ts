@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Permission, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -17,6 +17,19 @@ async function main() {
     },
   });
   console.log('Tenant created:', tenant.name);
+
+  // 1b. Create a default Branch for the default Tenant
+  const branch = await prisma.branch.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000010' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000010',
+      tenantId: tenant.id,
+      name: 'Main Branch',
+      code: 'MAIN',
+    },
+  });
+  console.log('Branch created:', branch.name);
 
   // 2. Minimum Set of Permissions (Section 9.1)
   const permissionsData = [
@@ -127,9 +140,28 @@ async function main() {
   });
   console.log('User linked to role.');
 
+  // 5b. Assign User to default Branch
+  await prisma.userBranch.upsert({
+    where: {
+      tenantId_userId_branchId: {
+        tenantId: tenant.id,
+        userId: user.id,
+        branchId: branch.id,
+      },
+    },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      userId: user.id,
+      branchId: branch.id,
+      isActive: true,
+    },
+  });
+  console.log('User assigned to branch:', branch.name);
+
   // 6. Map role names to permissions
-  const allRoles = await prisma.role.findMany({ where: { tenantId: tenant.id } });
-  const allPerms = await prisma.permission.findMany({ where: { tenantId: tenant.id } });
+  const allRoles: Role[] = await prisma.role.findMany({ where: { tenantId: tenant.id } });
+  const allPerms: Permission[] = await prisma.permission.findMany({ where: { tenantId: tenant.id } });
 
   const rolePermissionMap: Record<string, string[]> = {
     'Super Admin': permissionsData.map(p => p.name), // Has everything
@@ -156,7 +188,7 @@ async function main() {
 
     const permsToAssign = rolePermissionMap[roleName];
     for (const permName of permsToAssign) {
-      const permission = allPerms.find(p => p.name === permName);
+      const permission = allPerms.find((p: Permission) => p.name === permName);
       if (!permission) continue;
 
       await prisma.rolePermission.upsert({
