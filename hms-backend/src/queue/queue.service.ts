@@ -10,7 +10,7 @@ export class QueueService {
     private audit: AuditService,
   ) {}
 
-  async joinQueue(tenantId: string, dto: JoinQueueDto) {
+  async joinQueue(tenantId: string, branchId: string, dto: JoinQueueDto) {
     // 1. Generate Queue Number (Token Engine)
     const prefix = dto.serviceType.charAt(0).toUpperCase();
     const today = new Date();
@@ -19,6 +19,7 @@ export class QueueService {
     const count = await this.prisma.queueEntry.count({
       where: {
         tenantId,
+        branchId,
         serviceType: dto.serviceType,
         createdAt: { gte: today },
       },
@@ -30,7 +31,7 @@ export class QueueService {
     const entry = await this.prisma.queueEntry.create({
       data: {
         tenantId,
-        branchId: dto.branchId,
+        branchId,
         patientId: dto.patientId,
         patientName: dto.patientName,
         queueNumber,
@@ -60,11 +61,12 @@ export class QueueService {
   async updateStatus(
     tenantId: string,
     userId: string,
+    branchId: string,
     id: string,
     dto: UpdateQueueStatusDto,
   ) {
     const entry = await this.prisma.queueEntry.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, branchId },
     });
 
     if (!entry) {
@@ -94,10 +96,11 @@ export class QueueService {
     return updated;
   }
 
-  async getWorklist(tenantId: string, serviceType: string) {
+  async getWorklist(tenantId: string, branchId: string, serviceType: string) {
     return this.prisma.queueEntry.findMany({
       where: {
         tenantId,
+        branchId,
         serviceType,
         status: { in: ['WAITING', 'CALLING', 'SERVING'] },
         createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
