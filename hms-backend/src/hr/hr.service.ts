@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -10,6 +11,7 @@ import {
   CreatePayslipDto,
 } from './dto/hr.dto';
 import { AuditService } from '../audit/audit.service';
+import { RequestUser } from '../common/types/authenticated-request.type';
 
 @Injectable()
 export class HrService {
@@ -17,6 +19,16 @@ export class HrService {
     private prisma: PrismaService,
     private audit: AuditService,
   ) {}
+
+  private isTenantWideHr(roles: string[]): boolean {
+    return roles.some((r) =>
+      ['Super Admin', 'HR Manager', 'HR Staff'].includes(r),
+    );
+  }
+
+  private isBranchScopedHr(roles: string[]): boolean {
+    return roles.some((r) => ['Branch Admin', 'Branch Manager'].includes(r));
+  }
 
   async createDepartment(
     tenantId: string,
@@ -46,7 +58,23 @@ export class HrService {
     tenantId: string,
     userId: string,
     dto: CreateEmployeeDto,
+    user: RequestUser,
   ) {
+    const roles = user.roles || [];
+
+    if (this.isBranchScopedHr(roles)) {
+      if (!user.branchId) {
+        throw new BadRequestException('Branch context required');
+      }
+      if (dto.primaryBranchId !== user.branchId) {
+        throw new ForbiddenException(
+          'Branch Admin can only create employees for their own branch',
+        );
+      }
+    } else if (!this.isTenantWideHr(roles)) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
     // 1. Generate employee number
     const count = await this.prisma.employee.count({ where: { tenantId } });
     const employeeNumber = `EMP-${(count + 1).toString().padStart(5, '0')}`;
@@ -93,12 +121,15 @@ export class HrService {
     tenantId: string,
     userId: string,
     dto: CreatePayslipDto,
+    user: RequestUser,
   ) {
+    const roles = user.roles || [];
+
     const employee = await this.prisma.employee.findFirst({
       where: { id: dto.employeeId, tenantId },
       include: {
         employeeBranches: {
-          where: { isPrimary: true, isActive: true },
+          where: { isActive: true },
         },
       },
     });
@@ -107,26 +138,42 @@ export class HrService {
       throw new NotFoundException('Employee not found');
     }
 
-    if (employee.employeeBranches.length === 0) {
-      throw new BadRequestException(
-        'Employee has no active primary branch assignment',
+    let targetBranchId: string;
+
+    if (this.isBranchScopedHr(roles)) {
+      if (!user.branchId) {
+        throw new BadRequestException('Branch context required');
+      }
+      const branchAssignment = employee.employeeBranches.find(
+        (eb) => eb.branchId === user.branchId,
       );
+      if (!branchAssignment) {
+        throw new ForbiddenException(
+          'Branch Admin can only generate payslips for employees in their branch',
+        );
+      }
+      targetBranchId = user.branchId;
+    } else if (this.isTenantWideHr(roles)) {
+      const primaryBranch = employee.employeeBranches.find(
+        (eb) => eb.isPrimary,
+      );
+      if (!primaryBranch) {
+        throw new BadRequestException(
+          'Employee has no active primary branch assignment',
+        );
+      }
+      targetBranchId = primaryBranch.branchId;
+    } else {
+      throw new ForbiddenException('Insufficient permissions');
     }
 
-    if (employee.employeeBranches.length > 1) {
-      throw new BadRequestException(
-        'Employee has multiple active primary branch assignments',
-      );
-    }
-
-    const branchId = employee.employeeBranches[0].branchId;
     const basicSalary = Number(employee.salary);
     const netSalary = basicSalary + dto.totalAllowances - dto.totalDeductions;
 
     const payslip = await this.prisma.payslip.create({
       data: {
         tenantId,
-        branchId,
+        branchId: targetBranchId,
         employeeId: dto.employeeId,
         periodStart: new Date(dto.periodStart),
         periodEnd: new Date(dto.periodEnd),
@@ -150,12 +197,37 @@ export class HrService {
     return payslip;
   }
 
-  async getEmployees(tenantId: string) {
-    return this.prisma.employee.findMany({
-      where: { tenantId },
-      include: { department: true },
-      orderBy: { lastName: 'asc' },
-    });
+  async getEmployees(tenantId: string, user: RequestUser) {
+    const roles = user.roles || [];
+
+    if (this.isTenantWideHr(roles)) {
+      return this.prisma.employee.findMany({
+        where: { tenantId },
+        include: { department: true, employeeBranches: true },
+        orderBy: { lastName: 'asc' },
+      });
+    }
+
+    if (this.isBranchScopedHr(roles)) {
+      if (!user.branchId) {
+        throw new BadRequestException('Branch context required');
+      }
+      return this.prisma.employee.findMany({
+        where: {
+          tenantId,
+          employeeBranches: {
+            some: {
+              branchId: user.branchId,
+              isActive: true,
+            },
+          },
+        },
+        include: { department: true, employeeBranches: true },
+        orderBy: { lastName: 'asc' },
+      });
+    }
+
+    throw new ForbiddenException('Insufficient permissions');
   }
 
   async getDepartments(tenantId: string) {

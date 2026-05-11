@@ -3,7 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { HrService } from './hr.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { RequestUser } from '../common/types/authenticated-request.type';
 
 describe('HrService', () => {
   let service: HrService;
@@ -12,6 +13,23 @@ describe('HrService', () => {
   const mockTenantId = '00000000-0000-0000-0000-000000000001';
   const mockBranchId = '00000000-0000-0000-0000-000000000010';
   const mockUserId = 'user-1';
+
+  const superAdminUser: RequestUser = {
+    tenantId: mockTenantId,
+    roles: ['Super Admin'],
+  };
+
+  const branchAdminUser: RequestUser = {
+    tenantId: mockTenantId,
+    branchId: mockBranchId,
+    roles: ['Branch Admin'],
+  };
+
+  const otherBranchAdminUser: RequestUser = {
+    tenantId: mockTenantId,
+    branchId: 'other-branch',
+    roles: ['Branch Admin'],
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -24,6 +42,7 @@ describe('HrService', () => {
               count: jest.fn(),
               create: jest.fn(),
               findFirst: jest.fn(),
+              findMany: jest.fn(),
             },
             employeeBranch: {
               create: jest.fn(),
@@ -54,16 +73,16 @@ describe('HrService', () => {
   });
 
   describe('createEmployee', () => {
-    it('should create an employee and an initial branch assignment', async () => {
-      const dto = {
-        firstName: 'John',
-        lastName: 'Doe',
-        jobTitle: 'Nurse',
-        joiningDate: '2026-01-01',
-        salary: 50000,
-        primaryBranchId: mockBranchId,
-      };
+    const dto = {
+      firstName: 'John',
+      lastName: 'Doe',
+      jobTitle: 'Nurse',
+      joiningDate: '2026-01-01',
+      salary: 50000,
+      primaryBranchId: mockBranchId,
+    };
 
+    it('should allow Super Admin to create an employee for any branch', async () => {
       (prisma.employee.count as jest.Mock).mockResolvedValue(0);
       (prisma.employee.create as jest.Mock).mockResolvedValue({
         id: 'emp-1',
@@ -75,35 +94,82 @@ describe('HrService', () => {
         mockTenantId,
         mockUserId,
         dto,
+        superAdminUser,
       );
 
-      expect(prisma.employee.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          employeeBranches: {
-            create: {
-              tenantId: mockTenantId,
-              branchId: mockBranchId,
-              isPrimary: true,
-              isActive: true,
+      expect(prisma.employee.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            employeeBranches: {
+              create: {
+                tenantId: mockTenantId,
+                branchId: mockBranchId,
+                isPrimary: true,
+                isActive: true,
+              },
             },
-          },
+          }),
         }),
-        include: { employeeBranches: true },
-      });
+      );
       expect(result.employeeNumber).toBe('EMP-00001');
+    });
+
+    it('should allow Branch Admin to create an employee for their own branch', async () => {
+      (prisma.employee.count as jest.Mock).mockResolvedValue(0);
+      (prisma.employee.create as jest.Mock).mockResolvedValue({
+        id: 'emp-1',
+        ...dto,
+        employeeNumber: 'EMP-00001',
+      });
+
+      const result = await service.createEmployee(
+        mockTenantId,
+        mockUserId,
+        dto,
+        branchAdminUser,
+      );
+
+      expect(prisma.employee.create).toHaveBeenCalled();
+      expect(result.id).toBe('emp-1');
+    });
+
+    it('should reject Branch Admin creating an employee for a different branch', async () => {
+      await expect(
+        service.createEmployee(
+          mockTenantId,
+          mockUserId,
+          dto,
+          otherBranchAdminUser,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should fail if Branch Admin has no branch context', async () => {
+      const invalidBranchAdmin: RequestUser = {
+        tenantId: mockTenantId,
+        roles: ['Branch Admin'],
+      };
+      await expect(
+        service.createEmployee(
+          mockTenantId,
+          mockUserId,
+          dto,
+          invalidBranchAdmin,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('generatePayslip', () => {
-    it('should generate a payslip with a branchId snapshot', async () => {
-      const dto = {
-        employeeId: 'emp-1',
-        periodStart: '2026-05-01',
-        periodEnd: '2026-05-31',
-        totalAllowances: 1000,
-        totalDeductions: 500,
-      };
+    const dto = {
+      employeeId: 'emp-1',
+      periodStart: '2026-05-01',
+      periodEnd: '2026-05-31',
+      totalAllowances: 1000,
+      totalDeductions: 500,
+    };
 
+    it('should allow Super Admin to generate payslip for any tenant employee', async () => {
       const mockEmployee = {
         id: 'emp-1',
         salary: 50000,
@@ -123,37 +189,101 @@ describe('HrService', () => {
         mockTenantId,
         mockUserId,
         dto,
+        superAdminUser,
       );
 
       expect(prisma.payslip.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            branchId: mockBranchId,
-          }),
+          data: expect.objectContaining({ branchId: mockBranchId }),
         }),
       );
       expect(result.branchId).toBe(mockBranchId);
     });
 
-    it('should fail if employee has no active primary branch', async () => {
-      const dto = {
-        employeeId: 'emp-1',
-        periodStart: '2026-05-01',
-        periodEnd: '2026-05-31',
-        totalAllowances: 1000,
-        totalDeductions: 500,
-      };
-
+    it('should allow Branch Admin to generate payslip for same-branch employee', async () => {
       const mockEmployee = {
         id: 'emp-1',
         salary: 50000,
-        employeeBranches: [],
+        employeeBranches: [
+          { branchId: mockBranchId, isPrimary: true, isActive: true },
+        ],
+      };
+
+      (prisma.employee.findFirst as jest.Mock).mockResolvedValue(mockEmployee);
+      (prisma.payslip.create as jest.Mock).mockResolvedValue({
+        id: 'ps-1',
+        ...dto,
+        branchId: mockBranchId,
+      });
+
+      const result = await service.generatePayslip(
+        mockTenantId,
+        mockUserId,
+        dto,
+        branchAdminUser,
+      );
+
+      expect(result.branchId).toBe(mockBranchId);
+    });
+
+    it('should reject Branch Admin generating payslip for cross-branch employee', async () => {
+      const mockEmployee = {
+        id: 'emp-1',
+        salary: 50000,
+        employeeBranches: [
+          { branchId: 'other-branch', isPrimary: true, isActive: true },
+        ],
       };
 
       (prisma.employee.findFirst as jest.Mock).mockResolvedValue(mockEmployee);
 
       await expect(
-        service.generatePayslip(mockTenantId, mockUserId, dto),
+        service.generatePayslip(mockTenantId, mockUserId, dto, branchAdminUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('getEmployees', () => {
+    it('should return all employees for Super Admin', async () => {
+      (prisma.employee.findMany as jest.Mock).mockResolvedValue([
+        { id: 'emp-1' },
+        { id: 'emp-2' },
+      ]);
+
+      const result = await service.getEmployees(mockTenantId, superAdminUser);
+
+      expect(prisma.employee.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { tenantId: mockTenantId } }),
+      );
+      expect(result.length).toBe(2);
+    });
+
+    it('should return only same-branch employees for Branch Admin', async () => {
+      (prisma.employee.findMany as jest.Mock).mockResolvedValue([
+        { id: 'emp-1' },
+      ]);
+
+      const result = await service.getEmployees(mockTenantId, branchAdminUser);
+
+      expect(prisma.employee.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            employeeBranches: {
+              some: { branchId: mockBranchId, isActive: true },
+            },
+          }),
+        }),
+      );
+      expect(result.length).toBe(1);
+    });
+
+    it('should fail if Branch Admin has no branch context', async () => {
+      const invalidBranchAdmin: RequestUser = {
+        tenantId: mockTenantId,
+        roles: ['Branch Admin'],
+      };
+      await expect(
+        service.getEmployees(mockTenantId, invalidBranchAdmin),
       ).rejects.toThrow(BadRequestException);
     });
   });

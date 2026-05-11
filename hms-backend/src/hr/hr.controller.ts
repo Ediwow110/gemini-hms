@@ -9,6 +9,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import * as AuthTypes from '../common/types/authenticated-request.type';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('api/v1/hr')
@@ -16,13 +17,19 @@ export class HrController {
   constructor(private readonly hrService: HrService) {}
 
   @Get('departments')
-  @Roles('Super Admin', 'Branch Admin', 'HR')
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'HR Manager',
+    'HR Staff',
+    'Branch Manager',
+  )
   getDepartments(@GetUser('tenantId') tenantId: string) {
     return this.hrService.getDepartments(tenantId);
   }
 
   @Post('departments')
-  @Roles('Super Admin', 'Branch Admin', 'HR')
+  @Roles('Super Admin', 'HR Manager', 'HR Staff')
   createDepartment(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -32,28 +39,39 @@ export class HrController {
   }
 
   @Get('employees')
-  @Roles('Super Admin', 'Branch Admin', 'HR')
-  getEmployees(@GetUser('tenantId') tenantId: string) {
-    return this.hrService.getEmployees(tenantId);
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'HR Manager',
+    'HR Staff',
+    'Branch Manager',
+  )
+  getEmployees(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser() user: AuthTypes.RequestUser,
+  ) {
+    return this.hrService.getEmployees(tenantId, user);
   }
 
   @Post('employees')
-  @Roles('Super Admin', 'Branch Admin', 'HR')
+  @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff')
   createEmployee(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser() user: AuthTypes.RequestUser,
     @Body() dto: CreateEmployeeDto,
   ) {
-    return this.hrService.createEmployee(tenantId, userId, dto);
+    return this.hrService.createEmployee(tenantId, userId, dto, user);
   }
 
   @Post('payroll/generate')
-  @Roles('Super Admin', 'Branch Admin', 'HR')
+  @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff')
   generatePayslip(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser() user: AuthTypes.RequestUser,
     @Body() dto: CreatePayslipDto,
   ) {
-    return this.hrService.generatePayslip(tenantId, userId, dto);
+    return this.hrService.generatePayslip(tenantId, userId, dto, user);
   }
 }
