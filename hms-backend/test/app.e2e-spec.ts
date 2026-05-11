@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+
+// Mock JWT_SECRET for test environment
+process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-characters-long';
+
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 
