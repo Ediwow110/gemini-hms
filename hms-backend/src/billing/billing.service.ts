@@ -20,12 +20,17 @@ export class BillingService {
     private numbering: NumberingService,
   ) {}
 
-  async postPayment(tenantId: string, userId: string, dto: CreatePaymentDto) {
-    // 1. Verify invoice belongs to tenant
+  async postPayment(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    dto: CreatePaymentDto,
+  ) {
+    // 1. Verify invoice belongs to tenant AND branch
     const invoice = await this.prisma.invoice.findFirst({
       where: {
         id: dto.invoiceId,
-        order: { tenantId },
+        order: { tenantId, branchId },
       },
       include: { order: true },
     });
@@ -38,16 +43,33 @@ export class BillingService {
       throw new ConflictException('Invoice is already fully paid');
     }
 
-    // 2. START TRANSACTION (Section 13 Boundary: Post Payment)
+    // 2. Verify cashier session belongs to tenant AND branch AND user
+    const session = await this.prisma.cashierSession.findFirst({
+      where: {
+        id: dto.cashierSessionId,
+        tenantId,
+        branchId,
+        userId,
+        status: 'OPEN',
+      },
+    });
+
+    if (!session) {
+      throw new BadRequestException(
+        'Active cashier session not found or unauthorized',
+      );
+    }
+
+    // 3. START TRANSACTION (Section 13 Boundary: Post Payment)
     return this.prisma.$transaction(async (tx) => {
-      // 3. Generate Receipt Number
-      // Assuming branches are tied to cashier sessions or we can use global sequence for receipts
+      // 4. Generate Receipt Number
       const receiptNumber = await this.numbering.generateNumber(
         tenantId,
         'RECEIPT',
+        branchId,
       );
 
-      // 4. Create Payment record (Idempotency check handled by DB unique constraint)
+      // 5. Create Payment record (Idempotency check handled by DB unique constraint)
       try {
         const payment = await tx.payment.create({
           data: {
@@ -61,7 +83,7 @@ export class BillingService {
           },
         });
 
-        // 4. Update Invoice
+        // 6. Update Invoice
         const newPaidAmount = Number(invoice.paidAmount) + dto.amount;
         const newStatus =
           newPaidAmount >= Number(invoice.totalAmount)
@@ -76,7 +98,7 @@ export class BillingService {
           },
         });
 
-        // 5. Update Order Status (Revenue Cycle Logic)
+        // 7. Update Order Status (Revenue Cycle Logic)
         if (newStatus === 'PAID') {
           await tx.order.update({
             where: { id: invoice.orderId },
@@ -84,7 +106,7 @@ export class BillingService {
           });
         }
 
-        // 6. Log Audit Event (PAYMENT_POSTED)
+        // 8. Log Audit Event (PAYMENT_POSTED)
         await this.audit.log({
           tenantId,
           userId,
@@ -106,10 +128,10 @@ export class BillingService {
     });
   }
 
-  async getInvoices(tenantId: string) {
+  async getInvoices(tenantId: string, branchId: string) {
     return this.prisma.invoice.findMany({
       where: {
-        order: { tenantId },
+        order: { tenantId, branchId },
       },
       include: {
         order: {
@@ -122,21 +144,28 @@ export class BillingService {
 
   // --- Cashier Session Management ---
 
-  async openSession(tenantId: string, userId: string, dto: OpenSessionDto) {
-    // 1. Check if user already has an open session
+  async openSession(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    dto: OpenSessionDto,
+  ) {
+    // 1. Check if user already has an open session IN THIS BRANCH
     const existing = await this.prisma.cashierSession.findFirst({
-      where: { tenantId, userId, status: 'OPEN' },
+      where: { tenantId, userId, branchId, status: 'OPEN' },
     });
 
     if (existing) {
-      throw new ConflictException('You already have an open cashier session');
+      throw new ConflictException(
+        'You already have an open cashier session in this branch',
+      );
     }
 
     // 2. Create the session
     const session = await this.prisma.cashierSession.create({
       data: {
         tenantId,
-        branchId: dto.branchId,
+        branchId,
         userId,
         openingBalance: dto.openingBalance,
         status: 'OPEN',
@@ -149,7 +178,7 @@ export class BillingService {
       eventKey: 'SESSION_OPENED',
       recordType: 'CashierSession',
       recordId: session.id,
-      newValues: { openingBalance: dto.openingBalance },
+      newValues: { openingBalance: dto.openingBalance, branchId },
     });
 
     return session;
@@ -158,17 +187,18 @@ export class BillingService {
   async closeSession(
     tenantId: string,
     userId: string,
+    branchId: string,
     sessionId: string,
     dto: CloseSessionDto,
   ) {
     const session = await this.prisma.cashierSession.findFirst({
-      where: { id: sessionId, tenantId, userId, status: 'OPEN' },
+      where: { id: sessionId, tenantId, userId, branchId, status: 'OPEN' },
       include: { payments: true },
     });
 
     if (!session) {
       throw new BadRequestException(
-        'Active session not found or already closed',
+        'Active session not found or already closed in this branch',
       );
     }
 
@@ -216,9 +246,9 @@ export class BillingService {
     });
   }
 
-  async getActiveSession(tenantId: string, userId: string) {
+  async getActiveSession(tenantId: string, userId: string, branchId: string) {
     return this.prisma.cashierSession.findFirst({
-      where: { tenantId, userId, status: 'OPEN' },
+      where: { tenantId, userId, branchId, status: 'OPEN' },
       include: {
         payments: {
           include: {
