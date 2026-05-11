@@ -7,9 +7,10 @@ process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-characters-long';
 import { AppModule } from './../src/app.module';
 import { JwtService } from '@nestjs/jwt';
 import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
+import { App } from 'supertest/types';
 
 describe('Lab Branch Scoping (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let jwtService: JwtService;
 
   beforeEach(async () => {
