@@ -21,9 +21,9 @@ export class LabService {
     private approvals: ApprovalsService,
   ) {}
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, branchId: string, id: string) {
     const result = await this.prisma.labResult.findFirst({
-      where: { id, order: { tenantId } },
+      where: { id, order: { tenantId, branchId } },
       include: { order: { include: { patient: true } } },
     });
 
@@ -37,10 +37,11 @@ export class LabService {
   async encodeResult(
     tenantId: string,
     userId: string,
+    branchId: string,
     id: string,
     dto: EncodeLabResultDto,
   ) {
-    const result = await this.findOne(tenantId, id);
+    const result = await this.findOne(tenantId, branchId, id);
 
     // Guardrail (Section 15): Cannot edit released results
     if (result.status === 'RELEASED') {
@@ -53,8 +54,6 @@ export class LabService {
       where: { id },
       data: {
         status: 'ENCODED',
-        // In a full app, 'results' would be a separate JSONB column or table
-        // For now, we're using the base model
       },
     });
 
@@ -73,10 +72,11 @@ export class LabService {
   async approveResult(
     tenantId: string,
     userId: string,
+    branchId: string,
     id: string,
     dto: ApproveLabResultDto,
   ) {
-    const result = await this.findOne(tenantId, id);
+    const result = await this.findOne(tenantId, branchId, id);
 
     if (result.status === 'RELEASED') {
       throw new ConflictException(
@@ -107,10 +107,11 @@ export class LabService {
   async requestAmendment(
     tenantId: string,
     userId: string,
+    branchId: string,
     id: string,
     dto: AmendLabResultDto,
   ) {
-    const result = await this.findOne(tenantId, id);
+    const result = await this.findOne(tenantId, branchId, id);
 
     if (result.status !== 'RELEASED') {
       throw new BadRequestException('Only released results can be amended');
@@ -128,10 +129,11 @@ export class LabService {
   async applyAmendment(
     tenantId: string,
     userId: string,
+    branchId: string,
     id: string,
     reason: string,
   ) {
-    const result = await this.findOne(tenantId, id);
+    const result = await this.findOne(tenantId, branchId, id);
 
     if (result.status !== 'RELEASED') {
       throw new BadRequestException(
@@ -154,7 +156,6 @@ export class LabService {
           newStatus: 'AMENDED',
           amendedById: userId,
           reason: reason,
-          // oldData: In a full implementation, this would store the snapshot of the results JSON
         },
       });
 
@@ -182,8 +183,13 @@ export class LabService {
     });
   }
 
-  async releaseResult(tenantId: string, userId: string, id: string) {
-    const result = await this.findOne(tenantId, id);
+  async releaseResult(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    id: string,
+  ) {
+    const result = await this.findOne(tenantId, branchId, id);
 
     if (result.status !== 'APPROVED') {
       throw new BadRequestException('Only approved results can be released');
@@ -212,10 +218,10 @@ export class LabService {
     });
   }
 
-  async getPendingWorklist(tenantId: string) {
+  async getPendingWorklist(tenantId: string, branchId: string) {
     return this.prisma.labResult.findMany({
       where: {
-        order: { tenantId },
+        order: { tenantId, branchId },
         status: { in: ['PENDING_COLLECTION', 'ENCODED', 'APPROVED'] },
       },
       include: {
