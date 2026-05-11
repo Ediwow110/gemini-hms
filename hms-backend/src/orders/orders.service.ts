@@ -12,7 +12,12 @@ export class OrdersService {
     private numbering: NumberingService,
   ) {}
 
-  async create(tenantId: string, userId: string, dto: CreateOrderDto) {
+  async create(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    dto: CreateOrderDto,
+  ) {
     // 1. Validate items (must have at least one)
     if (dto.items.length === 0) {
       throw new BadRequestException('Order must contain at least one item');
@@ -30,14 +35,14 @@ export class OrdersService {
       const orderNumber = await this.numbering.generateNumber(
         tenantId,
         'ORDER',
-        dto.branchId,
+        branchId,
       );
 
       // 5. Create Order
       const order = await tx.order.create({
         data: {
           tenantId,
-          branchId: dto.branchId,
+          branchId,
           patientId: dto.patientId,
           orderNumber,
           status: 'PENDING_PAYMENT',
@@ -48,7 +53,7 @@ export class OrdersService {
       const invoiceNumber = await this.numbering.generateNumber(
         tenantId,
         'INVOICE',
-        dto.branchId,
+        branchId,
       );
 
       // 7. Create Invoice (Automatically linked to order)
@@ -76,9 +81,9 @@ export class OrdersService {
     });
   }
 
-  async findAll(tenantId: string) {
+  async findAll(tenantId: string, branchId: string) {
     return this.prisma.order.findMany({
-      where: { tenantId },
+      where: { tenantId, branchId },
       include: {
         patient: true,
         invoice: true,
@@ -87,9 +92,9 @@ export class OrdersService {
     });
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, branchId: string, id: string) {
     return this.prisma.order.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, branchId },
       include: {
         patient: true,
         invoice: {
