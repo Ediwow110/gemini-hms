@@ -37,6 +37,9 @@ export const usePermissions = () => {
   const hasRole = (role: string) => roles.includes(role);
   const isSuperAdmin = roles.includes('Super Admin');
   const isBranchAdmin = roles.includes('Branch Admin');
+  // TODO: hasPermission currently aliases role checks for UI visibility compatibility.
+  // Real granular permission mapping is pending and will be integrated once backend RBAC is expanded.
+  // DO NOT rely on this for security; the backend remains the source of truth for authorization.
   const hasPermission = (permission: string) => hasRole(permission);
 
   return { hasRole, hasPermission, isSuperAdmin, isBranchAdmin };
@@ -60,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (storedUser && token) {
       try {
         setUser(JSON.parse(storedUser));
-      } catch (e) {
+      } catch (_e) {
         console.error('Failed to parse user from localStorage');
         logout();
       }
