@@ -35,6 +35,10 @@ export class CreateEmployeeDto {
   @IsOptional()
   departmentId?: string;
 
+  @IsUUID()
+  @IsNotEmpty()
+  primaryBranchId: string;
+
   @IsDateString()
   @IsNotEmpty()
   joiningDate: string;

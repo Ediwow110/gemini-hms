@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateEmployeeDto,
@@ -47,7 +51,7 @@ export class HrService {
     const count = await this.prisma.employee.count({ where: { tenantId } });
     const employeeNumber = `EMP-${(count + 1).toString().padStart(5, '0')}`;
 
-    // 2. Create Employee
+    // 2. Create Employee with primary branch assignment
     const employee = await this.prisma.employee.create({
       data: {
         tenantId,
@@ -59,6 +63,17 @@ export class HrService {
         joiningDate: new Date(dto.joiningDate),
         salary: dto.salary,
         status: 'ACTIVE',
+        employeeBranches: {
+          create: {
+            tenantId,
+            branchId: dto.primaryBranchId,
+            isPrimary: true,
+            isActive: true,
+          },
+        },
+      },
+      include: {
+        employeeBranches: true,
       },
     });
 
@@ -81,18 +96,37 @@ export class HrService {
   ) {
     const employee = await this.prisma.employee.findFirst({
       where: { id: dto.employeeId, tenantId },
+      include: {
+        employeeBranches: {
+          where: { isPrimary: true, isActive: true },
+        },
+      },
     });
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
     }
 
+    if (employee.employeeBranches.length === 0) {
+      throw new BadRequestException(
+        'Employee has no active primary branch assignment',
+      );
+    }
+
+    if (employee.employeeBranches.length > 1) {
+      throw new BadRequestException(
+        'Employee has multiple active primary branch assignments',
+      );
+    }
+
+    const branchId = employee.employeeBranches[0].branchId;
     const basicSalary = Number(employee.salary);
     const netSalary = basicSalary + dto.totalAllowances - dto.totalDeductions;
 
     const payslip = await this.prisma.payslip.create({
       data: {
         tenantId,
+        branchId,
         employeeId: dto.employeeId,
         periodStart: new Date(dto.periodStart),
         periodEnd: new Date(dto.periodEnd),
