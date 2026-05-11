@@ -1,7 +1,149 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
+import { AuthService } from './auth.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtStrategy } from './jwt.strategy';
+import * as bcrypt from 'bcrypt';
 
 // Mock JWT_SECRET for test environment
 process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-characters-long';
+
+describe('AuthService', () => {
+  let service: AuthService;
+  let prisma: any;
+  let jwtService: JwtService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        {
+          provide: PrismaService,
+          useValue: {
+            tenant: {
+              findFirst: jest.fn(),
+            },
+            user: {
+              findFirst: jest.fn(),
+            },
+            userBranch: {
+              findMany: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: JwtService,
+          useValue: {
+            sign: jest.fn().mockReturnValue('mocked-token'),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<AuthService>(AuthService);
+    prisma = module.get<PrismaService>(PrismaService);
+    jwtService = module.get<JwtService>(JwtService);
+  });
+
+  describe('login', () => {
+    const mockUser = {
+      id: 'user-123',
+      email: 'test@example.com',
+      tenantId: 'tenant-456',
+      userRoles: [{ role: { name: 'Admin' } }],
+    };
+
+    it('should include branchId when exactly one active branch assignment exists', async () => {
+      prisma.userBranch.findMany.mockResolvedValue([
+        { branchId: 'branch-789' },
+      ]);
+
+      const result = await service.login(mockUser);
+
+      expect(prisma.userBranch.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: mockUser.id,
+          tenantId: mockUser.tenantId,
+          isActive: true,
+        },
+        select: { branchId: true },
+      });
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          branchId: 'branch-789',
+        }),
+      );
+      expect(result.access_token).toBe('mocked-token');
+    });
+
+    it('should omit branchId when no active branch assignment exists', async () => {
+      prisma.userBranch.findMany.mockResolvedValue([]);
+
+      await service.login(mockUser);
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          branchId: expect.anything(),
+        }),
+      );
+    });
+
+    it('should omit branchId when multiple active branch assignments exist', async () => {
+      prisma.userBranch.findMany.mockResolvedValue([
+        { branchId: 'branch-1' },
+        { branchId: 'branch-2' },
+      ]);
+
+      await service.login(mockUser);
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          branchId: expect.anything(),
+        }),
+      );
+    });
+
+    it('should no longer use the mocked branchId 00000000-0000-0000-0000-000000000000', async () => {
+      prisma.userBranch.findMany.mockResolvedValue([]);
+
+      await service.login(mockUser);
+
+      const signCall = (jwtService.sign as jest.Mock).mock.calls[0][0];
+      expect(signCall.branchId).toBeUndefined();
+      expect(signCall.branchId).not.toBe(
+        '00000000-0000-0000-0000-000000000000',
+      );
+    });
+  });
+
+  describe('validateUser', () => {
+    it('should strip passwordHash from result (Security Hardening)', async () => {
+      const passwordHash = await bcrypt.hash('password123', 10);
+      prisma.tenant.findFirst.mockResolvedValue({ id: 'tenant-456' });
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'user-123',
+        email: 'test@example.com',
+        tenantId: 'tenant-456',
+        passwordHash,
+        userRoles: [],
+      });
+
+      const result = await service.validateUser(
+        'tenant-code',
+        'test@example.com',
+        'password123',
+      );
+
+      expect(result).toBeDefined();
+      expect(result.passwordHash).toBeUndefined();
+      expect(result.email).toBe('test@example.com');
+    });
+  });
+});
 
 describe('JWT Claim Consistency', () => {
   let strategy: JwtStrategy;

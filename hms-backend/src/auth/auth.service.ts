@@ -46,12 +46,28 @@ export class AuthService {
     // Extract roles for the payload
     const roles = user.userRoles.map((ur: any) => ur.role.name);
 
+    // Resolve branch context from user assignments (Foundation for Section 7 Branch Scoping)
+    const activeBranches = await this.prisma.userBranch.findMany({
+      where: {
+        userId: user.id,
+        tenantId: user.tenantId,
+        isActive: true,
+      },
+      select: {
+        branchId: true,
+      },
+    });
+
+    // Include branchId in JWT only if exactly one active assignment exists
+    const branchId =
+      activeBranches.length === 1 ? activeBranches[0].branchId : undefined;
+
     // Inject required fields into the JWT payload (CRITICAL for Section 7 Tenant Isolation)
     const payload = {
       sub: user.id,
       email: user.email,
       tenantId: user.tenantId,
-      branchId: '00000000-0000-0000-0000-000000000000', // Active branch placeholder
+      ...(branchId && { branchId }),
       roles: roles,
       jti: crypto.randomUUID(),
     };
