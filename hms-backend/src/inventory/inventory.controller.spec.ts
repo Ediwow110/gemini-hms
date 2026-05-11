@@ -41,7 +41,8 @@ describe('InventoryController', () => {
 
   it('low-stock endpoint should be tenant-scoped', async () => {
     const tenantId = 'tenant-xyz';
-    await controller.getLowStockAlerts(tenantId);
-    expect(service.getLowStockAlerts).toHaveBeenCalledWith(tenantId);
+    const branchId = 'branch-xyz';
+    await controller.getLowStockAlerts(tenantId, branchId);
+    expect(service.getLowStockAlerts).toHaveBeenCalledWith(tenantId, branchId);
   });
 });

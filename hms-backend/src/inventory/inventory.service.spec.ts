@@ -14,6 +14,14 @@ describe('InventoryService Alerts', () => {
       inventoryItem: {
         findFirst: jest.fn(),
         update: jest.fn(),
+        findUnique: jest.fn(),
+      },
+      branchStock: {
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+        upsert: jest.fn(),
+        findMany: jest.fn(),
       },
       stockLog: {
         create: jest.fn(),
@@ -40,39 +48,46 @@ describe('InventoryService Alerts', () => {
   });
 
   it('should not create an alert if stock remains above reorder level', async () => {
-    prisma.inventoryItem.findFirst.mockResolvedValue({
+    prisma.branchStock.findUnique.mockResolvedValue({
       id: '1',
-      currentStock: 20,
+      quantity: 20,
       reorderLevel: 10,
-      unit: 'pcs',
-      sku: 'SKU1',
     });
-    prisma.inventoryItem.update.mockResolvedValue({
+    prisma.branchStock.update.mockResolvedValue({
       id: '1',
-      currentStock: 15,
+      quantity: 15,
+      reorderLevel: 10,
+    });
+    prisma.inventoryItem.findUnique.mockResolvedValue({
+      id: 'item-1',
+      sku: 'SKU1',
+      name: 'Test',
     });
 
-    await service.dispenseItem('tenant1', 'user1', '1', 5);
+    await service.dispenseItem('tenant1', 'branch1', 'user1', '1', 5);
 
     expect(prisma.notification.create).not.toHaveBeenCalled();
   });
 
   it('should create an alert on threshold crossing', async () => {
-    prisma.inventoryItem.findFirst.mockResolvedValue({
+    prisma.branchStock.findUnique.mockResolvedValue({
       id: '1',
-      currentStock: 15,
+      quantity: 15,
       reorderLevel: 10,
-      unit: 'pcs',
+    });
+    prisma.branchStock.update.mockResolvedValue({
+      id: '1',
+      quantity: 10,
+      reorderLevel: 10,
+    });
+    prisma.inventoryItem.findUnique.mockResolvedValue({
+      id: 'item-1',
       sku: 'SKU1',
       name: 'Test',
     });
-    prisma.inventoryItem.update.mockResolvedValue({
-      id: '1',
-      currentStock: 10,
-    });
     prisma.notification.findFirst.mockResolvedValue(null);
 
-    await service.dispenseItem('tenant1', 'user1', '1', 5);
+    await service.dispenseItem('tenant1', 'branch1', 'user1', '1', 5);
 
     expect(prisma.notification.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -82,24 +97,27 @@ describe('InventoryService Alerts', () => {
   });
 
   it('should prevent duplicate unresolved alert spam', async () => {
-    prisma.inventoryItem.findFirst.mockResolvedValue({
+    prisma.branchStock.findUnique.mockResolvedValue({
       id: '1',
-      currentStock: 15,
+      quantity: 15,
       reorderLevel: 10,
-      unit: 'pcs',
+    });
+    prisma.branchStock.update.mockResolvedValue({
+      id: '1',
+      quantity: 10,
+      reorderLevel: 10,
+    });
+    prisma.inventoryItem.findUnique.mockResolvedValue({
+      id: 'item-1',
       sku: 'SKU1',
       name: 'Test',
-    });
-    prisma.inventoryItem.update.mockResolvedValue({
-      id: '1',
-      currentStock: 10,
     });
     prisma.notification.findFirst.mockResolvedValue({
       id: 'notif1',
       status: 'PENDING',
     }); // Existing alert
 
-    await service.dispenseItem('tenant1', 'user1', '1', 5);
+    await service.dispenseItem('tenant1', 'branch1', 'user1', '1', 5);
 
     expect(prisma.notification.create).not.toHaveBeenCalled();
   });

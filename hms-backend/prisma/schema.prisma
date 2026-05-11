@@ -29,6 +29,7 @@ model Tenant {
   orders             Order[]
   auditLogs          AuditLog[]
   inventoryItems     InventoryItem[]
+  branchStocks       BranchStock[]
   stockLogs          StockLog[]
   departments        Department[]
   employees          Employee[]
@@ -49,9 +50,11 @@ model Branch {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
   orders       Order[]
   userBranches UserBranch[]
+  branchStocks BranchStock[]
+  stockLogs    StockLog[]
 
   @@map("branches")
 }
@@ -253,16 +256,40 @@ model InventoryItem {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id])
-  stockLogs StockLog[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  stockLogs    StockLog[]
+  branchStocks BranchStock[]
 
   @@unique([tenantId, sku])
   @@map("inventory_items")
 }
 
+model BranchStock {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  branchId        String   @map("branch_id") @db.Uuid
+  inventoryItemId String   @map("inventory_item_id") @db.Uuid
+  quantity        Int      @default(0)
+  reorderLevel    Int      @default(10) @map("reorder_level")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  branch        Branch        @relation(fields: [branchId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@unique([tenantId, branchId, inventoryItemId])
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([inventoryItemId])
+  @@index([tenantId, branchId])
+  @@map("branch_stocks")
+}
+
 model StockLog {
   id              String   @id @default(uuid()) @db.Uuid
   tenantId        String   @map("tenant_id") @db.Uuid
+  branchId        String   @map("branch_id") @db.Uuid
   inventoryItemId String   @map("inventory_item_id") @db.Uuid
   type            String // IN, OUT, ADJUSTMENT, RETURN
   quantity        Int
@@ -274,6 +301,7 @@ model StockLog {
   createdAt       DateTime @default(now()) @map("created_at")
 
   tenant Tenant        @relation(fields: [tenantId], references: [id])
+  branch Branch        @relation(fields: [branchId], references: [id])
   item   InventoryItem @relation(fields: [inventoryItemId], references: [id])
 
   @@map("stock_logs")
