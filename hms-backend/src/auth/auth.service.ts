@@ -44,7 +44,9 @@ export class AuthService {
 
   async login(user: any) {
     // Extract roles for the payload
-    const roles = user.userRoles.map((ur: any) => ur.role.name);
+    const roles: string[] = user.userRoles.map(
+      (ur: any) => ur.role.name as string,
+    );
 
     // Resolve branch context from user assignments (Foundation for Section 7 Branch Scoping)
     const activeBranches = await this.prisma.userBranch.findMany({
@@ -62,6 +64,43 @@ export class AuthService {
     const branchId =
       activeBranches.length === 1 ? activeBranches[0].branchId : undefined;
 
+    return this.generateTokenResponse(user, roles, branchId);
+  }
+
+  async selectBranch(userId: string, tenantId: string, branchId: string) {
+    // Validate active assignment exists for this specific branch
+    const assignment = await this.prisma.userBranch.findFirst({
+      where: {
+        userId,
+        tenantId,
+        branchId,
+        isActive: true,
+      },
+    });
+
+    if (!assignment) {
+      return null;
+    }
+
+    // Re-fetch user with roles for token generation
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        userRoles: {
+          include: { role: true },
+        },
+      },
+    });
+
+    if (!user) return null;
+
+    const roles: string[] = user.userRoles.map(
+      (ur: any) => ur.role.name as string,
+    );
+    return this.generateTokenResponse(user, roles, branchId);
+  }
+
+  private generateTokenResponse(user: any, roles: string[], branchId?: string) {
     // Inject required fields into the JWT payload (CRITICAL for Section 7 Tenant Isolation)
     const payload = {
       sub: user.id,
@@ -79,6 +118,7 @@ export class AuthService {
         email: user.email,
         tenantId: user.tenantId,
         roles: roles,
+        ...(branchId && { branchId }),
       },
     };
   }

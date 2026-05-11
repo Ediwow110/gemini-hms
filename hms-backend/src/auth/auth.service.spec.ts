@@ -25,9 +25,11 @@ describe('AuthService', () => {
             },
             user: {
               findFirst: jest.fn(),
+              findUnique: jest.fn(),
             },
             userBranch: {
               findMany: jest.fn(),
+              findFirst: jest.fn(),
             },
           },
         },
@@ -116,6 +118,77 @@ describe('AuthService', () => {
       expect(signCall.branchId).toBeUndefined();
       expect(signCall.branchId).not.toBe(
         '00000000-0000-0000-0000-000000000000',
+      );
+    });
+  });
+
+  describe('selectBranch', () => {
+    const userId = 'user-123';
+    const tenantId = 'tenant-456';
+    const branchId = 'branch-789';
+
+    it('should return refreshed token when active assignment exists', async () => {
+      prisma.userBranch.findFirst.mockResolvedValue({
+        userId,
+        tenantId,
+        branchId,
+        isActive: true,
+      });
+
+      prisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        email: 'test@example.com',
+        tenantId,
+        userRoles: [{ role: { name: 'Doctor' } }],
+      });
+
+      const result = await service.selectBranch(userId, tenantId, branchId);
+
+      expect(prisma.userBranch.findFirst).toHaveBeenCalledWith({
+        where: { userId, tenantId, branchId, isActive: true },
+      });
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: userId,
+          tenantId,
+          branchId,
+        }),
+      );
+      expect(result.access_token).toBe('mocked-token');
+      expect(result.user.branchId).toBe(branchId);
+    });
+
+    it('should return null if assignment does not exist', async () => {
+      prisma.userBranch.findFirst.mockResolvedValue(null);
+
+      const result = await service.selectBranch(userId, tenantId, branchId);
+
+      expect(result).toBeNull();
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it('should return null if assignment is inactive', async () => {
+      // findFirst should already filter by isActive: true in the service
+      prisma.userBranch.findFirst.mockResolvedValue(null);
+
+      const result = await service.selectBranch(userId, tenantId, branchId);
+
+      expect(result).toBeNull();
+    });
+
+    it('should scope lookup by tenantId', async () => {
+      prisma.userBranch.findFirst.mockResolvedValue(null);
+
+      await service.selectBranch(userId, 'other-tenant', branchId);
+
+      expect(prisma.userBranch.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: 'other-tenant',
+          }),
+        }),
       );
     });
   });
