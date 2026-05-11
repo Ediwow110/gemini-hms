@@ -37,8 +37,9 @@ export const usePermissions = () => {
   const hasRole = (role: string) => roles.includes(role);
   const isSuperAdmin = roles.includes('Super Admin');
   const isBranchAdmin = roles.includes('Branch Admin');
+  const hasPermission = (permission: string) => hasRole(permission);
 
-  return { hasRole, isSuperAdmin, isBranchAdmin };
+  return { hasRole, hasPermission, isSuperAdmin, isBranchAdmin };
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {

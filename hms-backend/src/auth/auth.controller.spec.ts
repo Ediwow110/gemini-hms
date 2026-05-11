@@ -14,6 +14,7 @@ describe('AuthController', () => {
       validateUser: jest.fn(),
       login: jest.fn(),
       selectBranch: jest.fn(),
+      getUserBranches: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -87,6 +88,27 @@ describe('AuthController', () => {
       await expect(
         controller.selectBranch(mockUser, selectBranchDto),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('getMyBranches', () => {
+    it('should return branches for the user', async () => {
+      const mockUser: RequestUser = {
+        userId: 'user-123',
+        tenantId: 'tenant-456',
+        roles: ['Admin'],
+      };
+      const mockBranches = [{ id: 'b1', name: 'Branch 1', code: 'B1' }];
+      authService.getUserBranches.mockResolvedValue(mockBranches);
+
+      const result = await controller.getMyBranches(mockUser);
+
+      expect(result).toBe(mockBranches);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(authService.getUserBranches).toHaveBeenCalledWith(
+        mockUser.userId,
+        mockUser.tenantId,
+      );
     });
   });
 });

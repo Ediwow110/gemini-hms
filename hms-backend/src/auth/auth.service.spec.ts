@@ -216,6 +216,67 @@ describe('AuthService', () => {
       expect(result.email).toBe('test@example.com');
     });
   });
+
+  describe('getUserBranches', () => {
+    const userId = 'user-123';
+    const tenantId = 'tenant-456';
+
+    it('should return only active branch assignments for the user and tenant', async () => {
+      const mockBranch1 = { id: 'b1', name: 'Branch 1', code: 'B1' };
+      const mockBranch2 = { id: 'b2', name: 'Branch 2', code: 'B2' };
+
+      prisma.userBranch.findMany.mockResolvedValue([
+        { branch: mockBranch1 },
+        { branch: mockBranch2 },
+      ]);
+
+      const result = await service.getUserBranches(userId, tenantId);
+
+      expect(prisma.userBranch.findMany).toHaveBeenCalledWith({
+        where: {
+          userId,
+          tenantId,
+          isActive: true,
+        },
+        include: {
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+        },
+      });
+
+      expect(result).toHaveLength(2);
+      expect(result).toEqual([mockBranch1, mockBranch2]);
+    });
+
+    it('should return empty array when no active assignments exist', async () => {
+      prisma.userBranch.findMany.mockResolvedValue([]);
+
+      const result = await service.getUserBranches(userId, tenantId);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should not expose sensitive fields in the response', async () => {
+      // The select in findMany already handles this, but we test the service output
+      const mockBranch = { id: 'b1', name: 'Branch 1', code: 'B1' };
+      prisma.userBranch.findMany.mockResolvedValue([{ branch: mockBranch }]);
+
+      const result = await service.getUserBranches(userId, tenantId);
+
+      expect(result[0]).toEqual({
+        id: 'b1',
+        name: 'Branch 1',
+        code: 'B1',
+      });
+      expect(result[0]).not.toHaveProperty('tenantId');
+      expect(result[0]).not.toHaveProperty('createdAt');
+    });
+  });
 });
 
 describe('JWT Claim Consistency', () => {

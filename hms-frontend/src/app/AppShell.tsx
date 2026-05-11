@@ -11,7 +11,6 @@ import {
   FlaskConical, 
   Search, 
   Bell, 
-  ChevronDown,
   Briefcase,
   Stethoscope,
   ClipboardList,

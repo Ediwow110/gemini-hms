@@ -101,7 +101,7 @@ export const ApprovalCenter = () => {
               </div>
               
               <div className="pt-4">
-                {selected.requester.id === currentUser.id ? (
+                {selected.requester.id === currentUser?.id ? (
                   <div className="p-3 bg-amber-50 text-amber-800 rounded-xl text-xs font-medium border border-amber-100 text-center">
                     You cannot approve your own request. (Maker-Checker rule enforced)
                   </div>
