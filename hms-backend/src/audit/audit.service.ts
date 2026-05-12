@@ -32,7 +32,11 @@ export interface AuditQueryDto {
 export class AuditService {
   constructor(private prisma: PrismaService) {}
 
-  async log(data: AuditLogData, tx?: Prisma.TransactionClient, branchId?: string) {
+  async log(
+    data: AuditLogData,
+    tx?: Prisma.TransactionClient,
+    branchId?: string,
+  ) {
     const db = tx || this.prisma;
     return db.auditLog.create({
       data: {
@@ -105,13 +109,22 @@ export class AuditService {
         recordType: true,
         recordId: true,
         createdAt: true,
-        // Only return values if SuperAdmin or Auditor role
         oldValues: isSuperAdmin,
         newValues: isSuperAdmin,
       },
     });
 
-    return { data, total, page, pageSize: limit };
+    // Explicitly strip if select did not fetch them (Prisma select might return nulls or undefined)
+    const sanitizedData = data.map((item) => {
+      const sanitized = { ...item };
+      if (!isSuperAdmin) {
+        delete (sanitized as any).oldValues;
+        delete (sanitized as any).newValues;
+      }
+      return sanitized;
+    });
+
+    return { data: sanitizedData, total, page, pageSize: limit };
   }
 
   async findOne(
@@ -132,8 +145,8 @@ export class AuditService {
         recordType: true,
         recordId: true,
         createdAt: true,
-        oldValues: isSuperAdmin,
-        newValues: isSuperAdmin,
+        oldValues: true,
+        newValues: true,
       },
     });
 
@@ -150,6 +163,12 @@ export class AuditService {
       throw new ForbiddenException('Access denied to this audit log');
     }
 
-    return auditLog;
+    const sanitized = { ...auditLog };
+    if (!isSuperAdmin) {
+      delete (sanitized as any).oldValues;
+      delete (sanitized as any).newValues;
+    }
+
+    return sanitized;
   }
 }
