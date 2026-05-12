@@ -50,10 +50,10 @@ export class LabService {
       );
     }
 
-        const updateResult = await this.prisma.labResult.updateMany({
-          where: { id, order: { tenantId, branchId } },
-          data: { status: 'ENCODED' },
-        });
+    const updateResult = await this.prisma.labResult.updateMany({
+      where: { id, order: { tenantId, branchId } },
+      data: { status: 'ENCODED' },
+    });
 
     if (updateResult.count === 0) {
       throw new NotFoundException('Lab result not found');
@@ -62,6 +62,10 @@ export class LabService {
     const updated = await this.prisma.labResult.findFirst({
       where: { id, order: { tenantId, branchId } },
     });
+
+    if (!updated) {
+      throw new NotFoundException('Lab result not found');
+    }
 
     await this.audit.log({
       tenantId,
@@ -102,6 +106,10 @@ export class LabService {
     const updated = await this.prisma.labResult.findFirst({
       where: { id, order: { tenantId, branchId } },
     });
+
+    if (!updated) {
+      throw new NotFoundException('Lab result not found');
+    }
 
     await this.audit.log({
       tenantId,
@@ -170,15 +178,26 @@ export class LabService {
         },
       });
 
-      // 3. Unlock and reset the lab result
-      const updated = await tx.labResult.update({
-        where: { id },
+      const updateResult = await tx.labResult.updateMany({
+        where: { id, order: { tenantId, branchId } },
         data: {
           status: 'AMENDED', // Resetting to allow re-encoding/re-approval
           lockedAt: null,
           approvedById: null,
         },
       });
+
+      if (updateResult.count === 0) {
+        throw new NotFoundException('Lab result not found');
+      }
+
+      const updated = await tx.labResult.findFirst({
+        where: { id, order: { tenantId, branchId } },
+      });
+
+      if (!updated) {
+        throw new NotFoundException('Lab result not found');
+      }
 
       // 4. System Audit
       await this.audit.log({
@@ -217,9 +236,13 @@ export class LabService {
         throw new NotFoundException('Lab result not found');
       }
 
-        const updated = (await tx.labResult.findFirst({
-          where: { id, order: { tenantId, branchId } },
-        }))!;
+      const updated = await tx.labResult.findFirst({
+        where: { id, order: { tenantId, branchId } },
+      });
+
+      if (!updated?.lockedAt) {
+        throw new NotFoundException('Lab result not found');
+      }
 
       await this.audit.log({
         tenantId,
@@ -227,7 +250,7 @@ export class LabService {
         eventKey: 'RESULT_RELEASED',
         recordType: 'LabResult',
         recordId: id,
-          newValues: { releasedAt: updated.lockedAt! },
+        newValues: { releasedAt: updated.lockedAt },
       });
 
       return updated;

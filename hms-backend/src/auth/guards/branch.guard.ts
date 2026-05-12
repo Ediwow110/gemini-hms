@@ -28,42 +28,33 @@ export class BranchGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    // Fails closed if req.user.branchId is missing (branch selection required)
     if (!user.branchId) {
       throw new ForbiddenException('Access denied');
     }
 
-    // Fails closed if req.user.branchId is missing (branch selection required)
-    if (!user.branchId) {
-      throw new ForbiddenException(
-        'Branch context required. Please select a branch.',
-      );
-    }
+    const fromParams =
+      request.params && request.params.branchId
+        ? String(request.params.branchId)
+        : undefined;
+    const fromBody =
+      request.body && request.body.branchId
+        ? String(request.body.branchId)
+        : undefined;
+    const fromQuery =
+      request.query && request.query.branchId
+        ? String(request.query.branchId)
+        : undefined;
 
-    // Validate route param branchId if present
-    if (
-      request.params &&
-      request.params.branchId &&
-      request.params.branchId !== user.branchId
-    ) {
+    const branchIdsProvided = [fromParams, fromBody, fromQuery].filter(
+      Boolean,
+    ) as string[];
+
+    const distinct = [...new Set(branchIdsProvided)];
+    if (distinct.length > 1) {
       throw new ForbiddenException('Access denied');
     }
 
-    // Validate request.body.branchId if it exists
-    if (
-      request.body &&
-      request.body.branchId &&
-      request.body.branchId !== user.branchId
-    ) {
-      throw new ForbiddenException('Access denied');
-    }
-
-    // Validate request.query.branchId if it exists
-    if (
-      request.query &&
-      request.query.branchId &&
-      request.query.branchId !== user.branchId
-    ) {
+    if (distinct.length === 1 && distinct[0] !== user.branchId) {
       throw new ForbiddenException('Access denied');
     }
 

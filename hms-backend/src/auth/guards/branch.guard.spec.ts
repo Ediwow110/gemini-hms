@@ -93,6 +93,15 @@ describe('BranchGuard', () => {
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
     });
 
+    it('should deny when body.branchId and query.branchId conflict', () => {
+      const context = mockExecutionContext(
+        { userId: 'u1', tenantId: 't1', branchId: 'b1' },
+        { branchId: 'b1' },
+        { branchId: 'b2' },
+      );
+      expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+    });
+
     it('should allow when req.user.branchId matches query.branchId', () => {
       const context = mockExecutionContext(
         { userId: 'u1', tenantId: 't1', branchId: 'b1' },

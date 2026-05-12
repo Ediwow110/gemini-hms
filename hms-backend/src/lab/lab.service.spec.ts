@@ -19,7 +19,7 @@ describe('LabService Branch Isolation', () => {
             labResult: {
               findFirst: jest.fn(),
               findMany: jest.fn(),
-              update: jest.fn(),
+              updateMany: jest.fn(),
             },
           },
         },
@@ -98,7 +98,7 @@ describe('LabService Branch Isolation', () => {
         }),
       ).rejects.toThrow(NotFoundException);
 
-      expect(prisma.labResult.update).not.toHaveBeenCalled();
+      expect(prisma.labResult.updateMany).not.toHaveBeenCalled();
     });
   });
 
@@ -112,7 +112,7 @@ describe('LabService Branch Isolation', () => {
         }),
       ).rejects.toThrow(NotFoundException);
 
-      expect(prisma.labResult.update).not.toHaveBeenCalled();
+      expect(prisma.labResult.updateMany).not.toHaveBeenCalled();
     });
   });
 

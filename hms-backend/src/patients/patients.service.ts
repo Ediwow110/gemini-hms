@@ -108,6 +108,10 @@ export class PatientsService {
       where: { id, tenantId },
     });
 
+    if (!updated) {
+      throw new NotFoundException('Patient not found');
+    }
+
     // Log Audit Event (PATIENT_UPDATED)
     await this.audit.log({
       tenantId,

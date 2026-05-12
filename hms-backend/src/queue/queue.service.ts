@@ -89,6 +89,10 @@ export class QueueService {
       where: { id, tenantId, branchId },
     });
 
+    if (!updated) {
+      throw new NotFoundException('Queue entry not found');
+    }
+
     // Optional: Log calling/completion in audit
     if (dto.status === 'CALLING' || dto.status === 'COMPLETED') {
       await this.audit.log({

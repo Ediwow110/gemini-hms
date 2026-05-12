@@ -35,6 +35,9 @@ export class PermissionsGuard implements CanActivate {
       );
     }
 
+    // Grants are evaluated at tenant scope only; they do not prove branch isolation.
+    // Branch-bound data must additionally use BranchGuard and tenant+branch checks in services.
+
     // Get user's permissions from the database explicitly scoped to their tenant
     const userRoles = await this.prisma.userRole.findMany({
       where: {

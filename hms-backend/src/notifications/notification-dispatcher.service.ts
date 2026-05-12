@@ -89,11 +89,27 @@ export class NotificationDispatcherService {
       return false;
     }
 
-    // Reset to PENDING and dispatch
-    const updated = await this.prisma.notification.update({
-      where: { id, tenantId },
+    const reset = await this.prisma.notification.updateMany({
+      where: { id, tenantId, status: 'FAILED' },
       data: { status: 'PENDING' },
     });
+
+    if (reset.count === 0) return false;
+
+    const updated = await this.prisma.notification.findFirst({
+      where: { id, tenantId },
+      select: {
+        id: true,
+        type: true,
+        recipient: true,
+        subject: true,
+        content: true,
+        attempts: true,
+        tenantId: true,
+      },
+    });
+
+    if (!updated) return false;
 
     return this.dispatchOne(updated);
   }

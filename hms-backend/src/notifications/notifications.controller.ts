@@ -1,5 +1,6 @@
 import {
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Param,
@@ -50,7 +51,14 @@ export class NotificationsController {
     @Param('id') id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.notificationsService.markAsRead(id, req.user.tenantId);
+    if (!req.user.userId) {
+      throw new ForbiddenException('Access denied');
+    }
+    return this.notificationsService.markAsRead(
+      id,
+      req.user.tenantId,
+      req.user.userId,
+    );
   }
 
   @Post('read-all')

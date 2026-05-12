@@ -74,14 +74,13 @@ export class NotificationsService {
     });
   }
 
-  async markAsRead(id: string, tenantId: string) {
-    const notification = await this.prisma.notification.findFirst({
-      where: { id, tenantId },
-    });
-    if (!notification) throw new NotFoundException('Notification not found');
-
+  async markAsRead(id: string, tenantId: string, viewerUserId: string) {
     const updateResult = await this.prisma.notification.updateMany({
-      where: { id, tenantId },
+      where: {
+        id,
+        tenantId,
+        OR: [{ userId: null }, { userId: viewerUserId }],
+      },
       data: { status: 'READ', readAt: new Date() },
     });
 
@@ -89,8 +88,9 @@ export class NotificationsService {
       throw new NotFoundException('Notification not found');
     }
 
-    // Return the updated notification (optional, could refetch if needed)
-    return this.prisma.notification.findFirst({ where: { id, tenantId } });
+    return this.prisma.notification.findFirst({
+      where: { id, tenantId },
+    });
   }
 
   async markAllAsRead(tenantId: string) {

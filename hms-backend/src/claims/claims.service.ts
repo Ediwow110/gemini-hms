@@ -72,6 +72,10 @@ export class ClaimsService {
       where: { id, tenantId },
     });
 
+    if (!updated) {
+      throw new NotFoundException('Claim not found');
+    }
+
     await this.audit.log({
       tenantId,
       userId,
