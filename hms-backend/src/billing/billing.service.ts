@@ -2,15 +2,31 @@ import {
   Injectable,
   BadRequestException,
   ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import {
   CreatePaymentDto,
   OpenSessionDto,
   CloseSessionDto,
 } from './dto/payment.dto';
+import { RefundRequestDto, VoidRequestDto } from './dto/reversal.dto';
+import { ApprovalsService } from '../approvals/approvals.service';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
+
+export const REVERSAL_TYPE = {
+  REFUND: 'REFUND',
+  VOID: 'PAYMENT_VOID',
+} as const;
+
+export const REVERSAL_STATUS = {
+  PENDING: 'PENDING',
+  APPLIED: 'APPLIED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+} as const;
 
 @Injectable()
 export class BillingService {
@@ -18,6 +34,7 @@ export class BillingService {
     private prisma: PrismaService,
     private audit: AuditService,
     private numbering: NumberingService,
+    private approvals: ApprovalsService,
   ) {}
 
   async postPayment(
@@ -128,6 +145,242 @@ export class BillingService {
     });
   }
 
+  async requestRefund(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    dto: RefundRequestDto,
+  ) {
+    if (!dto.reason?.trim()) {
+      throw new BadRequestException('A reason is required for refund requests');
+    }
+
+    if (dto.amount <= 0) {
+      throw new BadRequestException('Refund amount must be positive');
+    }
+
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        id: dto.paymentId,
+        cashierSession: {
+          tenantId,
+          branchId,
+        },
+      },
+      include: { invoice: true },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found or access denied');
+    }
+
+    if (payment.status !== 'POSTED') {
+      throw new BadRequestException(
+        `Payment status must be POSTED to be refunded (current: ${payment.status})`,
+      );
+    }
+
+    // Calculate current reversible amount
+    const reversals = await this.prisma.paymentReversal.findMany({
+      where: {
+        paymentId: payment.id,
+        status: { in: [REVERSAL_STATUS.PENDING, REVERSAL_STATUS.APPLIED] },
+      },
+    });
+
+    const currentReversedAmount = reversals.reduce(
+      (sum, r) => sum + Number(r.amount),
+      0,
+    );
+
+    if (dto.amount + currentReversedAmount > Number(payment.amount)) {
+      throw new BadRequestException(
+        `Refund amount ₱${dto.amount} exceeds remaining reversible amount ₱${
+          Number(payment.amount) - currentReversedAmount
+        }`,
+      );
+    }
+
+    // Block duplicate pending refund requests for this payment
+    const pending = await this.prisma.approvalRequest.findFirst({
+      where: {
+        recordId: payment.id,
+        type: REVERSAL_TYPE.REFUND,
+        status: 'PENDING',
+      },
+    });
+
+    if (pending) {
+      throw new ConflictException(
+        'A refund request for this payment is already pending approval',
+      );
+    }
+
+    const request = await this.prisma.$transaction(async (tx) => {
+      const approvalReq = await this.approvals.createRequest(
+        tenantId,
+        userId,
+        {
+          type: REVERSAL_TYPE.REFUND,
+          riskLevel: dto.amount > 1000 ? 'HIGH' : 'MEDIUM',
+          recordId: payment.id,
+          reason: dto.reason,
+          details: {
+            action: REVERSAL_TYPE.REFUND,
+            paymentId: payment.id,
+            invoiceId: payment.invoice?.id ?? payment.invoiceId,
+            amount: dto.amount,
+            tenantId,
+            branchId,
+            requesterId: userId,
+          },
+        },
+        tx,
+      );
+
+      await tx.paymentReversal.create({
+        data: {
+          tenantId,
+          branchId,
+          paymentId: payment.id,
+          invoiceId: payment.invoiceId,
+          approvalRequestId: approvalReq.id,
+          amount: dto.amount,
+          type: REVERSAL_TYPE.REFUND,
+          status: REVERSAL_STATUS.PENDING,
+          reason: dto.reason,
+          requestedBy: userId,
+        },
+      });
+
+      // Domain-specific audit event
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'REFUND_REQUESTED',
+          recordType: 'Payment',
+          recordId: payment.id,
+          newValues: {
+            approvalRequestId: approvalReq.id,
+            amount: dto.amount,
+            reason: dto.reason,
+          },
+        },
+        tx,
+      );
+
+      return approvalReq;
+    });
+
+    return request;
+  }
+
+  async requestVoid(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    dto: VoidRequestDto,
+  ) {
+    if (!dto.reason?.trim()) {
+      throw new BadRequestException(
+        'A reason is required for payment void requests',
+      );
+    }
+
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        id: dto.paymentId,
+        cashierSession: {
+          tenantId,
+          branchId,
+        },
+      },
+      include: { invoice: true },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found or access denied');
+    }
+
+    if (payment.status !== 'POSTED') {
+      throw new BadRequestException(
+        `Payment status must be POSTED to be voided (current: ${payment.status})`,
+      );
+    }
+
+    // Block void if any pending or applied reversal exists
+    const existingReversal = await this.prisma.paymentReversal.findFirst({
+      where: {
+        paymentId: payment.id,
+        status: { in: [REVERSAL_STATUS.PENDING, REVERSAL_STATUS.APPLIED] },
+      },
+    });
+
+    if (existingReversal) {
+      throw new ConflictException(
+        'Payment cannot be voided because a refund or void request is already pending or applied',
+      );
+    }
+
+    const request = await this.prisma.$transaction(async (tx) => {
+      const approvalReq = await this.approvals.createRequest(
+        tenantId,
+        userId,
+        {
+          type: REVERSAL_TYPE.VOID,
+          riskLevel: 'HIGH',
+          recordId: payment.id,
+          reason: dto.reason,
+          details: {
+            action: REVERSAL_TYPE.VOID,
+            paymentId: payment.id,
+            invoiceId: payment.invoice?.id ?? payment.invoiceId,
+            tenantId,
+            branchId,
+            requesterId: userId,
+          },
+        },
+        tx,
+      );
+
+      await tx.paymentReversal.create({
+        data: {
+          tenantId,
+          branchId,
+          paymentId: payment.id,
+          invoiceId: payment.invoiceId,
+          approvalRequestId: approvalReq.id,
+          amount: Number(payment.amount),
+          type: REVERSAL_TYPE.VOID,
+          status: REVERSAL_STATUS.PENDING,
+          reason: dto.reason,
+          requestedBy: userId,
+        },
+      });
+
+      // Domain-specific audit event
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'PAYMENT_VOID_REQUESTED',
+          recordType: 'Payment',
+          recordId: payment.id,
+          newValues: {
+            approvalRequestId: approvalReq.id,
+            reason: dto.reason,
+          },
+        },
+        tx,
+      );
+
+      return approvalReq;
+    });
+
+    return request;
+  }
+
   async getInvoices(tenantId: string, branchId: string) {
     return this.prisma.invoice.findMany({
       where: {
@@ -139,6 +392,467 @@ export class BillingService {
         },
       },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async applyReversal(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    reversalId: string,
+  ) {
+    const reversal = await this.prisma.paymentReversal.findFirst({
+      where: {
+        id: reversalId,
+        tenantId,
+        branchId,
+      },
+    });
+
+    if (!reversal) {
+      throw new NotFoundException(
+        'Payment reversal not found or access denied',
+      );
+    }
+
+    if (reversal.type === REVERSAL_TYPE.REFUND) {
+      return this.applyRefund(tenantId, userId, branchId, reversalId);
+    } else if (reversal.type === REVERSAL_TYPE.VOID) {
+      return this.applyVoid(tenantId, userId, branchId, reversalId);
+    } else {
+      throw new BadRequestException(
+        'Unsupported reversal type for application',
+      );
+    }
+  }
+
+  async applyVoid(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    reversalId: string,
+  ) {
+    // 1. Fetch the reversal and verify basic eligibility
+    const reversal = await this.prisma.paymentReversal.findFirst({
+      where: {
+        id: reversalId,
+        tenantId,
+        branchId,
+      },
+    });
+
+    if (!reversal) {
+      throw new NotFoundException(
+        'Payment reversal not found or access denied',
+      );
+    }
+
+    if (reversal.type !== REVERSAL_TYPE.VOID) {
+      throw new BadRequestException(
+        'This endpoint only supports applying voids',
+      );
+    }
+
+    if (reversal.status !== REVERSAL_STATUS.PENDING) {
+      throw new ConflictException(
+        `Reversal is already ${reversal.status} and cannot be applied`,
+      );
+    }
+
+    // 2. Verify Approval status
+    const approvalRequest = await this.prisma.approvalRequest.findUnique({
+      where: { id: reversal.approvalRequestId },
+    });
+
+    if (!approvalRequest) {
+      throw new NotFoundException('Associated approval request not found');
+    }
+
+    if (approvalRequest.status !== 'APPROVED') {
+      throw new BadRequestException(
+        `Approval request must be APPROVED to apply reversal (current: ${approvalRequest.status})`,
+      );
+    }
+
+    if (approvalRequest.requesterId === userId) {
+      throw new BadRequestException(
+        'You cannot apply a reversal you requested',
+      );
+    }
+
+    // 3. Fetch and verify Payment & Invoice
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        id: reversal.paymentId,
+        cashierSession: { tenantId, branchId },
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(
+        'Underlying payment not found or access denied',
+      );
+    }
+
+    if (payment.status !== 'POSTED') {
+      throw new BadRequestException(
+        `Payment must be POSTED to be voided (current: ${payment.status})`,
+      );
+    }
+
+    const invoice = await this.prisma.invoice.findFirst({
+      where: {
+        id: reversal.invoiceId,
+        order: { tenantId, branchId },
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException(
+        'Underlying invoice not found or access denied',
+      );
+    }
+
+    // 4. Transactional Mutation
+    return this.prisma.$transaction(async (tx) => {
+      // Lock reversal and verify status again (Race condition protection)
+      const updateResult = await tx.paymentReversal.updateMany({
+        where: {
+          id: reversalId,
+          status: REVERSAL_STATUS.PENDING,
+        },
+        data: {
+          status: REVERSAL_STATUS.APPLIED,
+          appliedBy: userId,
+          appliedAt: new Date(),
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException(
+          'Reversal has already been processed or was modified',
+        );
+      }
+
+      // Check if any other VOID is APPLIED or PENDING for this payment
+      const otherVoid = await tx.paymentReversal.findFirst({
+        where: {
+          paymentId: payment.id,
+          type: REVERSAL_TYPE.VOID,
+          status: { in: [REVERSAL_STATUS.APPLIED, REVERSAL_STATUS.PENDING] },
+          id: { not: reversalId }, // Exclude current
+        },
+      });
+
+      if (otherVoid) {
+        throw new ConflictException(
+          'Payment cannot be voided because another void reversal is pending or applied',
+        );
+      }
+
+      // Check if any REFUND is APPLIED or PENDING for this payment
+      const refundReversal = await tx.paymentReversal.findFirst({
+        where: {
+          paymentId: payment.id,
+          type: REVERSAL_TYPE.REFUND,
+          status: { in: [REVERSAL_STATUS.APPLIED, REVERSAL_STATUS.PENDING] },
+        },
+      });
+
+      if (refundReversal) {
+        throw new ConflictException(
+          'Payment cannot be voided because a refund reversal is pending or applied',
+        );
+      }
+
+      const voidAmount = reversal.amount;
+      const beforePaidAmount = invoice.paidAmount;
+      const afterPaidAmount = beforePaidAmount.sub(voidAmount);
+
+      if (afterPaidAmount.lt(0)) {
+        throw new BadRequestException(
+          'Void would result in negative paid amount',
+        );
+      }
+
+      // Recalculate Invoice Status
+      let newStatus = 'PARTIALLY_PAID';
+      if (afterPaidAmount.lte(0)) {
+        newStatus = 'UNPAID';
+      } else if (afterPaidAmount.gte(invoice.totalAmount)) {
+        newStatus = 'PAID';
+      }
+
+      const beforeInvoiceStatus = invoice.status;
+
+      // Update Invoice
+      const updatedInvoice = await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          paidAmount: afterPaidAmount,
+          status: newStatus,
+        },
+      });
+
+      // Mark payment as VOIDED
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: 'VOIDED' },
+      });
+
+      // Mark approval request as APPLIED (post-approval execution)
+      await tx.approvalRequest.update({
+        where: { id: approvalRequest.id },
+        data: { status: 'APPLIED' },
+      });
+
+      // Log Audit Event (PAYMENT_VOID_APPLIED)
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'PAYMENT_VOID_APPLIED',
+          recordType: 'PaymentReversal',
+          recordId: reversalId,
+          oldValues: {
+            reversalStatus: REVERSAL_STATUS.PENDING,
+            invoicePaidAmount: beforePaidAmount.toString(),
+            invoiceStatus: beforeInvoiceStatus,
+            paymentStatus: payment.status,
+          },
+          newValues: {
+            branchId,
+            paymentId: payment.id,
+            invoiceId: invoice.id,
+            paymentReversalId: reversalId,
+            approvalRequestId: approvalRequest.id,
+            reason: reversal.reason,
+            reversalStatus: REVERSAL_STATUS.APPLIED,
+            invoicePaidAmount: afterPaidAmount.toString(),
+            invoiceStatus: newStatus,
+            appliedBy: userId,
+            voidAmount: voidAmount.toString(),
+            paymentStatus: 'VOIDED',
+          },
+        },
+        tx,
+      );
+
+      return {
+        reversal: { ...reversal, status: REVERSAL_STATUS.APPLIED },
+        invoice: updatedInvoice,
+      };
+    });
+  }
+
+  async applyRefund(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    reversalId: string,
+  ) {
+    // 1. Fetch the reversal and verify basic eligibility
+    const reversal = await this.prisma.paymentReversal.findFirst({
+      where: {
+        id: reversalId,
+        tenantId,
+        branchId,
+      },
+    });
+
+    if (!reversal) {
+      throw new NotFoundException(
+        'Payment reversal not found or access denied',
+      );
+    }
+
+    if (reversal.type !== REVERSAL_TYPE.REFUND) {
+      throw new BadRequestException(
+        'This endpoint only supports applying refunds',
+      );
+    }
+
+    if (reversal.status !== REVERSAL_STATUS.PENDING) {
+      throw new ConflictException(
+        `Reversal is already ${reversal.status} and cannot be applied`,
+      );
+    }
+
+    // 2. Verify Approval status
+    const approvalRequest = await this.prisma.approvalRequest.findUnique({
+      where: { id: reversal.approvalRequestId },
+    });
+
+    if (!approvalRequest) {
+      throw new NotFoundException('Associated approval request not found');
+    }
+
+    if (approvalRequest.status !== 'APPROVED') {
+      throw new BadRequestException(
+        `Approval request must be APPROVED to apply reversal (current: ${approvalRequest.status})`,
+      );
+    }
+
+    if (approvalRequest.requesterId === userId) {
+      throw new BadRequestException(
+        'You cannot apply a reversal you requested',
+      );
+    }
+
+    // 3. Fetch and verify Payment & Invoice
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        id: reversal.paymentId,
+        cashierSession: { tenantId, branchId },
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(
+        'Underlying payment not found or access denied',
+      );
+    }
+
+    if (payment.status !== 'POSTED') {
+      throw new BadRequestException(
+        `Payment must be POSTED to be refunded (current: ${payment.status})`,
+      );
+    }
+
+    const invoice = await this.prisma.invoice.findFirst({
+      where: {
+        id: reversal.invoiceId,
+        order: { tenantId, branchId },
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException(
+        'Underlying invoice not found or access denied',
+      );
+    }
+
+    // 4. Transactional Mutation
+    return this.prisma.$transaction(async (tx) => {
+      // Lock reversal and verify status again (Race condition protection)
+      // Use updateMany for atomic status check and update (Conditional Update)
+      const updateResult = await tx.paymentReversal.updateMany({
+        where: {
+          id: reversalId,
+          status: REVERSAL_STATUS.PENDING,
+        },
+        data: {
+          status: REVERSAL_STATUS.APPLIED,
+          appliedBy: userId,
+          appliedAt: new Date(),
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException(
+          'Reversal has already been processed or was modified',
+        );
+      }
+
+      // Check if any VOID has already been applied or is pending for this payment
+      const voidReversal = await tx.paymentReversal.findFirst({
+        where: {
+          paymentId: payment.id,
+          type: REVERSAL_TYPE.VOID,
+          status: { in: [REVERSAL_STATUS.APPLIED, REVERSAL_STATUS.PENDING] },
+        },
+      });
+
+      if (voidReversal) {
+        throw new ConflictException(
+          'Payment cannot be refunded because a void is pending or applied',
+        );
+      }
+
+      // Recalculate currently applied refunds to verify remaining balance
+      const appliedRefunds = await tx.paymentReversal.findMany({
+        where: {
+          paymentId: payment.id,
+          type: REVERSAL_TYPE.REFUND,
+          status: REVERSAL_STATUS.APPLIED,
+        },
+      });
+
+      const totalApplied = appliedRefunds.reduce(
+        (sum, r) => sum.add(r.amount),
+        new Prisma.Decimal(0),
+      );
+
+      const refundAmount = reversal.amount;
+      if (totalApplied.add(refundAmount).gt(payment.amount)) {
+        const remaining = payment.amount.sub(totalApplied).toString();
+        throw new BadRequestException(
+          `Refund amount ₱${refundAmount.toString()} exceeds remaining refundable balance ₱${remaining}`,
+        );
+      }
+
+      const beforePaidAmount = invoice.paidAmount;
+      const afterPaidAmount = beforePaidAmount.sub(refundAmount);
+
+      if (afterPaidAmount.lt(0)) {
+        throw new BadRequestException(
+          'Refund would result in negative paid amount',
+        );
+      }
+
+      // Recalculate Invoice Status
+      let newStatus = 'PARTIALLY_PAID';
+      if (afterPaidAmount.lte(0)) {
+        newStatus = 'UNPAID';
+      } else if (afterPaidAmount.gte(invoice.totalAmount)) {
+        newStatus = 'PAID';
+      }
+
+      const beforeInvoiceStatus = invoice.status;
+
+      // Update Invoice
+      const updatedInvoice = await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          paidAmount: afterPaidAmount,
+          status: newStatus,
+        },
+      });
+
+      // Mark approval request as APPLIED (post-approval execution)
+      await tx.approvalRequest.update({
+        where: { id: approvalRequest.id },
+        data: { status: 'APPLIED' },
+      });
+
+      // Log Audit Event (REFUND_APPLIED)
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'REFUND_APPLIED',
+          recordType: 'PaymentReversal',
+          recordId: reversalId,
+          oldValues: {
+            reversalStatus: REVERSAL_STATUS.PENDING,
+            invoicePaidAmount: beforePaidAmount.toString(),
+            invoiceStatus: beforeInvoiceStatus,
+          },
+          newValues: {
+            reversalStatus: REVERSAL_STATUS.APPLIED,
+            invoicePaidAmount: afterPaidAmount.toString(),
+            invoiceStatus: newStatus,
+            appliedBy: userId,
+            refundAmount: refundAmount.toString(),
+          },
+        },
+        tx,
+      );
+
+      return {
+        reversal: { ...reversal, status: REVERSAL_STATUS.APPLIED },
+        invoice: updatedInvoice,
+      };
     });
   }
 

@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import {
   CreateApprovalRequestDto,
@@ -21,9 +22,11 @@ export class ApprovalsService {
   async createRequest(
     tenantId: string,
     userId: string,
-    dto: CreateApprovalRequestDto,
+    dto: CreateApprovalRequestDto & { details?: any },
+    tx?: Prisma.TransactionClient,
   ) {
-    const request = await this.prisma.approvalRequest.create({
+    const db = tx || this.prisma;
+    const request = await db.approvalRequest.create({
       data: {
         tenantId,
         requesterId: userId,
@@ -31,18 +34,22 @@ export class ApprovalsService {
         riskLevel: dto.riskLevel,
         recordId: dto.recordId,
         reason: dto.reason,
+        details: dto.details,
         status: 'PENDING',
       },
     });
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'APPROVAL_REQUESTED',
-      recordType: 'ApprovalRequest',
-      recordId: request.id,
-      newValues: request,
-    });
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: 'APPROVAL_REQUESTED',
+        recordType: 'ApprovalRequest',
+        recordId: request.id,
+        newValues: request,
+      },
+      tx,
+    );
 
     return request;
   }
@@ -93,15 +100,18 @@ export class ApprovalsService {
         },
       });
 
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: `APPROVAL_${action}`,
-        recordType: 'ApprovalRequest',
-        recordId: id,
-        oldValues: { status: request.status },
-        newValues: updated,
-      });
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: `APPROVAL_${action}`,
+          recordType: 'ApprovalRequest',
+          recordId: id,
+          oldValues: { status: request.status },
+          newValues: updated,
+        },
+        tx,
+      );
 
       return updated;
     });

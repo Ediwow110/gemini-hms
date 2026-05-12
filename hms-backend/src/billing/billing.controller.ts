@@ -13,6 +13,7 @@ import {
   OpenSessionDto,
   CloseSessionDto,
 } from './dto/payment.dto';
+import { RefundRequestDto, VoidRequestDto } from './dto/reversal.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -24,6 +25,30 @@ import { RequireBranchContext } from '../auth/decorators/branch-context.decorato
 @Controller('api/v1/billing')
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
+
+  @Post('refunds/request')
+  @RequirePermissions('billing.refund.request')
+  @RequireBranchContext()
+  requestRefund(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Body() dto: RefundRequestDto,
+  ) {
+    return this.billingService.requestRefund(tenantId, userId, branchId, dto);
+  }
+
+  @Post('payments/void-request')
+  @RequirePermissions('billing.payment.void.request')
+  @RequireBranchContext()
+  requestVoid(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Body() dto: VoidRequestDto,
+  ) {
+    return this.billingService.requestVoid(tenantId, userId, branchId, dto);
+  }
 
   @Post('payments')
   @RequirePermissions('billing.payment.create')
@@ -39,6 +64,23 @@ export class BillingController {
       userId,
       branchId,
       createPaymentDto,
+    );
+  }
+
+  @Post('reversals/:id/apply')
+  @RequirePermissions('billing.reversal.apply')
+  @RequireBranchContext()
+  applyReversal(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') reversalId: string,
+  ) {
+    return this.billingService.applyReversal(
+      tenantId,
+      userId,
+      branchId,
+      reversalId,
     );
   }
 

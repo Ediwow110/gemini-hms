@@ -30,68 +30,64 @@ interface NavItem {
   icon: React.ElementType;
 }
 
-interface NavGroup {
-  label: string;
-  items: NavItem[];
-}
-
-const navigation: NavGroup[] = [
-  {
-    label: 'Dashboard & Core',
-    items: [
-      { label: 'Command Center', to: '/', icon: LayoutDashboard },
-      { label: 'Patient Management', to: '/patients', icon: Users },
-      { label: 'Appointment & Queue', to: '/queue', icon: ListOrdered },
-    ]
-  },
-  {
-    label: 'Clinical Modules',
-    items: [
-      { label: 'EMR / Records', to: '/emr', icon: ClipboardList },
-      { label: 'Laboratory / LIS', to: '/lab/results', icon: FlaskConical },
-      { label: 'Radiology', to: '/radiology', icon: CheckSquare },
-      { label: 'Pharmacy', to: '/pharmacy', icon: Pill },
-    ]
-  },
-  {
-    label: 'Finance & Supply',
-    items: [
-      { label: 'Billing & Cashier', to: '/billing', icon: CreditCard },
-      { label: 'Inventory & Procurement', to: '/inventory', icon: Package },
-      { label: 'Products & Services', to: '/orders/new', icon: PlusCircle },
-    ]
-  },
-  {
-    label: 'Administration & Security',
-    items: [
-      { label: 'Approvals', to: '/approvals', icon: ClipboardCheck },
-      { label: 'Users & Roles', to: '/admin/users', icon: Users },
-      { label: 'HR Management', to: '/hr', icon: Briefcase },
-      { label: 'Reports & Analytics', to: '/reports', icon: BarChart3 },
-      { label: 'Notifications', to: '/notifications', icon: Bell },
-      { label: 'Security & Audit Logs', to: '/audit-logs', icon: ShieldCheck },
-      { label: 'System Settings', to: '/settings', icon: SettingsIcon },
-    ]
-  }
-];
-
-import { useUser, useAuth } from '../hooks/use-user';
+import { useUser, useAuth, usePermissions } from '../hooks/use-user';
 
 function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick?: () => void }) {
   const isActive = (path: string) => pathname === path;
   const user = useUser();
   const { logout } = useAuth();
+  const { hasPermission } = usePermissions();
+
+  const navItemsWithPermissions: (NavItem & { permission?: string })[] = [
+    { label: 'Command Center', to: '/', icon: LayoutDashboard },
+    { label: 'Patient Management', to: '/patients', icon: Users, permission: 'patient.view' },
+    { label: 'Appointment & Queue', to: '/queue', icon: ListOrdered, permission: 'queue.view' },
+    { label: 'EMR / Records', to: '/emr', icon: ClipboardList, permission: 'patient.view' },
+    { label: 'Laboratory / LIS', to: '/lab/results', icon: FlaskConical, permission: 'lab.result.view' },
+    { label: 'Radiology', to: '/radiology', icon: CheckSquare, permission: 'lab.result.view' },
+    { label: 'Pharmacy', to: '/pharmacy', icon: Pill, permission: 'inventory.stock.dispense' },
+    { label: 'Billing & Cashier', to: '/billing', icon: CreditCard, permission: 'billing.invoice.view' },
+    { label: 'Inventory & Procurement', to: '/inventory', icon: Package, permission: 'inventory.item.view' },
+    { label: 'Products & Services', to: '/orders/new', icon: PlusCircle, permission: 'order.create' },
+    { label: 'Approvals', to: '/approvals', icon: ClipboardCheck, permission: 'approval.request.view' },
+    { label: 'Users & Roles', to: '/admin/users', icon: Users, permission: 'admin.role.change' },
+    { label: 'HR Management', to: '/hr', icon: Briefcase }, // Deferred
+    { label: 'Reports & Analytics', to: '/reports', icon: BarChart3, permission: 'report.export' },
+    { label: 'Notifications', to: '/notifications', icon: Bell },
+    { label: 'Security & Audit Logs', to: '/audit-logs', icon: ShieldCheck, permission: 'audit.view' },
+    { label: 'System Settings', to: '/settings', icon: SettingsIcon, permission: 'admin.role.change' },
+  ];
+
+  const groups: { label: string; items: typeof navItemsWithPermissions }[] = [
+    {
+      label: 'Dashboard & Core',
+      items: navItemsWithPermissions.slice(0, 3),
+    },
+    {
+      label: 'Clinical Modules',
+      items: navItemsWithPermissions.slice(3, 7),
+    },
+    {
+      label: 'Finance & Supply',
+      items: navItemsWithPermissions.slice(7, 10),
+    },
+    {
+      label: 'Administration & Security',
+      items: navItemsWithPermissions.slice(10),
+    },
+  ];
 
   return (
     <>
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
-        {navigation.map((group) => (
+        {groups.map((group) => (
           <div key={group.label}>
             <h3 className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-2">
               {group.label}
             </h3>
             <div className="space-y-0.5">
               {group.items.map((item) => {
+                if (item.permission && !hasPermission(item.permission)) return null;
                 const Icon = item.icon;
                 const active = isActive(item.to);
                 return (

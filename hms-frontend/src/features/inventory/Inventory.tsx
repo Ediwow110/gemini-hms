@@ -40,7 +40,7 @@ export const Inventory = () => {
     <div className="space-y-6 pb-12 animate-fade-in">
       <div className="flex justify-between items-center">
         <PageHeader title="Inventory & Stock" description="Monitor stock levels, batches, and movements." />
-        <RequirePermission permission="inventory.stock.receive">
+        <RequirePermission permission="inventory.adjust.request">
           <button onClick={() => navigate('/inventory/receiving')} className="btn btn-primary flex items-center gap-2 px-5 py-2.5">
             <PlusCircle className="h-4 w-4" />
             Receive Stock

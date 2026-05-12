@@ -8,18 +8,21 @@ interface UserState {
   tenantId: string;
   branchId?: string;
   roles: string[];
+  permissions: string[];
 }
 
 interface AuthContextType {
   user: UserState | null;
   isLoading: boolean;
   logout: () => void;
+  refetchUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({ 
   user: null,
   isLoading: true,
   logout: () => {},
+  refetchUser: async () => {},
 });
 
 export const useUser = () => {
@@ -31,17 +34,13 @@ export const useAuth = () => useContext(AuthContext);
 
 export const usePermissions = () => {
   const user = useUser();
-  const roles = user?.roles || [];
+  const permissions = user?.permissions || [];
   
-  // In a real app, permissions would be in the token or fetched
-  // For this prototype, we derive some from roles for UI visibility
-  const hasRole = (role: string) => roles.includes(role);
-  const isSuperAdmin = roles.includes('Super Admin');
-  const isBranchAdmin = roles.includes('Branch Admin');
-  // TODO: hasPermission currently aliases role checks for UI visibility compatibility.
-  // Real granular permission mapping is pending and will be integrated once backend RBAC is expanded.
-  // DO NOT rely on this for security; the backend remains the source of truth for authorization.
-  const hasPermission = (permission: string) => hasRole(permission);
+  // Real granular permission check
+  const hasPermission = (permission: string) => permissions.includes(permission);
+  const hasRole = (role: string) => user?.roles.includes(role) || false;
+  const isSuperAdmin = hasRole('Super Admin');
+  const isBranchAdmin = hasRole('Branch Admin');
 
   return { hasRole, hasPermission, isSuperAdmin, isBranchAdmin };
 };
@@ -50,8 +49,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<UserState | null>(() => {
     try {
       const storedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('token');
-      if (storedUser && token) {
+      if (storedUser) {
         return JSON.parse(storedUser);
       }
     } catch {
@@ -59,7 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     return null;
   });
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
@@ -68,7 +66,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     window.location.assign('/login');
   }, []);
 
+  const fetchUser = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/v1/auth/me');
+      setUser(response.data);
+      localStorage.setItem('user', JSON.stringify(response.data));
+    } catch (error) {
+      console.error('Failed to fetch user', error);
+      logout();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [logout]);
+
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchUser();
+    } else {
+      setIsLoading(false);
+    }
+
     // Set up interceptor for 401s
     const interceptor = apiClient.interceptors.response.use(
       (response) => response,
@@ -81,10 +99,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     return () => apiClient.interceptors.response.eject(interceptor);
-  }, [logout]);
+  }, [logout, fetchUser]);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, logout, refetchUser: fetchUser }}>
       {children}
     </AuthContext.Provider>
   );

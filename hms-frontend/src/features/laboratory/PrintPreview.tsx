@@ -21,7 +21,7 @@ export const PrintPreview = () => {
           <p className="text-sm text-slate-500 mt-1">Review the final document before generating PDF or sending to printer.</p>
         </div>
         <div className="flex gap-3">
-          <RequirePermission permission="lab.result.amend">
+          <RequirePermission permission="lab.result.amend.request">
             <button onClick={() => setShowAmendModal(true)} className="btn btn-danger flex items-center gap-2 bg-rose-50 text-rose-700 hover:bg-rose-100 border-none shadow-sm">
               <FileWarning className="h-4 w-4" />
               Amend Result

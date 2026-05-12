@@ -85,7 +85,7 @@ export class LabController {
   }
 
   @Post('results/:id/amend')
-  @RequirePermissions('lab.result.amend')
+  @RequirePermissions('lab.result.amend.request')
   @RequireBranchContext()
   amend(
     @GetUser('tenantId') tenantId: string,

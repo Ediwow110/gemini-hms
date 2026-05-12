@@ -60,6 +60,12 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async getMe(@GetUser() user: RequestUser) {
+    return this.authService.getMe(user.userId!, user.tenantId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('branches')
   async getMyBranches(@GetUser() user: RequestUser) {
     return this.authService.getUserBranches(user.userId!, user.tenantId);

@@ -15,6 +15,7 @@ describe('AuthController', () => {
       login: jest.fn(),
       selectBranch: jest.fn(),
       getUserBranches: jest.fn(),
+      getMe: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -104,8 +105,34 @@ describe('AuthController', () => {
       const result = await controller.getMyBranches(mockUser);
 
       expect(result).toBe(mockBranches);
+
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(authService.getUserBranches).toHaveBeenCalledWith(
+        mockUser.userId,
+        mockUser.tenantId,
+      );
+    });
+  });
+
+  describe('getMe', () => {
+    it('should return user profile', async () => {
+      const mockUser: RequestUser = {
+        userId: 'user-123',
+        tenantId: 'tenant-456',
+        roles: ['Admin'],
+      };
+      const mockProfile = {
+        userId: 'user-123',
+        roles: ['Admin'],
+        permissions: [],
+      };
+      authService.getMe.mockResolvedValue(mockProfile as any);
+
+      const result = await controller.getMe(mockUser);
+
+      expect(result).toBe(mockProfile);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(authService.getMe).toHaveBeenCalledWith(
         mockUser.userId,
         mockUser.tenantId,
       );

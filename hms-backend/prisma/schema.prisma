@@ -172,9 +172,10 @@ model Invoice {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  order    Order     @relation(fields: [orderId], references: [id])
-  payments Payment[]
-  claims   Claim[]
+  order      Order             @relation(fields: [orderId], references: [id])
+  payments   Payment[]
+  reversals  PaymentReversal[]
+  claims     Claim[]
 
   @@map("invoices")
 }
@@ -190,8 +191,9 @@ model Payment {
   idempotencyKey   String   @unique @map("idempotency_key")
   createdAt        DateTime @default(now()) @map("created_at")
 
-  invoice        Invoice        @relation(fields: [invoiceId], references: [id])
-  cashierSession CashierSession @relation(fields: [cashierSessionId], references: [id])
+  invoice        Invoice            @relation(fields: [invoiceId], references: [id])
+  cashierSession CashierSession     @relation(fields: [cashierSessionId], references: [id])
+  reversals      PaymentReversal[]
 
   @@map("payments")
 }
@@ -461,6 +463,39 @@ model Claim {
 
 // --- MODULE: FOUNDATION & SECURITY ---
 
+model PaymentReversal {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  branchId          String   @map("branch_id") @db.Uuid
+  paymentId         String   @map("payment_id") @db.Uuid
+  invoiceId         String   @map("invoice_id") @db.Uuid
+  approvalRequestId String   @unique @map("approval_request_id") @db.Uuid
+  amount            Decimal  @db.Decimal(12, 2)
+  type              String // REFUND, PAYMENT_VOID
+  status            String   @default("PENDING") // PENDING, APPLIED, REJECTED, CANCELLED
+  reason            String
+  requestedBy       String   @map("requested_by") @db.Uuid
+  approvedBy        String?  @map("approved_by") @db.Uuid
+  appliedBy         String?  @map("applied_by") @db.Uuid
+  requestedAt       DateTime @default(now()) @map("requested_at")
+  approvedAt        DateTime? @map("approved_at")
+  appliedAt         DateTime? @map("applied_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  payment         Payment         @relation(fields: [paymentId], references: [id])
+  invoice         Invoice         @relation(fields: [invoiceId], references: [id])
+  approvalRequest ApprovalRequest @relation(fields: [approvalRequestId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([paymentId])
+  @@index([invoiceId])
+  @@index([status])
+  @@index([type])
+  @@map("payment_reversals")
+}
+
 model Permission {
   id       String  @id @default(uuid()) @db.Uuid
   tenantId String  @map("tenant_id") @db.Uuid
@@ -493,13 +528,15 @@ model ApprovalRequest {
   type        String // e.g. REFUND, ROLE_CHANGE, RESULT_AMENDMENT
   riskLevel   String // LOW, MEDIUM, HIGH, CRITICAL
   recordId    String   @map("record_id")
-  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, APPLIED
   reason      String?
   remarks     String?
+  details     Json?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant            Tenant            @relation(fields: [tenantId], references: [id])
+  paymentReversals  PaymentReversal[]
 
   @@map("approval_requests")
 }

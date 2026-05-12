@@ -50,12 +50,19 @@ async function main() {
     { name: 'billing.refund.request', scope: 'tenant/branch' },
     { name: 'billing.refund.approve', scope: 'tenant/branch' },
     { name: 'billing.payment.void.request', scope: 'tenant/branch' },
+    { name: 'billing.claim.view', scope: 'tenant/branch' },
+    { name: 'billing.claim.create', scope: 'tenant/branch' },
+    { name: 'billing.claim.process', scope: 'tenant/branch' },
     { name: 'lab.result.encode', scope: 'tenant/branch/department' },
     { name: 'lab.result.validate', scope: 'tenant/branch/department' },
     { name: 'lab.result.approve', scope: 'tenant/branch/department' },
     { name: 'lab.result.release', scope: 'tenant/branch/department' },
     { name: 'lab.result.view', scope: 'tenant/branch/department' },
     { name: 'lab.result.amend.request', scope: 'tenant/branch' },
+    { name: 'inventory.item.view', scope: 'tenant/branch' },
+    { name: 'inventory.item.create', scope: 'tenant/branch' },
+    { name: 'inventory.stock.receive', scope: 'tenant/branch' },
+    { name: 'inventory.stock.dispense', scope: 'tenant/branch' },
     { name: 'inventory.adjust.request', scope: 'tenant/branch' },
     { name: 'inventory.adjust.approve', scope: 'tenant/branch' },
     { name: 'report.export', scope: 'tenant/branch/role scope' },
@@ -64,6 +71,9 @@ async function main() {
     { name: 'approval.request.create', scope: 'tenant/branch' },
     { name: 'approval.request.view', scope: 'tenant/branch' },
     { name: 'approval.request.process', scope: 'tenant/branch' },
+    { name: 'billing.reversal.apply', scope: 'tenant/branch' },
+    { name: 'queue.view', scope: 'tenant/branch' },
+    { name: 'queue.manage', scope: 'tenant/branch' },
   ];
 
   console.log('Seeding Permissions...');
@@ -169,19 +179,32 @@ async function main() {
 
   const rolePermissionMap: Record<string, string[]> = {
     'Super Admin': permissionsData.map(p => p.name), // Has everything
+    'Branch Admin': [
+      'patient.view', 'patient.create', 'patient.update', 
+      'order.view', 'order.create', 'order.cancel',
+      'billing.invoice.view', 'billing.claim.view', 'billing.claim.create',
+      'inventory.item.view', 'inventory.item.create', 'inventory.stock.receive', 'inventory.stock.dispense',
+      'queue.view', 'queue.manage', 
+      'approval.request.view', 'approval.request.process',
+      'report.export', 'audit.view'
+    ],
     'Receptionist': [
       'patient.view', 'patient.create', 'patient.update', 
-      'order.create', 'order.view'
+      'order.create', 'order.view',
+      'queue.view', 'queue.manage'
     ],
     'Cashier': [
       'patient.view', 'order.view', 'billing.invoice.view', 
-      'billing.payment.create', 'billing.refund.request'
+      'billing.payment.create', 'billing.refund.request',
+      'billing.claim.view'
     ],
     'Med-Tech': [
-      'patient.view', 'lab.result.view', 'lab.result.encode'
+      'patient.view', 'lab.result.view', 'lab.result.encode',
+      'inventory.item.view'
     ],
     'Doctor': [
-      'patient.view', 'lab.result.view', 'lab.result.approve', 'lab.result.release'
+      'patient.view', 'lab.result.view', 'lab.result.approve', 'lab.result.release',
+      'inventory.item.view'
     ]
   };
 

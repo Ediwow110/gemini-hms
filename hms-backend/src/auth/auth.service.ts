@@ -121,6 +121,82 @@ export class AuthService {
     return assignments.map((a) => a.branch);
   }
 
+  async getUserPermissions(
+    userId: string,
+    tenantId: string,
+  ): Promise<string[]> {
+    const userRoles = await this.prisma.userRole.findMany({
+      where: {
+        userId: userId,
+        role: { tenantId: tenantId },
+      },
+      include: {
+        role: {
+          include: {
+            rolePermissions: {
+              include: { permission: true },
+            },
+          },
+        },
+      },
+    });
+
+    const userPermissions = new Set<string>();
+
+    for (const ur of userRoles) {
+      if (ur.role && ur.role.rolePermissions) {
+        for (const rp of ur.role.rolePermissions) {
+          if (rp.permission && rp.permission.name) {
+            userPermissions.add(rp.permission.name);
+          }
+        }
+      }
+    }
+    return Array.from(userPermissions);
+  }
+
+  async getMe(userId: string, tenantId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        userRoles: {
+          include: { role: true },
+        },
+      },
+    });
+
+    if (!user) return null;
+
+    const roles: string[] = user.userRoles.map(
+      (ur: any) => ur.role.name as string,
+    );
+
+    const permissions = await this.getUserPermissions(userId, tenantId);
+
+    // Resolve active branch
+    const activeBranches = await this.prisma.userBranch.findMany({
+      where: {
+        userId,
+        tenantId,
+        isActive: true,
+      },
+      select: {
+        branchId: true,
+      },
+    });
+    const branchId =
+      activeBranches.length === 1 ? activeBranches[0].branchId : undefined;
+
+    return {
+      userId: user.id,
+      email: user.email,
+      tenantId: user.tenantId,
+      branchId,
+      roles,
+      permissions,
+    };
+  }
+
   private generateTokenResponse(user: any, roles: string[], branchId?: string) {
     // Inject required fields into the JWT payload (CRITICAL for Section 7 Tenant Isolation)
     const payload = {
