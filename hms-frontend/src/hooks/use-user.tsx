@@ -80,13 +80,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [logout]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchUser();
-    } else {
-      setIsLoading(false);
-    }
+    let mounted = true;
+
+    const bootstrapAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await apiClient.get('/v1/auth/me');
+          if (mounted) {
+            setUser(response.data);
+            localStorage.setItem('user', JSON.stringify(response.data));
+          }
+        } catch (error) {
+          console.error('Failed to fetch user', error);
+          if (mounted) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+            window.location.assign('/login');
+          }
+        } finally {
+          if (mounted) {
+            setIsLoading(false);
+          }
+        }
+      } else {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void bootstrapAuth();
 
     // Set up interceptor for 401s
     const interceptor = apiClient.interceptors.response.use(
@@ -99,8 +124,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    return () => apiClient.interceptors.response.eject(interceptor);
-  }, [logout, fetchUser]);
+    return () => {
+      mounted = false;
+      apiClient.interceptors.response.eject(interceptor);
+    };
+  }, [logout]);
 
   return (
     <AuthContext.Provider value={{ user, isLoading, logout, refetchUser: fetchUser }}>
