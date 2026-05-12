@@ -13,9 +13,8 @@ describe('ReportsService', () => {
     prisma = {
       $transaction: jest.fn().mockImplementation((cb) => cb(prisma)),
       paymentReversal: { count: jest.fn() },
-      auditLog: { create: jest.fn() },
+      auditLog: { count: jest.fn() },
       reportExport: { create: jest.fn() },
-      auditLog_count: jest.fn(),
     };
     audit = { log: jest.fn() };
 
@@ -56,5 +55,37 @@ describe('ReportsService', () => {
       expect.anything(),
       'branch',
     );
+  });
+
+  it('scopes audit events export count to branch when branchId is set', async () => {
+    prisma.auditLog.count.mockResolvedValue(3);
+    prisma.reportExport.create.mockResolvedValue({ id: 'export-audit' });
+
+    await service.createExport('tenant', 'branch-b', 'user', {
+      reportType: 'AUDIT_EVENTS_SUMMARY',
+      filters: {},
+      reason: 'audit review',
+    });
+
+    expect(prisma.auditLog.count).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant', branchId: 'branch-b' },
+    });
+    expect(prisma.reportExport.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ rowCount: 3 }),
+      }),
+    );
+  });
+
+  it('rejects filter.branchId conflicting with authenticated branch context', async () => {
+    await expect(
+      service.createExport('tenant', 'branch-b', 'user', {
+        reportType: 'CASHIER_REVERSAL_RECONCILIATION',
+        filters: { branchId: 'other-branch' },
+        reason: 'no',
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.paymentReversal.count).not.toHaveBeenCalled();
   });
 });
