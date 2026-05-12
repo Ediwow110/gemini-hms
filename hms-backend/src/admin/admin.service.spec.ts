@@ -145,6 +145,31 @@ describe('AdminService', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
+  it('deactivate rejects target with no active branch for branch-scoped actor', async () => {
+    prisma.user.findFirst.mockResolvedValue(
+      makeUser({ userBranches: [{ branchId: 'branch-id', isActive: false }] }),
+    );
+
+    await expect(
+      service.deactivateUser(branchActor, 'target-id', 'valid reason'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('deactivate rejects target with multiple active branches for branch-scoped actor', async () => {
+    prisma.user.findFirst.mockResolvedValue(
+      makeUser({
+        userBranches: [
+          { branchId: 'branch-id', isActive: true },
+          { branchId: 'other-branch', isActive: true },
+        ],
+      }),
+    );
+
+    await expect(
+      service.deactivateUser(branchActor, 'target-id', 'valid reason'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
   it('activate rejects other branch target for branch-scoped actor', async () => {
     prisma.user.findFirst.mockResolvedValue(
       makeUser({
@@ -224,6 +249,44 @@ describe('AdminService', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
+  it('deactivate treats inactive roles with admin.role.change as privileged', async () => {
+    prisma.user.findFirst.mockResolvedValue(
+      makeUser({
+        userRoles: [
+          {
+            userId: 'target-id',
+            roleId: 'inactive-admin-role-id',
+            role: {
+              id: 'inactive-admin-role-id',
+              tenantId: 'tenant-id',
+              name: 'Dormant Admin',
+              status: 'INACTIVE',
+              isSystem: false,
+              archivedAt: new Date('2026-01-01T00:00:00.000Z'),
+              archivedReason: 'archived',
+              rolePermissions: [
+                {
+                  roleId: 'inactive-admin-role-id',
+                  permissionId: 'admin-permission-id',
+                  permission: {
+                    id: 'admin-permission-id',
+                    tenantId: 'tenant-id',
+                    name: 'admin.role.change',
+                    scope: 'tenant/system',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      service.deactivateUser(actor, 'target-id', 'valid reason'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
   it('deactivate active user updates status, increments tokenVersion, and audits', async () => {
     const target = makeUser();
     const updated = makeUser({
@@ -259,7 +322,25 @@ describe('AdminService', () => {
       }),
     );
     expect(audit.log).toHaveBeenCalledWith(
-      expect.objectContaining({ eventKey: 'USER_DEACTIVATED' }),
+      expect.objectContaining({
+        eventKey: 'USER_DEACTIVATED',
+        oldValues: {
+          before: expect.objectContaining({
+            status: 'ACTIVE',
+            tokenVersion: 1,
+          }),
+        },
+        newValues: expect.objectContaining({
+          actorId: 'actor-id',
+          targetUserId: 'target-id',
+          reason: 'valid reason',
+          changedAt: expect.any(String),
+          after: expect.objectContaining({
+            status: 'INACTIVE',
+            tokenVersion: 2,
+          }),
+        }),
+      }),
       prisma,
       'branch-id',
     );
@@ -272,6 +353,51 @@ describe('AdminService', () => {
       tokenVersion: 2,
     });
     expect(result).not.toHaveProperty('passwordHash');
+  });
+
+  it('branch-scoped actor can deactivate a target with exactly one matching active branch', async () => {
+    const target = makeUser();
+    const updated = makeUser({
+      status: 'INACTIVE',
+      deactivatedAt: new Date('2026-02-01T00:00:00.000Z'),
+      deactivatedReason: 'valid reason',
+      tokenVersion: 2,
+    });
+    prisma.user.findFirst
+      .mockResolvedValueOnce(target)
+      .mockResolvedValueOnce(updated);
+    prisma.user.updateMany.mockResolvedValue({ count: 1 });
+
+    await service.deactivateUser(branchActor, 'target-id', 'valid reason');
+
+    expect(prisma.user.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userBranches: {
+            some: { branchId: 'branch-id', isActive: true },
+          },
+          NOT: {
+            userBranches: {
+              some: {
+                isActive: true,
+                branchId: { not: 'branch-id' },
+              },
+            },
+          },
+        }),
+      }),
+    );
+  });
+
+  it('deactivate updateMany count zero fails closed without audit', async () => {
+    prisma.user.findFirst.mockResolvedValue(makeUser());
+    prisma.user.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.deactivateUser(actor, 'target-id', 'valid reason'),
+    ).rejects.toThrow(ConflictException);
+
+    expect(audit.log).not.toHaveBeenCalled();
   });
 
   it('deactivate inactive user is rejected', async () => {
@@ -334,7 +460,25 @@ describe('AdminService', () => {
       }),
     );
     expect(audit.log).toHaveBeenCalledWith(
-      expect.objectContaining({ eventKey: 'USER_ACTIVATED' }),
+      expect.objectContaining({
+        eventKey: 'USER_ACTIVATED',
+        oldValues: {
+          before: expect.objectContaining({
+            status: 'INACTIVE',
+            tokenVersion: 4,
+          }),
+        },
+        newValues: expect.objectContaining({
+          actorId: 'actor-id',
+          targetUserId: 'target-id',
+          reason: 'valid reason',
+          changedAt: expect.any(String),
+          after: expect.objectContaining({
+            status: 'ACTIVE',
+            tokenVersion: 5,
+          }),
+        }),
+      }),
       prisma,
       'branch-id',
     );
@@ -345,6 +489,22 @@ describe('AdminService', () => {
       deactivatedAt: null,
     });
     expect(result).not.toHaveProperty('passwordHash');
+  });
+
+  it('activate updateMany count zero fails closed without audit', async () => {
+    prisma.user.findFirst.mockResolvedValue(
+      makeUser({
+        status: 'INACTIVE',
+        deactivatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      }),
+    );
+    prisma.user.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.activateUser(actor, 'target-id', 'valid reason'),
+    ).rejects.toThrow(ConflictException);
+
+    expect(audit.log).not.toHaveBeenCalled();
   });
 
   it('old JWT tokenVersion is rejected after lifecycle tokenVersion increment', async () => {

@@ -63,12 +63,14 @@ export class AdminService {
       }
 
       const deactivatedAt = new Date();
+      const changedAt = new Date();
       const updateResult = await tx.user.updateMany({
         where: {
           id: targetUserId,
           tenantId: actor.tenantId,
           status: USER_STATUS_ACTIVE,
           deactivatedAt: null,
+          ...this.getBranchMutationScope(actor),
         },
         data: {
           status: USER_STATUS_INACTIVE,
@@ -96,11 +98,14 @@ export class AdminService {
           eventKey: 'USER_DEACTIVATED',
           recordType: 'User',
           recordId: targetUserId,
-          oldValues: this.sanitizeAuditUser(target),
-          newValues: {
-            ...this.sanitizeAuditUser(updated),
-            reason: trimmedReason,
-          },
+          oldValues: this.buildAuditOldValues(target),
+          newValues: this.buildAuditNewValues(
+            actor,
+            targetUserId,
+            updated,
+            trimmedReason,
+            changedAt,
+          ),
         },
         tx,
         branchId,
@@ -130,6 +135,7 @@ export class AdminService {
         where: {
           id: targetUserId,
           tenantId: actor.tenantId,
+          ...this.getBranchMutationScope(actor),
           OR: [
             { status: { not: USER_STATUS_ACTIVE } },
             { deactivatedAt: { not: null } },
@@ -147,6 +153,7 @@ export class AdminService {
         throw new ConflictException('User status changed before activation');
       }
 
+      const changedAt = new Date();
       const updated = await this.getUpdatedUser(
         tx,
         actor.tenantId,
@@ -161,11 +168,14 @@ export class AdminService {
           eventKey: 'USER_ACTIVATED',
           recordType: 'User',
           recordId: targetUserId,
-          oldValues: this.sanitizeAuditUser(target),
-          newValues: {
-            ...this.sanitizeAuditUser(updated),
-            reason: trimmedReason,
-          },
+          oldValues: this.buildAuditOldValues(target),
+          newValues: this.buildAuditNewValues(
+            actor,
+            targetUserId,
+            updated,
+            trimmedReason,
+            changedAt,
+          ),
         },
         tx,
         branchId,
@@ -272,6 +282,7 @@ export class AdminService {
 
   private assertNonPrivilegedTarget(target: AdminUserTarget) {
     const hasPrivilegedRole = target.userRoles.some(({ role }) => {
+      // Inactive or archived roles are still treated as privileged until a maker-checker flow exists.
       if (role.name === 'Super Admin') {
         return true;
       }
@@ -310,6 +321,30 @@ export class AdminService {
     return actor.branchId ?? this.getSingleBranchId(target);
   }
 
+  private getBranchMutationScope(actor: RequestUser): Prisma.UserWhereInput {
+    if (this.isSuperAdmin(actor)) {
+      return {};
+    }
+
+    if (!actor.branchId) {
+      throw new ForbiddenException('Branch context is required');
+    }
+
+    return {
+      userBranches: {
+        some: { branchId: actor.branchId, isActive: true },
+      },
+      NOT: {
+        userBranches: {
+          some: {
+            isActive: true,
+            branchId: { not: actor.branchId },
+          },
+        },
+      },
+    };
+  }
+
   private toLifecycleResponse(
     user: AdminUserTarget,
     branchSource: AdminUserTarget,
@@ -322,6 +357,28 @@ export class AdminService {
       status: user.status,
       tokenVersion: user.tokenVersion,
       deactivatedAt: user.deactivatedAt,
+    };
+  }
+
+  private buildAuditOldValues(user: AdminUserTarget) {
+    return {
+      before: this.sanitizeAuditUser(user),
+    };
+  }
+
+  private buildAuditNewValues(
+    actor: RequestUser,
+    targetUserId: string,
+    user: AdminUserTarget,
+    reason: string,
+    changedAt: Date,
+  ) {
+    return {
+      actorId: actor.userId,
+      targetUserId,
+      reason,
+      changedAt: changedAt.toISOString(),
+      after: this.sanitizeAuditUser(user),
     };
   }
 

@@ -40,6 +40,8 @@ Implemented backend slice:
 
 This slice directly processes only non-privileged users. Targets with `Super Admin` or any role carrying `admin.role.change` remain blocked until maker-checker processing for privileged admin lifecycle changes is implemented.
 
+Inactive or archived roles that still carry `admin.role.change` are treated as privileged for lifecycle protection until role archival semantics are fully governed.
+
 ## Required permission
 Every mutation in this document requires:
 - `admin.role.change`
@@ -86,6 +88,7 @@ Read-only admin discovery endpoints may later use a separate permission, but tha
 - Branch scope does **not** come from `PermissionsGuard`.
 - Branch scope must be enforced explicitly in each admin domain service.
 - A branch-bound admin may only manage users whose active branch assignments are fully visible to that admin's allowed branch context.
+- The implemented direct lifecycle slice requires exactly one active target-user branch assignment and that branch must match the authenticated actor branch; no-branch and multi-branch targets are rejected for branch-bound actors.
 - A branch-bound admin may only assign or revoke roles for users within the same allowed branch context.
 - If an approval request is branch-scoped, its `details.branchId` must match the authenticated branch at process time. This matches the existing `ApprovalsService` pattern.
 
@@ -305,6 +308,8 @@ Current implemented user lifecycle slice uses:
 - `USER_DEACTIVATED`
 - `USER_ACTIVATED`
 
+For these events, `oldValues.before` and `newValues.after` include sanitized user lifecycle metadata, including `status`, `tokenVersion`, deactivation fields, and branch context. `newValues` also includes `actorId`, `targetUserId`, `reason`, and `changedAt`.
+
 ### Audit payload contract
 Current `AuditLog` schema stores:
 - `tenantId`
@@ -340,6 +345,8 @@ These must be wrapped in a single transaction containing:
 - scoped read/verification if needed
 - mutation write(s)
 - audit log creation
+
+The implemented direct user lifecycle slice also repeats tenant and branch scope in the guarded `updateMany` predicate so branch visibility changes fail closed between pre-read and mutation.
 
 ### Approval-backed mutations
 Request creation transaction must include:
