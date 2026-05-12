@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { HrService } from './hr.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -96,7 +97,7 @@ describe('HrService', () => {
         superAdminUser,
       );
 
-      expect((prisma.employee.create as jest.Mock).mock.calls[0][0]).toEqual(
+      expect(prisma.employee.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             employeeBranches: {
@@ -128,7 +129,7 @@ describe('HrService', () => {
         branchAdminUser,
       );
 
-      expect((prisma.employee.create as jest.Mock).mock.calls.length).toBe(1);
+      expect(prisma.employee.create).toHaveBeenCalled();
       expect(result.id).toBe('emp-1');
     });
 
@@ -191,7 +192,7 @@ describe('HrService', () => {
         superAdminUser,
       );
 
-      expect((prisma.payslip.create as jest.Mock).mock.calls[0][0]).toEqual(
+      expect(prisma.payslip.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ branchId: mockBranchId }),
         }),
@@ -251,7 +252,7 @@ describe('HrService', () => {
 
       const result = await service.getEmployees(mockTenantId, superAdminUser);
 
-      expect((prisma.employee.findMany as jest.Mock).mock.calls[0][0]).toEqual(
+      expect(prisma.employee.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { tenantId: mockTenantId } }),
       );
       expect(result.length).toBe(2);
@@ -264,7 +265,7 @@ describe('HrService', () => {
 
       const result = await service.getEmployees(mockTenantId, branchAdminUser);
 
-      expect((prisma.employee.findMany as jest.Mock).mock.calls[0][0]).toEqual(
+      expect(prisma.employee.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             employeeBranches: {
