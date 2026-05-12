@@ -24,9 +24,13 @@ export class BranchGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<any>();
     const user = request.user;
 
-    // Fails closed if req.user is missing (should be handled by JwtAuthGuard normally)
     if (!user) {
-      throw new ForbiddenException('Authenticated user context required');
+      throw new ForbiddenException('Access denied');
+    }
+
+    // Fails closed if req.user.branchId is missing (branch selection required)
+    if (!user.branchId) {
+      throw new ForbiddenException('Access denied');
     }
 
     // Fails closed if req.user.branchId is missing (branch selection required)
@@ -36,13 +40,22 @@ export class BranchGuard implements CanActivate {
       );
     }
 
+    // Validate route param branchId if present
+    if (
+      request.params &&
+      request.params.branchId &&
+      request.params.branchId !== user.branchId
+    ) {
+      throw new ForbiddenException('Access denied');
+    }
+
     // Validate request.body.branchId if it exists
     if (
       request.body &&
       request.body.branchId &&
       request.body.branchId !== user.branchId
     ) {
-      throw new ForbiddenException('Branch context mismatch');
+      throw new ForbiddenException('Access denied');
     }
 
     // Validate request.query.branchId if it exists
@@ -51,7 +64,7 @@ export class BranchGuard implements CanActivate {
       request.query.branchId &&
       request.query.branchId !== user.branchId
     ) {
-      throw new ForbiddenException('Branch context mismatch');
+      throw new ForbiddenException('Access denied');
     }
 
     return true;

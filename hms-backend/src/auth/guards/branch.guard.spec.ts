@@ -28,6 +28,7 @@ describe('BranchGuard', () => {
     user?: any,
     body?: any,
     query?: any,
+    params?: any,
   ): ExecutionContext => {
     return {
       switchToHttp: () => ({
@@ -35,6 +36,7 @@ describe('BranchGuard', () => {
           user,
           body,
           query,
+          params,
         }),
       }),
       getHandler: jest.fn(),
@@ -100,13 +102,24 @@ describe('BranchGuard', () => {
       expect(guard.canActivate(context)).toBe(true);
     });
 
-    it('should deny when query.branchId mismatches req.user.branchId', () => {
+    it('should deny when params.branchId mismatches req.user.branchId', () => {
       const context = mockExecutionContext(
         { userId: 'u1', tenantId: 't1', branchId: 'b1' },
+        {},
         {},
         { branchId: 'mismatch' },
       );
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+    });
+
+    it('should allow when params.branchId matches req.user.branchId', () => {
+      const context = mockExecutionContext(
+        { userId: 'u1', tenantId: 't1', branchId: 'b1' },
+        {},
+        {},
+        { branchId: 'b1' },
+      );
+      expect(guard.canActivate(context)).toBe(true);
     });
   });
 });

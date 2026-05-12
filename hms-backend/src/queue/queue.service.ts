@@ -73,12 +73,20 @@ export class QueueService {
       throw new NotFoundException('Queue entry not found');
     }
 
-    const updated = await this.prisma.queueEntry.update({
-      where: { id },
+    const updateResult = await this.prisma.queueEntry.updateMany({
+      where: { id, tenantId, branchId },
       data: {
         status: dto.status,
         counterNumber: dto.counterNumber,
       },
+    });
+
+    if (updateResult.count === 0) {
+      throw new NotFoundException('Queue entry not found');
+    }
+
+    const updated = await this.prisma.queueEntry.findFirst({
+      where: { id, tenantId, branchId },
     });
 
     // Optional: Log calling/completion in audit

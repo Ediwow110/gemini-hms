@@ -47,6 +47,15 @@ export class NotificationDispatcherService {
   ): Promise<{ dispatched: number; failed: number }> {
     const pending = await this.prisma.notification.findMany({
       where: { tenantId, status: 'PENDING' },
+      select: {
+        id: true,
+        type: true,
+        recipient: true,
+        subject: true,
+        content: true,
+        attempts: true,
+        tenantId: true,
+      },
       orderBy: { createdAt: 'asc' },
       take: 100, // batch limit
     });
@@ -82,7 +91,7 @@ export class NotificationDispatcherService {
 
     // Reset to PENDING and dispatch
     const updated = await this.prisma.notification.update({
-      where: { id },
+      where: { id, tenantId },
       data: { status: 'PENDING' },
     });
 
@@ -96,6 +105,7 @@ export class NotificationDispatcherService {
     subject: string | null;
     content: string;
     attempts: number;
+    tenantId: string;
   }): Promise<boolean> {
     try {
       let result: { success: boolean; error?: string };
@@ -126,8 +136,8 @@ export class NotificationDispatcherService {
       }
 
       if (result.success) {
-        await this.prisma.notification.update({
-          where: { id: notification.id },
+        await this.prisma.notification.updateMany({
+          where: { id: notification.id, tenantId: notification.tenantId },
           data: {
             status: 'SENT',
             sentAt: new Date(),
@@ -137,8 +147,8 @@ export class NotificationDispatcherService {
         });
         return true;
       } else {
-        await this.prisma.notification.update({
-          where: { id: notification.id },
+        await this.prisma.notification.updateMany({
+          where: { id: notification.id, tenantId: notification.tenantId },
           data: {
             status: 'FAILED',
             attempts: notification.attempts + 1,
@@ -148,8 +158,8 @@ export class NotificationDispatcherService {
         return false;
       }
     } catch (error) {
-      await this.prisma.notification.update({
-        where: { id: notification.id },
+      await this.prisma.notification.updateMany({
+        where: { id: notification.id, tenantId: notification.tenantId },
         data: {
           status: 'FAILED',
           attempts: notification.attempts + 1,

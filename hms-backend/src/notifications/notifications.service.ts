@@ -80,10 +80,17 @@ export class NotificationsService {
     });
     if (!notification) throw new NotFoundException('Notification not found');
 
-    return this.prisma.notification.update({
-      where: { id },
+    const updateResult = await this.prisma.notification.updateMany({
+      where: { id, tenantId },
       data: { status: 'READ', readAt: new Date() },
     });
+
+    if (updateResult.count === 0) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    // Return the updated notification (optional, could refetch if needed)
+    return this.prisma.notification.findFirst({ where: { id, tenantId } });
   }
 
   async markAllAsRead(tenantId: string) {

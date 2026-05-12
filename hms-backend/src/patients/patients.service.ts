@@ -91,12 +91,21 @@ export class PatientsService {
   ) {
     const existing = await this.findOne(tenantId, id);
 
-    const updated = await this.prisma.patient.update({
-      where: { id },
+    const updateResult = await this.prisma.patient.updateMany({
+      where: { id, tenantId },
       data: {
         ...dto,
         dob: dto.dob ? new Date(dto.dob) : undefined,
       },
+    });
+
+    if (updateResult.count === 0) {
+      // No matching record for tenant & id => either not found or out of scope
+      throw new NotFoundException('Patient not found');
+    }
+
+    const updated = await this.prisma.patient.findFirst({
+      where: { id, tenantId },
     });
 
     // Log Audit Event (PATIENT_UPDATED)

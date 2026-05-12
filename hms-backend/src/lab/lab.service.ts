@@ -50,11 +50,17 @@ export class LabService {
       );
     }
 
-    const updated = await this.prisma.labResult.update({
-      where: { id },
-      data: {
-        status: 'ENCODED',
-      },
+        const updateResult = await this.prisma.labResult.updateMany({
+          where: { id, order: { tenantId, branchId } },
+          data: { status: 'ENCODED' },
+        });
+
+    if (updateResult.count === 0) {
+      throw new NotFoundException('Lab result not found');
+    }
+
+    const updated = await this.prisma.labResult.findFirst({
+      where: { id, order: { tenantId, branchId } },
     });
 
     await this.audit.log({
@@ -84,12 +90,17 @@ export class LabService {
       );
     }
 
-    const updated = await this.prisma.labResult.update({
-      where: { id },
-      data: {
-        status: 'APPROVED',
-        approvedById: userId,
-      },
+    const updateResult = await this.prisma.labResult.updateMany({
+      where: { id, order: { tenantId, branchId } },
+      data: { status: 'APPROVED', approvedById: userId },
+    });
+
+    if (updateResult.count === 0) {
+      throw new NotFoundException('Lab result not found');
+    }
+
+    const updated = await this.prisma.labResult.findFirst({
+      where: { id, order: { tenantId, branchId } },
     });
 
     await this.audit.log({
@@ -197,13 +208,18 @@ export class LabService {
 
     // Atomic Release Transaction (Section 13)
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.labResult.update({
-        where: { id },
-        data: {
-          status: 'RELEASED',
-          lockedAt: new Date(),
-        },
+      const updateResult = await tx.labResult.updateMany({
+        where: { id, order: { tenantId, branchId } },
+        data: { status: 'RELEASED', lockedAt: new Date() },
       });
+
+      if (updateResult.count === 0) {
+        throw new NotFoundException('Lab result not found');
+      }
+
+        const updated = (await tx.labResult.findFirst({
+          where: { id, order: { tenantId, branchId } },
+        }))!;
 
       await this.audit.log({
         tenantId,
@@ -211,7 +227,7 @@ export class LabService {
         eventKey: 'RESULT_RELEASED',
         recordType: 'LabResult',
         recordId: id,
-        newValues: { releasedAt: updated.lockedAt },
+          newValues: { releasedAt: updated.lockedAt! },
       });
 
       return updated;

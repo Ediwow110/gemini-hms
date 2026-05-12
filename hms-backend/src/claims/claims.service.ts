@@ -55,13 +55,21 @@ export class ClaimsService {
       throw new NotFoundException('Claim not found');
     }
 
-    const updated = await this.prisma.claim.update({
-      where: { id },
+    const updateResult = await this.prisma.claim.updateMany({
+      where: { id, tenantId },
       data: {
         status: dto.status,
         amountApproved: dto.amountApproved,
         remarks: dto.remarks,
       },
+    });
+
+    if (updateResult.count === 0) {
+      throw new NotFoundException('Claim not found');
+    }
+
+    const updated = await this.prisma.claim.findFirst({
+      where: { id, tenantId },
     });
 
     await this.audit.log({
