@@ -12,6 +12,8 @@ import {
   ProcessApprovalRequestDto,
 } from './dto/approval.dto';
 
+type ApprovalRequestDetailsInput = Prisma.ApprovalRequestCreateInput['details'];
+
 @Injectable()
 export class ApprovalsService {
   constructor(
@@ -19,14 +21,7 @@ export class ApprovalsService {
     private audit: AuditService,
   ) {}
 
-  private getRequestBranchId(
-    details:
-      | Prisma.JsonValue
-      | Prisma.InputJsonValue
-      | Prisma.NullableJsonNullValueInput
-      | null
-      | undefined,
-  ): string | undefined {
+  private getRequestBranchId(details: unknown): string | undefined {
     if (!details || typeof details !== 'object' || Array.isArray(details)) {
       return undefined;
     }
@@ -42,9 +37,7 @@ export class ApprovalsService {
   async createRequest(
     tenantId: string,
     userId: string,
-    dto: CreateApprovalRequestDto & {
-      details?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
-    },
+    dto: CreateApprovalRequestDto & { details?: ApprovalRequestDetailsInput },
     tx?: Prisma.TransactionClient,
   ) {
     const db = tx || this.prisma;

@@ -118,8 +118,12 @@ export class AuditService {
     const sanitizedData = data.map((item) => {
       const sanitized = { ...item };
       if (!isSuperAdmin) {
-        delete (sanitized as any).oldValues;
-        delete (sanitized as any).newValues;
+        const {
+          oldValues: _oldValues,
+          newValues: _newValues,
+          ...rest
+        } = sanitized;
+        return rest;
       }
       return sanitized;
     });
@@ -165,8 +169,12 @@ export class AuditService {
 
     const sanitized = { ...auditLog };
     if (!isSuperAdmin) {
-      delete (sanitized as any).oldValues;
-      delete (sanitized as any).newValues;
+      const {
+        oldValues: _oldValues,
+        newValues: _newValues,
+        ...rest
+      } = sanitized;
+      return rest;
     }
 
     return sanitized;
