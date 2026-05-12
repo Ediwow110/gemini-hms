@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuditService } from './audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 
 describe('AuditService', () => {
   let service: AuditService;
@@ -23,10 +22,7 @@ describe('AuditService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AuditService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [AuditService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<AuditService>(AuditService);
@@ -76,7 +72,9 @@ describe('AuditService', () => {
       prisma.auditLog.count.mockResolvedValue(10);
       prisma.auditLog.findMany.mockResolvedValue([]);
 
-      await service.findAll(mockTenantId, mockBranchId, ['Super Admin'], { pageSize: 500 } as any);
+      await service.findAll(mockTenantId, mockBranchId, ['Super Admin'], {
+        pageSize: 500,
+      });
 
       expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -88,7 +86,9 @@ describe('AuditService', () => {
 
   describe('findOne', () => {
     it('should throw NotFoundException for wrong tenant', async () => {
-      prisma.auditLog.findUnique.mockResolvedValue({ tenantId: 'other-tenant' });
+      prisma.auditLog.findUnique.mockResolvedValue({
+        tenantId: 'other-tenant',
+      });
 
       await expect(
         service.findOne(mockTenantId, mockBranchId, ['Super Admin'], 'log-id'),
@@ -96,9 +96,9 @@ describe('AuditService', () => {
     });
 
     it('should throw ForbiddenException for out-of-scope branch', async () => {
-      prisma.auditLog.findUnique.mockResolvedValue({ 
-        tenantId: mockTenantId, 
-        branchId: 'other-branch' 
+      prisma.auditLog.findUnique.mockResolvedValue({
+        tenantId: mockTenantId,
+        branchId: 'other-branch',
       });
 
       await expect(
@@ -107,19 +107,24 @@ describe('AuditService', () => {
     });
 
     it('should return sanitized data for non-admin', async () => {
-        prisma.auditLog.findUnique.mockResolvedValue({ 
-          id: 'log-id',
-          tenantId: mockTenantId, 
-          branchId: mockBranchId,
-          oldValues: { foo: 'bar' },
-          newValues: { foo: 'baz' }
-        });
-  
-        const result = await service.findOne(mockTenantId, mockBranchId, ['Branch Admin'], 'log-id');
-        
-        expect(result).not.toHaveProperty('oldValues');
-        expect(result).not.toHaveProperty('newValues');
+      prisma.auditLog.findUnique.mockResolvedValue({
+        id: 'log-id',
+        tenantId: mockTenantId,
+        branchId: mockBranchId,
+        oldValues: { foo: 'bar' },
+        newValues: { foo: 'baz' },
       });
+
+      const result = await service.findOne(
+        mockTenantId,
+        mockBranchId,
+        ['Branch Admin'],
+        'log-id',
+      );
+
+      expect(result).not.toHaveProperty('oldValues');
+      expect(result).not.toHaveProperty('newValues');
+    });
   });
 
   describe('log', () => {
@@ -132,7 +137,7 @@ describe('AuditService', () => {
         recordType: 'Payment',
         recordId: 'rec-uuid',
       };
-      
+
       await service.log(data, undefined, mockBranchId);
 
       expect(prisma.auditLog.create).toHaveBeenCalledWith(
