@@ -123,10 +123,13 @@ describe('AuthController', () => {
       };
       const mockProfile = {
         userId: 'user-123',
+        email: 'admin@test.com',
+        tenantId: 'tenant-456',
+        branchId: undefined,
         roles: ['Admin'],
         permissions: [],
       };
-      authService.getMe.mockResolvedValue(mockProfile as any);
+      authService.getMe.mockResolvedValue(mockProfile);
 
       const result = await controller.getMe(mockUser);
 

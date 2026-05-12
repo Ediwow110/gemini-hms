@@ -493,10 +493,10 @@ describe('BillingService Reversals', () => {
     it('should dispatch to applyRefund if type is REFUND', async () => {
       const spy = jest
         .spyOn(service, 'applyRefund')
-        .mockResolvedValue(null as any);
+        .mockResolvedValue(null as never);
       prisma.paymentReversal.findFirst.mockResolvedValue({
         type: 'REFUND',
-      } as any);
+      });
       await service.applyReversal('tenant', 'user', 'branch', 'rev-id');
       expect(spy).toHaveBeenCalledWith('tenant', 'user', 'branch', 'rev-id');
       spy.mockRestore();
@@ -505,10 +505,10 @@ describe('BillingService Reversals', () => {
     it('should dispatch to applyVoid if type is PAYMENT_VOID', async () => {
       const spy = jest
         .spyOn(service, 'applyVoid')
-        .mockResolvedValue(null as any);
+        .mockResolvedValue(null as never);
       prisma.paymentReversal.findFirst.mockResolvedValue({
         type: 'PAYMENT_VOID',
-      } as any);
+      });
       await service.applyReversal('tenant', 'user', 'branch', 'rev-id');
       expect(spy).toHaveBeenCalledWith('tenant', 'user', 'branch', 'rev-id');
       spy.mockRestore();
@@ -517,7 +517,7 @@ describe('BillingService Reversals', () => {
     it('should throw BadRequestException if type is unknown', async () => {
       prisma.paymentReversal.findFirst.mockResolvedValue({
         type: 'UNKNOWN',
-      } as any);
+      });
       await expect(
         service.applyReversal('tenant', 'user', 'branch', 'rev-id'),
       ).rejects.toThrow(BadRequestException);
