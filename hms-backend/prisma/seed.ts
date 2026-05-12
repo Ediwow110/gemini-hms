@@ -108,11 +108,13 @@ async function main() {
   for (const r of rolesData) {
     await prisma.role.upsert({
       where: { id: r.id },
-      update: {},
+      update: { status: 'ACTIVE', isSystem: true },
       create: {
         id: r.id,
         tenantId: tenant.id,
         name: r.name,
+        status: 'ACTIVE',
+        isSystem: true,
       },
     });
   }

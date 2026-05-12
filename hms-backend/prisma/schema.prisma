@@ -64,18 +64,22 @@ model Branch {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  tenantId     String   @map("tenant_id") @db.Uuid
-  email        String
-  passwordHash String   @map("password_hash")
-  isMfaEnabled Boolean  @default(false) @map("is_mfa_enabled")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid()) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  email               String
+  passwordHash        String    @map("password_hash")
+  isMfaEnabled        Boolean   @default(false) @map("is_mfa_enabled")
+  status              String    @default("ACTIVE")
+  deactivatedAt       DateTime? @map("deactivated_at")
+  deactivatedReason   String?   @map("deactivated_reason")
+  tokenVersion        Int       @default(0) @map("token_version")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  auditLogs    AuditLog[]
-  userRoles    UserRole[]
-  userBranches UserBranch[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  auditLogs     AuditLog[]
+  userRoles     UserRole[]
+  userBranches  UserBranch[]
   reportExports ReportExport[]
 
   @@unique([tenantId, email])
@@ -83,9 +87,13 @@ model User {
 }
 
 model Role {
-  id       String @id @default(uuid()) @db.Uuid
-  tenantId String @map("tenant_id") @db.Uuid
-  name     String
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  name           String
+  status         String    @default("ACTIVE")
+  isSystem       Boolean   @default(false) @map("is_system")
+  archivedAt     DateTime? @map("archived_at")
+  archivedReason String?   @map("archived_reason")
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id])
   userRoles       UserRole[]
