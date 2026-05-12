@@ -41,6 +41,7 @@ Implemented backend slice:
 - `POST /api/v1/admin/users/:id/roles/:roleId/revoke`
 
 This slice directly processes only non-privileged users. Targets with `Super Admin` or any role carrying `admin.role.change` remain blocked until maker-checker processing for privileged admin lifecycle changes is implemented.
+Direct role assignment and revocation also reject `isSystem` roles in the current implementation.
 
 Inactive or archived roles that still carry `admin.role.change` are treated as privileged for lifecycle protection until role archival semantics are fully governed.
 
@@ -149,6 +150,7 @@ These may execute directly with audit only, unless policy is later tightened:
 - user profile update limited to email and MFA flag
 - non-privileged user deactivation/reactivation with `admin.role.change`, tenant/branch scope enforcement, self-change block, audit, and `tokenVersion` invalidation
 - non-privileged user role assignment/revocation with `admin.role.change`, tenant/branch scope enforcement, self-change block, audit, and `tokenVersion` invalidation
+Current direct role slice also blocks `isSystem` roles until governed system-role policy is explicitly opened.
 
 If implementation chooses to require approval for user profile update too, that is allowed, but the code must follow this document consistently.
 
@@ -477,6 +479,7 @@ Required additions or explicit deferrals:
 - optional `revokedAt`
 - optional `revokedReason`
 - direct non-privileged revocation uses soft revoke instead of hard delete
+- direct non-privileged assignment/revocation excludes `isSystem` roles
 
 ### Not required immediately
 - no new approval table is needed; existing `ApprovalRequest` is sufficient
@@ -497,7 +500,7 @@ Required additions or explicit deferrals:
 - user create/update: deferred
 
 ### Phase 2: user-role mutation backend
-- non-privileged role assign/revoke: implemented with direct audit, soft-revoked `UserRole`, and transactionally incremented `User.tokenVersion`
+- non-privileged role assign/revoke: implemented with direct audit, soft-revoked `UserRole`, transactionally incremented `User.tokenVersion`, and `isSystem` role block
 - privileged role assign/revoke: deferred pending maker-checker
 - self-escalation blocks
 - approval processing

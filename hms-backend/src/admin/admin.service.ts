@@ -594,6 +594,12 @@ export class AdminService {
       );
     }
 
+    if (role.isSystem) {
+      throw new ForbiddenException(
+        'System roles cannot be directly assigned or revoked',
+      );
+    }
+
     if (this.isPrivilegedRole(role)) {
       throw new ForbiddenException(
         'Privileged role changes require maker-checker approval',
