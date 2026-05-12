@@ -20,6 +20,7 @@ describe('AdminService', () => {
     $transaction: jest.Mock;
     user: {
       findFirst: jest.Mock;
+      findMany: jest.Mock;
       updateMany: jest.Mock;
     };
     userRole: {
@@ -29,6 +30,13 @@ describe('AdminService', () => {
     };
     role: {
       findFirst: jest.Mock;
+    };
+    permission: {
+      findFirst: jest.Mock;
+    };
+    rolePermission: {
+      create: jest.Mock;
+      deleteMany: jest.Mock;
     };
   };
   let audit: { log: jest.Mock };
@@ -55,6 +63,7 @@ describe('AdminService', () => {
         .mockImplementation((cb: (tx: typeof prisma) => unknown) => cb(prisma)),
       user: {
         findFirst: jest.fn(),
+        findMany: jest.fn(),
         updateMany: jest.fn(),
       },
       userRole: {
@@ -64,6 +73,13 @@ describe('AdminService', () => {
       },
       role: {
         findFirst: jest.fn(),
+      },
+      permission: {
+        findFirst: jest.fn(),
+      },
+      rolePermission: {
+        create: jest.fn(),
+        deleteMany: jest.fn(),
       },
     };
     audit = { log: jest.fn() };
@@ -117,6 +133,21 @@ describe('AdminService', () => {
         scope: string;
       };
     }>,
+    ...overrides,
+  });
+
+  const makePermission = (
+    overrides: Partial<{
+      id: string;
+      tenantId: string;
+      name: string;
+      scope: string;
+    }> = {},
+  ) => ({
+    id: 'permission-id',
+    tenantId: 'tenant-id',
+    name: 'patient.view',
+    scope: 'tenant/branch',
     ...overrides,
   });
 
@@ -871,6 +902,590 @@ describe('AdminService', () => {
     expect(audit.log).not.toHaveBeenCalled();
   });
 
+  it('grant role permission rejects blank reason', async () => {
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        '   ',
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('grant role permission rejects blank permissionId', async () => {
+    await expect(
+      service.grantRolePermission(superAdminActor, 'role-id', '   ', 'valid'),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('revoke role permission rejects blank reason', async () => {
+    await expect(
+      service.revokeRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        '   ',
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('grant role permission rejects missing role', async () => {
+    prisma.role.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(audit.log).not.toHaveBeenCalled();
+  });
+
+  it('grant role permission rejects cross-tenant permission', async () => {
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({ id: 'role-id', isSystem: false }),
+    );
+    prisma.permission.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(NotFoundException);
+
+    expect(audit.log).not.toHaveBeenCalled();
+  });
+
+  it('grant role permission rejects Super Admin role', async () => {
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({ id: 'role-id', name: 'Super Admin', isSystem: false }),
+    );
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('grant role permission rejects isSystem role', async () => {
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({ id: 'role-id', isSystem: true }),
+    );
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('grant role permission rejects inactive or archived role', async () => {
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({
+        id: 'role-id',
+        isSystem: false,
+        status: 'INACTIVE',
+        archivedAt: new Date('2026-01-01T00:00:00.000Z'),
+      }),
+    );
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('grant role permission rejects role that already has admin.role.change', async () => {
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({
+        id: 'role-id',
+        isSystem: false,
+        rolePermissions: [
+          {
+            roleId: 'role-id',
+            permissionId: 'admin-permission-id',
+            permission: makePermission({
+              id: 'admin-permission-id',
+              name: 'admin.role.change',
+              scope: 'tenant/system',
+            }),
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('grant role permission rejects admin.role.change permission', async () => {
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({ id: 'role-id', isSystem: false }),
+    );
+    prisma.permission.findFirst.mockResolvedValue(
+      makePermission({
+        id: 'permission-id',
+        name: 'admin.role.change',
+        scope: 'tenant/system',
+      }),
+    );
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('grant role permission rejects high-risk permissions from temporary denylist', async () => {
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({ id: 'role-id', isSystem: false }),
+    );
+    prisma.permission.findFirst.mockResolvedValue(
+      makePermission({
+        id: 'permission-id',
+        name: 'audit.view',
+        scope: 'tenant/branch/role scope',
+      }),
+    );
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('grant role permission rejects duplicate active RolePermission', async () => {
+    const permission = makePermission({
+      id: 'permission-id',
+      name: 'patient.view',
+    });
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({
+        id: 'role-id',
+        isSystem: false,
+        rolePermissions: [
+          {
+            roleId: 'role-id',
+            permissionId: 'permission-id',
+            permission,
+          },
+        ],
+      }),
+    );
+    prisma.permission.findFirst.mockResolvedValue(permission);
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('branch-scoped actors cannot mutate tenant-wide role permissions', async () => {
+    await expect(
+      service.grantRolePermission(
+        branchActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('grant role permission increments tokenVersion exactly once for affected active users only', async () => {
+    const permission = makePermission({
+      id: 'permission-id',
+      name: 'patient.view',
+    });
+    const roleBefore = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [],
+    });
+    const roleAfter = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [
+        {
+          roleId: 'role-id',
+          permissionId: 'permission-id',
+          permission,
+        },
+      ],
+    });
+    prisma.role.findFirst
+      .mockResolvedValueOnce(roleBefore)
+      .mockResolvedValueOnce(roleAfter);
+    prisma.permission.findFirst.mockResolvedValue(permission);
+    prisma.rolePermission.create.mockResolvedValue({});
+    prisma.user.findMany.mockResolvedValue([
+      { id: 'user-1', tokenVersion: 1 },
+      { id: 'user-2', tokenVersion: 4 },
+    ]);
+    prisma.user.updateMany.mockResolvedValue({ count: 2 });
+
+    const result = await service.grantRolePermission(
+      superAdminActor,
+      'role-id',
+      'permission-id',
+      'valid reason',
+    );
+
+    expect(prisma.user.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['user-1', 'user-2'] } },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: {
+        tenantId: 'tenant-id',
+        status: 'ACTIVE',
+        deactivatedAt: null,
+        userRoles: {
+          some: {
+            roleId: 'role-id',
+            status: 'ACTIVE',
+          },
+        },
+      },
+      select: {
+        id: true,
+        tokenVersion: true,
+      },
+    });
+    expect(result).toEqual({
+      roleId: 'role-id',
+      roleName: 'Custom Scheduler',
+      permissionId: 'permission-id',
+      permissionName: 'patient.view',
+      affectedUserIds: ['user-1', 'user-2'],
+      affectedUserCount: 2,
+    });
+  });
+
+  it('grant role permission writes audit payload with before/after permissions and token versions', async () => {
+    const permission = makePermission({
+      id: 'permission-id',
+      name: 'patient.view',
+    });
+    const roleBefore = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [],
+    });
+    const roleAfter = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [
+        {
+          roleId: 'role-id',
+          permissionId: 'permission-id',
+          permission,
+        },
+      ],
+    });
+    prisma.role.findFirst
+      .mockResolvedValueOnce(roleBefore)
+      .mockResolvedValueOnce(roleAfter);
+    prisma.permission.findFirst.mockResolvedValue(permission);
+    prisma.rolePermission.create.mockResolvedValue({});
+    prisma.user.findMany.mockResolvedValue([{ id: 'user-1', tokenVersion: 1 }]);
+    prisma.user.updateMany.mockResolvedValue({ count: 1 });
+
+    await service.grantRolePermission(
+      superAdminActor,
+      'role-id',
+      'permission-id',
+      'valid reason',
+    );
+
+    expect(audit.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventKey: 'ROLE_PERMISSION_GRANTED',
+        oldValues: expect.objectContaining({
+          beforePermissions: [],
+          affectedUserIds: ['user-1'],
+          beforeTokenVersions: [{ id: 'user-1', tokenVersion: 1 }],
+        }),
+        newValues: expect.objectContaining({
+          actorId: 'actor-id',
+          roleId: 'role-id',
+          roleName: 'Custom Scheduler',
+          permissionId: 'permission-id',
+          permissionName: 'patient.view',
+          reason: 'valid reason',
+          changedAt: expect.any(String),
+          afterPermissions: [{ id: 'permission-id', name: 'patient.view' }],
+          affectedUserIds: ['user-1'],
+          beforeTokenVersions: [{ id: 'user-1', tokenVersion: 1 }],
+          afterTokenVersions: [{ id: 'user-1', tokenVersion: 2 }],
+        }),
+      }),
+      prisma,
+    );
+  });
+
+  it('revoke role permission rejects missing or non-active RolePermission and writes no audit', async () => {
+    const permission = makePermission({
+      id: 'permission-id',
+      name: 'patient.view',
+    });
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({ id: 'role-id', isSystem: false, rolePermissions: [] }),
+    );
+    prisma.permission.findFirst.mockResolvedValue(permission);
+
+    await expect(
+      service.revokeRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ConflictException);
+
+    expect(audit.log).not.toHaveBeenCalled();
+  });
+
+  it('revoke role permission only affects intended role-permission pair', async () => {
+    const permission = makePermission({
+      id: 'permission-id',
+      name: 'patient.view',
+    });
+    const roleBefore = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [
+        {
+          roleId: 'role-id',
+          permissionId: 'permission-id',
+          permission,
+        },
+      ],
+    });
+    const roleAfter = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [],
+    });
+    prisma.role.findFirst
+      .mockResolvedValueOnce(roleBefore)
+      .mockResolvedValueOnce(roleAfter);
+    prisma.permission.findFirst.mockResolvedValue(permission);
+    prisma.rolePermission.deleteMany.mockResolvedValue({ count: 1 });
+    prisma.user.findMany.mockResolvedValue([]);
+
+    await service.revokeRolePermission(
+      superAdminActor,
+      'role-id',
+      'permission-id',
+      'valid reason',
+    );
+
+    expect(prisma.rolePermission.deleteMany).toHaveBeenCalledWith({
+      where: { roleId: 'role-id', permissionId: 'permission-id' },
+    });
+  });
+
+  it('revoke role permission increments tokenVersion for affected active users only', async () => {
+    const permission = makePermission({
+      id: 'permission-id',
+      name: 'patient.view',
+    });
+    const roleBefore = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [
+        {
+          roleId: 'role-id',
+          permissionId: 'permission-id',
+          permission,
+        },
+      ],
+    });
+    const roleAfter = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [],
+    });
+    prisma.role.findFirst
+      .mockResolvedValueOnce(roleBefore)
+      .mockResolvedValueOnce(roleAfter);
+    prisma.permission.findFirst.mockResolvedValue(permission);
+    prisma.rolePermission.deleteMany.mockResolvedValue({ count: 1 });
+    prisma.user.findMany.mockResolvedValue([{ id: 'user-1', tokenVersion: 2 }]);
+    prisma.user.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await service.revokeRolePermission(
+      superAdminActor,
+      'role-id',
+      'permission-id',
+      'valid reason',
+    );
+
+    expect(prisma.user.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['user-1'] } },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    expect(result.affectedUserIds).toEqual(['user-1']);
+  });
+
+  it('grant/revoke does not increment tokenVersion for users not holding the affected role', async () => {
+    const permission = makePermission({
+      id: 'permission-id',
+      name: 'patient.view',
+    });
+    const roleBefore = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [],
+    });
+    const roleAfter = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [
+        {
+          roleId: 'role-id',
+          permissionId: 'permission-id',
+          permission,
+        },
+      ],
+    });
+    prisma.role.findFirst
+      .mockResolvedValueOnce(roleBefore)
+      .mockResolvedValueOnce(roleAfter);
+    prisma.permission.findFirst.mockResolvedValue(permission);
+    prisma.rolePermission.create.mockResolvedValue({});
+    prisma.user.findMany.mockResolvedValue([]);
+
+    const result = await service.grantRolePermission(
+      superAdminActor,
+      'role-id',
+      'permission-id',
+      'valid reason',
+    );
+
+    expect(prisma.user.updateMany).not.toHaveBeenCalled();
+    expect(result.affectedUserCount).toBe(0);
+  });
+
+  it('grant/revoke does not increment tokenVersion for revoked user-role holders', async () => {
+    const permission = makePermission({
+      id: 'permission-id',
+      name: 'patient.view',
+    });
+    const roleBefore = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [],
+    });
+    const roleAfter = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [
+        {
+          roleId: 'role-id',
+          permissionId: 'permission-id',
+          permission,
+        },
+      ],
+    });
+    prisma.role.findFirst
+      .mockResolvedValueOnce(roleBefore)
+      .mockResolvedValueOnce(roleAfter);
+    prisma.permission.findFirst.mockResolvedValue(permission);
+    prisma.rolePermission.create.mockResolvedValue({});
+    prisma.user.findMany.mockResolvedValue([]);
+
+    await service.grantRolePermission(
+      superAdminActor,
+      'role-id',
+      'permission-id',
+      'valid reason',
+    );
+
+    expect(prisma.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('revoke role permission fail-closed deleteMany zero writes no audit', async () => {
+    const permission = makePermission({
+      id: 'permission-id',
+      name: 'patient.view',
+    });
+    const roleBefore = makeRole({
+      id: 'role-id',
+      name: 'Custom Scheduler',
+      isSystem: false,
+      rolePermissions: [
+        {
+          roleId: 'role-id',
+          permissionId: 'permission-id',
+          permission,
+        },
+      ],
+    });
+    prisma.role.findFirst.mockResolvedValue(roleBefore);
+    prisma.permission.findFirst.mockResolvedValue(permission);
+    prisma.rolePermission.deleteMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.revokeRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ConflictException);
+
+    expect(audit.log).not.toHaveBeenCalled();
+  });
+
   it('stale JWT tokenVersion is rejected after role assignment or revocation', async () => {
     const strategyPrisma = {
       user: {
@@ -895,6 +1510,34 @@ describe('AdminService', () => {
         tenantId: 'tenant-id',
         roles: ['Receptionist'],
         tokenVersion: 1,
+      }),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('stale JWT tokenVersion is rejected after role permission mutation for affected users', async () => {
+    const strategyPrisma = {
+      user: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          email: 'user1@example.com',
+          tenantId: 'tenant-id',
+          status: 'ACTIVE',
+          deactivatedAt: null,
+          tokenVersion: 3,
+        }),
+      },
+    };
+    const strategy = new JwtStrategy(
+      strategyPrisma as unknown as PrismaService,
+    );
+
+    await expect(
+      strategy.validate({
+        sub: 'user-1',
+        email: 'user1@example.com',
+        tenantId: 'tenant-id',
+        roles: ['Custom Scheduler'],
+        tokenVersion: 2,
       }),
     ).rejects.toThrow(UnauthorizedException);
   });

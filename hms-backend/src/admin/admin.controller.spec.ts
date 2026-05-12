@@ -8,6 +8,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import {
   AssignUserRoleDto,
+  GrantRolePermissionDto,
   UserLifecycleReasonDto,
 } from './dto/user-lifecycle.dto';
 
@@ -18,6 +19,8 @@ describe('AdminController', () => {
     activateUser: jest.Mock;
     assignUserRole: jest.Mock;
     revokeUserRole: jest.Mock;
+    grantRolePermission: jest.Mock;
+    revokeRolePermission: jest.Mock;
   };
 
   const actor: RequestUser = {
@@ -33,6 +36,8 @@ describe('AdminController', () => {
       activateUser: jest.fn(),
       assignUserRole: jest.fn(),
       revokeUserRole: jest.fn(),
+      grantRolePermission: jest.fn(),
+      revokeRolePermission: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -101,6 +106,32 @@ describe('AdminController', () => {
     expect(permissions).toEqual(['admin.role.change']);
   });
 
+  it('grant permission endpoint requires admin.role.change metadata', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      AdminController.prototype,
+      'grantRolePermission',
+    );
+    const permissions = Reflect.getMetadata(
+      PERMISSIONS_KEY,
+      descriptor?.value as object,
+    );
+
+    expect(permissions).toEqual(['admin.role.change']);
+  });
+
+  it('revoke permission endpoint requires admin.role.change metadata', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      AdminController.prototype,
+      'revokeRolePermission',
+    );
+    const permissions = Reflect.getMetadata(
+      PERMISSIONS_KEY,
+      descriptor?.value as object,
+    );
+
+    expect(permissions).toEqual(['admin.role.change']);
+  });
+
   it('deactivate forwards actor, target, and reason to service', async () => {
     adminService.deactivateUser.mockResolvedValue({ id: 'target-id' });
 
@@ -156,6 +187,37 @@ describe('AdminController', () => {
     );
   });
 
+  it('grant permission forwards actor, role, permission, and reason to service', async () => {
+    adminService.grantRolePermission.mockResolvedValue({ roleId: 'role-id' });
+
+    await controller.grantRolePermission(actor, 'role-id', {
+      permissionId: 'permission-id',
+      reason: 'valid',
+    });
+
+    expect(adminService.grantRolePermission).toHaveBeenCalledWith(
+      actor,
+      'role-id',
+      'permission-id',
+      'valid',
+    );
+  });
+
+  it('revoke permission forwards actor, role, permission, and reason to service', async () => {
+    adminService.revokeRolePermission.mockResolvedValue({ roleId: 'role-id' });
+
+    await controller.revokeRolePermission(actor, 'role-id', 'permission-id', {
+      reason: 'valid',
+    });
+
+    expect(adminService.revokeRolePermission).toHaveBeenCalledWith(
+      actor,
+      'role-id',
+      'permission-id',
+      'valid',
+    );
+  });
+
   it('deactivate DTO rejects blank reason', async () => {
     const dto = plainToInstance(UserLifecycleReasonDto, { reason: '   ' });
 
@@ -179,6 +241,28 @@ describe('AdminController', () => {
     });
 
     const errors = await validate(assignDto);
+
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('grant permission DTO rejects blank permissionId', async () => {
+    const grantDto = plainToInstance(GrantRolePermissionDto, {
+      permissionId: '   ',
+      reason: 'ok',
+    });
+
+    const errors = await validate(grantDto);
+
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('grant permission DTO rejects blank reason', async () => {
+    const grantDto = plainToInstance(GrantRolePermissionDto, {
+      permissionId: 'permission-id',
+      reason: '   ',
+    });
+
+    const errors = await validate(grantDto);
 
     expect(errors.length).toBeGreaterThan(0);
   });

@@ -15,12 +15,28 @@ const USER_STATUS_INACTIVE = 'INACTIVE';
 const USER_ROLE_STATUS_ACTIVE = 'ACTIVE';
 const USER_ROLE_STATUS_REVOKED = 'REVOKED';
 const PRIVILEGED_PERMISSION = 'admin.role.change';
+const DIRECT_BLOCKED_PERMISSION_KEYS = new Set<string>([
+  'admin.role.change',
+  'approval.request.process',
+  'billing.refund.approve',
+  'inventory.adjust.approve',
+  'billing.reversal.apply',
+  'patient.merge.approve',
+  'patient.merge.request',
+  'billing.claim.process',
+  'lab.result.approve',
+  'lab.result.release',
+  'audit.view',
+  'report.export',
+]);
 
 type AdminRoleTarget = Prisma.RoleGetPayload<{
   include: {
     rolePermissions: { include: { permission: true } };
   };
 }>;
+
+type AdminPermissionTarget = Prisma.PermissionGetPayload<Record<string, never>>;
 
 type AdminUserTarget = Prisma.UserGetPayload<{
   include: {
@@ -60,6 +76,15 @@ export interface AdminUserRoleMutationResponse {
     name: string;
   };
   assignmentStatus: string;
+}
+
+export interface AdminRolePermissionMutationResponse {
+  roleId: string;
+  roleName: string;
+  permissionId: string;
+  permissionName: string;
+  affectedUserIds: string[];
+  affectedUserCount: number;
 }
 
 @Injectable()
@@ -416,6 +441,184 @@ export class AdminService {
     });
   }
 
+  async grantRolePermission(
+    actor: RequestUser,
+    roleId: string,
+    permissionId: string,
+    reason: string,
+  ): Promise<AdminRolePermissionMutationResponse> {
+    const trimmedReason = this.validateReason(reason);
+    const normalizedRoleId = this.validateRoleId(roleId);
+    const normalizedPermissionId = this.validatePermissionId(permissionId);
+    this.assertTenantWideRoleMutationActor(actor);
+
+    return this.prisma.$transaction(async (tx) => {
+      const role = await this.getRoleForDirectMutation(
+        tx,
+        actor.tenantId,
+        normalizedRoleId,
+      );
+      const permission = await this.getPermissionForDirectMutation(
+        tx,
+        actor.tenantId,
+        normalizedPermissionId,
+      );
+      const existingPermission = role.rolePermissions.find(
+        (assignment) => assignment.permissionId === normalizedPermissionId,
+      );
+
+      if (existingPermission) {
+        throw new ConflictException(
+          'Permission is already assigned to this role',
+        );
+      }
+
+      const changedAt = new Date();
+      await tx.rolePermission.create({
+        data: {
+          roleId: role.id,
+          permissionId: permission.id,
+        },
+      });
+
+      const affectedUsersBefore = await this.getAffectedActiveUsersForRole(
+        tx,
+        actor.tenantId,
+        role.id,
+      );
+      await this.incrementAffectedUsersTokenVersion(tx, affectedUsersBefore);
+
+      const updatedRole = await this.getRoleForDirectMutation(
+        tx,
+        actor.tenantId,
+        normalizedRoleId,
+      );
+      const affectedUsersAfter =
+        this.mapAfterTokenVersions(affectedUsersBefore);
+
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'ROLE_PERMISSION_GRANTED',
+          recordType: 'RolePermission',
+          recordId: `${role.id}:${permission.id}`,
+          oldValues: this.buildRolePermissionAuditOldValues(
+            role,
+            affectedUsersBefore,
+          ),
+          newValues: this.buildRolePermissionAuditNewValues(
+            actor,
+            updatedRole,
+            permission,
+            trimmedReason,
+            changedAt,
+            affectedUsersBefore,
+            affectedUsersAfter,
+          ),
+        },
+        tx,
+      );
+
+      return this.toRolePermissionMutationResponse(
+        updatedRole,
+        permission,
+        affectedUsersAfter.map((user) => user.id),
+      );
+    });
+  }
+
+  async revokeRolePermission(
+    actor: RequestUser,
+    roleId: string,
+    permissionId: string,
+    reason: string,
+  ): Promise<AdminRolePermissionMutationResponse> {
+    const trimmedReason = this.validateReason(reason);
+    const normalizedRoleId = this.validateRoleId(roleId);
+    const normalizedPermissionId = this.validatePermissionId(permissionId);
+    this.assertTenantWideRoleMutationActor(actor);
+
+    return this.prisma.$transaction(async (tx) => {
+      const role = await this.getRoleForDirectMutation(
+        tx,
+        actor.tenantId,
+        normalizedRoleId,
+      );
+      const permission = await this.getPermissionForDirectMutation(
+        tx,
+        actor.tenantId,
+        normalizedPermissionId,
+      );
+      const existingPermission = role.rolePermissions.find(
+        (assignment) => assignment.permissionId === normalizedPermissionId,
+      );
+
+      if (!existingPermission) {
+        throw new ConflictException('Permission is not assigned to this role');
+      }
+
+      const changedAt = new Date();
+      const deleteResult = await tx.rolePermission.deleteMany({
+        where: {
+          roleId: role.id,
+          permissionId: permission.id,
+        },
+      });
+
+      if (deleteResult.count === 0) {
+        throw new ConflictException(
+          'Role permission changed before revocation',
+        );
+      }
+
+      const affectedUsersBefore = await this.getAffectedActiveUsersForRole(
+        tx,
+        actor.tenantId,
+        role.id,
+      );
+      await this.incrementAffectedUsersTokenVersion(tx, affectedUsersBefore);
+
+      const updatedRole = await this.getRoleForDirectMutation(
+        tx,
+        actor.tenantId,
+        normalizedRoleId,
+      );
+      const affectedUsersAfter =
+        this.mapAfterTokenVersions(affectedUsersBefore);
+
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'ROLE_PERMISSION_REVOKED',
+          recordType: 'RolePermission',
+          recordId: `${role.id}:${permission.id}`,
+          oldValues: this.buildRolePermissionAuditOldValues(
+            role,
+            affectedUsersBefore,
+          ),
+          newValues: this.buildRolePermissionAuditNewValues(
+            actor,
+            updatedRole,
+            permission,
+            trimmedReason,
+            changedAt,
+            affectedUsersBefore,
+            affectedUsersAfter,
+          ),
+        },
+        tx,
+      );
+
+      return this.toRolePermissionMutationResponse(
+        updatedRole,
+        permission,
+        affectedUsersAfter.map((user) => user.id),
+      );
+    });
+  }
+
   private validateReason(reason: string): string {
     const trimmed = reason.trim();
     if (!trimmed) {
@@ -432,6 +635,14 @@ export class AdminService {
     return normalizedRoleId;
   }
 
+  private validatePermissionId(permissionId: string): string {
+    const normalizedPermissionId = permissionId.trim();
+    if (!normalizedPermissionId) {
+      throw new BadRequestException('Permission ID is required');
+    }
+    return normalizedPermissionId;
+  }
+
   private assertActorCanTarget(actor: RequestUser, targetUserId: string) {
     if (!actor.userId) {
       throw new ForbiddenException('User context is required');
@@ -440,6 +651,18 @@ export class AdminService {
     if (actor.userId === targetUserId) {
       throw new ForbiddenException(
         'Self user lifecycle changes are not allowed',
+      );
+    }
+  }
+
+  private assertTenantWideRoleMutationActor(actor: RequestUser) {
+    if (!actor.userId) {
+      throw new ForbiddenException('User context is required');
+    }
+
+    if (!this.isSuperAdmin(actor) && actor.branchId) {
+      throw new ForbiddenException(
+        'Branch-scoped actors cannot mutate tenant-wide role permissions',
       );
     }
   }
@@ -609,6 +832,85 @@ export class AdminService {
     return role;
   }
 
+  private async getPermissionForDirectMutation(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    permissionId: string,
+  ): Promise<AdminPermissionTarget> {
+    const permission = await tx.permission.findFirst({
+      where: { id: permissionId, tenantId },
+    });
+
+    if (!permission) {
+      throw new NotFoundException('Permission not found');
+    }
+
+    if (DIRECT_BLOCKED_PERMISSION_KEYS.has(permission.name)) {
+      throw new ForbiddenException(
+        'High-risk permissions require maker-checker approval',
+      );
+    }
+
+    return permission;
+  }
+
+  private async getAffectedActiveUsersForRole(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    roleId: string,
+  ) {
+    return tx.user.findMany({
+      where: {
+        tenantId,
+        status: USER_STATUS_ACTIVE,
+        deactivatedAt: null,
+        userRoles: {
+          some: {
+            roleId,
+            status: USER_ROLE_STATUS_ACTIVE,
+          },
+        },
+      },
+      select: {
+        id: true,
+        tokenVersion: true,
+      },
+    });
+  }
+
+  private async incrementAffectedUsersTokenVersion(
+    tx: Prisma.TransactionClient,
+    affectedUsers: Array<{ id: string; tokenVersion: number }>,
+  ) {
+    if (affectedUsers.length === 0) {
+      return;
+    }
+
+    const updateResult = await tx.user.updateMany({
+      where: {
+        id: { in: affectedUsers.map((user) => user.id) },
+      },
+      data: {
+        tokenVersion: { increment: 1 },
+      },
+    });
+
+    if (updateResult.count !== affectedUsers.length) {
+      throw new ConflictException(
+        'Affected user token versions changed before role permission update completed',
+      );
+    }
+  }
+
+  private mapAfterTokenVersions(
+    affectedUsers: Array<{ id: string; tokenVersion: number }>,
+  ) {
+    return affectedUsers.map((user) => ({
+      id: user.id,
+      tokenVersion: user.tokenVersion + 1,
+    }));
+  }
+
   private getBranchMutationScope(actor: RequestUser): Prisma.UserWhereInput {
     if (this.isSuperAdmin(actor)) {
       return {};
@@ -678,6 +980,19 @@ export class AdminService {
     };
   }
 
+  private buildRolePermissionAuditOldValues(
+    role: AdminRoleTarget,
+    affectedUsers: Array<{ id: string; tokenVersion: number }>,
+  ) {
+    return {
+      roleId: role.id,
+      roleName: role.name,
+      beforePermissions: this.getPermissionSummaries(role),
+      affectedUserIds: affectedUsers.map((user) => user.id),
+      beforeTokenVersions: affectedUsers,
+    };
+  }
+
   private buildRoleAuditNewValues(
     actor: RequestUser,
     targetUserId: string,
@@ -698,10 +1013,41 @@ export class AdminService {
     };
   }
 
+  private buildRolePermissionAuditNewValues(
+    actor: RequestUser,
+    role: AdminRoleTarget,
+    permission: AdminPermissionTarget,
+    reason: string,
+    changedAt: Date,
+    affectedUsersBefore: Array<{ id: string; tokenVersion: number }>,
+    affectedUsersAfter: Array<{ id: string; tokenVersion: number }>,
+  ) {
+    return {
+      actorId: actor.userId,
+      roleId: role.id,
+      roleName: role.name,
+      permissionId: permission.id,
+      permissionName: permission.name,
+      reason,
+      changedAt: changedAt.toISOString(),
+      afterPermissions: this.getPermissionSummaries(role),
+      affectedUserIds: affectedUsersBefore.map((user) => user.id),
+      beforeTokenVersions: affectedUsersBefore,
+      afterTokenVersions: affectedUsersAfter,
+    };
+  }
+
   private getRoleSummaries(user: AdminUserTarget) {
     return this.getActiveUserRoleAssignments(user).map(({ role }) => ({
       id: role.id,
       name: role.name,
+    }));
+  }
+
+  private getPermissionSummaries(role: AdminRoleTarget) {
+    return role.rolePermissions.map(({ permission }) => ({
+      id: permission.id,
+      name: permission.name,
     }));
   }
 
@@ -723,6 +1069,21 @@ export class AdminService {
         name: role.name,
       },
       assignmentStatus,
+    };
+  }
+
+  private toRolePermissionMutationResponse(
+    role: AdminRoleTarget,
+    permission: AdminPermissionTarget,
+    affectedUserIds: string[],
+  ): AdminRolePermissionMutationResponse {
+    return {
+      roleId: role.id,
+      roleName: role.name,
+      permissionId: permission.id,
+      permissionName: permission.name,
+      affectedUserIds,
+      affectedUserCount: affectedUserIds.length,
     };
   }
 

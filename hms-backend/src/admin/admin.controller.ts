@@ -7,6 +7,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 import {
   AssignUserRoleDto,
+  GrantRolePermissionDto,
   UserLifecycleReasonDto,
 } from './dto/user-lifecycle.dto';
 
@@ -62,6 +63,37 @@ export class AdminController {
       actor,
       targetUserId,
       roleId,
+      dto.reason,
+    );
+  }
+
+  @Post('roles/:roleId/permissions')
+  @RequirePermissions('admin.role.change')
+  async grantRolePermission(
+    @GetUser() actor: RequestUser,
+    @Param('roleId') roleId: string,
+    @Body() dto: GrantRolePermissionDto,
+  ) {
+    return this.adminService.grantRolePermission(
+      actor,
+      roleId,
+      dto.permissionId,
+      dto.reason,
+    );
+  }
+
+  @Post('roles/:roleId/permissions/:permissionId/revoke')
+  @RequirePermissions('admin.role.change')
+  async revokeRolePermission(
+    @GetUser() actor: RequestUser,
+    @Param('roleId') roleId: string,
+    @Param('permissionId') permissionId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.revokeRolePermission(
+      actor,
+      roleId,
+      permissionId,
       dto.reason,
     );
   }

@@ -39,9 +39,12 @@ Implemented backend slice:
 - `POST /api/v1/admin/users/:id/activate`
 - `POST /api/v1/admin/users/:id/roles`
 - `POST /api/v1/admin/users/:id/roles/:roleId/revoke`
+- `POST /api/v1/admin/roles/:id/permissions`
+- `POST /api/v1/admin/roles/:id/permissions/:permissionId/revoke`
 
 This slice directly processes only non-privileged users. Targets with `Super Admin` or any role carrying `admin.role.change` remain blocked until maker-checker processing for privileged admin lifecycle changes is implemented.
 Direct role assignment and revocation also reject `isSystem` roles in the current implementation.
+Direct role permission mutation is limited to tenant-wide actors in the current implementation; branch-scoped actors cannot mutate role permissions.
 
 Inactive or archived roles that still carry `admin.role.change` are treated as privileged for lifecycle protection until role archival semantics are fully governed.
 
@@ -78,8 +81,8 @@ Read-only admin discovery endpoints may later use a separate permission, but tha
 - `POST /api/v1/admin/roles/:id/archive`
 
 ### D. Role permission management
-- `POST /api/v1/admin/roles/:id/permissions`
-- `DELETE /api/v1/admin/roles/:id/permissions/:permissionId`
+- `POST /api/v1/admin/roles/:id/permissions` - implemented for non-system, non-privileged roles and non-high-risk permissions
+- `POST /api/v1/admin/roles/:id/permissions/:permissionId/revoke` - implemented for non-system, non-privileged roles and non-high-risk permissions
 
 ## Scope rules
 
@@ -151,6 +154,7 @@ These may execute directly with audit only, unless policy is later tightened:
 - non-privileged user deactivation/reactivation with `admin.role.change`, tenant/branch scope enforcement, self-change block, audit, and `tokenVersion` invalidation
 - non-privileged user role assignment/revocation with `admin.role.change`, tenant/branch scope enforcement, self-change block, audit, and `tokenVersion` invalidation
 Current direct role slice also blocks `isSystem` roles until governed system-role policy is explicitly opened.
+- non-system, non-privileged role permission grant/revoke with `admin.role.change`, tenant scope enforcement, audit, and affected-user `tokenVersion` invalidation
 
 If implementation chooses to require approval for user profile update too, that is allowed, but the code must follow this document consistently.
 
@@ -280,7 +284,7 @@ Add action-specific fields as needed:
 ```
 
 ### Role permission revoke
-`DELETE /api/v1/admin/roles/:id/permissions/:permissionId`
+`POST /api/v1/admin/roles/:id/permissions/:permissionId/revoke`
 ```ts
 {
   reason: string
@@ -317,8 +321,13 @@ Current implemented user role slice uses:
 - `USER_ROLE_ASSIGNED`
 - `USER_ROLE_REVOKED`
 
+Current implemented role permission slice uses:
+- `ROLE_PERMISSION_GRANTED`
+- `ROLE_PERMISSION_REVOKED`
+
 For these events, `oldValues.before` and `newValues.after` include sanitized user lifecycle metadata, including `status`, `tokenVersion`, deactivation fields, and branch context. `newValues` also includes `actorId`, `targetUserId`, `reason`, and `changedAt`.
 For direct role assignment events, `oldValues.beforeRoles` and `newValues.afterRoles` include active role summaries, while `oldValues.beforeTokenVersion` and `newValues.afterTokenVersion` capture the target user token invalidation boundary.
+For direct role permission events, `oldValues.beforePermissions` and `newValues.afterPermissions` include role permission summaries, while `oldValues.beforeTokenVersions` and `newValues.afterTokenVersions` capture affected active users holding the role.
 
 ### Audit payload contract
 Current `AuditLog` schema stores:
@@ -357,6 +366,7 @@ These must be wrapped in a single transaction containing:
 - audit log creation
 
 The implemented direct user lifecycle slice also repeats tenant and branch scope in the guarded `updateMany` predicate so branch visibility changes fail closed between pre-read and mutation.
+The implemented direct role permission slice re-fetches the role tenant-scoped before and after mutation, applies the permission mutation transactionally, and increments `User.tokenVersion` for affected active role holders in the same transaction.
 
 ### Approval-backed mutations
 Request creation transaction must include:
@@ -481,6 +491,10 @@ Required additions or explicit deferrals:
 - direct non-privileged revocation uses soft revoke instead of hard delete
 - direct non-privileged assignment/revocation excludes `isSystem` roles
 
+5. `RolePermission` lifecycle fields: not yet modeled
+- current direct-safe slice uses hard create and hard revoke for non-system, non-privileged roles
+- future governance may add `RolePermission` lifecycle metadata if approval-backed or reversible history requirements expand
+
 ### Not required immediately
 - no new approval table is needed; existing `ApprovalRequest` is sufficient
 - no new audit table is needed; existing `AuditLog` is sufficient
@@ -508,7 +522,8 @@ Required additions or explicit deferrals:
 
 ### Phase 3: role and role-permission backend
 - create/update/archive role
-- grant/revoke permissions
+- non-system, non-privileged role permission grant/revoke: implemented with direct audit and affected-user `tokenVersion` invalidation
+- privileged role permission grant/revoke: deferred pending maker-checker and permission risk classification
 - protected seeded role behavior
 
 ## Final implementation guardrail

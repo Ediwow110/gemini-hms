@@ -14,3 +14,10 @@ export class AssignUserRoleDto extends UserLifecycleReasonDto {
   @IsNotEmpty()
   roleId: string;
 }
+
+export class GrantRolePermissionDto extends UserLifecycleReasonDto {
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsNotEmpty()
+  permissionId: string;
+}
