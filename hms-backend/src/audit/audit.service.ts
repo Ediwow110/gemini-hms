@@ -32,11 +32,12 @@ export interface AuditQueryDto {
 export class AuditService {
   constructor(private prisma: PrismaService) {}
 
-  async log(data: AuditLogData, tx?: Prisma.TransactionClient) {
+  async log(data: AuditLogData, tx?: Prisma.TransactionClient, branchId?: string) {
     const db = tx || this.prisma;
     return db.auditLog.create({
       data: {
         tenantId: data.tenantId,
+        branchId: branchId,
         userId: data.userId,
         eventKey: data.eventKey,
         recordType: data.recordType,
@@ -64,7 +65,7 @@ export class AuditService {
       pageSize = 20,
     } = query;
 
-    // Scoping: Branch users only see their own branch unless granted broader access
+    const limit = Math.min(pageSize, 100);
     const isSuperAdmin = userRoles.includes('Super Admin');
     const where: any = { tenantId };
 
@@ -72,7 +73,6 @@ export class AuditService {
       if (branchId) {
         where.branchId = branchId;
       } else {
-        // Fallback for branch scoped users without a branch
         where.branchId = null;
       }
     } else if (query.branchId) {
@@ -94,11 +94,24 @@ export class AuditService {
     const data = await this.prisma.auditLog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        tenantId: true,
+        branchId: true,
+        userId: true,
+        eventKey: true,
+        recordType: true,
+        recordId: true,
+        createdAt: true,
+        // Only return values if SuperAdmin or Auditor role
+        oldValues: isSuperAdmin,
+        newValues: isSuperAdmin,
+      },
     });
 
-    return { data, total, page, pageSize };
+    return { data, total, page, pageSize: limit };
   }
 
   async findOne(
@@ -107,13 +120,27 @@ export class AuditService {
     userRoles: string[],
     id: string,
   ) {
-    const auditLog = await this.prisma.auditLog.findUnique({ where: { id } });
+    const isSuperAdmin = userRoles.includes('Super Admin');
+    const auditLog = await this.prisma.auditLog.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        tenantId: true,
+        branchId: true,
+        userId: true,
+        eventKey: true,
+        recordType: true,
+        recordId: true,
+        createdAt: true,
+        oldValues: isSuperAdmin,
+        newValues: isSuperAdmin,
+      },
+    });
 
     if (!auditLog || auditLog.tenantId !== tenantId) {
       throw new NotFoundException('Audit log not found');
     }
 
-    const isSuperAdmin = userRoles.includes('Super Admin');
     if (
       !isSuperAdmin &&
       branchId &&
