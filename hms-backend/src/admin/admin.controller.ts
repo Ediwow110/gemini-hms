@@ -5,7 +5,10 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { RequestUser } from '../common/types/authenticated-request.type';
-import { UserLifecycleReasonDto } from './dto/user-lifecycle.dto';
+import {
+  AssignUserRoleDto,
+  UserLifecycleReasonDto,
+} from './dto/user-lifecycle.dto';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/admin')
@@ -30,5 +33,36 @@ export class AdminController {
     @Body() dto: UserLifecycleReasonDto,
   ) {
     return this.adminService.activateUser(actor, targetUserId, dto.reason);
+  }
+
+  @Post('users/:id/roles')
+  @RequirePermissions('admin.role.change')
+  async assignUserRole(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Body() dto: AssignUserRoleDto,
+  ) {
+    return this.adminService.assignUserRole(
+      actor,
+      targetUserId,
+      dto.roleId,
+      dto.reason,
+    );
+  }
+
+  @Post('users/:id/roles/:roleId/revoke')
+  @RequirePermissions('admin.role.change')
+  async revokeUserRole(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Param('roleId') roleId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.revokeUserRole(
+      actor,
+      targetUserId,
+      roleId,
+      dto.reason,
+    );
   }
 }

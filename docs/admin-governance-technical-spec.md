@@ -37,6 +37,8 @@ Runtime admin endpoints remain **deferred** until the rules below are followed.
 Implemented backend slice:
 - `POST /api/v1/admin/users/:id/deactivate`
 - `POST /api/v1/admin/users/:id/activate`
+- `POST /api/v1/admin/users/:id/roles`
+- `POST /api/v1/admin/users/:id/roles/:roleId/revoke`
 
 This slice directly processes only non-privileged users. Targets with `Super Admin` or any role carrying `admin.role.change` remain blocked until maker-checker processing for privileged admin lifecycle changes is implemented.
 
@@ -66,8 +68,8 @@ Read-only admin discovery endpoints may later use a separate permission, but tha
 - `POST /api/v1/admin/users/:id/activate` - implemented for non-privileged users
 
 ### B. User role assignment
-- `POST /api/v1/admin/users/:id/roles`
-- `DELETE /api/v1/admin/users/:id/roles/:roleId`
+- `POST /api/v1/admin/users/:id/roles` - implemented for non-privileged roles and non-privileged target users
+- `POST /api/v1/admin/users/:id/roles/:roleId/revoke` - implemented for non-privileged roles and non-privileged target users
 
 ### C. Role management
 - `POST /api/v1/admin/roles`
@@ -135,8 +137,8 @@ Implementation rule:
 The following actions require `ApprovalRequest` creation and later processing by a different user:
 - privileged user deactivation
 - privileged user reactivation
-- user role assignment
-- user role revocation
+- privileged user role assignment
+- privileged user role revocation
 - role creation
 - role archive
 - role permission grant
@@ -146,6 +148,7 @@ The following actions require `ApprovalRequest` creation and later processing by
 These may execute directly with audit only, unless policy is later tightened:
 - user profile update limited to email and MFA flag
 - non-privileged user deactivation/reactivation with `admin.role.change`, tenant/branch scope enforcement, self-change block, audit, and `tokenVersion` invalidation
+- non-privileged user role assignment/revocation with `admin.role.change`, tenant/branch scope enforcement, self-change block, audit, and `tokenVersion` invalidation
 
 If implementation chooses to require approval for user profile update too, that is allowed, but the code must follow this document consistently.
 
@@ -232,7 +235,7 @@ Add action-specific fields as needed:
 ```
 
 ### User role revoke
-`DELETE /api/v1/admin/users/:id/roles/:roleId`
+`POST /api/v1/admin/users/:id/roles/:roleId/revoke`
 ```ts
 {
   reason: string
@@ -308,7 +311,12 @@ Current implemented user lifecycle slice uses:
 - `USER_DEACTIVATED`
 - `USER_ACTIVATED`
 
+Current implemented user role slice uses:
+- `USER_ROLE_ASSIGNED`
+- `USER_ROLE_REVOKED`
+
 For these events, `oldValues.before` and `newValues.after` include sanitized user lifecycle metadata, including `status`, `tokenVersion`, deactivation fields, and branch context. `newValues` also includes `actorId`, `targetUserId`, `reason`, and `changedAt`.
+For direct role assignment events, `oldValues.beforeRoles` and `newValues.afterRoles` include active role summaries, while `oldValues.beforeTokenVersion` and `newValues.afterTokenVersion` capture the target user token invalidation boundary.
 
 ### Audit payload contract
 Current `AuditLog` schema stores:
@@ -464,6 +472,12 @@ Required additions or explicit deferrals:
 - `User.tokenVersion` exists and is enforced for JWT validation
 - future governed user or role mutations must increment `User.tokenVersion` in the same transaction as approval application, domain mutation, and audit creation
 
+4. `UserRole` lifecycle fields: implemented as schema foundations
+- `status` defaults to `ACTIVE`
+- optional `revokedAt`
+- optional `revokedReason`
+- direct non-privileged revocation uses soft revoke instead of hard delete
+
 ### Not required immediately
 - no new approval table is needed; existing `ApprovalRequest` is sufficient
 - no new audit table is needed; existing `AuditLog` is sufficient
@@ -483,8 +497,8 @@ Required additions or explicit deferrals:
 - user create/update: deferred
 
 ### Phase 2: user-role mutation backend
-- assign role
-- revoke role
+- non-privileged role assign/revoke: implemented with direct audit, soft-revoked `UserRole`, and transactionally incremented `User.tokenVersion`
+- privileged role assign/revoke: deferred pending maker-checker
 - self-escalation blocks
 - approval processing
 - increment `User.tokenVersion` transactionally for affected users when role assignments change

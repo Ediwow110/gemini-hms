@@ -6,13 +6,18 @@ import type { RequestUser } from '../common/types/authenticated-request.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
-import { UserLifecycleReasonDto } from './dto/user-lifecycle.dto';
+import {
+  AssignUserRoleDto,
+  UserLifecycleReasonDto,
+} from './dto/user-lifecycle.dto';
 
 describe('AdminController', () => {
   let controller: AdminController;
   let adminService: {
     deactivateUser: jest.Mock;
     activateUser: jest.Mock;
+    assignUserRole: jest.Mock;
+    revokeUserRole: jest.Mock;
   };
 
   const actor: RequestUser = {
@@ -26,6 +31,8 @@ describe('AdminController', () => {
     adminService = {
       deactivateUser: jest.fn(),
       activateUser: jest.fn(),
+      assignUserRole: jest.fn(),
+      revokeUserRole: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -68,6 +75,32 @@ describe('AdminController', () => {
     expect(permissions).toEqual(['admin.role.change']);
   });
 
+  it('assign role endpoint requires admin.role.change metadata', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      AdminController.prototype,
+      'assignUserRole',
+    );
+    const permissions = Reflect.getMetadata(
+      PERMISSIONS_KEY,
+      descriptor?.value as object,
+    );
+
+    expect(permissions).toEqual(['admin.role.change']);
+  });
+
+  it('revoke role endpoint requires admin.role.change metadata', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      AdminController.prototype,
+      'revokeUserRole',
+    );
+    const permissions = Reflect.getMetadata(
+      PERMISSIONS_KEY,
+      descriptor?.value as object,
+    );
+
+    expect(permissions).toEqual(['admin.role.change']);
+  });
+
   it('deactivate forwards actor, target, and reason to service', async () => {
     adminService.deactivateUser.mockResolvedValue({ id: 'target-id' });
 
@@ -92,6 +125,37 @@ describe('AdminController', () => {
     );
   });
 
+  it('assign role forwards actor, target, role, and reason to service', async () => {
+    adminService.assignUserRole.mockResolvedValue({ userId: 'target-id' });
+
+    await controller.assignUserRole(actor, 'target-id', {
+      roleId: 'role-id',
+      reason: 'valid',
+    });
+
+    expect(adminService.assignUserRole).toHaveBeenCalledWith(
+      actor,
+      'target-id',
+      'role-id',
+      'valid',
+    );
+  });
+
+  it('revoke role forwards actor, target, role, and reason to service', async () => {
+    adminService.revokeUserRole.mockResolvedValue({ userId: 'target-id' });
+
+    await controller.revokeUserRole(actor, 'target-id', 'role-id', {
+      reason: 'valid',
+    });
+
+    expect(adminService.revokeUserRole).toHaveBeenCalledWith(
+      actor,
+      'target-id',
+      'role-id',
+      'valid',
+    );
+  });
+
   it('deactivate DTO rejects blank reason', async () => {
     const dto = plainToInstance(UserLifecycleReasonDto, { reason: '   ' });
 
@@ -104,6 +168,17 @@ describe('AdminController', () => {
     const dto = plainToInstance(UserLifecycleReasonDto, {});
 
     const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('assign DTO rejects blank roleId', async () => {
+    const assignDto = plainToInstance(AssignUserRoleDto, {
+      roleId: '   ',
+      reason: 'ok',
+    });
+
+    const errors = await validate(assignDto);
 
     expect(errors.length).toBeGreaterThan(0);
   });

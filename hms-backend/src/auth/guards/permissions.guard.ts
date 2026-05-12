@@ -42,6 +42,7 @@ export class PermissionsGuard implements CanActivate {
     const userRoles = await this.prisma.userRole.findMany({
       where: {
         userId: user.userId,
+        status: 'ACTIVE',
         role: { tenantId: user.tenantId },
       },
       include: {
@@ -60,8 +61,9 @@ export class PermissionsGuard implements CanActivate {
     for (const ur of userRoles) {
       if (ur.role && ur.role.rolePermissions) {
         for (const rp of ur.role.rolePermissions) {
-          if (rp.permission && rp.permission.name) {
-            userPermissions.add(rp.permission.name);
+          const permissionName = rp.permission?.name;
+          if (typeof permissionName === 'string' && permissionName.length > 0) {
+            userPermissions.add(permissionName);
           }
         }
       }

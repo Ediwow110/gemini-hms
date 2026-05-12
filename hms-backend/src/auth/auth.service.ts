@@ -15,6 +15,7 @@ type UserWithRoles = Prisma.UserGetPayload<{
 type AuthenticatedUser = Omit<UserWithRoles, 'passwordHash'>;
 
 type UserRoleWithName = {
+  status: string;
   role: { name: string };
 };
 
@@ -24,6 +25,12 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
+
+  private getActiveRoleNames(userRoles: UserRoleWithName[]): string[] {
+    return userRoles
+      .filter((userRole) => userRole.status === 'ACTIVE')
+      .map((userRole) => userRole.role.name);
+  }
 
   async validateUser(
     tenantCode: string,
@@ -63,9 +70,7 @@ export class AuthService {
 
   async login(user: AuthenticatedUser) {
     // Extract roles for the payload
-    const roles: string[] = user.userRoles.map(
-      (ur: UserRoleWithName) => ur.role.name,
-    );
+    const roles = this.getActiveRoleNames(user.userRoles);
 
     // Resolve branch context from user assignments (Foundation for Section 7 Branch Scoping)
     const activeBranches = await this.prisma.userBranch.findMany({
@@ -121,9 +126,7 @@ export class AuthService {
       return null;
     }
 
-    const roles: string[] = user.userRoles.map(
-      (ur: UserRoleWithName) => ur.role.name,
-    );
+    const roles = this.getActiveRoleNames(user.userRoles);
     return this.generateTokenResponse(user, roles, branchId);
   }
 
@@ -154,8 +157,9 @@ export class AuthService {
   ): Promise<string[]> {
     const userRoles = await this.prisma.userRole.findMany({
       where: {
-        userId: userId,
-        role: { tenantId: tenantId },
+        userId,
+        status: 'ACTIVE',
+        role: { tenantId },
       },
       include: {
         role: {
@@ -173,8 +177,9 @@ export class AuthService {
     for (const ur of userRoles) {
       if (ur.role && ur.role.rolePermissions) {
         for (const rp of ur.role.rolePermissions) {
-          if (rp.permission && rp.permission.name) {
-            userPermissions.add(rp.permission.name);
+          const permissionName = rp.permission?.name;
+          if (typeof permissionName === 'string' && permissionName.length > 0) {
+            userPermissions.add(permissionName);
           }
         }
       }
@@ -194,9 +199,7 @@ export class AuthService {
 
     if (!user || user.tenantId !== tenantId) return null;
 
-    const roles: string[] = user.userRoles.map(
-      (ur: UserRoleWithName) => ur.role.name,
-    );
+    const roles = this.getActiveRoleNames(user.userRoles);
 
     const permissions = await this.getUserPermissions(userId, tenantId);
 

@@ -7,3 +7,10 @@ export class UserLifecycleReasonDto {
   @IsNotEmpty()
   reason: string;
 }
+
+export class AssignUserRoleDto extends UserLifecycleReasonDto {
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsNotEmpty()
+  roleId: string;
+}

@@ -177,6 +177,7 @@ describe('PermissionsGuard', () => {
       expect.objectContaining({
         where: {
           userId: 'user-uuid-123',
+          status: 'ACTIVE',
           role: { tenantId: 'tenant-uuid-789' },
         },
       }),

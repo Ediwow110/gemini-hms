@@ -76,7 +76,7 @@ describe('AuthService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
-      userRoles: [{ role: { name: 'Admin' } }],
+      userRoles: [{ status: 'ACTIVE', role: { name: 'Admin' } }],
     };
 
     it('should include branchId when exactly one active branch assignment exists', async () => {
@@ -114,6 +114,22 @@ describe('AuthService', () => {
       );
       expect(jwtService.sign).toHaveBeenCalledWith(
         expect.not.objectContaining({ permissions: expect.anything() }),
+      );
+    });
+
+    it('should omit revoked roles from the JWT role list', async () => {
+      prisma.userBranch.findMany.mockResolvedValue([]);
+
+      await service.login({
+        ...mockUser,
+        userRoles: [
+          { status: 'ACTIVE', role: { name: 'Doctor' } },
+          { status: 'REVOKED', role: { name: 'Cashier' } },
+        ],
+      });
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ roles: ['Doctor'] }),
       );
     });
 
@@ -189,7 +205,7 @@ describe('AuthService', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         },
-        userRoles: [{ role: { name: 'Doctor' } }],
+        userRoles: [{ status: 'ACTIVE', role: { name: 'Doctor' } }],
       });
 
       const result = await service.selectBranch(userId, tenantId, branchId);
@@ -393,10 +409,14 @@ describe('AuthService', () => {
         id: 'user-123',
         email: 'test@example.com',
         tenantId: 'tenant-456',
-        userRoles: [{ role: { name: 'Doctor' } }],
+        userRoles: [
+          { status: 'ACTIVE', role: { name: 'Doctor' } },
+          { status: 'REVOKED', role: { name: 'Cashier' } },
+        ],
       });
       prisma.userRole.findMany.mockResolvedValue([
         {
+          status: 'ACTIVE',
           role: {
             rolePermissions: [
               { permission: { name: 'patient.view' } },
@@ -414,6 +434,7 @@ describe('AuthService', () => {
       expect(prisma.userRole.findMany).toHaveBeenCalledWith({
         where: {
           userId: 'user-123',
+          status: 'ACTIVE',
           role: { tenantId: 'tenant-456' },
         },
         include: {
@@ -426,6 +447,7 @@ describe('AuthService', () => {
           },
         },
       });
+      expect(result?.roles).toEqual(['Doctor']);
       expect(result?.permissions).toEqual(['patient.view', 'lab.result.view']);
       expect(jwtService.sign).not.toHaveBeenCalled();
     });

@@ -12,7 +12,15 @@ import type { RequestUser } from '../common/types/authenticated-request.type';
 
 const USER_STATUS_ACTIVE = 'ACTIVE';
 const USER_STATUS_INACTIVE = 'INACTIVE';
+const USER_ROLE_STATUS_ACTIVE = 'ACTIVE';
+const USER_ROLE_STATUS_REVOKED = 'REVOKED';
 const PRIVILEGED_PERMISSION = 'admin.role.change';
+
+type AdminRoleTarget = Prisma.RoleGetPayload<{
+  include: {
+    rolePermissions: { include: { permission: true } };
+  };
+}>;
 
 type AdminUserTarget = Prisma.UserGetPayload<{
   include: {
@@ -37,6 +45,21 @@ export interface AdminUserLifecycleResponse {
   status: string;
   tokenVersion: number;
   deactivatedAt: Date | null;
+}
+
+export interface AdminUserRoleMutationResponse {
+  userId: string;
+  email: string;
+  tenantId: string;
+  branchId?: string;
+  userStatus: string;
+  tokenVersion: number;
+  deactivatedAt: Date | null;
+  role: {
+    id: string;
+    name: string;
+  };
+  assignmentStatus: string;
 }
 
 @Injectable()
@@ -185,12 +208,228 @@ export class AdminService {
     });
   }
 
+  async assignUserRole(
+    actor: RequestUser,
+    targetUserId: string,
+    roleId: string,
+    reason: string,
+  ): Promise<AdminUserRoleMutationResponse> {
+    const trimmedReason = this.validateReason(reason);
+    const normalizedRoleId = this.validateRoleId(roleId);
+    this.assertActorCanTarget(actor, targetUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const target = await this.getScopedTarget(tx, actor, targetUserId);
+      this.assertNonPrivilegedTarget(target);
+
+      const role = await this.getRoleForDirectMutation(
+        tx,
+        actor.tenantId,
+        normalizedRoleId,
+      );
+      const activeRoleAssignments = this.getActiveUserRoleAssignments(target);
+      const existingAssignment = activeRoleAssignments.find(
+        (assignment) => assignment.roleId === normalizedRoleId,
+      );
+
+      if (existingAssignment) {
+        throw new ConflictException('Role is already assigned to this user');
+      }
+
+      const changedAt = new Date();
+      const reactivatedAssignment = await tx.userRole.updateMany({
+        where: {
+          userId: targetUserId,
+          roleId: normalizedRoleId,
+          status: { not: USER_ROLE_STATUS_ACTIVE },
+        },
+        data: {
+          status: USER_ROLE_STATUS_ACTIVE,
+          revokedAt: null,
+          revokedReason: null,
+        },
+      });
+
+      if (reactivatedAssignment.count === 0) {
+        await tx.userRole.create({
+          data: {
+            userId: targetUserId,
+            roleId: normalizedRoleId,
+            status: USER_ROLE_STATUS_ACTIVE,
+          },
+        });
+      }
+
+      const userUpdate = await tx.user.updateMany({
+        where: {
+          id: targetUserId,
+          tenantId: actor.tenantId,
+          ...this.getBranchMutationScope(actor),
+        },
+        data: {
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      if (userUpdate.count === 0) {
+        throw new ConflictException(
+          'User access scope changed before role assignment',
+        );
+      }
+
+      const updated = await this.getUpdatedUser(
+        tx,
+        actor.tenantId,
+        targetUserId,
+      );
+      const branchId = this.getAuditBranchId(actor, target);
+
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'USER_ROLE_ASSIGNED',
+          recordType: 'UserRole',
+          recordId: `${targetUserId}:${normalizedRoleId}`,
+          oldValues: this.buildRoleAuditOldValues(target),
+          newValues: this.buildRoleAuditNewValues(
+            actor,
+            targetUserId,
+            role,
+            updated,
+            trimmedReason,
+            changedAt,
+          ),
+        },
+        tx,
+        branchId,
+      );
+
+      return this.toRoleMutationResponse(
+        updated,
+        role,
+        USER_ROLE_STATUS_ACTIVE,
+      );
+    });
+  }
+
+  async revokeUserRole(
+    actor: RequestUser,
+    targetUserId: string,
+    roleId: string,
+    reason: string,
+  ): Promise<AdminUserRoleMutationResponse> {
+    const trimmedReason = this.validateReason(reason);
+    const normalizedRoleId = this.validateRoleId(roleId);
+    this.assertActorCanTarget(actor, targetUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const target = await this.getScopedTarget(tx, actor, targetUserId);
+      this.assertNonPrivilegedTarget(target);
+
+      const role = await this.getRoleForDirectMutation(
+        tx,
+        actor.tenantId,
+        normalizedRoleId,
+      );
+      const activeAssignment = this.getActiveUserRoleAssignments(target).find(
+        (assignment) => assignment.roleId === normalizedRoleId,
+      );
+
+      if (!activeAssignment) {
+        throw new ConflictException(
+          'Role assignment is not active for this user',
+        );
+      }
+
+      const changedAt = new Date();
+      const revokedAt = new Date();
+      const revokeResult = await tx.userRole.updateMany({
+        where: {
+          userId: targetUserId,
+          roleId: normalizedRoleId,
+          status: USER_ROLE_STATUS_ACTIVE,
+        },
+        data: {
+          status: USER_ROLE_STATUS_REVOKED,
+          revokedAt,
+          revokedReason: trimmedReason,
+        },
+      });
+
+      if (revokeResult.count === 0) {
+        throw new ConflictException(
+          'Role assignment changed before revocation',
+        );
+      }
+
+      const userUpdate = await tx.user.updateMany({
+        where: {
+          id: targetUserId,
+          tenantId: actor.tenantId,
+          ...this.getBranchMutationScope(actor),
+        },
+        data: {
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      if (userUpdate.count === 0) {
+        throw new ConflictException(
+          'User access scope changed before role revocation',
+        );
+      }
+
+      const updated = await this.getUpdatedUser(
+        tx,
+        actor.tenantId,
+        targetUserId,
+      );
+      const branchId = this.getAuditBranchId(actor, target);
+
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'USER_ROLE_REVOKED',
+          recordType: 'UserRole',
+          recordId: `${targetUserId}:${normalizedRoleId}`,
+          oldValues: this.buildRoleAuditOldValues(target),
+          newValues: this.buildRoleAuditNewValues(
+            actor,
+            targetUserId,
+            role,
+            updated,
+            trimmedReason,
+            changedAt,
+          ),
+        },
+        tx,
+        branchId,
+      );
+
+      return this.toRoleMutationResponse(
+        updated,
+        role,
+        USER_ROLE_STATUS_REVOKED,
+      );
+    });
+  }
+
   private validateReason(reason: string): string {
     const trimmed = reason.trim();
     if (!trimmed) {
       throw new BadRequestException('Reason is required');
     }
     return trimmed;
+  }
+
+  private validateRoleId(roleId: string): string {
+    const normalizedRoleId = roleId.trim();
+    if (!normalizedRoleId) {
+      throw new BadRequestException('Role ID is required');
+    }
+    return normalizedRoleId;
   }
 
   private assertActorCanTarget(actor: RequestUser, targetUserId: string) {
@@ -281,16 +520,12 @@ export class AdminService {
   }
 
   private assertNonPrivilegedTarget(target: AdminUserTarget) {
-    const hasPrivilegedRole = target.userRoles.some(({ role }) => {
-      // Inactive or archived roles are still treated as privileged until a maker-checker flow exists.
-      if (role.name === 'Super Admin') {
-        return true;
-      }
-
-      return role.rolePermissions.some(
-        ({ permission }) => permission.name === PRIVILEGED_PERMISSION,
-      );
-    });
+    const hasPrivilegedRole = this.getActiveUserRoleAssignments(target).some(
+      ({ role }) => {
+        // Inactive or archived roles are still treated as privileged until a maker-checker flow exists.
+        return this.isPrivilegedRole(role);
+      },
+    );
 
     if (hasPrivilegedRole) {
       throw new ForbiddenException(
@@ -319,6 +554,53 @@ export class AdminService {
     target: AdminUserTarget,
   ): string | undefined {
     return actor.branchId ?? this.getSingleBranchId(target);
+  }
+
+  private getActiveUserRoleAssignments(user: AdminUserTarget) {
+    return user.userRoles.filter(
+      (assignment) => assignment.status === USER_ROLE_STATUS_ACTIVE,
+    );
+  }
+
+  private isPrivilegedRole(role: AdminRoleTarget): boolean {
+    if (role.name === 'Super Admin') {
+      return true;
+    }
+
+    return role.rolePermissions.some(
+      ({ permission }) => permission.name === PRIVILEGED_PERMISSION,
+    );
+  }
+
+  private async getRoleForDirectMutation(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    roleId: string,
+  ): Promise<AdminRoleTarget> {
+    const role = await tx.role.findFirst({
+      where: { id: roleId, tenantId },
+      include: {
+        rolePermissions: { include: { permission: true } },
+      },
+    });
+
+    if (!role) {
+      throw new NotFoundException('Role not found');
+    }
+
+    if (role.status !== USER_STATUS_ACTIVE || role.archivedAt !== null) {
+      throw new ForbiddenException(
+        'Inactive or archived roles cannot be directly assigned',
+      );
+    }
+
+    if (this.isPrivilegedRole(role)) {
+      throw new ForbiddenException(
+        'Privileged role changes require maker-checker approval',
+      );
+    }
+
+    return role;
   }
 
   private getBranchMutationScope(actor: RequestUser): Prisma.UserWhereInput {
@@ -379,6 +661,62 @@ export class AdminService {
       reason,
       changedAt: changedAt.toISOString(),
       after: this.sanitizeAuditUser(user),
+    };
+  }
+
+  private buildRoleAuditOldValues(user: AdminUserTarget) {
+    return {
+      targetUserId: user.id,
+      beforeRoles: this.getRoleSummaries(user),
+      beforeTokenVersion: user.tokenVersion,
+    };
+  }
+
+  private buildRoleAuditNewValues(
+    actor: RequestUser,
+    targetUserId: string,
+    role: AdminRoleTarget,
+    user: AdminUserTarget,
+    reason: string,
+    changedAt: Date,
+  ) {
+    return {
+      actorId: actor.userId,
+      targetUserId,
+      roleId: role.id,
+      roleName: role.name,
+      reason,
+      changedAt: changedAt.toISOString(),
+      afterRoles: this.getRoleSummaries(user),
+      afterTokenVersion: user.tokenVersion,
+    };
+  }
+
+  private getRoleSummaries(user: AdminUserTarget) {
+    return this.getActiveUserRoleAssignments(user).map(({ role }) => ({
+      id: role.id,
+      name: role.name,
+    }));
+  }
+
+  private toRoleMutationResponse(
+    user: AdminUserTarget,
+    role: AdminRoleTarget,
+    assignmentStatus: string,
+  ): AdminUserRoleMutationResponse {
+    return {
+      userId: user.id,
+      email: user.email,
+      tenantId: user.tenantId,
+      branchId: this.getSingleBranchId(user),
+      userStatus: user.status,
+      tokenVersion: user.tokenVersion,
+      deactivatedAt: user.deactivatedAt,
+      role: {
+        id: role.id,
+        name: role.name,
+      },
+      assignmentStatus,
     };
   }
 
