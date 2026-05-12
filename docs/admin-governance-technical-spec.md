@@ -34,6 +34,12 @@ This document does **not** authorize immediate endpoint implementation unless th
 ## Decision
 Runtime admin endpoints remain **deferred** until the rules below are followed.
 
+Implemented backend slice:
+- `POST /api/v1/admin/users/:id/deactivate`
+- `POST /api/v1/admin/users/:id/activate`
+
+This slice directly processes only non-privileged users. Targets with `Super Admin` or any role carrying `admin.role.change` remain blocked until maker-checker processing for privileged admin lifecycle changes is implemented.
+
 ## Required permission
 Every mutation in this document requires:
 - `admin.role.change`
@@ -54,8 +60,8 @@ Read-only admin discovery endpoints may later use a separate permission, but tha
 ### A. User management
 - `POST /api/v1/admin/users`
 - `PATCH /api/v1/admin/users/:id`
-- `POST /api/v1/admin/users/:id/deactivate`
-- `POST /api/v1/admin/users/:id/reactivate`
+- `POST /api/v1/admin/users/:id/deactivate` - implemented for non-privileged users
+- `POST /api/v1/admin/users/:id/activate` - implemented for non-privileged users
 
 ### B. User role assignment
 - `POST /api/v1/admin/users/:id/roles`
@@ -124,8 +130,8 @@ Implementation rule:
 
 ### Approval required
 The following actions require `ApprovalRequest` creation and later processing by a different user:
-- user deactivation
-- user reactivation
+- privileged user deactivation
+- privileged user reactivation
 - user role assignment
 - user role revocation
 - role creation
@@ -136,6 +142,7 @@ The following actions require `ApprovalRequest` creation and later processing by
 ### Approval optional / direct execution
 These may execute directly with audit only, unless policy is later tightened:
 - user profile update limited to email and MFA flag
+- non-privileged user deactivation/reactivation with `admin.role.change`, tenant/branch scope enforcement, self-change block, audit, and `tokenVersion` invalidation
 
 If implementation chooses to require approval for user profile update too, that is allowed, but the code must follow this document consistently.
 
@@ -294,6 +301,10 @@ Use explicit event keys:
 - `ADMIN_ROLE_PERMISSION_REVOKE_REQUESTED`
 - `ADMIN_ROLE_PERMISSION_REVOKED`
 
+Current implemented user lifecycle slice uses:
+- `USER_DEACTIVATED`
+- `USER_ACTIVATED`
+
 ### Audit payload contract
 Current `AuditLog` schema stores:
 - `tenantId`
@@ -355,10 +366,11 @@ The current codebase has stateless JWT access tokens and no token revocation sto
 Consequences:
 - DB-derived permissions in `/auth/me` reflect changes immediately
 - JWT `roles` claim may remain stale until re-login or branch reselection
-- existing tokens cannot be force-revoked today after admin role changes
+- implemented user activation/deactivation increments `User.tokenVersion`, invalidating existing target-user JWTs
+- future role changes must increment affected users' `User.tokenVersion` before claiming forced token invalidation for authorization changes
 
 ### Required implementation behavior
-Until token invalidation logic is implemented, the admin implementation must:
+Until token invalidation is wired into each admin mutation, the admin implementation must:
 - document that role/permission changes take effect immediately for DB-derived permissions checks
 - document that displayed roles in the JWT response may be stale until token refresh
 - return a response flag like `requiresReauth: true` for target-user role/permission changes
@@ -459,9 +471,9 @@ Required additions or explicit deferrals:
 ### Phase 1: admin user lifecycle backend
 - user create
 - user update
-- user deactivate/reactivate
-- audit and approval wiring
-- increment `User.tokenVersion` transactionally for affected users when lifecycle changes alter authentication validity
+- non-privileged user deactivate/activate: implemented with direct audit and transactionally incremented `User.tokenVersion`
+- privileged user deactivate/reactivate: deferred pending maker-checker
+- user create/update: deferred
 
 ### Phase 2: user-role mutation backend
 - assign role
