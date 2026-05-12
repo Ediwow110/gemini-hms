@@ -907,7 +907,15 @@ export class BillingService {
   ) {
     const session = await this.prisma.cashierSession.findFirst({
       where: { id: sessionId, tenantId, userId, branchId, status: 'OPEN' },
-      include: { payments: true },
+      include: {
+        payments: {
+          include: {
+            reversals: {
+              where: { status: 'APPLIED' },
+            },
+          },
+        },
+      },
     });
 
     if (!session) {
@@ -918,9 +926,16 @@ export class BillingService {
 
     // 1. Calculate Expected Balance
     // Sum all cash payments (assuming we only track cash in the drawer variance)
+    // Exclude VOIDED payments and subtract APPLIED refunds to reconcile net revenue
     const cashPayments = session.payments
-      .filter((p) => p.paymentMethod === 'CASH')
-      .reduce((sum, p) => sum + Number(p.amount), 0);
+      .filter((p) => p.paymentMethod === 'CASH' && p.status === 'POSTED')
+      .reduce((sum, p) => {
+        const paymentAmount = Number(p.amount);
+        const refunds = p.reversals
+          .filter((r) => r.type === 'REFUND')
+          .reduce((rSum, r) => rSum + Number(r.amount), 0);
+        return sum + (paymentAmount - refunds);
+      }, 0);
 
     const expectedCash = Number(session.openingBalance) + cashPayments;
     const variance = dto.actualClosingBalance - expectedCash;

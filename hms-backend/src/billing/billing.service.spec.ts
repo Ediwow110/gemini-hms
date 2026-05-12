@@ -47,6 +47,11 @@ describe('BillingService Reversals', () => {
         update: jest.fn(),
         updateMany: jest.fn(),
       },
+      cashierSession: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+      },
       $transaction: jest
         .fn()
         .mockImplementation(async (cb) => await cb(prisma)),
@@ -852,6 +857,133 @@ describe('BillingService Reversals', () => {
           mockReversalId,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('closeSession reporting reconciliation', () => {
+    const sessionId = 'session-123';
+    const mockSession = {
+      id: sessionId,
+      tenantId: mockTenantId,
+      userId: mockUserId,
+      branchId: mockBranchId,
+      status: 'OPEN',
+      openingBalance: new Prisma.Decimal(100),
+      payments: [],
+    };
+
+    it('should exclude VOIDED payments from expectedCash calculation', async () => {
+      prisma.cashierSession.findFirst.mockResolvedValue({
+        ...mockSession,
+        payments: [
+          {
+            amount: new Prisma.Decimal(50),
+            paymentMethod: 'CASH',
+            status: 'POSTED',
+            reversals: [],
+          },
+          {
+            amount: new Prisma.Decimal(200),
+            paymentMethod: 'CASH',
+            status: 'VOIDED',
+            reversals: [],
+          },
+        ],
+      });
+      prisma.cashierSession.update = jest.fn().mockResolvedValue({});
+
+      const dto = { actualClosingBalance: 150, remarks: '' };
+      await service.closeSession(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+        sessionId,
+        dto,
+      );
+
+      expect(prisma.cashierSession.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ closingBalance: 150 }),
+        }),
+      );
+
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'SESSION_CLOSED',
+          newValues: expect.objectContaining({
+            expectedCash: 150,
+            variance: 0,
+          }),
+        }),
+      );
+    });
+
+    it('should subtract APPLIED REFUND reversals from expectedCash calculation', async () => {
+      prisma.cashierSession.findFirst.mockResolvedValue({
+        ...mockSession,
+        payments: [
+          {
+            amount: new Prisma.Decimal(100),
+            paymentMethod: 'CASH',
+            status: 'POSTED',
+            reversals: [{ amount: new Prisma.Decimal(30), type: 'REFUND' }],
+          },
+        ],
+      });
+      prisma.cashierSession.update = jest.fn().mockResolvedValue({});
+
+      const dto = { actualClosingBalance: 170, remarks: '' };
+      await service.closeSession(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+        sessionId,
+        dto,
+      );
+
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          newValues: expect.objectContaining({
+            expectedCash: 170,
+            variance: 0,
+          }),
+        }),
+      );
+    });
+
+    it('should NOT subtract non-refund reversals from expectedCash', async () => {
+      prisma.cashierSession.findFirst.mockResolvedValue({
+        ...mockSession,
+        payments: [
+          {
+            amount: new Prisma.Decimal(100),
+            paymentMethod: 'CASH',
+            status: 'POSTED',
+            reversals: [
+              { amount: new Prisma.Decimal(30), type: 'PAYMENT_VOID' },
+            ],
+          },
+        ],
+      });
+      prisma.cashierSession.update = jest.fn().mockResolvedValue({});
+
+      const dto = { actualClosingBalance: 200, remarks: '' };
+      await service.closeSession(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+        sessionId,
+        dto,
+      );
+
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          newValues: expect.objectContaining({
+            expectedCash: 200,
+            variance: 0,
+          }),
+        }),
+      );
     });
   });
 });
