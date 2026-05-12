@@ -39,6 +39,7 @@ model Tenant {
   hmoPartners        HmoPartner[]
   claims             Claim[]
   userBranches       UserBranch[]
+  reportExports      ReportExport[]
 
   @@map("tenants")
 }
@@ -75,6 +76,7 @@ model User {
   auditLogs    AuditLog[]
   userRoles    UserRole[]
   userBranches UserBranch[]
+  reportExports ReportExport[]
 
   @@unique([tenantId, email])
   @@map("users")
@@ -616,4 +618,25 @@ model NumberingSequence {
 
   @@unique([tenantId, branchId, entityType])
   @@map("numbering_sequences")
+}
+
+model ReportExport {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  branchId    String?  @map("branch_id") @db.Uuid
+  reportType  String   @map("report_type")
+  filters     Json
+  reason      String
+  rowCount    Int      @map("row_count")
+  status      String   @default("CREATED") // CREATED, FAILED
+  requestedBy String   @map("requested_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [requestedBy], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@map("report_exports")
 }
