@@ -491,9 +491,42 @@ describe('BillingService Reversals', () => {
 
   describe('applyReversal', () => {
     it('should dispatch to applyRefund if type is REFUND', async () => {
+      const mockResult = {
+        reversal: {
+          id: 'test',
+          type: 'REFUND',
+          status: 'APPLIED',
+          reason: 'test',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          tenantId: 'test',
+          branchId: 'test',
+          paymentId: 'test',
+          invoiceId: 'test',
+          approvalRequestId: 'test',
+          amount: new Prisma.Decimal(10),
+          requestedBy: 'test',
+          approvedBy: null,
+          appliedBy: 'test',
+          requestedAt: new Date(),
+          approvedAt: null,
+          appliedAt: new Date(),
+        },
+        invoice: {
+          id: 'test',
+          orderId: 'test',
+          invoiceNumber: null,
+          totalAmount: new Prisma.Decimal(10),
+          paidAmount: new Prisma.Decimal(10),
+          status: 'PAID',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      };
+
       const spy = jest
         .spyOn(service, 'applyRefund')
-        .mockResolvedValue(null as never);
+        .mockResolvedValue(mockResult);
       prisma.paymentReversal.findFirst.mockResolvedValue({
         type: 'REFUND',
       });
@@ -503,9 +536,42 @@ describe('BillingService Reversals', () => {
     });
 
     it('should dispatch to applyVoid if type is PAYMENT_VOID', async () => {
+      const mockResult = {
+        reversal: {
+          id: 'test',
+          type: 'PAYMENT_VOID',
+          status: 'APPLIED',
+          reason: 'test',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          tenantId: 'test',
+          branchId: 'test',
+          paymentId: 'test',
+          invoiceId: 'test',
+          approvalRequestId: 'test',
+          amount: new Prisma.Decimal(10),
+          requestedBy: 'test',
+          approvedBy: null,
+          appliedBy: 'test',
+          requestedAt: new Date(),
+          approvedAt: null,
+          appliedAt: new Date(),
+        },
+        invoice: {
+          id: 'test',
+          orderId: 'test',
+          invoiceNumber: null,
+          totalAmount: new Prisma.Decimal(10),
+          paidAmount: new Prisma.Decimal(0),
+          status: 'UNPAID',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      };
+
       const spy = jest
         .spyOn(service, 'applyVoid')
-        .mockResolvedValue(null as never);
+        .mockResolvedValue(mockResult);
       prisma.paymentReversal.findFirst.mockResolvedValue({
         type: 'PAYMENT_VOID',
       });
