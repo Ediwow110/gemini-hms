@@ -232,6 +232,7 @@ model LabResultVersion {
 model AuditLog {
   id         String   @id @default(uuid()) @db.Uuid
   tenantId   String   @map("tenant_id") @db.Uuid
+  branchId   String?  @map("branch_id") @db.Uuid
   userId     String   @map("user_id") @db.Uuid
   eventKey   String   @map("event_key")
   recordType String   @map("record_type")
@@ -243,6 +244,8 @@ model AuditLog {
   tenant Tenant @relation(fields: [tenantId], references: [id])
   user   User   @relation(fields: [userId], references: [id])
 
+  @@index([tenantId])
+  @@index([branchId])
   @@map("audit_logs")
 }
 

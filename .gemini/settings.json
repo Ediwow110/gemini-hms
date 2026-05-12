@@ -1,0 +1,8 @@
+{
+  "general": {
+    "defaultApprovalMode": "auto_edit",
+    "plan": {
+      "enabled": true
+    }
+  }
+}
