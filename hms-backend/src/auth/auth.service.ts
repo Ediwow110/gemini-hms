@@ -1,8 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+
+type UserWithRoles = Prisma.UserGetPayload<{
+  include: {
+    tenant: true;
+    userRoles: { include: { role: true } };
+  };
+}>;
+
+type AuthenticatedUser = Omit<UserWithRoles, 'passwordHash'>;
+
+type UserRoleWithName = {
+  role: { name: string };
+};
 
 @Injectable()
 export class AuthService {
@@ -15,7 +29,7 @@ export class AuthService {
     tenantCode: string,
     email: string,
     pass: string,
-  ): Promise<any> {
+  ): Promise<AuthenticatedUser | null> {
     // Resolve tenantCode to tenantId first
     const tenant = await this.prisma.tenant.findFirst({
       where: { name: tenantCode },
@@ -34,7 +48,12 @@ export class AuthService {
       },
     });
 
-    if (user && (await bcrypt.compare(pass, user.passwordHash))) {
+    if (
+      user &&
+      user.status === 'ACTIVE' &&
+      user.deactivatedAt === null &&
+      (await bcrypt.compare(pass, user.passwordHash))
+    ) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { passwordHash, ...result } = user;
       return result;
@@ -42,10 +61,10 @@ export class AuthService {
     return null;
   }
 
-  async login(user: any) {
+  async login(user: AuthenticatedUser) {
     // Extract roles for the payload
     const roles: string[] = user.userRoles.map(
-      (ur: any) => ur.role.name as string,
+      (ur: UserRoleWithName) => ur.role.name,
     );
 
     // Resolve branch context from user assignments (Foundation for Section 7 Branch Scoping)
@@ -86,16 +105,24 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
+        tenant: true,
         userRoles: {
           include: { role: true },
         },
       },
     });
 
-    if (!user) return null;
+    if (
+      !user ||
+      user.tenantId !== tenantId ||
+      user.status !== 'ACTIVE' ||
+      user.deactivatedAt !== null
+    ) {
+      return null;
+    }
 
     const roles: string[] = user.userRoles.map(
-      (ur: any) => ur.role.name as string,
+      (ur: UserRoleWithName) => ur.role.name,
     );
     return this.generateTokenResponse(user, roles, branchId);
   }
@@ -165,10 +192,10 @@ export class AuthService {
       },
     });
 
-    if (!user) return null;
+    if (!user || user.tenantId !== tenantId) return null;
 
     const roles: string[] = user.userRoles.map(
-      (ur: any) => ur.role.name as string,
+      (ur: UserRoleWithName) => ur.role.name,
     );
 
     const permissions = await this.getUserPermissions(userId, tenantId);
@@ -197,12 +224,17 @@ export class AuthService {
     };
   }
 
-  private generateTokenResponse(user: any, roles: string[], branchId?: string) {
+  private generateTokenResponse(
+    user: AuthenticatedUser,
+    roles: string[],
+    branchId?: string,
+  ) {
     // Inject required fields into the JWT payload (CRITICAL for Section 7 Tenant Isolation)
     const payload = {
       sub: user.id,
       email: user.email,
       tenantId: user.tenantId,
+      tokenVersion: user.tokenVersion,
       ...(branchId && { branchId }),
       roles: roles,
       jti: crypto.randomUUID(),

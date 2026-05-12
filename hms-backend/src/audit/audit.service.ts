@@ -118,11 +118,9 @@ export class AuditService {
     const sanitizedData = data.map((item) => {
       const sanitized = { ...item };
       if (!isSuperAdmin) {
-        const {
-          oldValues: _oldValues,
-          newValues: _newValues,
-          ...rest
-        } = sanitized;
+        const { oldValues, newValues, ...rest } = sanitized;
+        void oldValues;
+        void newValues;
         return rest;
       }
       return sanitized;
@@ -169,11 +167,9 @@ export class AuditService {
 
     const sanitized = { ...auditLog };
     if (!isSuperAdmin) {
-      const {
-        oldValues: _oldValues,
-        newValues: _newValues,
-        ...rest
-      } = sanitized;
+      const { oldValues, newValues, ...rest } = sanitized;
+      void oldValues;
+      void newValues;
       return rest;
     }
 

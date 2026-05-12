@@ -5,6 +5,7 @@ export interface RequestUser {
   branchId?: string;
   roles?: string[];
   permissions?: string[];
+  tokenVersion?: number;
 }
 
 export interface AuthenticatedRequest {

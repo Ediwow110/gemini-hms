@@ -22,7 +22,7 @@ This document does **not** authorize immediate endpoint implementation unless th
 - `/api/v1/auth/me` re-derives **permissions from the database** at request time
 - JWT `roles` can become stale until the client refreshes its token
 - `branchId` in JWT is present only when exactly one active branch assignment exists or after explicit `/api/v1/auth/select-branch`
-- `User.tokenVersion` exists as a schema foundation, but JWT issuance/validation does not read or compare it yet
+- `User.tokenVersion` is included in new JWTs and compared during JWT validation
 - There is **no persisted session table**, refresh-token table, or revoked-token table
 
 ### Current scope/security model
@@ -366,7 +366,7 @@ Until token invalidation logic is implemented, the admin implementation must:
 
 ### Schema prerequisite for true revocation
 One of the following is required before promising forced logout or token invalidation:
-- `User.tokenVersion` and JWT version checking. The field now exists, but JWT issuance/validation is not wired yet.
+- `User.tokenVersion` and JWT version checking. New JWTs include `tokenVersion`, and JWT validation rejects mismatches.
 - persistent session table with revocation status
 - revoked token / `jti` denylist store
 
@@ -442,8 +442,8 @@ Required additions or explicit deferrals:
 - `isSystem` defaults to `false`; seeded built-in roles are marked `true`
 
 3. Token/session invalidation support: partially implemented
-- `User.tokenVersion` exists as a schema-only foundation
-- JWT payloads and guards do not yet enforce `tokenVersion`
+- `User.tokenVersion` exists and is enforced for JWT validation
+- future governed user or role mutations must increment `User.tokenVersion` in the same transaction as approval application, domain mutation, and audit creation
 
 ### Not required immediately
 - no new approval table is needed; existing `ApprovalRequest` is sufficient
@@ -454,19 +454,21 @@ Required additions or explicit deferrals:
 ### Phase 0: schema prerequisite pass
 - user lifecycle fields: schema foundation implemented
 - role archive/system fields: schema foundation implemented
-- token/session invalidation: `User.tokenVersion` schema foundation implemented; auth enforcement remains deferred
+- token/session invalidation: `User.tokenVersion` schema foundation and auth enforcement implemented; mutation-time increments remain deferred
 
 ### Phase 1: admin user lifecycle backend
 - user create
 - user update
 - user deactivate/reactivate
 - audit and approval wiring
+- increment `User.tokenVersion` transactionally for affected users when lifecycle changes alter authentication validity
 
 ### Phase 2: user-role mutation backend
 - assign role
 - revoke role
 - self-escalation blocks
 - approval processing
+- increment `User.tokenVersion` transactionally for affected users when role assignments change
 
 ### Phase 3: role and role-permission backend
 - create/update/archive role
