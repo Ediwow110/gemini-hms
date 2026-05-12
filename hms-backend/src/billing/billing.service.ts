@@ -107,31 +107,60 @@ export class BillingService {
             ? 'PAID'
             : 'PARTIALLY_PAID';
 
-        const updatedInvoice = await tx.invoice.update({
-          where: { id: dto.invoiceId },
+        const invoiceUpdate = await tx.invoice.updateMany({
+          where: {
+            id: dto.invoiceId,
+            order: { tenantId, branchId },
+          },
           data: {
             paidAmount: newPaidAmount,
             status: newStatus,
           },
         });
 
+        if (invoiceUpdate.count === 0) {
+          throw new ConflictException(
+            'Invoice not found in this branch or was modified concurrently',
+          );
+        }
+
+        const updatedInvoice = await tx.invoice.findFirst({
+          where: { id: dto.invoiceId, order: { tenantId, branchId } },
+        });
+
+        if (!updatedInvoice) {
+          throw new ConflictException(
+            'Invoice not found in this branch or was modified concurrently',
+          );
+        }
+
         // 7. Update Order Status (Revenue Cycle Logic)
         if (newStatus === 'PAID') {
-          await tx.order.update({
-            where: { id: invoice.orderId },
+          const orderUpdate = await tx.order.updateMany({
+            where: { id: invoice.orderId, tenantId, branchId },
             data: { status: 'PAID' },
           });
+
+          if (orderUpdate.count === 0) {
+            throw new ConflictException(
+              'Order not found in this branch or was modified concurrently',
+            );
+          }
         }
 
         // 8. Log Audit Event (PAYMENT_POSTED)
-        await this.audit.log({
-          tenantId,
-          userId,
-          eventKey: 'PAYMENT_POSTED',
-          recordType: 'Payment',
-          recordId: payment.id,
-          newValues: { payment, invoiceStatus: newStatus },
-        });
+        await this.audit.log(
+          {
+            tenantId,
+            userId,
+            eventKey: 'PAYMENT_POSTED',
+            recordType: 'Payment',
+            recordId: payment.id,
+            newValues: { payment, invoiceStatus: newStatus },
+          },
+          tx,
+          branchId,
+        );
 
         return { payment, invoice: updatedInvoice };
       } catch (error) {
@@ -184,6 +213,8 @@ export class BillingService {
     const reversals = await this.prisma.paymentReversal.findMany({
       where: {
         paymentId: payment.id,
+        tenantId,
+        branchId,
         status: { in: [REVERSAL_STATUS.PENDING, REVERSAL_STATUS.APPLIED] },
       },
     });
@@ -204,6 +235,7 @@ export class BillingService {
     // Block duplicate pending refund requests for this payment
     const pending = await this.prisma.approvalRequest.findFirst({
       where: {
+        tenantId,
         recordId: payment.id,
         type: REVERSAL_TYPE.REFUND,
         status: 'PENDING',
@@ -268,6 +300,7 @@ export class BillingService {
           },
         },
         tx,
+        branchId,
       );
 
       return approvalReq;
@@ -373,6 +406,7 @@ export class BillingService {
           },
         },
         tx,
+        branchId,
       );
 
       return approvalReq;
@@ -460,8 +494,8 @@ export class BillingService {
     }
 
     // 2. Verify Approval status
-    const approvalRequest = await this.prisma.approvalRequest.findUnique({
-      where: { id: reversal.approvalRequestId },
+    const approvalRequest = await this.prisma.approvalRequest.findFirst({
+      where: { id: reversal.approvalRequestId, tenantId },
     });
 
     if (!approvalRequest) {
@@ -519,6 +553,8 @@ export class BillingService {
       const updateResult = await tx.paymentReversal.updateMany({
         where: {
           id: reversalId,
+          tenantId,
+          branchId,
           status: REVERSAL_STATUS.PENDING,
         },
         data: {
@@ -586,25 +622,61 @@ export class BillingService {
       const beforeInvoiceStatus = invoice.status;
 
       // Update Invoice
-      const updatedInvoice = await tx.invoice.update({
-        where: { id: invoice.id },
+      const invoiceUpdate = await tx.invoice.updateMany({
+        where: { id: invoice.id, order: { tenantId, branchId } },
         data: {
           paidAmount: afterPaidAmount,
           status: newStatus,
         },
       });
 
+      if (invoiceUpdate.count === 0) {
+        throw new ConflictException(
+          'Invoice not found in this branch or was modified concurrently',
+        );
+      }
+
+      const updatedInvoice = await tx.invoice.findFirst({
+        where: { id: invoice.id, order: { tenantId, branchId } },
+      });
+
+      if (!updatedInvoice) {
+        throw new ConflictException(
+          'Invoice not found in this branch or was modified concurrently',
+        );
+      }
+
       // Mark payment as VOIDED
-      await tx.payment.update({
-        where: { id: payment.id },
+      const paymentVoided = await tx.payment.updateMany({
+        where: {
+          id: payment.id,
+          status: 'POSTED',
+          cashierSession: { tenantId, branchId },
+        },
         data: { status: 'VOIDED' },
       });
 
+      if (paymentVoided.count === 0) {
+        throw new ConflictException(
+          'Payment not found in this branch, not POSTED, or was modified concurrently',
+        );
+      }
+
       // Mark approval request as APPLIED (post-approval execution)
-      await tx.approvalRequest.update({
-        where: { id: approvalRequest.id },
+      const appliedApproval = await tx.approvalRequest.updateMany({
+        where: {
+          id: approvalRequest.id,
+          tenantId,
+          status: 'APPROVED',
+        },
         data: { status: 'APPLIED' },
       });
+
+      if (appliedApproval.count === 0) {
+        throw new ConflictException(
+          'Approval request not found, not APPROVED, or was modified concurrently',
+        );
+      }
 
       // Log Audit Event (PAYMENT_VOID_APPLIED)
       await this.audit.log(
@@ -636,6 +708,7 @@ export class BillingService {
           },
         },
         tx,
+        branchId,
       );
 
       return {
@@ -679,8 +752,8 @@ export class BillingService {
     }
 
     // 2. Verify Approval status
-    const approvalRequest = await this.prisma.approvalRequest.findUnique({
-      where: { id: reversal.approvalRequestId },
+    const approvalRequest = await this.prisma.approvalRequest.findFirst({
+      where: { id: reversal.approvalRequestId, tenantId },
     });
 
     if (!approvalRequest) {
@@ -739,6 +812,8 @@ export class BillingService {
       const updateResult = await tx.paymentReversal.updateMany({
         where: {
           id: reversalId,
+          tenantId,
+          branchId,
           status: REVERSAL_STATUS.PENDING,
         },
         data: {
@@ -811,19 +886,44 @@ export class BillingService {
       const beforeInvoiceStatus = invoice.status;
 
       // Update Invoice
-      const updatedInvoice = await tx.invoice.update({
-        where: { id: invoice.id },
+      const invoiceUpdate = await tx.invoice.updateMany({
+        where: { id: invoice.id, order: { tenantId, branchId } },
         data: {
           paidAmount: afterPaidAmount,
           status: newStatus,
         },
       });
 
-      // Mark approval request as APPLIED (post-approval execution)
-      await tx.approvalRequest.update({
-        where: { id: approvalRequest.id },
+      if (invoiceUpdate.count === 0) {
+        throw new ConflictException(
+          'Invoice not found in this branch or was modified concurrently',
+        );
+      }
+
+      const updatedInvoice = await tx.invoice.findFirst({
+        where: { id: invoice.id, order: { tenantId, branchId } },
+      });
+
+      if (!updatedInvoice) {
+        throw new ConflictException(
+          'Invoice not found in this branch or was modified concurrently',
+        );
+      }
+
+      const appliedApproval = await tx.approvalRequest.updateMany({
+        where: {
+          id: approvalRequest.id,
+          tenantId,
+          status: 'APPROVED',
+        },
         data: { status: 'APPLIED' },
       });
+
+      if (appliedApproval.count === 0) {
+        throw new ConflictException(
+          'Approval request not found, not APPROVED, or was modified concurrently',
+        );
+      }
 
       // Log Audit Event (REFUND_APPLIED)
       await this.audit.log(
@@ -847,6 +947,7 @@ export class BillingService {
           },
         },
         tx,
+        branchId,
       );
 
       return {
@@ -875,27 +976,33 @@ export class BillingService {
       );
     }
 
-    // 2. Create the session
-    const session = await this.prisma.cashierSession.create({
-      data: {
-        tenantId,
+    // 2. Create the session and audit atomically
+    return this.prisma.$transaction(async (tx) => {
+      const session = await tx.cashierSession.create({
+        data: {
+          tenantId,
+          branchId,
+          userId,
+          openingBalance: dto.openingBalance,
+          status: 'OPEN',
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'SESSION_OPENED',
+          recordType: 'CashierSession',
+          recordId: session.id,
+          newValues: { openingBalance: dto.openingBalance, branchId },
+        },
+        tx,
         branchId,
-        userId,
-        openingBalance: dto.openingBalance,
-        status: 'OPEN',
-      },
-    });
+      );
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'SESSION_OPENED',
-      recordType: 'CashierSession',
-      recordId: session.id,
-      newValues: { openingBalance: dto.openingBalance, branchId },
+      return session;
     });
-
-    return session;
   }
 
   async closeSession(
@@ -948,8 +1055,14 @@ export class BillingService {
 
     // 2. Close the session in a transaction
     return this.prisma.$transaction(async (tx) => {
-      const closed = await tx.cashierSession.update({
-        where: { id: sessionId },
+      const closeSessionResult = await tx.cashierSession.updateMany({
+        where: {
+          id: sessionId,
+          tenantId,
+          branchId,
+          userId,
+          status: 'OPEN',
+        },
         data: {
           status: 'CLOSED',
           closingBalance: dto.actualClosingBalance,
@@ -957,19 +1070,45 @@ export class BillingService {
         },
       });
 
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'SESSION_CLOSED',
-        recordType: 'CashierSession',
-        recordId: sessionId,
-        newValues: {
-          expectedCash,
-          actualCash: dto.actualClosingBalance,
-          variance,
-          remarks: dto.remarks,
+      if (closeSessionResult.count === 0) {
+        throw new BadRequestException(
+          'Active session not found or already closed in this branch',
+        );
+      }
+
+      const closed = await tx.cashierSession.findFirst({
+        where: {
+          id: sessionId,
+          tenantId,
+          branchId,
+          userId,
+          status: 'CLOSED',
         },
       });
+
+      if (!closed) {
+        throw new BadRequestException(
+          'Cashier session was not closed or could not be loaded',
+        );
+      }
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'SESSION_CLOSED',
+          recordType: 'CashierSession',
+          recordId: sessionId,
+          newValues: {
+            expectedCash,
+            actualCash: dto.actualClosingBalance,
+            variance,
+            remarks: dto.remarks,
+          },
+        },
+        tx,
+        branchId,
+      );
 
       return { session: closed, variance, expectedCash };
     });

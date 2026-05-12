@@ -19,13 +19,36 @@ export class ApprovalsService {
     private audit: AuditService,
   ) {}
 
+  private getRequestBranchId(
+    details:
+      | Prisma.JsonValue
+      | Prisma.InputJsonValue
+      | Prisma.NullableJsonNullValueInput
+      | null
+      | undefined,
+  ): string | undefined {
+    if (!details || typeof details !== 'object' || Array.isArray(details)) {
+      return undefined;
+    }
+
+    if (!('branchId' in details)) {
+      return undefined;
+    }
+
+    const branchId = details.branchId;
+    return typeof branchId === 'string' ? branchId : undefined;
+  }
+
   async createRequest(
     tenantId: string,
     userId: string,
-    dto: CreateApprovalRequestDto & { details?: any },
+    dto: CreateApprovalRequestDto & {
+      details?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
+    },
     tx?: Prisma.TransactionClient,
   ) {
     const db = tx || this.prisma;
+    const requestBranchId = this.getRequestBranchId(dto.details);
     const request = await db.approvalRequest.create({
       data: {
         tenantId,
@@ -49,6 +72,7 @@ export class ApprovalsService {
         newValues: request,
       },
       tx,
+      requestBranchId,
     );
 
     return request;
@@ -67,12 +91,19 @@ export class ApprovalsService {
     id: string,
     action: 'APPROVED' | 'REJECTED',
     dto: ProcessApprovalRequestDto,
+    branchId?: string,
   ) {
     const request = await this.prisma.approvalRequest.findFirst({
       where: { id, tenantId },
     });
 
     if (!request) {
+      throw new NotFoundException('Approval request not found');
+    }
+
+    const requestBranchId = this.getRequestBranchId(request.details);
+
+    if (requestBranchId && requestBranchId !== branchId) {
       throw new NotFoundException('Approval request not found');
     }
 
@@ -91,14 +122,32 @@ export class ApprovalsService {
 
     // Process inside a transaction
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.approvalRequest.update({
-        where: { id },
+      const updateResult = await tx.approvalRequest.updateMany({
+        where: {
+          id,
+          tenantId,
+          status: 'PENDING',
+        },
         data: {
           status: action,
           approverId: userId,
           remarks: dto.remarks,
         },
       });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException(
+          'invalid_workflow_transition: Request is already processed or was modified',
+        );
+      }
+
+      const updated = await tx.approvalRequest.findFirst({
+        where: { id, tenantId },
+      });
+
+      if (!updated) {
+        throw new NotFoundException('Approval request not found');
+      }
 
       await this.audit.log(
         {
@@ -111,6 +160,7 @@ export class ApprovalsService {
           newValues: updated,
         },
         tx,
+        requestBranchId,
       );
 
       return updated;

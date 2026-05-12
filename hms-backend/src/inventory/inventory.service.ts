@@ -48,6 +48,7 @@ export class InventoryService {
           newValues: item,
         },
         tx,
+        branchId,
       );
 
       return item;
@@ -91,11 +92,22 @@ export class InventoryService {
       const previousStock = stock.quantity;
       const newStock = previousStock + dto.quantity;
 
-      // 1. Update Branch Stock
-      const updatedStock = await tx.branchStock.update({
-        where: { id: stock.id },
+      const stockUpdate = await tx.branchStock.updateMany({
+        where: { id: stock.id, tenantId, branchId },
         data: { quantity: newStock },
       });
+
+      if (stockUpdate.count === 0) {
+        throw new NotFoundException('Stock not found for this branch');
+      }
+
+      const updatedStock = await tx.branchStock.findFirst({
+        where: { id: stock.id, tenantId, branchId },
+      });
+
+      if (!updatedStock) {
+        throw new NotFoundException('Stock not found for this branch');
+      }
 
       // 2. Insert Stock Log (Traceability)
       const log = await tx.stockLog.create({
@@ -124,6 +136,7 @@ export class InventoryService {
           newValues: { log, updatedStock },
         },
         tx,
+        branchId,
       );
 
       return updatedStock;
@@ -190,11 +203,22 @@ export class InventoryService {
       const previousStock = stock.quantity;
       const newStock = previousStock - quantity;
 
-      // 1. Update Branch Stock
-      const updatedStock = await tx.branchStock.update({
-        where: { id: stock.id },
+      const stockUpdate = await tx.branchStock.updateMany({
+        where: { id: stock.id, tenantId, branchId },
         data: { quantity: newStock },
       });
+
+      if (stockUpdate.count === 0) {
+        throw new NotFoundException('Stock not found for this branch');
+      }
+
+      const updatedStock = await tx.branchStock.findFirst({
+        where: { id: stock.id, tenantId, branchId },
+      });
+
+      if (!updatedStock) {
+        throw new NotFoundException('Stock not found for this branch');
+      }
 
       // 2. Insert Stock Log (Traceability)
       const log = await tx.stockLog.create({
@@ -251,6 +275,7 @@ export class InventoryService {
           newValues: { log, updatedStock },
         },
         tx,
+        branchId,
       );
 
       return updatedStock;

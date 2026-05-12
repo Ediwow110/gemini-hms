@@ -43,6 +43,7 @@ export class ApprovalsController {
   approve(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') id: string,
     @Body() dto: ProcessApprovalRequestDto,
   ) {
@@ -52,6 +53,7 @@ export class ApprovalsController {
       id,
       'APPROVED',
       dto,
+      branchId,
     );
   }
 
@@ -60,6 +62,7 @@ export class ApprovalsController {
   reject(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') id: string,
     @Body() dto: ProcessApprovalRequestDto,
   ) {
@@ -69,6 +72,7 @@ export class ApprovalsController {
       id,
       'REJECTED',
       dto,
+      branchId,
     );
   }
 }

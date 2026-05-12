@@ -27,16 +27,23 @@ describe('BillingService Reversals', () => {
     prisma = {
       payment: {
         findFirst: jest.fn(),
+        create: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
       invoice: {
+        updateMany: jest.fn(),
         update: jest.fn(),
         findFirst: jest.fn(),
+      },
+      order: {
+        updateMany: jest.fn(),
       },
       approvalRequest: {
         findFirst: jest.fn(),
         findUnique: jest.fn(),
         create: jest.fn(),
+        updateMany: jest.fn(),
         update: jest.fn(),
       },
       paymentReversal: {
@@ -49,6 +56,7 @@ describe('BillingService Reversals', () => {
       },
       cashierSession: {
         findFirst: jest.fn(),
+        updateMany: jest.fn(),
         update: jest.fn(),
         create: jest.fn(),
       },
@@ -230,6 +238,7 @@ describe('BillingService Reversals', () => {
           recordId: mockPaymentId,
         }),
         expect.anything(),
+        mockBranchId,
       );
     });
 
@@ -316,17 +325,19 @@ describe('BillingService Reversals', () => {
         .mockResolvedValueOnce(mockReversal) // first call: reversal
         .mockResolvedValueOnce(null); // second call: void check
 
-      prisma.paymentReversal.findUnique.mockResolvedValue(mockReversal);
-      prisma.approvalRequest.findUnique.mockResolvedValue(mockApproval);
+      prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
-      prisma.invoice.findFirst.mockResolvedValue(mockInvoice);
+      prisma.invoice.findFirst
+        .mockResolvedValueOnce(mockInvoice)
+        .mockResolvedValueOnce({
+          ...mockInvoice,
+          paidAmount: new Prisma.Decimal(100),
+          status: 'PARTIALLY_PAID',
+        });
       prisma.paymentReversal.findMany.mockResolvedValue([]);
       prisma.paymentReversal.updateMany.mockResolvedValue({ count: 1 });
-      prisma.invoice.update.mockResolvedValue({
-        ...mockInvoice,
-        paidAmount: 100,
-        status: 'PARTIALLY_PAID',
-      });
+      prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+      prisma.approvalRequest.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.applyRefund(
         mockTenantId,
@@ -336,15 +347,39 @@ describe('BillingService Reversals', () => {
       );
 
       expect(result.reversal.status).toBe('APPLIED');
-      expect(result.invoice.paidAmount).toBe(100);
-      expect(prisma.paymentReversal.updateMany).toHaveBeenCalled();
-      expect(prisma.invoice.update).toHaveBeenCalled();
+      expect(result.invoice.paidAmount).toEqual(new Prisma.Decimal(100));
+      expect(prisma.paymentReversal.updateMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({
+          id: mockReversalId,
+          tenantId: mockTenantId,
+          branchId: mockBranchId,
+          status: 'PENDING',
+        }),
+        data: expect.any(Object),
+      });
+      expect(prisma.invoice.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: mockInvoiceId,
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+          },
+        }),
+      );
+      expect(prisma.approvalRequest.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: mockApprovalId,
+          tenantId: mockTenantId,
+          status: 'APPROVED',
+        },
+        data: { status: 'APPLIED' },
+      });
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({
           eventKey: 'REFUND_APPLIED',
           recordId: mockReversalId,
         }),
         expect.anything(),
+        mockBranchId,
       );
     });
 
@@ -382,8 +417,7 @@ describe('BillingService Reversals', () => {
 
     it('should reject if approval request is not APPROVED', async () => {
       prisma.paymentReversal.findFirst.mockResolvedValueOnce(mockReversal);
-      prisma.paymentReversal.findUnique.mockResolvedValue(mockReversal);
-      prisma.approvalRequest.findUnique.mockResolvedValue({
+      prisma.approvalRequest.findFirst.mockResolvedValue({
         ...mockApproval,
         status: 'PENDING',
       });
@@ -400,8 +434,7 @@ describe('BillingService Reversals', () => {
 
     it('should reject if applicant is the requester', async () => {
       prisma.paymentReversal.findFirst.mockResolvedValueOnce(mockReversal);
-      prisma.paymentReversal.findUnique.mockResolvedValue(mockReversal);
-      prisma.approvalRequest.findUnique.mockResolvedValue({
+      prisma.approvalRequest.findFirst.mockResolvedValue({
         ...mockApproval,
         requesterId: mockUserId,
       });
@@ -418,8 +451,7 @@ describe('BillingService Reversals', () => {
 
     it('should reject if refund exceeds remaining balance', async () => {
       prisma.paymentReversal.findFirst.mockResolvedValueOnce(mockReversal);
-      prisma.paymentReversal.findUnique.mockResolvedValue(mockReversal);
-      prisma.approvalRequest.findUnique.mockResolvedValue(mockApproval);
+      prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.invoice.findFirst.mockResolvedValue(mockInvoice);
       prisma.paymentReversal.findMany.mockResolvedValue([
@@ -446,8 +478,7 @@ describe('BillingService Reversals', () => {
           type: 'PAYMENT_VOID',
           status: 'APPLIED',
         });
-      prisma.paymentReversal.findUnique.mockResolvedValue(mockReversal);
-      prisma.approvalRequest.findUnique.mockResolvedValue(mockApproval);
+      prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.invoice.findFirst.mockResolvedValue(mockInvoice);
       prisma.paymentReversal.updateMany.mockResolvedValue({ count: 1 });
@@ -466,21 +497,23 @@ describe('BillingService Reversals', () => {
       prisma.paymentReversal.findFirst
         .mockResolvedValueOnce(mockReversal)
         .mockResolvedValueOnce(null);
-      prisma.paymentReversal.findUnique.mockResolvedValue(mockReversal);
 
       const lowPaidInvoice = {
         ...mockInvoice,
         paidAmount: new Prisma.Decimal(100),
       };
-      prisma.approvalRequest.findUnique.mockResolvedValue(mockApproval);
+      prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
-      prisma.invoice.findFirst.mockResolvedValue(lowPaidInvoice);
+      prisma.invoice.findFirst
+        .mockResolvedValueOnce(lowPaidInvoice)
+        .mockResolvedValueOnce({
+          ...lowPaidInvoice,
+          paidAmount: new Prisma.Decimal(0),
+          status: 'UNPAID',
+        });
       prisma.paymentReversal.findMany.mockResolvedValue([]);
-      prisma.invoice.update.mockResolvedValue({
-        ...lowPaidInvoice,
-        paidAmount: new Prisma.Decimal(0),
-        status: 'UNPAID',
-      });
+      prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+      prisma.approvalRequest.updateMany.mockResolvedValue({ count: 1 });
       prisma.paymentReversal.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.applyRefund(
@@ -643,20 +676,20 @@ describe('BillingService Reversals', () => {
         .mockResolvedValueOnce(null) // inside tx: otherVoid
         .mockResolvedValueOnce(null); // inside tx: refundReversal
 
-      prisma.approvalRequest.findUnique.mockResolvedValue(mockApproval);
+      prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
-      prisma.invoice.findFirst.mockResolvedValue(mockInvoice);
+      prisma.invoice.findFirst
+        .mockResolvedValueOnce(mockInvoice)
+        .mockResolvedValueOnce({
+          ...mockInvoice,
+          paidAmount: new Prisma.Decimal(0),
+          status: 'UNPAID',
+        });
       prisma.paymentReversal.updateMany.mockResolvedValue({ count: 1 });
 
-      prisma.invoice.update.mockResolvedValue({
-        ...mockInvoice,
-        paidAmount: new Prisma.Decimal(0),
-        status: 'UNPAID',
-      });
-      prisma.payment.update.mockResolvedValue({
-        ...mockPayment,
-        status: 'VOIDED',
-      });
+      prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+      prisma.payment.updateMany.mockResolvedValue({ count: 1 });
+      prisma.approvalRequest.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.applyVoid(
         mockTenantId,
@@ -668,9 +701,27 @@ describe('BillingService Reversals', () => {
       expect(result.reversal.status).toBe('APPLIED');
       expect(result.invoice.paidAmount).toEqual(new Prisma.Decimal(0));
       expect(result.invoice.status).toBe('UNPAID');
-      expect(prisma.paymentReversal.updateMany).toHaveBeenCalled();
-      expect(prisma.invoice.update).toHaveBeenCalled();
-      expect(prisma.payment.update).toHaveBeenCalled();
+      expect(prisma.paymentReversal.updateMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({
+          id: mockReversalId,
+          tenantId: mockTenantId,
+          branchId: mockBranchId,
+          status: 'PENDING',
+        }),
+        data: expect.any(Object),
+      });
+      expect(prisma.invoice.updateMany).toHaveBeenCalled();
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: mockPaymentId,
+          status: 'POSTED',
+          cashierSession: {
+            tenantId: mockTenantId,
+            branchId: mockBranchId,
+          },
+        },
+        data: { status: 'VOIDED' },
+      });
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({
           eventKey: 'PAYMENT_VOID_APPLIED',
@@ -680,6 +731,7 @@ describe('BillingService Reversals', () => {
           }),
         }),
         expect.anything(),
+        mockBranchId,
       );
     });
 
@@ -717,7 +769,7 @@ describe('BillingService Reversals', () => {
 
     it('should reject if approval request is not APPROVED', async () => {
       prisma.paymentReversal.findFirst.mockResolvedValueOnce(mockReversal);
-      prisma.approvalRequest.findUnique.mockResolvedValue({
+      prisma.approvalRequest.findFirst.mockResolvedValue({
         ...mockApproval,
         status: 'PENDING',
       });
@@ -734,7 +786,7 @@ describe('BillingService Reversals', () => {
 
     it('should reject if applicant is the requester', async () => {
       prisma.paymentReversal.findFirst.mockResolvedValueOnce(mockReversal);
-      prisma.approvalRequest.findUnique.mockResolvedValue({
+      prisma.approvalRequest.findFirst.mockResolvedValue({
         ...mockApproval,
         requesterId: mockUserId,
       });
@@ -751,7 +803,7 @@ describe('BillingService Reversals', () => {
 
     it('should reject if payment is not POSTED', async () => {
       prisma.paymentReversal.findFirst.mockResolvedValueOnce(mockReversal);
-      prisma.approvalRequest.findUnique.mockResolvedValue(mockApproval);
+      prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue({
         ...mockPayment,
         status: 'VOIDED',
@@ -769,7 +821,7 @@ describe('BillingService Reversals', () => {
 
     it('should reject duplicate apply if conditional update fails', async () => {
       prisma.paymentReversal.findFirst.mockResolvedValueOnce(mockReversal);
-      prisma.approvalRequest.findUnique.mockResolvedValue(mockApproval);
+      prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.invoice.findFirst.mockResolvedValue(mockInvoice);
       prisma.paymentReversal.updateMany.mockResolvedValue({ count: 0 }); // duplicate or race
@@ -793,7 +845,7 @@ describe('BillingService Reversals', () => {
           status: 'PENDING',
         }); // inside tx: otherVoid
 
-      prisma.approvalRequest.findUnique.mockResolvedValue(mockApproval);
+      prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.invoice.findFirst.mockResolvedValue(mockInvoice);
       prisma.paymentReversal.updateMany.mockResolvedValue({ count: 1 });
@@ -818,7 +870,7 @@ describe('BillingService Reversals', () => {
           status: 'APPLIED',
         }); // inside tx: refundReversal
 
-      prisma.approvalRequest.findUnique.mockResolvedValue(mockApproval);
+      prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.invoice.findFirst.mockResolvedValue(mockInvoice);
       prisma.paymentReversal.updateMany.mockResolvedValue({ count: 1 });
@@ -839,7 +891,7 @@ describe('BillingService Reversals', () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null);
 
-      prisma.approvalRequest.findUnique.mockResolvedValue(mockApproval);
+      prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
 
       const lowPaidInvoice = {
@@ -873,24 +925,31 @@ describe('BillingService Reversals', () => {
     };
 
     it('should exclude VOIDED payments from expectedCash calculation', async () => {
-      prisma.cashierSession.findFirst.mockResolvedValue({
-        ...mockSession,
-        payments: [
-          {
-            amount: new Prisma.Decimal(50),
-            paymentMethod: 'CASH',
-            status: 'POSTED',
-            reversals: [],
-          },
-          {
-            amount: new Prisma.Decimal(200),
-            paymentMethod: 'CASH',
-            status: 'VOIDED',
-            reversals: [],
-          },
-        ],
-      });
-      prisma.cashierSession.update = jest.fn().mockResolvedValue({});
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
+      prisma.cashierSession.findFirst
+        .mockResolvedValueOnce({
+          ...mockSession,
+          payments: [
+            {
+              amount: new Prisma.Decimal(50),
+              paymentMethod: 'CASH',
+              status: 'POSTED',
+              reversals: [],
+            },
+            {
+              amount: new Prisma.Decimal(200),
+              paymentMethod: 'CASH',
+              status: 'VOIDED',
+              reversals: [],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          ...mockSession,
+          status: 'CLOSED',
+          closingBalance: new Prisma.Decimal(150),
+          closedAt: new Date(),
+        });
 
       const dto = { actualClosingBalance: 150, remarks: '' };
       await service.closeSession(
@@ -901,11 +960,19 @@ describe('BillingService Reversals', () => {
         dto,
       );
 
-      expect(prisma.cashierSession.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ closingBalance: 150 }),
+      expect(prisma.cashierSession.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: sessionId,
+          tenantId: mockTenantId,
+          branchId: mockBranchId,
+          userId: mockUserId,
+          status: 'OPEN',
+        },
+        data: expect.objectContaining({
+          closingBalance: 150,
+          status: 'CLOSED',
         }),
-      );
+      });
 
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -915,22 +982,31 @@ describe('BillingService Reversals', () => {
             variance: 0,
           }),
         }),
+        expect.anything(),
+        mockBranchId,
       );
     });
 
     it('should subtract APPLIED REFUND reversals from expectedCash calculation', async () => {
-      prisma.cashierSession.findFirst.mockResolvedValue({
-        ...mockSession,
-        payments: [
-          {
-            amount: new Prisma.Decimal(100),
-            paymentMethod: 'CASH',
-            status: 'POSTED',
-            reversals: [{ amount: new Prisma.Decimal(30), type: 'REFUND' }],
-          },
-        ],
-      });
-      prisma.cashierSession.update = jest.fn().mockResolvedValue({});
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
+      prisma.cashierSession.findFirst
+        .mockResolvedValueOnce({
+          ...mockSession,
+          payments: [
+            {
+              amount: new Prisma.Decimal(100),
+              paymentMethod: 'CASH',
+              status: 'POSTED',
+              reversals: [{ amount: new Prisma.Decimal(30), type: 'REFUND' }],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          ...mockSession,
+          status: 'CLOSED',
+          closingBalance: new Prisma.Decimal(170),
+          closedAt: new Date(),
+        });
 
       const dto = { actualClosingBalance: 170, remarks: '' };
       await service.closeSession(
@@ -948,24 +1024,33 @@ describe('BillingService Reversals', () => {
             variance: 0,
           }),
         }),
+        expect.anything(),
+        mockBranchId,
       );
     });
 
     it('should NOT subtract non-refund reversals from expectedCash', async () => {
-      prisma.cashierSession.findFirst.mockResolvedValue({
-        ...mockSession,
-        payments: [
-          {
-            amount: new Prisma.Decimal(100),
-            paymentMethod: 'CASH',
-            status: 'POSTED',
-            reversals: [
-              { amount: new Prisma.Decimal(30), type: 'PAYMENT_VOID' },
-            ],
-          },
-        ],
-      });
-      prisma.cashierSession.update = jest.fn().mockResolvedValue({});
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
+      prisma.cashierSession.findFirst
+        .mockResolvedValueOnce({
+          ...mockSession,
+          payments: [
+            {
+              amount: new Prisma.Decimal(100),
+              paymentMethod: 'CASH',
+              status: 'POSTED',
+              reversals: [
+                { amount: new Prisma.Decimal(30), type: 'PAYMENT_VOID' },
+              ],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          ...mockSession,
+          status: 'CLOSED',
+          closingBalance: new Prisma.Decimal(200),
+          closedAt: new Date(),
+        });
 
       const dto = { actualClosingBalance: 200, remarks: '' };
       await service.closeSession(
@@ -983,7 +1068,171 @@ describe('BillingService Reversals', () => {
             variance: 0,
           }),
         }),
+        expect.anything(),
+        mockBranchId,
       );
+    });
+  });
+
+  describe('openSession audit scoping', () => {
+    it('writes SESSION_OPENED audit entries with branch context', async () => {
+      prisma.cashierSession.findFirst.mockResolvedValue(null);
+      prisma.cashierSession.create.mockResolvedValue({
+        id: 'session-open',
+        tenantId: mockTenantId,
+        branchId: mockBranchId,
+        userId: mockUserId,
+        status: 'OPEN',
+      });
+
+      await service.openSession(mockTenantId, mockUserId, mockBranchId, {
+        openingBalance: 100,
+      });
+
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'SESSION_OPENED' }),
+        expect.anything(),
+        mockBranchId,
+      );
+    });
+  });
+
+  describe('postPayment scoped writes', () => {
+    let service: BillingService;
+    let prisma: any;
+    let audit: { log: jest.Mock };
+
+    const tenantId = 'tenant-a';
+    const branchId = 'branch-a';
+    const userId = 'user-a';
+    const invoiceId = 'invoice-a';
+    const sessionId = 'session-a';
+
+    beforeEach(async () => {
+      audit = { log: jest.fn() };
+
+      prisma = {
+        invoice: {
+          findFirst: jest.fn(),
+          updateMany: jest.fn(),
+        },
+        cashierSession: {
+          findFirst: jest.fn(),
+        },
+        payment: {
+          create: jest.fn(),
+        },
+        order: {
+          updateMany: jest.fn(),
+        },
+        $transaction: jest.fn().mockImplementation((cb: any) => cb(prisma)),
+      };
+
+      const numbering = {
+        generateNumber: jest.fn().mockResolvedValue('RCP-000001'),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          BillingService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: AuditService, useValue: audit },
+          {
+            provide: ApprovalsService,
+            useValue: { createRequest: jest.fn() },
+          },
+          { provide: NumberingService, useValue: numbering },
+        ],
+      }).compile();
+
+      service = module.get<BillingService>(BillingService);
+    });
+
+    it('rolls back scoped invoice update failure (no concurrent row)', async () => {
+      prisma.invoice.findFirst.mockResolvedValue({
+        id: invoiceId,
+        orderId: 'order-a',
+        paidAmount: new Prisma.Decimal(0),
+        totalAmount: new Prisma.Decimal(100),
+        status: 'UNPAID',
+        order: {
+          id: 'order-a',
+          tenantId,
+          branchId,
+        },
+      });
+      prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.payment.create.mockResolvedValue({ id: 'pay-a' });
+      prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
+
+      const dto = {
+        invoiceId,
+        cashierSessionId: sessionId,
+        amount: 50,
+        paymentMethod: 'CASH',
+        idempotencyKey: 'idem-1',
+      };
+
+      await expect(
+        service.postPayment(tenantId, userId, branchId, dto),
+      ).rejects.toThrow(ConflictException);
+
+      expect(prisma.invoice.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: invoiceId,
+          order: { tenantId, branchId },
+        },
+        data: expect.objectContaining({
+          paidAmount: 50,
+          status: 'PARTIALLY_PAID',
+        }),
+      });
+    });
+
+    it('scopes invoice and audit on successful partial payment', async () => {
+      prisma.invoice.findFirst
+        .mockResolvedValueOnce({
+          id: invoiceId,
+          orderId: 'order-a',
+          paidAmount: new Prisma.Decimal(0),
+          totalAmount: new Prisma.Decimal(100),
+          status: 'UNPAID',
+          order: {
+            id: 'order-a',
+            tenantId,
+            branchId,
+          },
+        })
+        .mockResolvedValueOnce({
+          id: invoiceId,
+          orderId: 'order-a',
+          paidAmount: new Prisma.Decimal(50),
+          totalAmount: new Prisma.Decimal(100),
+          status: 'PARTIALLY_PAID',
+        });
+      prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.payment.create.mockResolvedValue({ id: 'pay-a' });
+      prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+
+      const dto = {
+        invoiceId,
+        cashierSessionId: sessionId,
+        amount: 50,
+        paymentMethod: 'CASH',
+        idempotencyKey: 'idem-2',
+      };
+
+      await service.postPayment(tenantId, userId, branchId, dto);
+
+      expect(prisma.payment.create).toHaveBeenCalled();
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'PAYMENT_POSTED',
+        }),
+        expect.anything(),
+        branchId,
+      );
+      expect(prisma.order.updateMany).not.toHaveBeenCalled();
     });
   });
 });
