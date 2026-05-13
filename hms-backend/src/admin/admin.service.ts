@@ -1448,11 +1448,7 @@ export class AdminService {
       where: {
         userId,
         status: USER_ROLE_STATUS_ACTIVE,
-        role: {
-          tenantId,
-          status: USER_STATUS_ACTIVE,
-          archivedAt: null,
-        },
+        role: { tenantId, status: USER_STATUS_ACTIVE, archivedAt: null },
       },
       include: {
         role: {
