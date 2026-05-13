@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateReportExportDto } from './dto/create-export.dto';
 import { Prisma } from '@prisma/client';
-import { ReportPolicyService } from './report-policy.service';
+import { ReportPolicyService, ReportRiskLevel } from './report-policy.service';
 
 @Injectable()
 export class ReportsService {
