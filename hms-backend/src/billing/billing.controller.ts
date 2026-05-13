@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
   Body,
+  Headers,
   UseGuards,
   Param,
   Patch,
@@ -58,12 +60,27 @@ export class BillingController {
     @GetUser('userId') userId: string,
     @GetUser('branchId') branchId: string,
     @Body() createPaymentDto: CreatePaymentDto,
+    @Headers('idempotency-key') idempotencyKey: string,
   ) {
+    if (
+      'idempotencyKey' in
+      (createPaymentDto as unknown as { idempotencyKey?: unknown })
+    ) {
+      throw new BadRequestException(
+        'Idempotency-Key must be provided via header only',
+      );
+    }
+
+    if (!idempotencyKey?.trim()) {
+      throw new BadRequestException('Idempotency-Key header is required');
+    }
+
     return this.billingService.postPayment(
       tenantId,
       userId,
       branchId,
       createPaymentDto,
+      idempotencyKey,
     );
   }
 

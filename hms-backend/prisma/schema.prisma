@@ -41,6 +41,7 @@ model Tenant {
   userBranches       UserBranch[]
   reportExports       ReportExport[]
   patientMergeRequests PatientMergeRequest[]
+  idempotencyRecords IdempotencyRecord[]
 
   @@map("tenants")
 }
@@ -215,6 +216,27 @@ model Payment {
   reversals      PaymentReversal[]
 
   @@map("payments")
+}
+
+model IdempotencyRecord {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  operation         String // BILLING_PAYMENT_POST
+  key               String
+  requestFingerprint String  @map("request_fingerprint") // Hash of normalized request
+  status            String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED
+  paymentId         String?  @map("payment_id") @db.Uuid // Set after successful payment creation
+  responseData      Json?    @map("response_data") // Cached response for replay
+  error             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, operation, key])
+  @@index([tenantId])
+  @@index([status])
+  @@map("idempotency_records")
 }
 
 model LabResult {

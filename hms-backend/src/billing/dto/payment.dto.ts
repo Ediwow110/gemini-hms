@@ -23,10 +23,6 @@ export class CreatePaymentDto {
   @IsString()
   @IsNotEmpty()
   paymentMethod: string; // CASH, CARD, GCASH, etc.
-
-  @IsString()
-  @IsNotEmpty()
-  idempotencyKey: string; // To prevent double payments
 }
 
 export class OpenSessionDto {
