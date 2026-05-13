@@ -2714,14 +2714,21 @@ describe('AdminService', () => {
       );
     });
 
-    it('rejects if role with same name already exists in tenant', async () => {
+    it('rejects if role with same name already exists in tenant, case-insensitive', async () => {
       prisma.role.findFirst.mockResolvedValue({
         id: 'existing-id',
-        name: 'New Role',
+        name: 'new role',
       });
       await expect(
         service.createCustomRole(superAdminActor, 'New Role', 'reason'),
       ).rejects.toThrow('A role with this name already exists in the tenant');
+
+      expect(prisma.role.findFirst).toHaveBeenCalledWith({
+        where: {
+          tenantId: superAdminActor.tenantId,
+          name: { equals: 'New Role', mode: 'insensitive' },
+        },
+      });
     });
 
     it('rejects if cross-tenant permission ID provided', async () => {
@@ -2799,6 +2806,12 @@ describe('AdminService', () => {
         prisma,
         undefined,
       );
+    });
+
+    it('rejects if permissionIds contains non-string or blank', async () => {
+      await expect(
+        service.createCustomRole(superAdminActor, 'New Role', 'reason', [' ']),
+      ).rejects.toThrow('Invalid permission ID provided');
     });
   });
 });

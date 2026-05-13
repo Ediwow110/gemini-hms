@@ -161,7 +161,10 @@ export class AdminService {
 
     return this.prisma.$transaction(async (tx) => {
       const existingRole = await tx.role.findFirst({
-        where: { tenantId: actor.tenantId, name: trimmedName },
+        where: {
+          tenantId: actor.tenantId,
+          name: { equals: trimmedName, mode: 'insensitive' },
+        },
       });
       if (existingRole) {
         throw new ConflictException(
@@ -170,6 +173,14 @@ export class AdminService {
       }
 
       const uniquePermissionIds = Array.from(new Set(permissionIds || []));
+      if (
+        uniquePermissionIds.some(
+          (id) => typeof id !== 'string' || id.trim().length === 0,
+        )
+      ) {
+        throw new BadRequestException('Invalid permission ID provided');
+      }
+
       let validatedPermissions: AdminPermissionTarget[] = [];
 
       if (uniquePermissionIds.length > 0) {

@@ -595,13 +595,14 @@ Required additions or explicit deferrals:
 - **Constraints**: 
   - Only custom, non-system roles may be created (`isSystem` forced to `false`).
   - Roles default to `ACTIVE` status.
-  - Role names must be unique within the tenant.
+  - Role names must be unique within the tenant (case-insensitively, after trimming).
 - **Permission Assignment Policy**: 
   - Initial permissions are optional.
   - If provided, permissions must explicitly be `LOW` risk level.
   - `admin.role.change` is absolutely blocked.
   - `MEDIUM`, `HIGH`, `PRIVILEGED`, or unclassified risk levels are blocked.
   - Cross-tenant permission IDs are blocked.
+  - Blank, whitespace-only, or duplicate permission IDs are explicitly rejected rather than silently dropped.
 - **Transaction & Audit**:
   - Role creation and role-permission mappings execute transactionally.
   - A `ROLE_CREATED` audit event is written including `actorId`, `roleId`, `roleName`, `reason`, `tenantId`, `isSystem`, `status`, `permissionIds`, `permissionNames`, and `permissionRiskLevels`.
