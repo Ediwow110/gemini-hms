@@ -30,9 +30,11 @@ describe('AdminService', () => {
     };
     role: {
       findFirst: jest.Mock;
+      create: jest.Mock;
     };
     permission: {
       findFirst: jest.Mock;
+      findMany: jest.Mock;
     };
     rolePermission: {
       create: jest.Mock;
@@ -78,9 +80,11 @@ describe('AdminService', () => {
       },
       role: {
         findFirst: jest.fn(),
+        create: jest.fn(),
       },
       permission: {
         findFirst: jest.fn(),
+        findMany: jest.fn(),
       },
       rolePermission: {
         create: jest.fn(),
@@ -2699,5 +2703,102 @@ describe('AdminService', () => {
       expect.objectContaining({ eventKey: 'PRIVILEGED_ROLE_CHANGE_REJECTED' }),
       prisma,
     );
+  });
+
+  describe('createCustomRole', () => {
+    it('rejects branch-scoped actor from creating tenant-wide role', async () => {
+      await expect(
+        service.createCustomRole(branchActor, 'New Role', 'reason'),
+      ).rejects.toThrow(
+        'Branch-scoped actors cannot mutate tenant-wide role permissions',
+      );
+    });
+
+    it('rejects if role with same name already exists in tenant', async () => {
+      prisma.role.findFirst.mockResolvedValue({
+        id: 'existing-id',
+        name: 'New Role',
+      });
+      await expect(
+        service.createCustomRole(superAdminActor, 'New Role', 'reason'),
+      ).rejects.toThrow('A role with this name already exists in the tenant');
+    });
+
+    it('rejects if cross-tenant permission ID provided', async () => {
+      prisma.role.findFirst.mockResolvedValue(null);
+      prisma.permission.findMany.mockResolvedValue([]); // Provided 1 ID, found 0
+      await expect(
+        service.createCustomRole(superAdminActor, 'New Role', 'reason', [
+          'perm-id',
+        ]),
+      ).rejects.toThrow(
+        'One or more requested permissions do not exist or belong to another tenant',
+      );
+    });
+
+    it('rejects create role with admin.role.change permission even if misclassified', async () => {
+      prisma.role.findFirst.mockResolvedValue(null);
+      prisma.permission.findMany.mockResolvedValue([
+        { id: 'perm-id', name: 'admin.role.change', riskLevel: 'LOW' },
+      ]);
+      await expect(
+        service.createCustomRole(superAdminActor, 'New Role', 'reason', [
+          'perm-id',
+        ]),
+      ).rejects.toThrow('requires maker-checker');
+    });
+
+    it('rejects create role with MEDIUM permission', async () => {
+      prisma.role.findFirst.mockResolvedValue(null);
+      prisma.permission.findMany.mockResolvedValue([
+        { id: 'perm-id', name: 'safe.perm', riskLevel: 'MEDIUM' },
+      ]);
+      await expect(
+        service.createCustomRole(superAdminActor, 'New Role', 'reason', [
+          'perm-id',
+        ]),
+      ).rejects.toThrow('has risk level MEDIUM');
+    });
+
+    it('creates role with LOW-risk permissions successfully and writes audit', async () => {
+      prisma.role.findFirst.mockResolvedValue(null);
+      prisma.permission.findMany.mockResolvedValue([
+        { id: 'perm-1', name: 'safe.perm', riskLevel: 'LOW' },
+      ]);
+      prisma.role.create.mockResolvedValue({
+        id: 'new-role-id',
+        name: 'New Role',
+        status: 'ACTIVE',
+        isSystem: false,
+        rolePermissions: [
+          { permission: { id: 'perm-1', name: 'safe.perm', riskLevel: 'LOW' } },
+        ],
+      });
+
+      const result = await service.createCustomRole(
+        superAdminActor,
+        'New Role',
+        'reason',
+        ['perm-1'],
+      );
+
+      expect(result.roleId).toBe('new-role-id');
+      expect(result.status).toBe('ACTIVE');
+      expect(result.isSystem).toBe(false);
+      expect(prisma.role.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: 'New Role',
+            status: 'ACTIVE',
+            isSystem: false,
+          }),
+        }),
+      );
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'ROLE_CREATED' }),
+        prisma,
+        undefined,
+      );
+    });
   });
 });

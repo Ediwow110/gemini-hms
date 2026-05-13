@@ -126,12 +126,142 @@ export interface PrivilegedRoleChangeDecisionResponse {
   approvalStatus: string;
 }
 
+export interface CreateCustomRoleResponse {
+  roleId: string;
+  name: string;
+  status: string;
+  isSystem: boolean;
+  permissions: Array<{
+    id: string;
+    name: string;
+    riskLevel: string;
+  }>;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
+
+  async createCustomRole(
+    actor: RequestUser,
+    name: string,
+    reason: string,
+    permissionIds?: string[],
+  ): Promise<CreateCustomRoleResponse> {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new BadRequestException('Role name is required');
+    }
+    const trimmedReason = this.validateReason(reason);
+
+    this.assertTenantWideRoleMutationActor(actor);
+
+    return this.prisma.$transaction(async (tx) => {
+      const existingRole = await tx.role.findFirst({
+        where: { tenantId: actor.tenantId, name: trimmedName },
+      });
+      if (existingRole) {
+        throw new ConflictException(
+          'A role with this name already exists in the tenant',
+        );
+      }
+
+      const uniquePermissionIds = Array.from(new Set(permissionIds || []));
+      let validatedPermissions: AdminPermissionTarget[] = [];
+
+      if (uniquePermissionIds.length > 0) {
+        validatedPermissions = await tx.permission.findMany({
+          where: {
+            id: { in: uniquePermissionIds },
+            tenantId: actor.tenantId,
+          },
+        });
+
+        if (validatedPermissions.length !== uniquePermissionIds.length) {
+          throw new BadRequestException(
+            'One or more requested permissions do not exist or belong to another tenant',
+          );
+        }
+
+        for (const perm of validatedPermissions) {
+          if (
+            perm.name === 'admin.role.change' ||
+            DIRECT_BLOCKED_PERMISSION_KEYS.has(perm.name)
+          ) {
+            throw new ForbiddenException(
+              `Permission ${perm.name} requires maker-checker and cannot be assigned during custom role creation`,
+            );
+          }
+          if (perm.riskLevel !== DIRECT_ALLOWED_PERMISSION_RISK) {
+            throw new ForbiddenException(
+              `Permission ${perm.name} has risk level ${perm.riskLevel} and cannot be assigned during custom role creation (only ${DIRECT_ALLOWED_PERMISSION_RISK} allowed)`,
+            );
+          }
+        }
+      }
+
+      const role = await tx.role.create({
+        data: {
+          tenantId: actor.tenantId,
+          name: trimmedName,
+          status: USER_STATUS_ACTIVE,
+          isSystem: false,
+          rolePermissions: {
+            create: validatedPermissions.map((p) => ({
+              permissionId: p.id,
+            })),
+          },
+        },
+        include: {
+          rolePermissions: {
+            include: { permission: true },
+          },
+        },
+      });
+
+      const changedAt = new Date();
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'ROLE_CREATED',
+          recordType: 'Role',
+          recordId: role.id,
+          newValues: {
+            actorId: actor.userId,
+            roleId: role.id,
+            roleName: role.name,
+            reason: trimmedReason,
+            tenantId: actor.tenantId,
+            branchId: actor.branchId ?? null,
+            isSystem: false,
+            status: USER_STATUS_ACTIVE,
+            permissionIds: validatedPermissions.map((p) => p.id),
+            permissionNames: validatedPermissions.map((p) => p.name),
+            permissionRiskLevels: validatedPermissions.map((p) => p.riskLevel),
+            changedAt: changedAt.toISOString(),
+          },
+        },
+        tx,
+        actor.branchId ?? undefined,
+      );
+
+      return {
+        roleId: role.id,
+        name: role.name,
+        status: role.status,
+        isSystem: role.isSystem,
+        permissions: validatedPermissions.map((p) => ({
+          id: p.id,
+          name: p.name,
+          riskLevel: p.riskLevel,
+        })),
+      };
+    });
+  }
 
   async requestPrivilegedRoleAssignment(
     actor: RequestUser,

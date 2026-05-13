@@ -7,6 +7,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 import {
   AssignUserRoleDto,
+  CreateCustomRoleDto,
   GrantRolePermissionDto,
   PrivilegedRoleRequestDto,
   UserLifecycleReasonDto,
@@ -16,6 +17,20 @@ import {
 @Controller('api/v1/admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  @Post('roles')
+  @RequirePermissions('admin.role.change')
+  async createCustomRole(
+    @GetUser() actor: RequestUser,
+    @Body() dto: CreateCustomRoleDto,
+  ) {
+    return this.adminService.createCustomRole(
+      actor,
+      dto.name,
+      dto.reason,
+      dto.permissionIds,
+    );
+  }
 
   @Post('users/:id/deactivate')
   @RequirePermissions('admin.role.change')

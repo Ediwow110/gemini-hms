@@ -199,6 +199,19 @@ describe('AdminController', () => {
     ]);
   });
 
+  it('create role endpoint requires admin.role.change metadata', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      AdminController.prototype,
+      'createCustomRole',
+    );
+    const permissions = Reflect.getMetadata(
+      PERMISSIONS_KEY,
+      descriptor?.value as object,
+    );
+
+    expect(permissions).toEqual(['admin.role.change']);
+  });
+
   it('deactivate forwards actor, target, and reason to service', async () => {
     adminService.deactivateUser.mockResolvedValue({ id: 'target-id' });
 

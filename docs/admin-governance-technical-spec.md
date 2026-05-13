@@ -80,7 +80,7 @@ Read-only admin discovery endpoints may later use a separate permission, but tha
 - `POST /api/v1/admin/users/:id/roles/:roleId/revoke` - implemented for non-privileged roles and non-privileged target users
 
 ### C. Role management
-- `POST /api/v1/admin/roles`
+- `POST /api/v1/admin/roles` - implemented for custom non-system roles with LOW-risk permissions only
 - `PATCH /api/v1/admin/roles/:id`
 - `POST /api/v1/admin/roles/:id/archive`
 
@@ -581,10 +581,32 @@ Required additions or explicit deferrals:
 - increment `User.tokenVersion` transactionally for affected users when role assignments change
 
 ### Phase 3: role and role-permission backend
-- create/update/archive role
+- create role: implemented for custom, non-system roles containing only explicitly `LOW`-risk permissions, requiring `admin.role.change`, tenant-scoped, and audit
+- update/archive role: deferred
 - non-system, non-privileged role permission grant/revoke: implemented with direct audit, affected-user `tokenVersion` invalidation, and explicit `LOW`-risk permission requirement
 - privileged role permission grant/revoke: deferred pending maker-checker and permission risk classification
 - protected seeded role behavior
+
+### Custom Role Creation Governance
+- **Endpoint**: `POST /api/v1/admin/roles`
+- **Required Permission**: `admin.role.change`
+- **Scope Restriction**: Branch-scoped actors are strictly blocked from creating roles unless they hold a tenant-wide Super Admin policy bypass.
+- **Reason**: A non-empty reason is required for audit.
+- **Constraints**: 
+  - Only custom, non-system roles may be created (`isSystem` forced to `false`).
+  - Roles default to `ACTIVE` status.
+  - Role names must be unique within the tenant.
+- **Permission Assignment Policy**: 
+  - Initial permissions are optional.
+  - If provided, permissions must explicitly be `LOW` risk level.
+  - `admin.role.change` is absolutely blocked.
+  - `MEDIUM`, `HIGH`, `PRIVILEGED`, or unclassified risk levels are blocked.
+  - Cross-tenant permission IDs are blocked.
+- **Transaction & Audit**:
+  - Role creation and role-permission mappings execute transactionally.
+  - A `ROLE_CREATED` audit event is written including `actorId`, `roleId`, `roleName`, `reason`, `tenantId`, `isSystem`, `status`, `permissionIds`, `permissionNames`, and `permissionRiskLevels`.
+  - Duplicate or invalid requests fail closed and write no mutation audit.
+- **Limitations**: Role update and role archive endpoints remain explicitly deferred and are not yet implemented.
 
 ## Final implementation guardrail
 Do not implement admin/user/role mutation endpoints until the schema prerequisites and the DTO/audit/approval/session rules in this document are accepted.
