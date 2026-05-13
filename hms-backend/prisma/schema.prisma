@@ -81,6 +81,8 @@ model User {
   userRoles     UserRole[]
   userBranches  UserBranch[]
   reportExports ReportExport[]
+  requestedApprovals ApprovalRequest[] @relation("RequestedApprovals")
+  approvedApprovals  ApprovalRequest[] @relation("ApprovedApprovals")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -553,6 +555,8 @@ model ApprovalRequest {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   tenant            Tenant            @relation(fields: [tenantId], references: [id])
+  requester         User              @relation("RequestedApprovals", fields: [requesterId], references: [id])
+  approver          User?             @relation("ApprovedApprovals", fields: [approverId], references: [id])
   paymentReversals  PaymentReversal[]
 
   @@map("approval_requests")

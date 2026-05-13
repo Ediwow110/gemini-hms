@@ -74,6 +74,14 @@ export class ApprovalsService {
   async getRequests(tenantId: string) {
     return this.prisma.approvalRequest.findMany({
       where: { tenantId },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

@@ -1,63 +1,136 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { PageHeader } from "../../components/ui/page-header";
 import { ApprovalStatusBadge } from "../../components/ui/approval-badges";
 import { ConfirmationModal, ReasonModal } from "../../components/ui/approval-modals";
-import { AlertTriangle, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ShieldCheck, RefreshCw, Loader2, Info } from "lucide-react";
 import { useUser } from "../../hooks/use-user";
 import { RequirePermission } from "../../components/ui/RequirePermission";
+import { approvalService, ApprovalRequest } from "../../services/approval.service";
 
-interface ApprovalRequest { id: string; type: string; risk: 'Low' | 'Medium' | 'High' | 'Critical'; requester: { id: string; name: string }; record: string; status: string; amount: string; }
-
-const MOCK_APPROVALS: ApprovalRequest[] = [
-  { id: "REQ-001", type: "Refund", risk: "Medium", requester: { id: "user-1", name: "Mark Santos" }, record: "RCP-124", status: "Pending", amount: "₱1,250.00" },
-  { id: "REQ-002", type: "Role Change", risk: "Critical", requester: { id: "user-current-manager", name: "You" }, record: "USER-99", status: "Pending", amount: "-" },
-];
+// Helper to normalize backend status/risk for the UI components
+const normalize = (val: string) => {
+  if (!val) return val;
+  return val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
+};
 
 export const ApprovalCenter = () => {
-  const [requests, setRequests] = useState(MOCK_APPROVALS);
+  const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [selected, setSelected] = useState<ApprovalRequest | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [modals, setModals] = useState({ confirm: false, reason: false, mode: "" });
   const currentUser = useUser();
 
-  const updateRequest = (status: string) => {
+  const fetchRequests = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await approvalService.getRequests();
+      setRequests(data);
+      // Update selected reference if it exists
+      if (selected) {
+        const updatedSelected = data.find(r => r.id === selected.id);
+        if (updatedSelected) setSelected(updatedSelected);
+      }
+    } catch (error) {
+      console.error("Failed to fetch approvals:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selected]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const handleAction = async (remarks: string) => {
     if (!selected) return;
-    setRequests(requests.map(r => r.id === selected.id ? { ...r, status } : r));
-    setSelected({ ...selected, status });
-    setModals({ confirm: false, reason: false, mode: "" });
+    setIsProcessing(true);
+    try {
+      if (modals.mode === "Approve") {
+        await approvalService.approveRequest(selected.id, selected.type, remarks);
+      } else {
+        await approvalService.rejectRequest(selected.id, selected.type, remarks);
+      }
+      await fetchRequests();
+      setModals({ confirm: false, reason: false, mode: "" });
+    } catch (error) {
+      console.error(`Failed to ${modals.mode.toLowerCase()} request:`, error);
+      alert(`Failed to ${modals.mode.toLowerCase()} request. Please try again.`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       <div className="flex justify-between items-center">
         <PageHeader title="Approval Center" description="Review and authorize high-risk clinical and operational requests." />
+        <button 
+          onClick={fetchRequests} 
+          disabled={isLoading}
+          className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
+          title="Refresh"
+        >
+          <RefreshCw className={`h-5 w-5 text-slate-500 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 card overflow-hidden animate-slide-up stagger-1">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50/80 text-slate-500 font-medium border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider">Type</th>
-                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider">Requester</th>
-                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {requests.map(a => (
-                <tr key={a.id} className={`cursor-pointer transition-colors group ${selected?.id === a.id ? 'bg-indigo-50/50' : 'hover:bg-indigo-50/30'}`} onClick={() => setSelected(a)}>
-                  <td className="px-6 py-4 font-mono font-bold text-indigo-600">{a.id}</td>
-                  <td className="px-6 py-4 font-semibold text-slate-900">{a.type}</td>
-                  <td className="px-6 py-4 text-slate-600 group-hover:text-indigo-700">{a.requester.name}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-center">
-                      <ApprovalStatusBadge status={a.status} />
-                    </div>
-                  </td>
+          {isLoading && requests.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center text-slate-400">
+              <Loader2 className="h-8 w-8 animate-spin mb-4 text-indigo-500" />
+              <p className="font-medium">Loading requests...</p>
+            </div>
+          ) : requests.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center text-slate-400">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                <ShieldCheck className="h-8 w-8 text-slate-300" />
+              </div>
+              <p className="font-medium">No pending approval requests.</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50/80 text-slate-500 font-medium border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-center">Risk</th>
+                  <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider">Type</th>
+                  <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider">Requester</th>
+                  <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-center">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {requests.map(a => (
+                  <tr 
+                    key={a.id} 
+                    className={`cursor-pointer transition-colors group ${selected?.id === a.id ? 'bg-indigo-50/50' : 'hover:bg-indigo-50/30'}`} 
+                    onClick={() => setSelected(a)}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex justify-center">
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          a.riskLevel === 'CRITICAL' ? 'bg-rose-500 animate-pulse' : 
+                          a.riskLevel === 'HIGH' ? 'bg-orange-500' : 
+                          a.riskLevel === 'MEDIUM' ? 'bg-amber-500' : 'bg-slate-300'
+                        }`} title={a.riskLevel} />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-semibold text-slate-900">
+                      {a.type.replace(/_/g, ' ')}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 group-hover:text-indigo-700">
+                      {a.requester?.email || 'Unknown'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-center">
+                        <ApprovalStatusBadge status={normalize(a.status)} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         <div className="card p-6 h-fit space-y-5 animate-slide-up stagger-2">
@@ -70,7 +143,7 @@ export const ApprovalCenter = () => {
 
           {selected ? (
             <div className="space-y-5 animate-fade-in">
-              {selected.risk === 'Critical' && (
+              {selected.riskLevel === 'CRITICAL' && (
                 <div className="flex items-center gap-2 p-3 bg-rose-50 text-rose-800 rounded-xl border border-rose-100 text-xs font-semibold">
                   <AlertTriangle className="h-4 w-4 flex-shrink-0 animate-pulse" />
                   <span>High-risk request. Requires careful review.</span>
@@ -80,34 +153,60 @@ export const ApprovalCenter = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Type</span>
-                  <span className="font-semibold text-slate-900">{selected.type}</span>
+                  <span className="font-semibold text-slate-900">{selected.type.replace(/_/g, ' ')}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Requester</span>
-                  <span className="font-semibold text-slate-900">{selected.requester.name}</span>
+                  <span className="font-semibold text-slate-900">{selected.requester?.email || 'Unknown'}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Record</span>
-                  <span className="font-mono font-bold text-indigo-600">{selected.record}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Record ID</span>
+                  <span className="font-mono font-bold text-indigo-600 text-xs truncate max-w-[150px]">{selected.recordId}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Amount</span>
-                  <span className="font-bold text-slate-900">{selected.amount}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</span>
+                  <span className="font-medium text-slate-700">{new Date(selected.createdAt).toLocaleDateString()}</span>
                 </div>
-                <div className="flex justify-between items-center text-sm">
+                {selected.reason && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Request Reason</span>
+                    <div className="p-2.5 bg-slate-50 rounded-lg text-xs text-slate-600 italic border border-slate-100">
+                      "{selected.reason}"
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-sm pt-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</span>
-                  <ApprovalStatusBadge status={selected.status} />
+                  <ApprovalStatusBadge status={normalize(selected.status)} />
                 </div>
               </div>
+
+              {/* Dynamic Details based on type */}
+              {selected.details && (
+                <div className="p-3 bg-indigo-50/30 rounded-xl border border-indigo-100 space-y-2">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Info className="h-3.5 w-3.5 text-indigo-600" />
+                    <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider">Metadata Details</span>
+                  </div>
+                  {Object.entries(selected.details).map(([key, val]) => (
+                    typeof val !== 'object' && (
+                      <div key={key} className="flex justify-between items-center text-[11px]">
+                        <span className="text-indigo-700/70 font-medium capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                        <span className="font-bold text-indigo-900">{String(val)}</span>
+                      </div>
+                    )
+                  ))}
+                </div>
+              )}
               
               <div className="pt-4">
-                {selected.requester.id === currentUser?.id ? (
+                {selected.requesterId === currentUser?.id ? (
                   <div className="p-3 bg-amber-50 text-amber-800 rounded-xl text-xs font-medium border border-amber-100 text-center">
                     You cannot approve your own request. (Maker-Checker rule enforced)
                   </div>
-                ) : selected.status !== "Pending" ? (
+                ) : selected.status !== "PENDING" ? (
                   <div className="p-3 bg-slate-50 text-slate-500 rounded-xl text-xs font-medium border border-slate-100 text-center">
-                    This request has already been processed.
+                    This request has already been processed ({normalize(selected.status)}).
                   </div>
                 ) : (
                   <RequirePermission 
@@ -119,11 +218,19 @@ export const ApprovalCenter = () => {
                     }
                   >
                     <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => setModals({ ...modals, confirm: true, mode: "Approve" })} className="btn btn-success py-2.5">
-                        Approve
+                      <button 
+                        onClick={() => setModals({ confirm: true, reason: false, mode: "Approve" })} 
+                        disabled={isProcessing}
+                        className="btn btn-success py-2.5 disabled:opacity-50"
+                      >
+                        {isProcessing && modals.mode === "Approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
                       </button>
-                      <button onClick={() => setModals({ ...modals, reason: true, mode: "Reject" })} className="btn btn-danger py-2.5">
-                        Reject
+                      <button 
+                        onClick={() => setModals({ confirm: false, reason: true, mode: "Reject" })} 
+                        disabled={isProcessing}
+                        className="btn btn-danger py-2.5 disabled:opacity-50"
+                      >
+                         {isProcessing && modals.mode === "Reject" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Reject"}
                       </button>
                     </div>
                   </RequirePermission>
@@ -144,8 +251,8 @@ export const ApprovalCenter = () => {
       <ConfirmationModal 
         isOpen={modals.confirm} 
         title="Approve Request" 
-        warning="This action will be permanently recorded in the audit log." 
-        onConfirm={() => updateRequest("Approved")} 
+        warning="This action will be permanently recorded in the audit log and the change will be applied." 
+        onConfirm={() => handleAction("Approved per policy")} 
         onClose={() => setModals({ ...modals, confirm: false })}
       >
         <p className="mb-2">Are you sure you want to approve request <strong className="text-slate-900">{selected?.id}</strong>?</p>
@@ -161,7 +268,7 @@ export const ApprovalCenter = () => {
         isOpen={modals.reason} 
         title="Reject Request" 
         guidance="Please provide a mandatory reason for rejection." 
-        onConfirm={() => updateRequest("Rejected")} 
+        onConfirm={(remarks) => handleAction(remarks)} 
         onClose={() => setModals({ ...modals, reason: false })} 
       />
     </div>
