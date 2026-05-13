@@ -854,6 +854,16 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 - **File Generation Deferred**: storageKey, checksum, generatedAt remain null until safe file governance is implemented
 - **Metadata Only**: No CSV/PDF/XLSX generation, no signed URLs, no download endpoints, no raw rows returned
 
+### Implemented Audit Viewer Backend Read API
+- **Endpoints**:
+  - GET /api/v1/audit/events: List audit events with filters and pagination
+  - GET /api/v1/audit/events/:id: Get specific audit event by id
+- **Permission**: audit.view required
+- **Scope Rules**: Tenant-scoped; branch-scoped for non-Super Admin users; Super Admin can see all tenant logs
+- **Filters**: eventKey, userId, recordType, recordId, date range, pagination; no arbitrary cross-tenant filters
+- **Safety Rules**: oldValues/newValues only returned to Super Admin; non-admin users get sanitized metadata only; no secrets/PHI/raw blobs returned
+- **No Mutation/Delete/Update**: Read-only; no editing of audit logs
+
 ### 14. Failure Modes
 - `permission_denied`
 - `tenant_scope_required`
