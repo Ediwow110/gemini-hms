@@ -71,6 +71,10 @@ describe('AdminController', () => {
       requestPrivilegedUserProfileUpdate: jest.fn(),
       approvePrivilegedUserChange: jest.fn(),
       rejectPrivilegedUserChange: jest.fn(),
+      requestPrivilegedRolePermissionGrant: jest.fn(),
+      requestPrivilegedRolePermissionRevoke: jest.fn(),
+      approvePrivilegedRolePermissionChange: jest.fn(),
+      rejectPrivilegedRolePermissionChange: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -684,6 +688,120 @@ describe('AdminController', () => {
         'req-id',
         'valid',
       );
+    });
+  });
+
+  describe('Privileged Role Permission Mutation Endpoints', () => {
+    it('request privileged role permission grant endpoint requires admin.role.change metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'requestPrivilegedRolePermissionGrant',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+      expect(permissions).toEqual(['admin.role.change']);
+    });
+
+    it('request privileged role permission revoke endpoint requires admin.role.change metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'requestPrivilegedRolePermissionRevoke',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+      expect(permissions).toEqual(['admin.role.change']);
+    });
+
+    it('approve privileged role permission change endpoint includes admin.role.change and approval.request.process metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'approvePrivilegedRolePermissionChange',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+      expect(permissions).toEqual([
+        'admin.role.change',
+        'approval.request.process',
+      ]);
+    });
+
+    it('reject privileged role permission change endpoint includes admin.role.change and approval.request.process metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'rejectPrivilegedRolePermissionChange',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+      expect(permissions).toEqual([
+        'admin.role.change',
+        'approval.request.process',
+      ]);
+    });
+
+    it('requestPrivilegedRolePermissionGrant calls service', async () => {
+      adminService.requestPrivilegedRolePermissionGrant.mockResolvedValue({
+        requestId: 'req-id',
+      });
+      await controller.requestPrivilegedRolePermissionGrant(
+        actor,
+        'role-id',
+        'perm-id',
+        {
+          reason: 'valid',
+        },
+      );
+      expect(
+        adminService.requestPrivilegedRolePermissionGrant,
+      ).toHaveBeenCalledWith(actor, 'role-id', 'perm-id', 'valid');
+    });
+
+    it('requestPrivilegedRolePermissionRevoke calls service', async () => {
+      adminService.requestPrivilegedRolePermissionRevoke.mockResolvedValue({
+        requestId: 'req-id',
+      });
+      await controller.requestPrivilegedRolePermissionRevoke(
+        actor,
+        'role-id',
+        'perm-id',
+        {
+          reason: 'valid',
+        },
+      );
+      expect(
+        adminService.requestPrivilegedRolePermissionRevoke,
+      ).toHaveBeenCalledWith(actor, 'role-id', 'perm-id', 'valid');
+    });
+
+    it('approvePrivilegedRolePermissionChange calls service', async () => {
+      adminService.approvePrivilegedRolePermissionChange.mockResolvedValue({
+        requestId: 'req-id',
+      });
+      await controller.approvePrivilegedRolePermissionChange(actor, 'req-id', {
+        reason: 'valid',
+      });
+      expect(
+        adminService.approvePrivilegedRolePermissionChange,
+      ).toHaveBeenCalledWith(actor, 'req-id', 'valid');
+    });
+
+    it('rejectPrivilegedRolePermissionChange calls service', async () => {
+      adminService.rejectPrivilegedRolePermissionChange.mockResolvedValue({
+        requestId: 'req-id',
+      });
+      await controller.rejectPrivilegedRolePermissionChange(actor, 'req-id', {
+        reason: 'valid',
+      });
+      expect(
+        adminService.rejectPrivilegedRolePermissionChange,
+      ).toHaveBeenCalledWith(actor, 'req-id', 'valid');
     });
   });
 });

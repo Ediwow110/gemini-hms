@@ -601,7 +601,7 @@ Required additions or explicit deferrals:
 - create role: implemented for custom, non-system roles containing only explicitly `LOW`-risk permissions, requiring `admin.role.change`, tenant-scoped, and audit
 - update/archive role: implemented
 - non-system, non-privileged role permission grant/revoke: implemented with direct audit, affected-user `tokenVersion` invalidation, and explicit `LOW`-risk permission requirement
-- privileged role permission grant/revoke: deferred pending maker-checker and permission risk classification
+- privileged role permission grant/revoke: implemented with maker-checker governance for `MEDIUM`, `HIGH`, and `PRIVILEGED` risk levels
 - protected seeded role behavior: implemented
 
 ### Custom Role Creation Governance
@@ -713,6 +713,35 @@ Required additions or explicit deferrals:
   - DB-derived permissions reflect changes immediately.
   - Displayed role names in existing JWTs remain stale until next token issuance.
 - **Response**: Sanitized result containing `roleId`, `name`, `status`, `isSystem`.
+
+### Governed High-Risk Role Permission Approvals
+- **Endpoints**:
+  - Request: `POST /api/v1/admin/roles/:roleId/permissions/:permissionId/privileged-requests` (Grant)
+  - Request: `POST /api/v1/admin/roles/:roleId/permissions/:permissionId/privileged-revoke-requests` (Revoke)
+  - Approve: `POST /api/v1/admin/role-permission-change-requests/:requestId/approve`
+  - Reject: `POST /api/v1/admin/role-permission-change-requests/:requestId/reject`
+- **Required Permissions**:
+  - Request: `admin.role.change`
+  - Approve/Reject: BOTH `admin.role.change` AND `approval.request.process` (enforced at the service layer if PermissionsGuard acts as a require-any fallback).
+- **Scope Restriction**: Branch-scoped actors are strictly blocked from requesting or approving these changes unless explicitly allowed by Super Admin policy (which is currently deferred).
+- **Constraints**:
+  - Direct `LOW` risk changes remain restricted to the direct path. `LOW` risk permissions are NOT handled through this maker-checker path.
+  - `admin.role.change` permission is absolutely blocked from mutation.
+  - `Super Admin`, `isSystem`, archived, or inactive roles are blocked.
+  - Roles already carrying `admin.role.change` are blocked.
+  - Unknown/unclassified risks are blocked.
+- **Maker-Checker**:
+  - Requester cannot approve or reject their own request.
+  - Approval re-checks role and permission tenant, scope, status, and risk level at decision time.
+  - Duplicate pending requests for the same tenant, roleId, permissionId, and action are blocked.
+  - Payload behavior is immutable: approval applies the stored request payload only.
+- **Transaction & Audit**:
+  - Approval application, `RolePermission` mutation, affected user `tokenVersion` increments, and audit execution happen in one transaction.
+  - For grant, creates `RolePermission` if absent. For revoke, hard deletes only the intended pair and fails closed if missing.
+  - Events: `ROLE_PERMISSION_CHANGE_REQUESTED`, `ROLE_PERMISSION_CHANGE_APPROVED`, `ROLE_PERMISSION_CHANGE_REJECTED`.
+  - Audits include requesterId, roleId, permissionId, action, riskLevel, tokenVersion before/after states, affectedUserIds, and before/after permissions.
+- **Session Invalidation**: All active users with the role get their `tokenVersion` incremented exactly once upon approval. Users with revoked roles or deactivated status are ignored.
+- **Frontend UI**: It is explicitly stated that frontend UI is NOT implemented in this slice.
 
 ## Final implementation guardrail
 Do not implement admin/user/role mutation endpoints until the schema prerequisites and the DTO/audit/approval/session rules in this document are accepted.

@@ -197,6 +197,66 @@ export class AdminController {
     );
   }
 
+  @Post('roles/:roleId/permissions/:permissionId/privileged-requests')
+  @RequirePermissions('admin.role.change')
+  async requestPrivilegedRolePermissionGrant(
+    @GetUser() actor: RequestUser,
+    @Param('roleId') roleId: string,
+    @Param('permissionId') permissionId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.requestPrivilegedRolePermissionGrant(
+      actor,
+      roleId,
+      permissionId,
+      dto.reason,
+    );
+  }
+
+  @Post('roles/:roleId/permissions/:permissionId/privileged-revoke-requests')
+  @RequirePermissions('admin.role.change')
+  async requestPrivilegedRolePermissionRevoke(
+    @GetUser() actor: RequestUser,
+    @Param('roleId') roleId: string,
+    @Param('permissionId') permissionId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.requestPrivilegedRolePermissionRevoke(
+      actor,
+      roleId,
+      permissionId,
+      dto.reason,
+    );
+  }
+
+  @Post('role-permission-change-requests/:requestId/approve')
+  @RequirePermissions('admin.role.change', 'approval.request.process')
+  async approvePrivilegedRolePermissionChange(
+    @GetUser() actor: RequestUser,
+    @Param('requestId') requestId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.approvePrivilegedRolePermissionChange(
+      actor,
+      requestId,
+      dto.reason,
+    );
+  }
+
+  @Post('role-permission-change-requests/:requestId/reject')
+  @RequirePermissions('admin.role.change', 'approval.request.process')
+  async rejectPrivilegedRolePermissionChange(
+    @GetUser() actor: RequestUser,
+    @Param('requestId') requestId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.rejectPrivilegedRolePermissionChange(
+      actor,
+      requestId,
+      dto.reason,
+    );
+  }
+
   @Post('role-change-requests/:requestId/approve')
   @RequirePermissions('admin.role.change', 'approval.request.process')
   async approvePrivilegedRoleChange(
