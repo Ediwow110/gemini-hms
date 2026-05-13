@@ -624,7 +624,6 @@ Required additions or explicit deferrals:
   - Role creation and role-permission mappings execute transactionally.
   - A `ROLE_CREATED` audit event is written including `actorId`, `roleId`, `roleName`, `reason`, `tenantId`, `isSystem`, `status`, `permissionIds`, `permissionNames`, and `permissionRiskLevels`.
   - Duplicate or invalid requests fail closed and write no mutation audit.
-- **Limitations**: Role update endpoint remains explicitly deferred and is not yet implemented.
 
 ### Governed Custom Role Archive
 - **Endpoint**: `POST /api/v1/admin/roles/:roleId/archive`
