@@ -831,19 +831,28 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 - No tenantless jobs are permitted.
 - No raw data arrays should be held entirely in frontend memory.
 
-### 12. API Contract Proposal
-- `POST /api/v1/reports/exports`: Remains metadata/request creation.
-- `POST /api/v1/reports/exports/:id/approve`: For high-risk maker-checker approvals (if not reusing generic approvals).
-- `POST /api/v1/reports/exports/:id/generate`: Or a background generation trigger, if approved.
-- `GET /api/v1/reports/exports/:id/download`: For authorized, short-lived secure download.
-- `GET /api/v1/reports/exports/:id/status`: For polling export readiness.
-- (Exact permissions, request schemas, response schemas, failure codes, and audit events must be defined for each endpoint).
+### 12. API Contract Implemented
+- `POST /api/v1/reports/exports`: Creates metadata-only export request. HIGH/PRIVILEGED enters PENDING_APPROVAL, LOW enters REQUESTED.
+- `POST /api/v1/reports/exports/:exportId/approve`: Approves pending export, updates status to APPROVED, requires `report.export` and `approval.request.process`, optional reason.
+- `POST /api/v1/reports/exports/:exportId/reject`: Rejects pending export, updates status to REJECTED, requires `report.export` and `approval.request.process`, mandatory reason.
+- All endpoints return metadata only, no file links or raw rows.
 
-### 13. Database / Model Additions Proposal
-- `ReportExport` model requires additional fields:
-  - `status`, `riskLevel`, `reportType`, `format`, `filtersSnapshot`, `fieldPolicySnapshot`, `rowCount`, `requestedBy`, `approvedBy`, `approvedAt`, `generatedAt`, `expiresAt`, `storageKey`, `checksum`, `downloadCount`, `lastDownloadedAt`, `failureReason`.
-- A `ReportDownload` audit/log model may be needed.
-- A relation to `ApprovalRequest` should be defined if reusing the generic approval model.
+### 13. Database / Model Additions Implemented
+- `ReportExport` model updated with:
+  - `status`: PENDING_APPROVAL, APPROVED, REJECTED, FAILED
+  - `decidedById`: User who approved/rejected
+  - `decidedAt`: Timestamp of decision
+  - `decisionReason`: Optional for approve, required for reject
+  - `storageKey`, `checksum`, `generatedAt` remain nullable and null
+- Relations updated for decidedBy user.
+
+### Implemented Export Approval Metadata Workflow
+- **Status Transitions**: REQUESTED (LOW) -> APPROVED implicitly; PENDING_APPROVAL (HIGH/PRIVILEGED) -> APPROVED or REJECTED
+- **Permissions**: Request requires `report.export`; Approve/Reject require both `report.export` and `approval.request.process`
+- **Requester/Approver Separation**: Requester cannot approve or reject their own export
+- **Audit Events**: REPORT_EXPORT_REQUESTED on request, REPORT_EXPORT_APPROVED on approval, REPORT_EXPORT_REJECTED on rejection
+- **File Generation Deferred**: storageKey, checksum, generatedAt remain null until safe file governance is implemented
+- **Metadata Only**: No CSV/PDF/XLSX generation, no signed URLs, no download endpoints, no raw rows returned
 
 ### 14. Failure Modes
 - `permission_denied`
