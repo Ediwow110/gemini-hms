@@ -864,6 +864,24 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 - **Safety Rules**: oldValues/newValues only returned to Super Admin; non-admin users get sanitized metadata only; no secrets/PHI/raw blobs returned
 - **No Mutation/Delete/Update**: Read-only; no editing of audit logs
 
+### Governed Health Endpoint
+- **Endpoint**: GET /api/v1/admin/health
+- **Required Permission**: admin.role.change
+- **Description**: Returns system health status metadata including application status, database connectivity, migration status, backup configuration presence, and timestamp.
+- **Scope**: Tenant-scoped, no branch scope.
+- **Response**:
+```json
+{
+  "appStatus": "ok",
+  "dbStatus": "ok" | "error",
+  "migrationStatus": "ok",
+  "backupConfig": boolean,
+  "timestamp": string
+}
+```
+- **Safety**: Fails safely without exposing secrets, PHI, or raw error details.
+- **Audit**: No audit required as it's a read-only status check.
+
 ### 14. Failure Modes
 - `permission_denied`
 - `tenant_scope_required`

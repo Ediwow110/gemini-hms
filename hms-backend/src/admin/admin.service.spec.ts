@@ -71,15 +71,15 @@ describe('AdminService', () => {
 
   beforeEach(async () => {
     prisma = {
-      $transaction: jest
-        .fn()
-        .mockImplementation((cb: (tx: typeof prisma) => unknown) => cb(prisma)),
+      $transaction: jest.fn().mockImplementation((cb: (tx: typeof prisma) => unknown) => cb(prisma)),
+      $queryRaw: jest.fn(),
       user: {
         findFirst: jest.fn(),
         findMany: jest.fn(),
         updateMany: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        count: jest.fn(),
       },
       userRole: {
         create: jest.fn(),
@@ -3978,6 +3978,56 @@ describe('AdminService', () => {
         expect(prisma.rolePermission.create).not.toHaveBeenCalled();
         expect(prisma.user.updateMany).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('getHealth', () => {
+    it('returns healthy status with database connectivity and backup config', async () => {
+      prisma.user.count.mockResolvedValue(5);
+      prisma.$queryRaw.mockResolvedValue([]);
+      process.env.BACKUP_S3_BUCKET = 'test-bucket';
+
+      const result = await service.getHealth();
+
+      expect(result).toEqual({
+        status: 'ok',
+        timestamp: expect.any(String),
+        database: { status: 'connected', userCount: 5 },
+        migrations: { status: 'applied' },
+        backup: { configured: true },
+      });
+    });
+
+    it('returns degraded status on database failure', async () => {
+      prisma.$queryRaw.mockRejectedValue(new Error('DB error'));
+
+      const result = await service.getHealth();
+
+      expect(result.status).toBe('error');
+      expect(result.database.status).toBe('disconnected');
+      expect(result.database.error).toBe('Database connectivity failed');
+    });
+
+    it('returns backup not configured when no env vars', async () => {
+      prisma.user.count.mockResolvedValue(10);
+      prisma.$queryRaw.mockResolvedValue([]);
+      delete process.env.BACKUP_S3_BUCKET;
+      delete process.env.BACKUP_AZURE_CONTAINER;
+
+      const result = await service.getHealth();
+
+      expect(result.backup.configured).toBe(false);
+    });
+
+    it('includes timestamp in response', async () => {
+      prisma.user.count.mockResolvedValue(0);
+      prisma.$queryRaw.mockResolvedValue([]);
+
+      const result = await service.getHealth();
+
+      expect(result.timestamp).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
     });
   });
 });
