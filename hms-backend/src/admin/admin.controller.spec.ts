@@ -11,6 +11,7 @@ import {
   CreateUserDto,
   GrantRolePermissionDto,
   PrivilegedRoleRequestDto,
+  PrivilegedUserProfileUpdateDto,
   UpdateCustomRoleDto,
   UpdateUserDto,
   UserLifecycleReasonDto,
@@ -34,6 +35,11 @@ describe('AdminController', () => {
     requestPrivilegedRoleRevocation: jest.Mock;
     approvePrivilegedRoleChange: jest.Mock;
     rejectPrivilegedRoleChange: jest.Mock;
+    requestPrivilegedUserDeactivation: jest.Mock;
+    requestPrivilegedUserActivation: jest.Mock;
+    requestPrivilegedUserProfileUpdate: jest.Mock;
+    approvePrivilegedUserChange: jest.Mock;
+    rejectPrivilegedUserChange: jest.Mock;
   };
 
   const actor: RequestUser = {
@@ -60,6 +66,11 @@ describe('AdminController', () => {
       requestPrivilegedRoleRevocation: jest.fn(),
       approvePrivilegedRoleChange: jest.fn(),
       rejectPrivilegedRoleChange: jest.fn(),
+      requestPrivilegedUserDeactivation: jest.fn(),
+      requestPrivilegedUserActivation: jest.fn(),
+      requestPrivilegedUserProfileUpdate: jest.fn(),
+      approvePrivilegedUserChange: jest.fn(),
+      rejectPrivilegedUserChange: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -600,5 +611,79 @@ describe('AdminController', () => {
     });
     const errors = await validate(dto);
     expect(errors.length).toBe(0);
+  });
+
+  describe('Privileged User Mutation Endpoints', () => {
+    it('requestPrivilegedUserDeactivation calls service', async () => {
+      adminService.requestPrivilegedUserDeactivation.mockResolvedValue({
+        requestId: 'req-id',
+      });
+      await controller.requestPrivilegedUserDeactivation(actor, 'user-id', {
+        reason: 'valid',
+      });
+      expect(
+        adminService.requestPrivilegedUserDeactivation,
+      ).toHaveBeenCalledWith(actor, 'user-id', 'valid');
+    });
+
+    it('requestPrivilegedUserActivation calls service', async () => {
+      adminService.requestPrivilegedUserActivation.mockResolvedValue({
+        requestId: 'req-id',
+      });
+      await controller.requestPrivilegedUserActivation(actor, 'user-id', {
+        reason: 'valid',
+      });
+      expect(adminService.requestPrivilegedUserActivation).toHaveBeenCalledWith(
+        actor,
+        'user-id',
+        'valid',
+      );
+    });
+
+    it('requestPrivilegedUserProfileUpdate calls service', async () => {
+      const dto: PrivilegedUserProfileUpdateDto = {
+        email: 'new@email.com',
+        reason: 'valid',
+      };
+      adminService.requestPrivilegedUserProfileUpdate.mockResolvedValue({
+        requestId: 'req-id',
+      });
+      await controller.requestPrivilegedUserProfileUpdate(
+        actor,
+        'user-id',
+        dto,
+      );
+      expect(
+        adminService.requestPrivilegedUserProfileUpdate,
+      ).toHaveBeenCalledWith(actor, 'user-id', dto);
+    });
+
+    it('approvePrivilegedUserChange calls service', async () => {
+      adminService.approvePrivilegedUserChange.mockResolvedValue({
+        requestId: 'req-id',
+      });
+      await controller.approvePrivilegedUserChange(actor, 'req-id', {
+        reason: 'valid',
+      });
+      expect(adminService.approvePrivilegedUserChange).toHaveBeenCalledWith(
+        actor,
+        'req-id',
+        'valid',
+      );
+    });
+
+    it('rejectPrivilegedUserChange calls service', async () => {
+      adminService.rejectPrivilegedUserChange.mockResolvedValue({
+        requestId: 'req-id',
+      });
+      await controller.rejectPrivilegedUserChange(actor, 'req-id', {
+        reason: 'valid',
+      });
+      expect(adminService.rejectPrivilegedUserChange).toHaveBeenCalledWith(
+        actor,
+        'req-id',
+        'valid',
+      );
+    });
   });
 });

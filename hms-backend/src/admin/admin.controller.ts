@@ -18,6 +18,7 @@ import {
   CreateUserDto,
   GrantRolePermissionDto,
   PrivilegedRoleRequestDto,
+  PrivilegedUserProfileUpdateDto,
   UpdateCustomRoleDto,
   UpdateUserDto,
   UserLifecycleReasonDto,
@@ -218,6 +219,76 @@ export class AdminController {
     @Body() dto: UserLifecycleReasonDto,
   ) {
     return this.adminService.rejectPrivilegedRoleChange(
+      actor,
+      requestId,
+      dto.reason,
+    );
+  }
+
+  @Post('users/:id/privileged-lifecycle-requests/deactivate')
+  @RequirePermissions('admin.role.change')
+  async requestPrivilegedUserDeactivation(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.requestPrivilegedUserDeactivation(
+      actor,
+      targetUserId,
+      dto.reason,
+    );
+  }
+
+  @Post('users/:id/privileged-lifecycle-requests/activate')
+  @RequirePermissions('admin.role.change')
+  async requestPrivilegedUserActivation(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.requestPrivilegedUserActivation(
+      actor,
+      targetUserId,
+      dto.reason,
+    );
+  }
+
+  @Post('users/:id/privileged-profile-requests')
+  @RequirePermissions('admin.role.change')
+  async requestPrivilegedUserProfileUpdate(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Body() dto: PrivilegedUserProfileUpdateDto,
+  ) {
+    return this.adminService.requestPrivilegedUserProfileUpdate(
+      actor,
+      targetUserId,
+      dto,
+    );
+  }
+
+  @Post('privileged-user-change-requests/:requestId/approve')
+  @RequirePermissions('admin.role.change', 'approval.request.process')
+  async approvePrivilegedUserChange(
+    @GetUser() actor: RequestUser,
+    @Param('requestId') requestId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.approvePrivilegedUserChange(
+      actor,
+      requestId,
+      dto.reason,
+    );
+  }
+
+  @Post('privileged-user-change-requests/:requestId/reject')
+  @RequirePermissions('admin.role.change', 'approval.request.process')
+  async rejectPrivilegedUserChange(
+    @GetUser() actor: RequestUser,
+    @Param('requestId') requestId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.rejectPrivilegedUserChange(
       actor,
       requestId,
       dto.reason,

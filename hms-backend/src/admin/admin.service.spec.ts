@@ -3578,4 +3578,180 @@ describe('AdminService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
   });
+
+  describe('Privileged User Mutations', () => {
+    const targetUserId = 'target-user-id';
+    const reason = 'Security requirement';
+    const privilegedRole = makeRole({
+      id: 'privileged-role-id',
+      name: 'Admin',
+      rolePermissions: [
+        {
+          roleId: 'privileged-role-id',
+          permissionId: 'perm-id',
+          permission: makePermission({ name: 'admin.role.change' }),
+        },
+      ],
+    });
+    const privilegedUser = makeUser({
+      id: targetUserId,
+      userRoles: [
+        {
+          userId: targetUserId,
+          roleId: privilegedRole.id,
+          status: 'ACTIVE',
+          role: privilegedRole,
+          revokedAt: null,
+        },
+      ],
+    });
+
+    describe('requestPrivilegedUserDeactivation', () => {
+      it('creates a deactivation request for a privileged user', async () => {
+        prisma.user.findFirst.mockResolvedValue(privilegedUser);
+        prisma.approvalRequest.findFirst.mockResolvedValue(null);
+        prisma.approvalRequest.create.mockResolvedValue({
+          id: 'req-id',
+          recordId: targetUserId,
+          type: 'PRIVILEGED_USER_DEACTIVATE',
+          status: 'PENDING',
+        });
+
+        const result = await service.requestPrivilegedUserDeactivation(
+          superAdminActor,
+          targetUserId,
+          reason,
+        );
+
+        expect(result).toEqual({
+          requestId: 'req-id',
+          targetUserId: targetUserId,
+          action: 'PRIVILEGED_USER_DEACTIVATE',
+          status: 'PENDING',
+        });
+        expect(prisma.approvalRequest.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              type: 'PRIVILEGED_USER_DEACTIVATE',
+              recordId: targetUserId,
+            }),
+          }),
+        );
+      });
+
+      it('blocks self-deactivation request', async () => {
+        await expect(
+          service.requestPrivilegedUserDeactivation(
+            { ...superAdminActor, userId: targetUserId },
+            targetUserId,
+            reason,
+          ),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('blocks request if one is already pending', async () => {
+        prisma.user.findFirst.mockResolvedValue(privilegedUser);
+        prisma.approvalRequest.findFirst.mockResolvedValue({
+          id: 'existing-req',
+        });
+
+        await expect(
+          service.requestPrivilegedUserDeactivation(
+            superAdminActor,
+            targetUserId,
+            reason,
+          ),
+        ).rejects.toThrow(ConflictException);
+      });
+    });
+
+    describe('approvePrivilegedUserChange', () => {
+      const requestId = 'req-id';
+      const approverActor = { ...superAdminActor, userId: 'approver-id' };
+      const deactivationRequest = {
+        id: requestId,
+        tenantId: 'tenant-id',
+        requesterId: 'requester-id',
+        status: 'PENDING',
+        type: 'PRIVILEGED_USER_DEACTIVATE',
+        details: {
+          action: 'PRIVILEGED_USER_DEACTIVATE',
+          targetUserId,
+          requestedChanges: { deactivationReason: 'Policy violation' },
+        },
+      };
+
+      it('approves deactivation and mutates user', async () => {
+        prisma.userRole.findMany.mockResolvedValue([
+          {
+            role: {
+              rolePermissions: [
+                {
+                  permission: { name: 'admin.role.change' },
+                },
+                {
+                  permission: { name: 'approval.request.process' },
+                },
+              ],
+            },
+          },
+        ]);
+        prisma.approvalRequest.findFirst.mockResolvedValue(deactivationRequest);
+        prisma.user.findFirst.mockResolvedValue(privilegedUser);
+        prisma.approvalRequest.updateMany.mockResolvedValue({ count: 1 });
+        prisma.user.update.mockResolvedValue({
+          ...privilegedUser,
+          status: 'INACTIVE',
+        });
+        // Mock getUpdatedUser
+        prisma.user.findFirst
+          .mockResolvedValueOnce(privilegedUser) // getScopedTarget
+          .mockResolvedValueOnce({
+            ...privilegedUser,
+            status: 'INACTIVE',
+            deactivatedAt: new Date(),
+          }); // getUpdatedUser
+
+        const result = await service.approvePrivilegedUserChange(
+          approverActor,
+          requestId,
+          'Confirmed',
+        );
+
+        expect(result.approvalStatus).toBe('APPROVED');
+        expect(prisma.user.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { id: targetUserId },
+            data: expect.objectContaining({ status: 'INACTIVE' }),
+          }),
+        );
+      });
+
+      it('blocks approval by the requester', async () => {
+        prisma.userRole.findMany.mockResolvedValue([
+          {
+            role: {
+              rolePermissions: [
+                {
+                  permission: { name: 'admin.role.change' },
+                },
+                {
+                  permission: { name: 'approval.request.process' },
+                },
+              ],
+            },
+          },
+        ]);
+        prisma.approvalRequest.findFirst.mockResolvedValue(deactivationRequest);
+
+        await expect(
+          service.approvePrivilegedUserChange(
+            { ...superAdminActor, userId: 'requester-id' },
+            requestId,
+            'Confirmed',
+          ),
+        ).rejects.toThrow(ForbiddenException);
+      });
+    });
+  });
 });

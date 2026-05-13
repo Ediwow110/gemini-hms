@@ -105,3 +105,16 @@ export class UpdateUserDto extends UserLifecycleReasonDto {
   @IsOptional()
   isMfaEnabled?: boolean;
 }
+
+export class PrivilegedUserProfileUpdateDto extends UserLifecycleReasonDto {
+  @IsOptional()
+  @IsEmail()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toLowerCase().trim() : value,
+  )
+  @IsNotEmpty()
+  email?: string;
+
+  @IsOptional()
+  isMfaEnabled?: boolean;
+}
