@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { RequestUser } from '../common/types/authenticated-request.type';
+import * as bcrypt from 'bcrypt';
 
 const USER_STATUS_ACTIVE = 'ACTIVE';
 const USER_STATUS_INACTIVE = 'INACTIVE';
@@ -145,12 +146,188 @@ export interface UpdateCustomRoleResponse {
   isSystem: boolean;
 }
 
+export interface CreateUserResponse {
+  userId: string;
+  email: string;
+  status: string;
+  branchIds: string[];
+  roleIds: string[];
+}
+
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
+
+  async createUser(
+    actor: RequestUser,
+    dto: {
+      email: string;
+      password: string;
+      isMfaEnabled?: boolean;
+      branchIds: string[];
+      roleIds?: string[];
+      reason: string;
+    },
+  ): Promise<CreateUserResponse> {
+    const trimmedReason = this.validateReason(dto.reason);
+    if (trimmedReason.length < 8) {
+      throw new BadRequestException('Reason must be at least 8 characters');
+    }
+
+    const email = dto.email.toLowerCase().trim();
+    if (!email) {
+      throw new BadRequestException('Email is required');
+    }
+
+    this.assertTenantWideRoleMutationActor(actor);
+
+    // 1. Check if user already exists in tenant
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        tenantId: actor.tenantId,
+        email,
+      },
+    });
+
+    if (existingUser) {
+      throw new ConflictException(
+        'User with this email already exists in tenant',
+      );
+    }
+
+    // 2. Validate branches
+    const branches = await this.prisma.branch.findMany({
+      where: {
+        id: { in: dto.branchIds },
+        tenantId: actor.tenantId,
+      },
+    });
+
+    if (branches.length !== dto.branchIds.length) {
+      throw new BadRequestException(
+        'One or more branch IDs are invalid or cross-tenant',
+      );
+    }
+
+    // Branch scoping for non-SuperAdmin
+    if (!this.isSuperAdmin(actor) && actor.branchId) {
+      if (dto.branchIds.some((id) => id !== actor.branchId)) {
+        throw new ForbiddenException(
+          'Branch-scoped actors can only assign their own branch',
+        );
+      }
+    }
+
+    // 3. Validate roles
+    const roleIds = dto.roleIds || [];
+    let validatedRoles: AdminRoleTarget[] = [];
+    if (roleIds.length > 0) {
+      validatedRoles = await this.prisma.role.findMany({
+        where: {
+          id: { in: roleIds },
+          tenantId: actor.tenantId,
+        },
+        include: {
+          rolePermissions: { include: { permission: true } },
+        },
+      });
+
+      if (validatedRoles.length !== roleIds.length) {
+        throw new BadRequestException(
+          'One or more role IDs are invalid or cross-tenant',
+        );
+      }
+
+      // Prohibit privileged/system roles for direct creation
+      for (const role of validatedRoles) {
+        if (role.isSystem) {
+          throw new ForbiddenException(
+            `System role ${role.name} cannot be assigned directly`,
+          );
+        }
+        if (
+          role.rolePermissions.some(
+            (rp) => rp.permission.name === PRIVILEGED_PERMISSION,
+          )
+        ) {
+          throw new ForbiddenException(
+            `Privileged role ${role.name} requires maker-checker flow (deferred)`,
+          );
+        }
+      }
+    }
+
+    // 4. Hash password
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    // 5. Transactional Create
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          tenantId: actor.tenantId,
+          email,
+          passwordHash,
+          isMfaEnabled: dto.isMfaEnabled ?? false,
+          status: USER_STATUS_ACTIVE,
+          tokenVersion: 0,
+        },
+      });
+
+      // Assign branches
+      await tx.userBranch.createMany({
+        data: dto.branchIds.map((branchId) => ({
+          tenantId: actor.tenantId,
+          userId: user.id,
+          branchId,
+          isActive: true,
+        })),
+      });
+
+      // Assign roles
+      if (roleIds.length > 0) {
+        await tx.userRole.createMany({
+          data: roleIds.map((roleId) => ({
+            userId: user.id,
+            roleId,
+            status: USER_ROLE_STATUS_ACTIVE,
+          })),
+        });
+      }
+
+      // Audit
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'ADMIN_USER_CREATED',
+          recordType: 'User',
+          recordId: user.id,
+          newValues: {
+            actorId: actor.userId,
+            targetUserId: user.id,
+            email: user.email,
+            branchIds: dto.branchIds,
+            roleIds: roleIds,
+            isMfaEnabled: user.isMfaEnabled,
+            reason: trimmedReason,
+          },
+        },
+        tx,
+        actor.branchId ?? undefined,
+      );
+
+      return {
+        userId: user.id,
+        email: user.email,
+        status: user.status,
+        branchIds: dto.branchIds,
+        roleIds: roleIds,
+      };
+    });
+  }
 
   async createCustomRole(
     actor: RequestUser,

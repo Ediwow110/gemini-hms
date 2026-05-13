@@ -62,3 +62,32 @@ export class UpdateCustomRoleDto extends UserLifecycleReasonDto {
   @IsNotEmpty()
   name?: string;
 }
+
+export class CreateUserDto extends UserLifecycleReasonDto {
+  @IsString()
+  @IsNotEmpty()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toLowerCase().trim() : value,
+  )
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+
+  @IsOptional()
+  isMfaEnabled?: boolean;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  @ArrayUnique()
+  branchIds: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  @ArrayUnique()
+  roleIds?: string[];
+}

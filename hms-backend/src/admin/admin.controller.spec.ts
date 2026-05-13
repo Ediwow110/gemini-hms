@@ -8,6 +8,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import {
   AssignUserRoleDto,
+  CreateUserDto,
   GrantRolePermissionDto,
   PrivilegedRoleRequestDto,
   UpdateCustomRoleDto,
@@ -17,6 +18,7 @@ import {
 describe('AdminController', () => {
   let controller: AdminController;
   let adminService: {
+    createUser: jest.Mock;
     createCustomRole: jest.Mock;
     updateCustomRole: jest.Mock;
     archiveCustomRole: jest.Mock;
@@ -41,6 +43,7 @@ describe('AdminController', () => {
 
   beforeEach(async () => {
     adminService = {
+      createUser: jest.fn(),
       createCustomRole: jest.fn(),
       updateCustomRole: jest.fn(),
       archiveCustomRole: jest.fn(),
@@ -146,6 +149,36 @@ describe('AdminController', () => {
     );
 
     expect(permissions).toEqual(['admin.role.change']);
+  });
+
+  it('create user endpoint requires admin.role.change metadata', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      AdminController.prototype,
+      'createUser',
+    );
+    const permissions = Reflect.getMetadata(
+      PERMISSIONS_KEY,
+      descriptor?.value as object,
+    );
+
+    expect(permissions).toEqual(['admin.role.change']);
+  });
+
+  it('createUser calls adminService.createUser', async () => {
+    const dto: CreateUserDto = {
+      email: 'new@hospital.com',
+      password: 'Password123',
+      branchIds: ['branch-id'],
+      reason: 'valid reason',
+    };
+    adminService.createUser.mockResolvedValue({
+      userId: 'new-id',
+      email: dto.email,
+    });
+
+    await controller.createUser(actor, dto);
+
+    expect(adminService.createUser).toHaveBeenCalledWith(actor, dto);
   });
 
   it('privileged assignment request endpoint requires admin.role.change metadata', () => {
@@ -490,6 +523,28 @@ describe('AdminController', () => {
   it('UpdateCustomRoleDto accepts valid metadata', async () => {
     const dto = plainToInstance(UpdateCustomRoleDto, {
       name: 'New Name',
+      reason: 'valid reason',
+    });
+    const errors = await validate(dto);
+    expect(errors.length).toBe(0);
+  });
+
+  it('CreateUserDto rejects invalid data', async () => {
+    const dto = plainToInstance(CreateUserDto, {
+      email: 'not-an-email',
+      password: '',
+      branchIds: [],
+      reason: 'short',
+    });
+    const errors = await validate(dto);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('CreateUserDto accepts valid data', async () => {
+    const dto = plainToInstance(CreateUserDto, {
+      email: 'valid@hospital.com',
+      password: 'Password123',
+      branchIds: ['branch-id'],
       reason: 'valid reason',
     });
     const errors = await validate(dto);

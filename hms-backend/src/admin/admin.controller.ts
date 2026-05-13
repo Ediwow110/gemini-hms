@@ -15,6 +15,7 @@ import type { RequestUser } from '../common/types/authenticated-request.type';
 import {
   AssignUserRoleDto,
   CreateCustomRoleDto,
+  CreateUserDto,
   GrantRolePermissionDto,
   PrivilegedRoleRequestDto,
   UpdateCustomRoleDto,
@@ -25,6 +26,12 @@ import {
 @Controller('api/v1/admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  @Post('users')
+  @RequirePermissions('admin.role.change')
+  async createUser(@GetUser() actor: RequestUser, @Body() dto: CreateUserDto) {
+    return this.adminService.createUser(actor, dto);
+  }
 
   @Post('roles')
   @RequirePermissions('admin.role.change')

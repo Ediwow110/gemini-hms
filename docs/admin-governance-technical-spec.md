@@ -567,25 +567,24 @@ Required additions or explicit deferrals:
 - token/session invalidation: `User.tokenVersion` schema foundation and auth enforcement implemented; mutation-time increments remain deferred
 
 ### Phase 1: admin user lifecycle backend
-- user create
-- user update
+- user create: implemented
+- user update: deferred
 - non-privileged user deactivate/activate: implemented with direct audit and transactionally incremented `User.tokenVersion`
 - privileged user deactivate/reactivate: deferred pending maker-checker
-- user create/update: deferred
 
 ### Phase 2: user-role mutation backend
 - non-privileged role assign/revoke: implemented with direct audit, soft-revoked `UserRole`, transactionally incremented `User.tokenVersion`, and `isSystem` role block
 - privileged role assign/revoke: maker-checker request/approve/reject slice implemented for custom non-system privileged roles; `Super Admin` and `isSystem` roles remain blocked
-- self-escalation blocks
-- approval processing
-- increment `User.tokenVersion` transactionally for affected users when role assignments change
+- self-escalation blocks: implemented
+- approval processing: implemented with UI support
+- increment `User.tokenVersion` transactionally for affected users when role assignments change: implemented
 
 ### Phase 3: role and role-permission backend
 - create role: implemented for custom, non-system roles containing only explicitly `LOW`-risk permissions, requiring `admin.role.change`, tenant-scoped, and audit
-- update/archive role: deferred
+- update/archive role: implemented
 - non-system, non-privileged role permission grant/revoke: implemented with direct audit, affected-user `tokenVersion` invalidation, and explicit `LOW`-risk permission requirement
 - privileged role permission grant/revoke: deferred pending maker-checker and permission risk classification
-- protected seeded role behavior
+- protected seeded role behavior: implemented
 
 ### Custom Role Creation Governance
 - **Endpoint**: `POST /api/v1/admin/roles`
@@ -644,6 +643,20 @@ Required additions or explicit deferrals:
 - **Response**: Sanitized result containing `roleId`, `name`, `status`, `isSystem`, `archivedAt`, `affectedUserCount`.
   - No password hashes, internal Prisma metadata, or raw audit payload internals are returned.
 - **No Hard Delete**: Role rows, UserRole rows, and RolePermission rows are never hard deleted.
+
+### Governed User Creation
+- **Endpoint**: `POST /api/v1/admin/users`
+- **Required Permission**: `admin.role.change`
+- **Scope Restriction**: Branch-scoped actors can only assign their own branch to new users.
+- **Reason**: A non-empty, trimmed reason (min 8 chars) is required.
+- **Rules**:
+  - Email must be unique within the tenant.
+  - Password is hashed using `bcrypt` (10 rounds).
+  - Branch IDs must exist and belong to the actor's tenant.
+  - Initial role assignments are optional.
+  - **Direct assignment block**: Only non-privileged, non-system roles can be assigned directly during user creation.
+  - **Audit**: `ADMIN_USER_CREATED` event log.
+- **Transactional**: User creation and initial relation assignments (branches, roles) happen in one transaction.
 
 ### Governed Custom Role Metadata Update
 - **Endpoint**: `PATCH /api/v1/admin/roles/:roleId`

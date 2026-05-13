@@ -72,16 +72,25 @@ describe('AdminService', () => {
         findFirst: jest.fn(),
         findMany: jest.fn(),
         updateMany: jest.fn(),
+        create: jest.fn(),
       },
       userRole: {
         create: jest.fn(),
+        createMany: jest.fn(),
         updateMany: jest.fn(),
         findMany: jest.fn(),
+      },
+      userBranch: {
+        createMany: jest.fn(),
       },
       role: {
         findFirst: jest.fn(),
         create: jest.fn(),
         updateMany: jest.fn(),
+        findMany: jest.fn(),
+      },
+      branch: {
+        findMany: jest.fn(),
       },
       permission: {
         findFirst: jest.fn(),
@@ -2704,6 +2713,113 @@ describe('AdminService', () => {
       expect.objectContaining({ eventKey: 'PRIVILEGED_ROLE_CHANGE_REJECTED' }),
       prisma,
     );
+  });
+
+  describe('createUser', () => {
+    const dto = {
+      email: 'new@hospital.com',
+      password: 'Password123',
+      branchIds: ['branch-id'],
+      roleIds: ['role-id'],
+      reason: 'valid reason for creation',
+    };
+
+    it('rejects duplicate email in tenant', async () => {
+      prisma.user.findFirst.mockResolvedValue({ id: 'existing' });
+      await expect(service.createUser(superAdminActor, dto)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('rejects invalid branch IDs', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.branch.findMany.mockResolvedValue([]);
+      await expect(service.createUser(superAdminActor, dto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('blocks branch-scoped actor from assigning other branches', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.branch.findMany.mockResolvedValue([
+        { id: 'other-branch', tenantId: 'tenant-id' },
+      ]);
+      await expect(
+        service.createUser(branchActor, {
+          ...dto,
+          branchIds: ['other-branch'],
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects system roles', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.branch.findMany.mockResolvedValue([
+        { id: 'branch-id', tenantId: 'tenant-id' },
+      ]);
+      prisma.role.findMany.mockResolvedValue([
+        {
+          id: 'role-id',
+          isSystem: true,
+          name: 'System Role',
+          rolePermissions: [],
+        },
+      ]);
+      await expect(service.createUser(superAdminActor, dto)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('rejects privileged roles', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.branch.findMany.mockResolvedValue([
+        { id: 'branch-id', tenantId: 'tenant-id' },
+      ]);
+      prisma.role.findMany.mockResolvedValue([
+        {
+          id: 'role-id',
+          isSystem: false,
+          name: 'Privileged Role',
+          rolePermissions: [{ permission: { name: 'admin.role.change' } }],
+        },
+      ]);
+      await expect(service.createUser(superAdminActor, dto)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('succeeds with transactional create and audit', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.branch.findMany.mockResolvedValue([
+        { id: 'branch-id', tenantId: 'tenant-id' },
+      ]);
+      prisma.role.findMany.mockResolvedValue([
+        {
+          id: 'role-id',
+          isSystem: false,
+          name: 'Normal Role',
+          rolePermissions: [],
+        },
+      ]);
+      prisma.user.create.mockResolvedValue({
+        id: 'new-user-id',
+        email: 'new@hospital.com',
+        status: 'ACTIVE',
+        isMfaEnabled: false,
+      });
+
+      const result = await service.createUser(superAdminActor, dto);
+
+      expect(result.userId).toBe('new-user-id');
+      expect(prisma.user.create).toHaveBeenCalled();
+      expect(prisma.userBranch.createMany).toHaveBeenCalled();
+      expect(prisma.userRole.createMany).toHaveBeenCalled();
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'ADMIN_USER_CREATED' }),
+        expect.anything(),
+        undefined,
+      );
+    });
   });
 
   describe('createCustomRole', () => {

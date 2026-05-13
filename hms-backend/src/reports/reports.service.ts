@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateReportExportDto } from './dto/create-export.dto';
@@ -66,28 +70,37 @@ export class ReportsService {
           ...branchScope,
         };
         if (appliedFilters.startDate) {
-          where.createdAt = { gte: new Date(appliedFilters.startDate as string) };
+          where.createdAt = {
+            gte: new Date(appliedFilters.startDate as string),
+          };
         }
-        
+
         const data = await tx.paymentReversal.findMany({
           where,
-          include: { payment: true, invoice: { include: { order: { include: { patient: true } } } } },
+          include: {
+            payment: true,
+            invoice: { include: { order: { include: { patient: true } } } },
+          },
           orderBy: { createdAt: 'desc' },
         });
 
         rowCount = data.length;
         csvContent = 'ID,Type,Amount,Reason,Patient,Date,Status\n';
-        csvContent += data.map(r => 
-          `${r.id},${r.type},${r.amount},"${r.reason}",${r.invoice.order.patient.firstName} ${r.invoice.order.patient.lastName},${r.createdAt.toISOString()},${r.status}`
-        ).join('\n');
-
+        csvContent += data
+          .map(
+            (r) =>
+              `${r.id},${r.type},${String(r.amount)},"${r.reason}",${r.invoice.order.patient.firstName} ${r.invoice.order.patient.lastName},${r.createdAt.toISOString()},${r.status}`,
+          )
+          .join('\n');
       } else if (dto.reportType === 'AUDIT_EVENTS_SUMMARY') {
         const where: Prisma.AuditLogWhereInput = {
           tenantId,
           ...branchScope,
         };
         if (appliedFilters.startDate) {
-          where.createdAt = { gte: new Date(appliedFilters.startDate as string) };
+          where.createdAt = {
+            gte: new Date(appliedFilters.startDate as string),
+          };
         }
 
         const data = await tx.auditLog.findMany({
@@ -98,9 +111,12 @@ export class ReportsService {
 
         rowCount = data.length;
         csvContent = 'ID,Event,Record Type,Record ID,User,Date\n';
-        csvContent += data.map(l => 
-          `${l.id},${l.eventKey},${l.recordType},${l.recordId},${l.userId},${l.createdAt.toISOString()}`
-        ).join('\n');
+        csvContent += data
+          .map(
+            (l) =>
+              `${l.id},${l.eventKey},${l.recordType},${l.recordId},${l.userId},${l.createdAt.toISOString()}`,
+          )
+          .join('\n');
       } else {
         throw new BadRequestException('Unsupported report type');
       }
