@@ -644,7 +644,33 @@ Required additions or explicit deferrals:
 - **Response**: Sanitized result containing `roleId`, `name`, `status`, `isSystem`, `archivedAt`, `affectedUserCount`.
   - No password hashes, internal Prisma metadata, or raw audit payload internals are returned.
 - **No Hard Delete**: Role rows, UserRole rows, and RolePermission rows are never hard deleted.
-- **Role update is still not implemented**.
+
+### Governed Custom Role Metadata Update
+- **Endpoint**: `PATCH /api/v1/admin/roles/:roleId`
+- **Required Permission**: `admin.role.change` (enforced at controller layer via `@RequirePermissions`)
+- **Scope Restriction**: Branch-scoped actors are strictly blocked from updating roles unless they hold a tenant-wide Super Admin policy bypass.
+- **Reason**: A non-empty, trimmed reason is required for audit.
+- **Constraints**:
+  - Only custom, non-system roles may be updated (`isSystem` forced check).
+  - `Super Admin` role (matching by name) cannot be updated.
+  - Roles carrying the `admin.role.change` permission directly cannot be updated in this slice.
+  - Only active, non-archived roles may be updated.
+  - Cross-tenant roles (via `roleId` not belonging to `actor.tenantId`) are rejected.
+- **Metadata Policy**:
+  - `name`: optional, trimmed, non-empty if provided.
+  - Uniqueness: New name must be unique within the same tenant (case-insensitively).
+  - `description`: Unavailable in current schema; not included in API.
+- **Transaction & Audit**:
+  - Role update and audit write execute in one Prisma transaction.
+  - `ROLE_UPDATED` audit event includes:
+    - `actorId`, `roleId`, `name` (new), `reason`, `tenantId`, `branchId`
+    - `changedFields` (e.g. `['name']`)
+    - `oldValues`: `name`
+- **Session Invalidation**:
+  - `tokenVersion` is NOT incremented for metadata-only updates.
+  - DB-derived permissions reflect changes immediately.
+  - Displayed role names in existing JWTs remain stale until next token issuance.
+- **Response**: Sanitized result containing `roleId`, `name`, `status`, `isSystem`.
 
 ## Final implementation guardrail
 Do not implement admin/user/role mutation endpoints until the schema prerequisites and the DTO/audit/approval/session rules in this document are accepted.

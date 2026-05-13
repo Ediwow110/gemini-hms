@@ -1,4 +1,11 @@
-import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -10,6 +17,7 @@ import {
   CreateCustomRoleDto,
   GrantRolePermissionDto,
   PrivilegedRoleRequestDto,
+  UpdateCustomRoleDto,
   UserLifecycleReasonDto,
 } from './dto/user-lifecycle.dto';
 
@@ -29,6 +37,21 @@ export class AdminController {
       dto.name,
       dto.reason,
       dto.permissionIds,
+    );
+  }
+
+  @Patch('roles/:roleId')
+  @RequirePermissions('admin.role.change')
+  async updateCustomRole(
+    @GetUser() actor: RequestUser,
+    @Param('roleId') roleId: string,
+    @Body() dto: UpdateCustomRoleDto,
+  ) {
+    return this.adminService.updateCustomRole(
+      actor,
+      roleId,
+      dto.reason,
+      dto.name,
     );
   }
 

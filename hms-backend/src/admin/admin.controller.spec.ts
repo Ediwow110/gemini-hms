@@ -10,12 +10,16 @@ import {
   AssignUserRoleDto,
   GrantRolePermissionDto,
   PrivilegedRoleRequestDto,
+  UpdateCustomRoleDto,
   UserLifecycleReasonDto,
 } from './dto/user-lifecycle.dto';
 
 describe('AdminController', () => {
   let controller: AdminController;
   let adminService: {
+    createCustomRole: jest.Mock;
+    updateCustomRole: jest.Mock;
+    archiveCustomRole: jest.Mock;
     deactivateUser: jest.Mock;
     activateUser: jest.Mock;
     assignUserRole: jest.Mock;
@@ -37,6 +41,9 @@ describe('AdminController', () => {
 
   beforeEach(async () => {
     adminService = {
+      createCustomRole: jest.fn(),
+      updateCustomRole: jest.fn(),
+      archiveCustomRole: jest.fn(),
       deactivateUser: jest.fn(),
       activateUser: jest.fn(),
       assignUserRole: jest.fn(),
@@ -199,10 +206,10 @@ describe('AdminController', () => {
     ]);
   });
 
-  it('create role endpoint requires admin.role.change metadata', () => {
+  it('archive role endpoint requires admin.role.change metadata', () => {
     const descriptor = Object.getOwnPropertyDescriptor(
       AdminController.prototype,
-      'createCustomRole',
+      'archiveCustomRole',
     );
     const permissions = Reflect.getMetadata(
       PERMISSIONS_KEY,
@@ -212,7 +219,20 @@ describe('AdminController', () => {
     expect(permissions).toEqual(['admin.role.change']);
   });
 
-  it('deactivate forwards actor, target, and reason to service', async () => {
+  it('update role endpoint requires admin.role.change metadata', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      AdminController.prototype,
+      'updateCustomRole',
+    );
+    const permissions = Reflect.getMetadata(
+      PERMISSIONS_KEY,
+      descriptor?.value as object,
+    );
+
+    expect(permissions).toEqual(['admin.role.change']);
+  });
+
+  it('deactivateUser calls adminService.deactivateUser', async () => {
     adminService.deactivateUser.mockResolvedValue({ id: 'target-id' });
 
     await controller.deactivateUser(actor, 'target-id', { reason: 'valid' });
@@ -426,5 +446,53 @@ describe('AdminController', () => {
     const errors = await validate(dto);
 
     expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('updateCustomRole calls adminService.updateCustomRole', async () => {
+    adminService.updateCustomRole.mockResolvedValue({
+      roleId: 'role-id',
+      name: 'New Name',
+      status: 'ACTIVE',
+      isSystem: false,
+    });
+
+    await controller.updateCustomRole(actor, 'role-id', {
+      name: 'New Name',
+      reason: 'valid',
+    });
+
+    expect(adminService.updateCustomRole).toHaveBeenCalledWith(
+      actor,
+      'role-id',
+      'valid',
+      'New Name',
+    );
+  });
+
+  it('UpdateCustomRoleDto rejects blank reason', async () => {
+    const dto = plainToInstance(UpdateCustomRoleDto, {
+      name: 'New Name',
+      reason: '   ',
+    });
+    const errors = await validate(dto);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('UpdateCustomRoleDto rejects blank name if provided', async () => {
+    const dto = plainToInstance(UpdateCustomRoleDto, {
+      name: '   ',
+      reason: 'valid reason',
+    });
+    const errors = await validate(dto);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('UpdateCustomRoleDto accepts valid metadata', async () => {
+    const dto = plainToInstance(UpdateCustomRoleDto, {
+      name: 'New Name',
+      reason: 'valid reason',
+    });
+    const errors = await validate(dto);
+    expect(errors.length).toBe(0);
   });
 });

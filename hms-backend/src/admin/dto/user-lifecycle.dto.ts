@@ -54,3 +54,11 @@ export class CreateCustomRoleDto extends UserLifecycleReasonDto {
   @IsNotEmpty({ each: true })
   permissionIds?: string[];
 }
+
+export class UpdateCustomRoleDto extends UserLifecycleReasonDto {
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsNotEmpty()
+  name?: string;
+}

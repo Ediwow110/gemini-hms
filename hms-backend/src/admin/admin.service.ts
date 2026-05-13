@@ -138,6 +138,13 @@ export interface CreateCustomRoleResponse {
   }>;
 }
 
+export interface UpdateCustomRoleResponse {
+  roleId: string;
+  name: string;
+  status: string;
+  isSystem: boolean;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -1171,6 +1178,131 @@ export class AdminService {
     });
   }
 
+  async updateCustomRole(
+    actor: RequestUser,
+    roleId: string,
+    reason: string,
+    name?: string,
+  ): Promise<UpdateCustomRoleResponse> {
+    const trimmedReason = this.validateReason(reason);
+    const normalizedRoleId = this.validateRoleId(roleId);
+
+    const trimmedName = name?.trim();
+    if (name !== undefined && !trimmedName) {
+      throw new BadRequestException('Role name cannot be empty if provided');
+    }
+
+    if (name === undefined) {
+      throw new BadRequestException('No update fields provided');
+    }
+
+    this.assertTenantWideRoleMutationActor(actor);
+
+    return this.prisma.$transaction(async (tx) => {
+      // Fetch role with tenant scoping and permissions for privilege check
+      const role = await tx.role.findFirst({
+        where: {
+          id: normalizedRoleId,
+          tenantId: actor.tenantId,
+        },
+        include: {
+          rolePermissions: {
+            include: { permission: true },
+          },
+        },
+      });
+
+      if (!role) {
+        throw new NotFoundException('Role not found');
+      }
+
+      // 1. Forbidden: System roles
+      if (role.isSystem) {
+        throw new ForbiddenException('System roles cannot be updated');
+      }
+
+      // 2. Forbidden: Super Admin
+      if (role.name === 'Super Admin') {
+        throw new ForbiddenException('Super Admin role cannot be updated');
+      }
+
+      // 3. Forbidden: Inactive/Archived roles
+      if (role.status !== USER_STATUS_ACTIVE || role.archivedAt !== null) {
+        throw new ForbiddenException(
+          'Only active, non-archived roles can be updated',
+        );
+      }
+
+      // 4. Forbidden: Roles carrying admin.role.change (Privileged)
+      if (
+        role.rolePermissions.some(
+          (rp) => rp.permission.name === PRIVILEGED_PERMISSION,
+        )
+      ) {
+        throw new ForbiddenException(
+          'Roles carrying admin.role.change cannot be updated in this slice',
+        );
+      }
+
+      // 5. Uniqueness check if name is changing
+      if (
+        trimmedName &&
+        trimmedName.toLowerCase() !== role.name.toLowerCase()
+      ) {
+        const duplicate = await tx.role.findFirst({
+          where: {
+            tenantId: actor.tenantId,
+            name: { equals: trimmedName, mode: 'insensitive' },
+            id: { not: normalizedRoleId },
+          },
+        });
+
+        if (duplicate) {
+          throw new ConflictException(
+            'A role with this name already exists in the tenant',
+          );
+        }
+      }
+
+      const updatedRole = await tx.role.update({
+        where: { id: normalizedRoleId },
+        data: {
+          name: trimmedName ?? role.name,
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'ROLE_UPDATED',
+          recordType: 'Role',
+          recordId: normalizedRoleId,
+          oldValues: {
+            name: role.name,
+          },
+          newValues: {
+            actorId: actor.userId,
+            name: updatedRole.name,
+            reason: trimmedReason,
+            tenantId: actor.tenantId,
+            branchId: actor.branchId ?? null,
+            changedFields: ['name'],
+          },
+        },
+        tx,
+        actor.branchId ?? undefined,
+      );
+
+      return {
+        roleId: updatedRole.id,
+        name: updatedRole.name,
+        status: updatedRole.status,
+        isSystem: updatedRole.isSystem,
+      };
+    });
+  }
+
   async archiveCustomRole(
     actor: RequestUser,
     roleId: string,
@@ -1448,7 +1580,11 @@ export class AdminService {
       where: {
         userId,
         status: USER_ROLE_STATUS_ACTIVE,
-        role: { tenantId, status: USER_STATUS_ACTIVE, archivedAt: null },
+        role: {
+          tenantId,
+          status: USER_STATUS_ACTIVE,
+          archivedAt: null,
+        },
       },
       include: {
         role: {

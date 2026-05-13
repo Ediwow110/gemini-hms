@@ -3190,4 +3190,170 @@ describe('AdminService', () => {
       expect(audit.log).not.toHaveBeenCalled();
     });
   });
+
+  describe('updateCustomRole', () => {
+    const roleId = 'role-id';
+    const reason = 'valid reason';
+    const newName = 'Updated Role Name';
+
+    it('rejects empty name if name is provided', async () => {
+      await expect(
+        service.updateCustomRole(superAdminActor, roleId, reason, '  '),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects if no update fields provided', async () => {
+      await expect(
+        service.updateCustomRole(superAdminActor, roleId, reason),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects missing role', async () => {
+      prisma.role.findFirst.mockResolvedValue(null);
+      await expect(
+        service.updateCustomRole(superAdminActor, roleId, reason, newName),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects system roles', async () => {
+      prisma.role.findFirst.mockResolvedValue({
+        id: roleId,
+        isSystem: true,
+        name: 'System Role',
+        rolePermissions: [],
+      });
+      await expect(
+        service.updateCustomRole(superAdminActor, roleId, reason, newName),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects Super Admin role', async () => {
+      prisma.role.findFirst.mockResolvedValue({
+        id: roleId,
+        isSystem: false,
+        name: 'Super Admin',
+        rolePermissions: [],
+      });
+      await expect(
+        service.updateCustomRole(superAdminActor, roleId, reason, newName),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects archived roles', async () => {
+      prisma.role.findFirst.mockResolvedValue({
+        id: roleId,
+        isSystem: false,
+        name: 'Archived Role',
+        archivedAt: new Date(),
+        status: 'ACTIVE',
+        rolePermissions: [],
+      });
+      await expect(
+        service.updateCustomRole(superAdminActor, roleId, reason, newName),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects inactive roles', async () => {
+      prisma.role.findFirst.mockResolvedValue({
+        id: roleId,
+        isSystem: false,
+        name: 'Inactive Role',
+        archivedAt: null,
+        status: 'INACTIVE',
+        rolePermissions: [],
+      });
+      await expect(
+        service.updateCustomRole(superAdminActor, roleId, reason, newName),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects roles carrying admin.role.change', async () => {
+      prisma.role.findFirst.mockResolvedValue({
+        id: roleId,
+        isSystem: false,
+        name: 'Privileged Role',
+        archivedAt: null,
+        status: 'ACTIVE',
+        rolePermissions: [{ permission: { name: 'admin.role.change' } }],
+      });
+      await expect(
+        service.updateCustomRole(superAdminActor, roleId, reason, newName),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects duplicate name in same tenant case-insensitively', async () => {
+      prisma.role.findFirst
+        .mockResolvedValueOnce({
+          id: roleId,
+          isSystem: false,
+          name: 'Original Name',
+          archivedAt: null,
+          status: 'ACTIVE',
+          rolePermissions: [],
+        })
+        .mockResolvedValueOnce({ id: 'other-id', name: newName });
+
+      await expect(
+        service.updateCustomRole(superAdminActor, roleId, reason, newName),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('succeeds with metadata update and audit', async () => {
+      const oldRole = {
+        id: roleId,
+        isSystem: false,
+        name: 'Original Name',
+        archivedAt: null,
+        status: 'ACTIVE',
+        rolePermissions: [],
+      };
+      prisma.role.findFirst
+        .mockResolvedValueOnce(oldRole) // Target lookup
+        .mockResolvedValueOnce(null); // Uniqueness check
+
+      prisma.role.update = jest.fn().mockResolvedValue({
+        ...oldRole,
+        name: newName,
+      });
+
+      const result = await service.updateCustomRole(
+        superAdminActor,
+        roleId,
+        reason,
+        newName,
+      );
+
+      expect(result).toMatchObject({
+        roleId,
+        name: newName,
+        status: 'ACTIVE',
+        isSystem: false,
+      });
+
+      expect(prisma.role.update).toHaveBeenCalledWith({
+        where: { id: roleId },
+        data: { name: newName },
+      });
+
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'ROLE_UPDATED',
+          oldValues: { name: 'Original Name' },
+          newValues: expect.objectContaining({
+            name: newName,
+            reason: reason,
+            changedFields: ['name'],
+          }),
+        }),
+        expect.anything(),
+        undefined,
+      );
+    });
+
+    it('blocks branch-scoped actors from tenant-wide role update', async () => {
+      await expect(
+        service.updateCustomRole(branchActor, roleId, reason, newName),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
 });
