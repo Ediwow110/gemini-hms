@@ -8,6 +8,7 @@ import type { RequestUser } from '../common/types/authenticated-request.type';
 import {
   AssignUserRoleDto,
   GrantRolePermissionDto,
+  PrivilegedRoleRequestDto,
   UserLifecycleReasonDto,
 } from './dto/user-lifecycle.dto';
 
@@ -94,6 +95,65 @@ export class AdminController {
       actor,
       roleId,
       permissionId,
+      dto.reason,
+    );
+  }
+
+  @Post('users/:id/roles/privileged-requests')
+  @RequirePermissions('admin.role.change')
+  async requestPrivilegedRoleAssignment(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Body() dto: PrivilegedRoleRequestDto,
+  ) {
+    return this.adminService.requestPrivilegedRoleAssignment(
+      actor,
+      targetUserId,
+      dto.roleId,
+      dto.reason,
+    );
+  }
+
+  @Post('users/:id/roles/:roleId/privileged-revoke-requests')
+  @RequirePermissions('admin.role.change')
+  async requestPrivilegedRoleRevocation(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Param('roleId') roleId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.requestPrivilegedRoleRevocation(
+      actor,
+      targetUserId,
+      roleId,
+      dto.reason,
+    );
+  }
+
+  @Post('role-change-requests/:requestId/approve')
+  @RequirePermissions('admin.role.change', 'approval.request.process')
+  async approvePrivilegedRoleChange(
+    @GetUser() actor: RequestUser,
+    @Param('requestId') requestId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.approvePrivilegedRoleChange(
+      actor,
+      requestId,
+      dto.reason,
+    );
+  }
+
+  @Post('role-change-requests/:requestId/reject')
+  @RequirePermissions('admin.role.change', 'approval.request.process')
+  async rejectPrivilegedRoleChange(
+    @GetUser() actor: RequestUser,
+    @Param('requestId') requestId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.rejectPrivilegedRoleChange(
+      actor,
+      requestId,
       dto.reason,
     );
   }

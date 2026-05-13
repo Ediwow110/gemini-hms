@@ -17,6 +17,11 @@ const USER_ROLE_STATUS_REVOKED = 'REVOKED';
 const PRIVILEGED_PERMISSION = 'admin.role.change';
 const DIRECT_BLOCKED_PERMISSION_KEYS = new Set<string>(['admin.role.change']);
 const DIRECT_ALLOWED_PERMISSION_RISK = 'LOW';
+const APPROVAL_STATUS_PENDING = 'PENDING';
+const APPROVAL_STATUS_APPROVED = 'APPROVED';
+const APPROVAL_STATUS_REJECTED = 'REJECTED';
+const PRIVILEGED_ASSIGN_REQUEST_TYPE = 'ADMIN_PRIVILEGED_ROLE_ASSIGN';
+const PRIVILEGED_REVOKE_REQUEST_TYPE = 'ADMIN_PRIVILEGED_ROLE_REVOKE';
 
 type AdminRoleTarget = Prisma.RoleGetPayload<{
   include: {
@@ -25,6 +30,33 @@ type AdminRoleTarget = Prisma.RoleGetPayload<{
 }>;
 
 type AdminPermissionTarget = Prisma.PermissionGetPayload<Record<string, never>>;
+
+type ApprovalAction =
+  | typeof PRIVILEGED_ASSIGN_REQUEST_TYPE
+  | typeof PRIVILEGED_REVOKE_REQUEST_TYPE;
+
+type PrivilegedRoleChangeDetails = Prisma.InputJsonObject & {
+  action: ApprovalAction;
+  tenantId: string;
+  branchId: string | null;
+  targetUserId: string;
+  roleId: string;
+  roleName: string;
+  requesterId: string;
+  reason: string;
+  requestedAt: string;
+  targetUserSnapshot: {
+    status: string;
+    tokenVersion: number;
+    activeRoles: Array<{ id: string; name: string }>;
+  };
+  roleSnapshot: {
+    status: string;
+    isSystem: boolean;
+    privileged: boolean;
+    archivedAt: string | null;
+  };
+};
 
 type AdminUserTarget = Prisma.UserGetPayload<{
   include: {
@@ -75,12 +107,390 @@ export interface AdminRolePermissionMutationResponse {
   affectedUserCount: number;
 }
 
+export interface PrivilegedRoleChangeRequestResponse {
+  requestId: string;
+  targetUserId: string;
+  roleId: string;
+  roleName: string;
+  action: ApprovalAction;
+  status: string;
+}
+
+export interface PrivilegedRoleChangeDecisionResponse {
+  requestId: string;
+  action: ApprovalAction;
+  status: string;
+  targetUserId: string;
+  roleId: string;
+  roleName: string;
+  approvalStatus: string;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
+
+  async requestPrivilegedRoleAssignment(
+    actor: RequestUser,
+    targetUserId: string,
+    roleId: string,
+    reason: string,
+  ): Promise<PrivilegedRoleChangeRequestResponse> {
+    const trimmedReason = this.validateReason(reason);
+    const normalizedRoleId = this.validateRoleId(roleId);
+    this.assertActorCanTarget(actor, targetUserId);
+    this.assertPrivilegedRoleRequestActor(actor);
+
+    return this.prisma.$transaction(async (tx) => {
+      const target = await this.getScopedTarget(tx, actor, targetUserId);
+      const role = await this.getRoleForPrivilegedApproval(
+        tx,
+        actor.tenantId,
+        normalizedRoleId,
+        'ASSIGN',
+      );
+
+      if (this.hasActivePrivilegedRole(target)) {
+        throw new ForbiddenException(
+          'Target user already holds privileged access and cannot receive another privileged role directly through this request flow',
+        );
+      }
+
+      const activeAssignment = this.getActiveUserRoleAssignments(target).find(
+        (assignment) => assignment.roleId === normalizedRoleId,
+      );
+      if (activeAssignment) {
+        throw new ConflictException('Role is already assigned to this user');
+      }
+
+      const request = await this.createPrivilegedRoleChangeRequest(
+        tx,
+        actor,
+        target,
+        role,
+        trimmedReason,
+        PRIVILEGED_ASSIGN_REQUEST_TYPE,
+      );
+
+      return this.toPrivilegedRoleChangeRequestResponse(
+        request,
+        target.id,
+        role,
+      );
+    });
+  }
+
+  async requestPrivilegedRoleRevocation(
+    actor: RequestUser,
+    targetUserId: string,
+    roleId: string,
+    reason: string,
+  ): Promise<PrivilegedRoleChangeRequestResponse> {
+    const trimmedReason = this.validateReason(reason);
+    const normalizedRoleId = this.validateRoleId(roleId);
+    this.assertActorCanTarget(actor, targetUserId);
+    this.assertPrivilegedRoleRequestActor(actor);
+
+    return this.prisma.$transaction(async (tx) => {
+      const target = await this.getScopedTarget(tx, actor, targetUserId);
+      const role = await this.getRoleForPrivilegedApproval(
+        tx,
+        actor.tenantId,
+        normalizedRoleId,
+        'REVOKE',
+      );
+
+      const activeAssignment = this.getActiveUserRoleAssignments(target).find(
+        (assignment) => assignment.roleId === normalizedRoleId,
+      );
+      if (!activeAssignment) {
+        throw new ConflictException(
+          'Role assignment is not active for this user',
+        );
+      }
+
+      const request = await this.createPrivilegedRoleChangeRequest(
+        tx,
+        actor,
+        target,
+        role,
+        trimmedReason,
+        PRIVILEGED_REVOKE_REQUEST_TYPE,
+      );
+
+      return this.toPrivilegedRoleChangeRequestResponse(
+        request,
+        target.id,
+        role,
+      );
+    });
+  }
+
+  async approvePrivilegedRoleChange(
+    actor: RequestUser,
+    requestId: string,
+    decisionReason: string,
+  ): Promise<PrivilegedRoleChangeDecisionResponse> {
+    const trimmedReason = this.validateReason(decisionReason);
+    const normalizedRequestId = this.validateRequestId(requestId);
+    await this.assertPrivilegedRoleApprovalActor(actor);
+
+    return this.prisma.$transaction(async (tx) => {
+      const request = await this.getPendingPrivilegedRoleRequest(
+        tx,
+        actor.tenantId,
+        normalizedRequestId,
+      );
+      const details = this.parsePrivilegedRoleChangeDetails(request.details);
+
+      this.assertApprovalActors(actor, request, details.targetUserId);
+
+      const target = await this.getScopedTarget(
+        tx,
+        actor,
+        details.targetUserId,
+      );
+      const role = await this.getRoleForPrivilegedApproval(
+        tx,
+        actor.tenantId,
+        details.roleId,
+        details.action === PRIVILEGED_ASSIGN_REQUEST_TYPE ? 'ASSIGN' : 'REVOKE',
+      );
+      const beforeRoles = this.getRoleSummaries(target);
+      const beforeTokenVersion = target.tokenVersion;
+
+      if (details.action === PRIVILEGED_ASSIGN_REQUEST_TYPE) {
+        if (this.hasActivePrivilegedRole(target)) {
+          throw new ConflictException(
+            'Target user already holds privileged access and cannot receive another privileged role',
+          );
+        }
+
+        const reactivatedAssignment = await tx.userRole.updateMany({
+          where: {
+            userId: target.id,
+            roleId: role.id,
+            status: { not: USER_ROLE_STATUS_ACTIVE },
+          },
+          data: {
+            status: USER_ROLE_STATUS_ACTIVE,
+            revokedAt: null,
+            revokedReason: null,
+          },
+        });
+
+        if (reactivatedAssignment.count === 0) {
+          try {
+            await tx.userRole.create({
+              data: {
+                userId: target.id,
+                roleId: role.id,
+                status: USER_ROLE_STATUS_ACTIVE,
+              },
+            });
+          } catch (error) {
+            if (this.isUniqueConstraintError(error)) {
+              throw new ConflictException(
+                'Role is already assigned to this user',
+              );
+            }
+            throw error;
+          }
+        }
+      } else {
+        const revokeResult = await tx.userRole.updateMany({
+          where: {
+            userId: target.id,
+            roleId: role.id,
+            status: USER_ROLE_STATUS_ACTIVE,
+          },
+          data: {
+            status: USER_ROLE_STATUS_REVOKED,
+            revokedAt: new Date(),
+            revokedReason: details.reason,
+          },
+        });
+
+        if (revokeResult.count === 0) {
+          throw new ConflictException(
+            'Role assignment changed before approval could be applied',
+          );
+        }
+      }
+
+      const userUpdate = await tx.user.updateMany({
+        where: {
+          id: target.id,
+          tenantId: actor.tenantId,
+        },
+        data: {
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      if (userUpdate.count === 0) {
+        throw new ConflictException(
+          'Target user changed before approval apply',
+        );
+      }
+
+      const requestUpdate = await tx.approvalRequest.updateMany({
+        where: {
+          id: request.id,
+          tenantId: actor.tenantId,
+          status: APPROVAL_STATUS_PENDING,
+        },
+        data: {
+          status: APPROVAL_STATUS_APPROVED,
+          approverId: actor.userId!,
+          remarks: trimmedReason,
+        },
+      });
+
+      if (requestUpdate.count === 0) {
+        throw new ConflictException(
+          'Approval request changed before approval could be recorded',
+        );
+      }
+
+      const updated = await this.getUpdatedUser(tx, actor.tenantId, target.id);
+      const changedAt = new Date();
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'PRIVILEGED_ROLE_CHANGE_APPROVED',
+          recordType: 'ApprovalRequest',
+          recordId: request.id,
+          oldValues: {
+            approvalRequestId: request.id,
+            requesterId: request.requesterId,
+            targetUserId: target.id,
+            roleId: role.id,
+            roleName: role.name,
+            action: details.action,
+            beforeRoles,
+            beforeTokenVersion,
+          },
+          newValues: {
+            approverId: actor.userId,
+            requesterId: request.requesterId,
+            targetUserId: target.id,
+            roleId: role.id,
+            roleName: role.name,
+            action: details.action,
+            decisionReason: trimmedReason,
+            decidedAt: changedAt.toISOString(),
+            afterRoles: this.getRoleSummaries(updated),
+            afterTokenVersion: updated.tokenVersion,
+            approvalRequestId: request.id,
+          },
+        },
+        tx,
+      );
+
+      return {
+        requestId: request.id,
+        action: details.action,
+        status: updated.status,
+        targetUserId: target.id,
+        roleId: role.id,
+        roleName: role.name,
+        approvalStatus: APPROVAL_STATUS_APPROVED,
+      };
+    });
+  }
+
+  async rejectPrivilegedRoleChange(
+    actor: RequestUser,
+    requestId: string,
+    decisionReason: string,
+  ): Promise<PrivilegedRoleChangeDecisionResponse> {
+    const trimmedReason = this.validateReason(decisionReason);
+    const normalizedRequestId = this.validateRequestId(requestId);
+    await this.assertPrivilegedRoleApprovalActor(actor);
+
+    return this.prisma.$transaction(async (tx) => {
+      const request = await this.getPendingPrivilegedRoleRequest(
+        tx,
+        actor.tenantId,
+        normalizedRequestId,
+      );
+      const details = this.parsePrivilegedRoleChangeDetails(request.details);
+
+      this.assertApprovalActors(actor, request, details.targetUserId);
+
+      const role = await this.getRoleForPrivilegedApproval(
+        tx,
+        actor.tenantId,
+        details.roleId,
+        details.action === PRIVILEGED_ASSIGN_REQUEST_TYPE ? 'ASSIGN' : 'REVOKE',
+      );
+
+      const requestUpdate = await tx.approvalRequest.updateMany({
+        where: {
+          id: request.id,
+          tenantId: actor.tenantId,
+          status: APPROVAL_STATUS_PENDING,
+        },
+        data: {
+          status: APPROVAL_STATUS_REJECTED,
+          approverId: actor.userId!,
+          remarks: trimmedReason,
+        },
+      });
+
+      if (requestUpdate.count === 0) {
+        throw new ConflictException(
+          'Approval request changed before rejection could be recorded',
+        );
+      }
+
+      const changedAt = new Date();
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'PRIVILEGED_ROLE_CHANGE_REJECTED',
+          recordType: 'ApprovalRequest',
+          recordId: request.id,
+          oldValues: {
+            approvalRequestId: request.id,
+            requesterId: request.requesterId,
+            targetUserId: details.targetUserId,
+            roleId: role.id,
+            roleName: role.name,
+            action: details.action,
+          },
+          newValues: {
+            approverId: actor.userId,
+            requesterId: request.requesterId,
+            targetUserId: details.targetUserId,
+            roleId: role.id,
+            roleName: role.name,
+            action: details.action,
+            decisionReason: trimmedReason,
+            decidedAt: changedAt.toISOString(),
+            approvalRequestId: request.id,
+          },
+        },
+        tx,
+      );
+
+      return {
+        requestId: request.id,
+        action: details.action,
+        status: details.targetUserSnapshot.status,
+        targetUserId: details.targetUserId,
+        roleId: role.id,
+        roleName: role.name,
+        approvalStatus: APPROVAL_STATUS_REJECTED,
+      };
+    });
+  }
 
   async deactivateUser(
     actor: RequestUser,
@@ -631,6 +1041,14 @@ export class AdminService {
     return normalizedPermissionId;
   }
 
+  private validateRequestId(requestId: string): string {
+    const normalizedRequestId = requestId.trim();
+    if (!normalizedRequestId) {
+      throw new BadRequestException('Approval request ID is required');
+    }
+    return normalizedRequestId;
+  }
+
   private assertActorCanTarget(actor: RequestUser, targetUserId: string) {
     if (!actor.userId) {
       throw new ForbiddenException('User context is required');
@@ -639,6 +1057,18 @@ export class AdminService {
     if (actor.userId === targetUserId) {
       throw new ForbiddenException(
         'Self user lifecycle changes are not allowed',
+      );
+    }
+  }
+
+  private assertPrivilegedRoleRequestActor(actor: RequestUser) {
+    if (!actor.userId) {
+      throw new ForbiddenException('User context is required');
+    }
+
+    if (!this.isSuperAdmin(actor) && actor.branchId) {
+      throw new ForbiddenException(
+        'Branch-scoped actors cannot request tenant-wide privileged role changes',
       );
     }
   }
@@ -653,6 +1083,53 @@ export class AdminService {
         'Branch-scoped actors cannot mutate tenant-wide role permissions',
       );
     }
+  }
+
+  private async assertPrivilegedRoleApprovalActor(actor: RequestUser) {
+    this.assertPrivilegedRoleRequestActor(actor);
+
+    const actorPermissions = await this.getActorPermissions(
+      actor.userId!,
+      actor.tenantId,
+    );
+
+    if (
+      !actorPermissions.has(PRIVILEGED_PERMISSION) ||
+      !actorPermissions.has('approval.request.process')
+    ) {
+      throw new ForbiddenException(
+        'Approval processing requires admin.role.change and approval.request.process',
+      );
+    }
+  }
+
+  private async getActorPermissions(userId: string, tenantId: string) {
+    const userRoles = await this.prisma.userRole.findMany({
+      where: {
+        userId,
+        status: USER_ROLE_STATUS_ACTIVE,
+        role: { tenantId },
+      },
+      include: {
+        role: {
+          include: {
+            rolePermissions: { include: { permission: true } },
+          },
+        },
+      },
+    });
+
+    const permissions = new Set<string>();
+    for (const userRole of userRoles) {
+      for (const rolePermission of userRole.role.rolePermissions) {
+        const permissionName = rolePermission.permission?.name;
+        if (typeof permissionName === 'string' && permissionName.length > 0) {
+          permissions.add(permissionName);
+        }
+      }
+    }
+
+    return permissions;
   }
 
   private async getScopedTarget(
@@ -820,6 +1297,50 @@ export class AdminService {
     return role;
   }
 
+  private async getRoleForPrivilegedApproval(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    roleId: string,
+    action: 'ASSIGN' | 'REVOKE',
+  ): Promise<AdminRoleTarget> {
+    const role = await tx.role.findFirst({
+      where: { id: roleId, tenantId },
+      include: {
+        rolePermissions: { include: { permission: true } },
+      },
+    });
+
+    if (!role) {
+      throw new NotFoundException('Role not found');
+    }
+
+    if (role.name === 'Super Admin') {
+      throw new ForbiddenException(
+        'Super Admin role changes remain blocked for this maker-checker slice',
+      );
+    }
+
+    if (role.isSystem) {
+      throw new ForbiddenException(
+        'System role changes remain blocked for this maker-checker slice',
+      );
+    }
+
+    if (role.status !== USER_STATUS_ACTIVE || role.archivedAt !== null) {
+      throw new ForbiddenException(
+        'Inactive or archived roles cannot be changed',
+      );
+    }
+
+    if (!this.isPrivilegedRole(role)) {
+      throw new ForbiddenException(
+        `Only privileged roles can be ${action === 'ASSIGN' ? 'assigned' : 'revoked'} through this approval flow`,
+      );
+    }
+
+    return role;
+  }
+
   private async getPermissionForDirectMutation(
     tx: Prisma.TransactionClient,
     tenantId: string,
@@ -848,6 +1369,34 @@ export class AdminService {
     return permission;
   }
 
+  private async getPendingPrivilegedRoleRequest(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    requestId: string,
+  ) {
+    const normalizedRequestId = this.validateRequestId(requestId);
+    const request = await tx.approvalRequest.findFirst({
+      where: { id: normalizedRequestId, tenantId },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Approval request not found');
+    }
+
+    if (
+      request.type !== PRIVILEGED_ASSIGN_REQUEST_TYPE &&
+      request.type !== PRIVILEGED_REVOKE_REQUEST_TYPE
+    ) {
+      throw new NotFoundException('Approval request not found');
+    }
+
+    if (request.status !== APPROVAL_STATUS_PENDING) {
+      throw new ConflictException('Approval request is already decided');
+    }
+
+    return request;
+  }
+
   private async getAffectedActiveUsersForRole(
     tx: Prisma.TransactionClient,
     tenantId: string,
@@ -870,6 +1419,166 @@ export class AdminService {
         tokenVersion: true,
       },
     });
+  }
+
+  private assertApprovalActors(
+    actor: RequestUser,
+    request: { requesterId: string },
+    targetUserId: string,
+  ) {
+    if (request.requesterId === actor.userId) {
+      throw new ForbiddenException(
+        'Requester cannot approve or reject their own privileged role request',
+      );
+    }
+
+    if (actor.userId === targetUserId) {
+      throw new ForbiddenException(
+        'Target user cannot approve or reject a request about themselves',
+      );
+    }
+  }
+
+  private isUniqueConstraintError(error: unknown) {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    );
+  }
+
+  private hasActivePrivilegedRole(user: AdminUserTarget) {
+    return this.getActiveUserRoleAssignments(user).some(({ role }) =>
+      this.isPrivilegedRole(role),
+    );
+  }
+
+  private parsePrivilegedRoleChangeDetails(
+    details: Prisma.JsonValue | null,
+  ): PrivilegedRoleChangeDetails {
+    if (!details || typeof details !== 'object' || Array.isArray(details)) {
+      throw new ConflictException('Approval request payload is invalid');
+    }
+
+    const candidate = details as Record<string, unknown>;
+    if (
+      (candidate.action !== PRIVILEGED_ASSIGN_REQUEST_TYPE &&
+        candidate.action !== PRIVILEGED_REVOKE_REQUEST_TYPE) ||
+      typeof candidate.targetUserId !== 'string' ||
+      typeof candidate.roleId !== 'string' ||
+      typeof candidate.roleName !== 'string' ||
+      typeof candidate.requesterId !== 'string' ||
+      typeof candidate.reason !== 'string' ||
+      typeof candidate.requestedAt !== 'string' ||
+      !candidate.targetUserSnapshot ||
+      !candidate.roleSnapshot
+    ) {
+      throw new ConflictException('Approval request payload is invalid');
+    }
+
+    return candidate as unknown as PrivilegedRoleChangeDetails;
+  }
+
+  private async createPrivilegedRoleChangeRequest(
+    tx: Prisma.TransactionClient,
+    actor: RequestUser,
+    target: AdminUserTarget,
+    role: AdminRoleTarget,
+    reason: string,
+    action: ApprovalAction,
+  ) {
+    const duplicateRequest = await tx.approvalRequest.findFirst({
+      where: {
+        tenantId: actor.tenantId,
+        type: action,
+        recordId: `${target.id}:${role.id}`,
+        status: APPROVAL_STATUS_PENDING,
+      },
+    });
+
+    if (duplicateRequest) {
+      throw new ConflictException(
+        'A matching privileged role request is already pending',
+      );
+    }
+
+    const requestedAt = new Date();
+    const details: PrivilegedRoleChangeDetails = {
+      action,
+      tenantId: actor.tenantId,
+      branchId: actor.branchId ?? null,
+      targetUserId: target.id,
+      roleId: role.id,
+      roleName: role.name,
+      requesterId: actor.userId!,
+      reason,
+      requestedAt: requestedAt.toISOString(),
+      targetUserSnapshot: {
+        status: target.status,
+        tokenVersion: target.tokenVersion,
+        activeRoles: this.getRoleSummaries(target),
+      },
+      roleSnapshot: {
+        status: role.status,
+        isSystem: role.isSystem,
+        privileged: this.isPrivilegedRole(role),
+        archivedAt: role.archivedAt ? role.archivedAt.toISOString() : null,
+      },
+    };
+
+    const request = await tx.approvalRequest.create({
+      data: {
+        tenantId: actor.tenantId,
+        requesterId: actor.userId!,
+        type: action,
+        riskLevel: 'CRITICAL',
+        recordId: `${target.id}:${role.id}`,
+        reason,
+        details,
+        status: APPROVAL_STATUS_PENDING,
+      },
+    });
+
+    await this.audit.log(
+      {
+        tenantId: actor.tenantId,
+        userId: actor.userId!,
+        eventKey: 'PRIVILEGED_ROLE_CHANGE_REQUESTED',
+        recordType: 'ApprovalRequest',
+        recordId: request.id,
+        newValues: {
+          requesterId: actor.userId,
+          targetUserId: target.id,
+          roleId: role.id,
+          roleName: role.name,
+          action,
+          reason,
+          requestedAt: requestedAt.toISOString(),
+          tenantId: actor.tenantId,
+          branchId: actor.branchId ?? null,
+          targetUserSnapshot: details.targetUserSnapshot,
+          roleSnapshot: details.roleSnapshot,
+        },
+      },
+      tx,
+      actor.branchId,
+    );
+
+    return request;
+  }
+
+  private toPrivilegedRoleChangeRequestResponse(
+    request: { id: string; status: string; type: string },
+    targetUserId: string,
+    role: AdminRoleTarget,
+  ): PrivilegedRoleChangeRequestResponse {
+    return {
+      requestId: request.id,
+      targetUserId,
+      roleId: role.id,
+      roleName: role.name,
+      action: request.type as ApprovalAction,
+      status: request.status,
+    };
   }
 
   private async incrementAffectedUsersTokenVersion(
