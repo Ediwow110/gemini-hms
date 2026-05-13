@@ -65,6 +65,8 @@ export class BillingService {
       },
     });
 
+    let shouldCreateIdempotencyRecord = true;
+
     // 4. Handle existing idempotency record
     if (idempotencyRecord) {
       if (idempotencyRecord.status === 'COMPLETED') {
@@ -91,44 +93,40 @@ export class BillingService {
           'Payment creation with this idempotency key is already in progress',
         );
       } else if (idempotencyRecord.status === 'FAILED') {
-        // Previous attempt failed; allow retry by throwing original error
-        if (idempotencyRecord.error) {
-          throw new BadRequestException(
-            `Previous request with this key failed: ${idempotencyRecord.error}`,
+        if (idempotencyRecord.requestFingerprint !== fingerprint) {
+          throw new ConflictException(
+            'Idempotency key already used with different request parameters',
           );
         }
-      }
-    }
 
-    // 5. Create new IdempotencyRecord with IN_PROGRESS status
-    try {
-      idempotencyRecord = await this.prisma.idempotencyRecord.create({
-        data: {
-          tenantId,
-          operation: OPERATION,
-          key: dto.idempotencyKey,
-          requestFingerprint: fingerprint,
-          status: 'IN_PROGRESS',
-        },
-      });
-    } catch (error) {
-      // Race condition: another request created the record
-      if (error.code === 'P2002') {
-        // Fetch the record that was just created by another request
-        const raceRecord = await this.prisma.idempotencyRecord.findUnique({
+        const retryClaim = await this.prisma.idempotencyRecord.updateMany({
           where: {
-            tenantId_operation_key: {
-              tenantId,
-              operation: OPERATION,
-              key: dto.idempotencyKey,
-            },
+            id: idempotencyRecord.id,
+            status: 'FAILED',
+          },
+          data: {
+            status: 'IN_PROGRESS',
+            paymentId: null,
+            responseData: Prisma.DbNull,
+            error: null,
+            updatedAt: new Date(),
           },
         });
 
-        if (raceRecord) {
-          if (raceRecord.status === 'COMPLETED') {
-            if (raceRecord.requestFingerprint === fingerprint) {
-              const cached = raceRecord.responseData as {
+        if (retryClaim.count === 0) {
+          const currentRecord = await this.prisma.idempotencyRecord.findUnique({
+            where: {
+              tenantId_operation_key: {
+                tenantId,
+                operation: OPERATION,
+                key: dto.idempotencyKey,
+              },
+            },
+          });
+
+          if (currentRecord?.status === 'COMPLETED') {
+            if (currentRecord.requestFingerprint === fingerprint) {
+              const cached = currentRecord.responseData as {
                 payment: unknown;
                 invoice: unknown;
               } | null;
@@ -137,19 +135,74 @@ export class BillingService {
                 invoice: cached?.invoice,
                 _replayed: true,
               };
-            } else {
-              throw new ConflictException(
-                'Idempotency key already used with different request parameters',
-              );
             }
-          } else if (raceRecord.status === 'IN_PROGRESS') {
+
             throw new ConflictException(
-              'Payment creation with this idempotency key is already in progress',
+              'Idempotency key already used with different request parameters',
             );
           }
+
+          throw new ConflictException(
+            'Payment creation with this idempotency key is already in progress',
+          );
         }
+
+        shouldCreateIdempotencyRecord = false;
       }
-      throw error;
+    }
+
+    // 5. Create new IdempotencyRecord with IN_PROGRESS status
+    if (shouldCreateIdempotencyRecord) {
+      try {
+        idempotencyRecord = await this.prisma.idempotencyRecord.create({
+          data: {
+            tenantId,
+            operation: OPERATION,
+            key: dto.idempotencyKey,
+            requestFingerprint: fingerprint,
+            status: 'IN_PROGRESS',
+          },
+        });
+      } catch (error) {
+        // Race condition: another request created the record
+        if (error.code === 'P2002') {
+          // Fetch the record that was just created by another request
+          const raceRecord = await this.prisma.idempotencyRecord.findUnique({
+            where: {
+              tenantId_operation_key: {
+                tenantId,
+                operation: OPERATION,
+                key: dto.idempotencyKey,
+              },
+            },
+          });
+
+          if (raceRecord) {
+            if (raceRecord.status === 'COMPLETED') {
+              if (raceRecord.requestFingerprint === fingerprint) {
+                const cached = raceRecord.responseData as {
+                  payment: unknown;
+                  invoice: unknown;
+                } | null;
+                return {
+                  payment: cached?.payment,
+                  invoice: cached?.invoice,
+                  _replayed: true,
+                };
+              } else {
+                throw new ConflictException(
+                  'Idempotency key already used with different request parameters',
+                );
+              }
+            } else if (raceRecord.status === 'IN_PROGRESS') {
+              throw new ConflictException(
+                'Payment creation with this idempotency key is already in progress',
+              );
+            }
+          }
+        }
+        throw error;
+      }
     }
 
     try {
@@ -285,7 +338,7 @@ export class BillingService {
 
       // 14. Update IdempotencyRecord to COMPLETED with response
       await this.prisma.idempotencyRecord.update({
-        where: { id: idempotencyRecord.id },
+        where: { id: idempotencyRecord!.id },
         data: {
           status: 'COMPLETED',
           paymentId: result.payment.id,
@@ -301,7 +354,7 @@ export class BillingService {
     } catch (error) {
       // 15. Update IdempotencyRecord to FAILED on any error
       await this.prisma.idempotencyRecord.update({
-        where: { id: idempotencyRecord.id },
+        where: { id: idempotencyRecord!.id },
         data: {
           status: 'FAILED',
           error: error.message || 'Unknown error',

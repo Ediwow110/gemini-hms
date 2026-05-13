@@ -1289,6 +1289,7 @@ describe('BillingService Reversals', () => {
         idempotencyRecord: {
           findUnique: jest.fn(),
           create: jest.fn(),
+          updateMany: jest.fn(),
           update: jest.fn(),
         },
         $transaction: jest.fn().mockImplementation((cb: any) => cb(prisma)),
@@ -1718,21 +1719,113 @@ describe('BillingService Reversals', () => {
       expect(fp1).not.toBe(fp3);
     });
 
-    it('should allow retry after previous failure', async () => {
+    it('should retry a failed record with the same fingerprint and complete', async () => {
+      const fingerprint = computePaymentFingerprint(
+        tenantId,
+        'BILLING_PAYMENT_POST',
+        validDto,
+      );
+
       prisma.idempotencyRecord.findUnique.mockResolvedValue({
         id: 'rec-1',
         tenantId,
         operation: 'BILLING_PAYMENT_POST',
         key: idempotencyKey,
+        requestFingerprint: fingerprint,
         status: 'FAILED',
         error: 'Previous attempt failed',
       });
 
-      await expect(
-        service.postPayment(tenantId, userId, branchId, validDto),
-      ).rejects.toThrow(BadRequestException);
+      prisma.idempotencyRecord.updateMany.mockResolvedValue({ count: 1 });
 
-      // Should reject with message about previous failure, not conflict
+      prisma.invoice.findFirst
+        .mockResolvedValueOnce({
+          id: invoiceId,
+          orderId: 'order-idem',
+          paidAmount: new Prisma.Decimal(0),
+          totalAmount: new Prisma.Decimal(100),
+          status: 'UNPAID',
+          order: { id: 'order-idem', tenantId, branchId },
+        })
+        .mockResolvedValueOnce({
+          id: invoiceId,
+          orderId: 'order-idem',
+          paidAmount: validDto.amount,
+          totalAmount: new Prisma.Decimal(100),
+          status: 'PARTIALLY_PAID',
+        });
+
+      prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.payment.create.mockResolvedValue({
+        id: 'pay-idem-retry-1',
+        invoiceId,
+        cashierSessionId: sessionId,
+        receiptNumber: 'RCP-000001',
+        amount: validDto.amount,
+        paymentMethod: 'CASH',
+        status: 'POSTED',
+        idempotencyKey,
+      });
+
+      prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await service.postPayment(
+        tenantId,
+        userId,
+        branchId,
+        validDto,
+      );
+
+      expect(result.payment).toEqual(
+        expect.objectContaining({ id: 'pay-idem-retry-1' }),
+      );
+      expect(result.invoice).toEqual(
+        expect.objectContaining({ status: 'PARTIALLY_PAID' }),
+      );
+      expect(prisma.idempotencyRecord.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'rec-1', status: 'FAILED' },
+          data: expect.objectContaining({
+            status: 'IN_PROGRESS',
+            paymentId: null,
+            responseData: Prisma.DbNull,
+            error: null,
+          }),
+        }),
+      );
+      expect(prisma.payment.create).toHaveBeenCalledTimes(1);
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'PAYMENT_POSTED' }),
+        expect.anything(),
+        branchId,
+      );
+    });
+
+    it('should reject failed record replay with a different fingerprint', async () => {
+      const fingerprint = computePaymentFingerprint(
+        tenantId,
+        'BILLING_PAYMENT_POST',
+        validDto,
+      );
+
+      prisma.idempotencyRecord.findUnique.mockResolvedValue({
+        id: 'rec-1',
+        tenantId,
+        operation: 'BILLING_PAYMENT_POST',
+        key: idempotencyKey,
+        requestFingerprint: fingerprint,
+        status: 'FAILED',
+        error: 'Previous attempt failed',
+      });
+
+      const dtoModified = { ...validDto, amount: new Prisma.Decimal(100) };
+
+      await expect(
+        service.postPayment(tenantId, userId, branchId, dtoModified),
+      ).rejects.toThrow(ConflictException);
+
+      expect(prisma.idempotencyRecord.updateMany).not.toHaveBeenCalled();
+      expect(prisma.payment.create).not.toHaveBeenCalled();
     });
   });
 });
