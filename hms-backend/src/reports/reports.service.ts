@@ -3,12 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateReportExportDto } from './dto/create-export.dto';
 import { Prisma } from '@prisma/client';
+import { ReportPolicyService } from './report-policy.service';
 
 @Injectable()
 export class ReportsService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private reportPolicy: ReportPolicyService,
   ) {}
 
   async createExport(
@@ -20,6 +22,11 @@ export class ReportsService {
     if (dto.reason.trim().length === 0) {
       throw new BadRequestException('Reason is required for export');
     }
+
+    const policyResult = this.reportPolicy.getPolicyForExport(
+      dto.reportType,
+      dto.requestedFields,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       let rowCount = 0;
@@ -58,8 +65,6 @@ export class ReportsService {
           };
         }
         rowCount = await tx.auditLog.count({ where });
-      } else {
-        throw new BadRequestException('Unsupported report type');
       }
 
       const reportExport = await tx.reportExport.create({
@@ -70,8 +75,15 @@ export class ReportsService {
           filters: appliedFilters,
           reason: dto.reason,
           rowCount,
-          status: 'CREATED',
+          status: 'REQUESTED',
           requestedBy: userId,
+          riskLevel: policyResult.riskLevel,
+          filtersSnapshot: appliedFilters,
+          fieldPolicySnapshot: policyResult.fieldPolicySnapshot as any,
+          requestedFields: dto.requestedFields as any,
+          allowedFields: policyResult.allowedFields,
+          maskedFields: policyResult.maskedFields,
+          format: 'CSV', // Deferred file generation
         },
       });
 
@@ -87,13 +99,27 @@ export class ReportsService {
             reportType: dto.reportType,
             rowCount,
             reason: dto.reason,
+            riskLevel: policyResult.riskLevel,
+            requestedFields: dto.requestedFields,
+            allowedFields: policyResult.allowedFields,
+            fileGenerationAvailable: false,
+            storageKey: null,
           },
         },
         tx,
         branchId,
       );
 
-      return reportExport;
+      return {
+        id: reportExport.id,
+        status: reportExport.status,
+        reportType: reportExport.reportType,
+        riskLevel: reportExport.riskLevel,
+        rowCount: reportExport.rowCount,
+        createdAt: reportExport.createdAt,
+        approvalRequired: policyResult.riskLevel === 'HIGH' || policyResult.riskLevel === 'PRIVILEGED',
+        fileGenerationAvailable: false,
+      };
     });
   }
 }

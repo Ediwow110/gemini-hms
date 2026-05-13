@@ -750,6 +750,7 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 
 ### 1. Current Status
 - Metadata-only exports are currently implemented.
+- Field-level export policy scaffolding (data models and backend policy service) is implemented.
 - File-based generation/download remains deferred.
 - No raw CSV/PDF/XLSX export is allowed until this specification is fully implemented.
 

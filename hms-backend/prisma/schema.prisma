@@ -64,23 +64,24 @@ model Branch {
 }
 
 model User {
-  id                  String    @id @default(uuid()) @db.Uuid
-  tenantId            String    @map("tenant_id") @db.Uuid
-  email               String
-  passwordHash        String    @map("password_hash")
-  isMfaEnabled        Boolean   @default(false) @map("is_mfa_enabled")
-  status              String    @default("ACTIVE")
-  deactivatedAt       DateTime? @map("deactivated_at")
-  deactivatedReason   String?   @map("deactivated_reason")
-  tokenVersion        Int       @default(0) @map("token_version")
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  email             String
+  passwordHash      String    @map("password_hash")
+  isMfaEnabled      Boolean   @default(false) @map("is_mfa_enabled")
+  status            String    @default("ACTIVE")
+  deactivatedAt     DateTime? @map("deactivated_at")
+  deactivatedReason String?   @map("deactivated_reason")
+  tokenVersion      Int       @default(0) @map("token_version")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
-  auditLogs     AuditLog[]
-  userRoles     UserRole[]
-  userBranches  UserBranch[]
-  reportExports ReportExport[]
+  tenant             Tenant            @relation(fields: [tenantId], references: [id])
+  auditLogs          AuditLog[]
+  userRoles          UserRole[]
+  userBranches       UserBranch[]
+  reportExports      ReportExport[]    @relation("RequestedExports")
+  approvedExports    ReportExport[]    @relation("ApprovedExports")
   requestedApprovals ApprovalRequest[] @relation("RequestedApprovals")
   approvedApprovals  ApprovalRequest[] @relation("ApprovedApprovals")
 
@@ -187,10 +188,10 @@ model Invoice {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  order      Order             @relation(fields: [orderId], references: [id])
-  payments   Payment[]
-  reversals  PaymentReversal[]
-  claims     Claim[]
+  order     Order             @relation(fields: [orderId], references: [id])
+  payments  Payment[]
+  reversals PaymentReversal[]
+  claims    Claim[]
 
   @@map("invoices")
 }
@@ -206,8 +207,8 @@ model Payment {
   idempotencyKey   String   @unique @map("idempotency_key")
   createdAt        DateTime @default(now()) @map("created_at")
 
-  invoice        Invoice            @relation(fields: [invoiceId], references: [id])
-  cashierSession CashierSession     @relation(fields: [cashierSessionId], references: [id])
+  invoice        Invoice           @relation(fields: [invoiceId], references: [id])
+  cashierSession CashierSession    @relation(fields: [cashierSessionId], references: [id])
   reversals      PaymentReversal[]
 
   @@map("payments")
@@ -482,24 +483,24 @@ model Claim {
 // --- MODULE: FOUNDATION & SECURITY ---
 
 model PaymentReversal {
-  id                String   @id @default(uuid()) @db.Uuid
-  tenantId          String   @map("tenant_id") @db.Uuid
-  branchId          String   @map("branch_id") @db.Uuid
-  paymentId         String   @map("payment_id") @db.Uuid
-  invoiceId         String   @map("invoice_id") @db.Uuid
-  approvalRequestId String   @unique @map("approval_request_id") @db.Uuid
-  amount            Decimal  @db.Decimal(12, 2)
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  branchId          String    @map("branch_id") @db.Uuid
+  paymentId         String    @map("payment_id") @db.Uuid
+  invoiceId         String    @map("invoice_id") @db.Uuid
+  approvalRequestId String    @unique @map("approval_request_id") @db.Uuid
+  amount            Decimal   @db.Decimal(12, 2)
   type              String // REFUND, PAYMENT_VOID
-  status            String   @default("PENDING") // PENDING, APPLIED, REJECTED, CANCELLED
+  status            String    @default("PENDING") // PENDING, APPLIED, REJECTED, CANCELLED
   reason            String
-  requestedBy       String   @map("requested_by") @db.Uuid
-  approvedBy        String?  @map("approved_by") @db.Uuid
-  appliedBy         String?  @map("applied_by") @db.Uuid
-  requestedAt       DateTime @default(now()) @map("requested_at")
+  requestedBy       String    @map("requested_by") @db.Uuid
+  approvedBy        String?   @map("approved_by") @db.Uuid
+  appliedBy         String?   @map("applied_by") @db.Uuid
+  requestedAt       DateTime  @default(now()) @map("requested_at")
   approvedAt        DateTime? @map("approved_at")
   appliedAt         DateTime? @map("applied_at")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   payment         Payment         @relation(fields: [paymentId], references: [id])
   invoice         Invoice         @relation(fields: [invoiceId], references: [id])
@@ -554,10 +555,10 @@ model ApprovalRequest {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant            Tenant            @relation(fields: [tenantId], references: [id])
-  requester         User              @relation("RequestedApprovals", fields: [requesterId], references: [id])
-  approver          User?             @relation("ApprovedApprovals", fields: [approverId], references: [id])
-  paymentReversals  PaymentReversal[]
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  requester        User              @relation("RequestedApprovals", fields: [requesterId], references: [id])
+  approver         User?             @relation("ApprovedApprovals", fields: [approverId], references: [id])
+  paymentReversals PaymentReversal[]
 
   @@map("approval_requests")
 }
@@ -637,20 +638,37 @@ model NumberingSequence {
 }
 
 model ReportExport {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  branchId    String?  @map("branch_id") @db.Uuid
-  reportType  String   @map("report_type")
-  filters     Json
-  reason      String
-  rowCount    Int      @map("row_count")
-  status      String   @default("CREATED") // CREATED, FAILED
-  requestedBy String   @map("requested_by") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at")
-  completedAt DateTime @default(now()) @map("completed_at")
+  id                  String    @id @default(uuid()) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  branchId            String?   @map("branch_id") @db.Uuid
+  reportType          String    @map("report_type")
+  filters             Json
+  reason              String
+  rowCount            Int       @map("row_count")
+  status              String    @default("REQUESTED") // REQUESTED, PENDING, APPROVED, REJECTED, GENERATING, COMPLETED, FAILED
+  riskLevel           String    @default("HIGH") @map("risk_level") // LOW, MEDIUM, HIGH, PRIVILEGED
+  format              String?
+  filtersSnapshot     Json?     @map("filters_snapshot")
+  fieldPolicySnapshot Json?     @map("field_policy_snapshot")
+  requestedFields     Json?     @map("requested_fields")
+  allowedFields       Json?     @map("allowed_fields")
+  maskedFields        Json?     @map("masked_fields")
+  requestedBy         String    @map("requested_by") @db.Uuid
+  approvedById        String?   @map("approved_by_id") @db.Uuid
+  createdAt           DateTime  @default(now()) @map("created_at")
+  completedAt         DateTime? @map("completed_at")
+  approvedAt          DateTime? @map("approved_at")
+  generatedAt         DateTime? @map("generated_at")
+  expiresAt           DateTime? @map("expires_at")
+  storageKey          String?   @map("storage_key")
+  checksum            String?
+  downloadCount       Int       @default(0) @map("download_count")
+  lastDownloadedAt    DateTime? @map("last_downloaded_at")
+  failureReason       String?   @map("failure_reason")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  user   User   @relation(fields: [requestedBy], references: [id])
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  user     User   @relation("RequestedExports", fields: [requestedBy], references: [id])
+  approver User?  @relation("ApprovedExports", fields: [approvedById], references: [id])
 
   @@index([tenantId])
   @@index([branchId])
