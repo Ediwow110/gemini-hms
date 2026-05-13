@@ -879,7 +879,11 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
   "timestamp": string
 }
 ```
-- **Safety**: Fails safely without exposing secrets, PHI, or raw error details.
+- **Safety**: 
+  - Fails safely without exposing secrets, PHI, or raw error details.
+  - No global or cross-tenant aggregate counts exposed (userCount removed).
+  - Backup configuration is computed independently from database status, ensuring accurate `backupConfig` boolean even when database is unavailable.
+  - Database error handling returns sanitized `dbStatus: error` without raw exception messages.
 - **Audit**: No audit required as it's a read-only status check.
 
 ### 14. Failure Modes

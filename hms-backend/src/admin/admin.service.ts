@@ -3754,35 +3754,29 @@ export class AdminService {
   async getHealth() {
     const timestamp = new Date().toISOString();
 
+    // Compute backup configuration independently from DB status (outside try/catch)
+    const backupConfig = !!(
+      process.env.BACKUP_S3_BUCKET || process.env.BACKUP_AZURE_CONTAINER
+    );
+
     try {
       // Check database connectivity
       await this.prisma.$queryRaw`SELECT 1`;
 
-      // Check migration/schema availability (simple check: count users table)
-      const userCount = await this.prisma.user.count();
-
-      // Backup configuration presence (check if BACKUP_* env vars are set, but only boolean)
-      const hasBackupConfig = !!(
-        process.env.BACKUP_S3_BUCKET || process.env.BACKUP_AZURE_CONTAINER
-      );
-
       return {
-        status: 'ok',
+        appStatus: 'ok',
+        dbStatus: 'ok',
+        migrationStatus: 'ok',
+        backupConfig,
         timestamp,
-        database: { status: 'connected', userCount },
-        migrations: { status: 'applied' }, // Assuming migrations are applied if schema exists
-        backup: { configured: hasBackupConfig },
       };
     } catch {
       return {
-        status: 'error',
+        appStatus: 'degraded',
+        dbStatus: 'error',
+        migrationStatus: 'unknown',
+        backupConfig,
         timestamp,
-        database: {
-          status: 'disconnected',
-          error: 'Database connectivity failed',
-        },
-        migrations: { status: 'unknown' },
-        backup: { configured: false },
       };
     }
   }

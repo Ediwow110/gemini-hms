@@ -71,7 +71,9 @@ describe('AdminService', () => {
 
   beforeEach(async () => {
     prisma = {
-      $transaction: jest.fn().mockImplementation((cb: (tx: typeof prisma) => unknown) => cb(prisma)),
+      $transaction: jest
+        .fn()
+        .mockImplementation((cb: (tx: typeof prisma) => unknown) => cb(prisma)),
       $queryRaw: jest.fn(),
       user: {
         findFirst: jest.fn(),
@@ -3983,51 +3985,74 @@ describe('AdminService', () => {
 
   describe('getHealth', () => {
     it('returns healthy status with database connectivity and backup config', async () => {
-      prisma.user.count.mockResolvedValue(5);
       prisma.$queryRaw.mockResolvedValue([]);
       process.env.BACKUP_S3_BUCKET = 'test-bucket';
 
       const result = await service.getHealth();
 
       expect(result).toEqual({
-        status: 'ok',
+        appStatus: 'ok',
+        dbStatus: 'ok',
+        migrationStatus: 'ok',
+        backupConfig: true,
         timestamp: expect.any(String),
-        database: { status: 'connected', userCount: 5 },
-        migrations: { status: 'applied' },
-        backup: { configured: true },
       });
+      expect(prisma.user.count).not.toHaveBeenCalled();
     });
 
     it('returns degraded status on database failure', async () => {
       prisma.$queryRaw.mockRejectedValue(new Error('DB error'));
+      process.env.BACKUP_S3_BUCKET = 'test-bucket';
 
       const result = await service.getHealth();
 
-      expect(result.status).toBe('error');
-      expect(result.database.status).toBe('disconnected');
-      expect(result.database.error).toBe('Database connectivity failed');
+      expect(result.appStatus).toBe('degraded');
+      expect(result.dbStatus).toBe('error');
+      expect(result.migrationStatus).toBe('unknown');
+      expect(result.backupConfig).toBe(true);
+      expect(result).not.toHaveProperty('database.error');
     });
 
     it('returns backup not configured when no env vars', async () => {
-      prisma.user.count.mockResolvedValue(10);
       prisma.$queryRaw.mockResolvedValue([]);
       delete process.env.BACKUP_S3_BUCKET;
       delete process.env.BACKUP_AZURE_CONTAINER;
 
       const result = await service.getHealth();
 
-      expect(result.backup.configured).toBe(false);
+      expect(result.backupConfig).toBe(false);
+    });
+
+    it('returns accurate backup config even when database fails', async () => {
+      prisma.$queryRaw.mockRejectedValue(new Error('DB error'));
+      process.env.BACKUP_S3_BUCKET = 'test-bucket';
+
+      const result = await service.getHealth();
+
+      expect(result.dbStatus).toBe('error');
+      expect(result.backupConfig).toBe(true);
     });
 
     it('includes timestamp in response', async () => {
-      prisma.user.count.mockResolvedValue(0);
       prisma.$queryRaw.mockResolvedValue([]);
+      process.env.BACKUP_S3_BUCKET = '';
 
       const result = await service.getHealth();
 
       expect(result.timestamp).toMatch(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
       );
+    });
+
+    it('does not include global user count in response', async () => {
+      prisma.$queryRaw.mockResolvedValue([]);
+      process.env.BACKUP_S3_BUCKET = '';
+
+      const result = await service.getHealth();
+
+      expect(result).not.toHaveProperty('userCount');
+      expect(result).not.toHaveProperty('database.userCount');
+      expect(prisma.user.count).not.toHaveBeenCalled();
     });
   });
 });
