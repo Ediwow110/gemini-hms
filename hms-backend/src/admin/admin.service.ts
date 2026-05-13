@@ -15,20 +15,8 @@ const USER_STATUS_INACTIVE = 'INACTIVE';
 const USER_ROLE_STATUS_ACTIVE = 'ACTIVE';
 const USER_ROLE_STATUS_REVOKED = 'REVOKED';
 const PRIVILEGED_PERMISSION = 'admin.role.change';
-const DIRECT_BLOCKED_PERMISSION_KEYS = new Set<string>([
-  'admin.role.change',
-  'approval.request.process',
-  'billing.refund.approve',
-  'inventory.adjust.approve',
-  'billing.reversal.apply',
-  'patient.merge.approve',
-  'patient.merge.request',
-  'billing.claim.process',
-  'lab.result.approve',
-  'lab.result.release',
-  'audit.view',
-  'report.export',
-]);
+const DIRECT_BLOCKED_PERMISSION_KEYS = new Set<string>(['admin.role.change']);
+const DIRECT_ALLOWED_PERMISSION_RISK = 'LOW';
 
 type AdminRoleTarget = Prisma.RoleGetPayload<{
   include: {
@@ -847,7 +835,13 @@ export class AdminService {
 
     if (DIRECT_BLOCKED_PERMISSION_KEYS.has(permission.name)) {
       throw new ForbiddenException(
-        'High-risk permissions require maker-checker approval',
+        'Privileged permissions require maker-checker approval',
+      );
+    }
+
+    if (permission.riskLevel !== DIRECT_ALLOWED_PERMISSION_RISK) {
+      throw new ForbiddenException(
+        'Only explicitly low-risk permissions can be directly granted',
       );
     }
 

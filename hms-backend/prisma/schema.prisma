@@ -513,10 +513,11 @@ model PaymentReversal {
 }
 
 model Permission {
-  id       String  @id @default(uuid()) @db.Uuid
-  tenantId String  @map("tenant_id") @db.Uuid
-  name     String // e.g. patient.view, billing.refund.approve
-  scope    String? // e.g. branch, department, tenant
+  id        String  @id @default(uuid()) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  name      String // e.g. patient.view, billing.refund.approve
+  scope     String? // e.g. branch, department, tenant
+  riskLevel String  @default("PRIVILEGED") @map("risk_level")
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id])
   rolePermissions RolePermission[]

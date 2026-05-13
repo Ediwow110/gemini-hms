@@ -142,12 +142,14 @@ describe('AdminService', () => {
       tenantId: string;
       name: string;
       scope: string;
+      riskLevel: string;
     }> = {},
   ) => ({
     id: 'permission-id',
     tenantId: 'tenant-id',
     name: 'patient.view',
     scope: 'tenant/branch',
+    riskLevel: 'LOW',
     ...overrides,
   });
 
@@ -1051,6 +1053,7 @@ describe('AdminService', () => {
         id: 'permission-id',
         name: 'admin.role.change',
         scope: 'tenant/system',
+        riskLevel: 'LOW',
       }),
     );
 
@@ -1064,7 +1067,30 @@ describe('AdminService', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
-  it('grant role permission rejects high-risk permissions from temporary denylist', async () => {
+  it('grant role permission rejects MEDIUM risk permission', async () => {
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({ id: 'role-id', isSystem: false }),
+    );
+    prisma.permission.findFirst.mockResolvedValue(
+      makePermission({
+        id: 'permission-id',
+        name: 'approval.request.view',
+        scope: 'tenant/branch',
+        riskLevel: 'MEDIUM',
+      }),
+    );
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('grant role permission rejects HIGH risk permission', async () => {
     prisma.role.findFirst.mockResolvedValue(
       makeRole({ id: 'role-id', isSystem: false }),
     );
@@ -1073,6 +1099,53 @@ describe('AdminService', () => {
         id: 'permission-id',
         name: 'audit.view',
         scope: 'tenant/branch/role scope',
+        riskLevel: 'HIGH',
+      }),
+    );
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('grant role permission rejects PRIVILEGED risk permission', async () => {
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({ id: 'role-id', isSystem: false }),
+    );
+    prisma.permission.findFirst.mockResolvedValue(
+      makePermission({
+        id: 'permission-id',
+        name: 'billing.reversal.apply',
+        scope: 'tenant/branch',
+        riskLevel: 'PRIVILEGED',
+      }),
+    );
+
+    await expect(
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        'permission-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('grant role permission rejects unclassified or unknown riskLevel', async () => {
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({ id: 'role-id', isSystem: false }),
+    );
+    prisma.permission.findFirst.mockResolvedValue(
+      makePermission({
+        id: 'permission-id',
+        name: 'custom.permission',
+        scope: 'tenant/branch',
+        riskLevel: 'UNKNOWN',
       }),
     );
 

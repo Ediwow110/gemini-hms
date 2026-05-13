@@ -156,6 +156,8 @@ These may execute directly with audit only, unless policy is later tightened:
 Current direct role slice also blocks `isSystem` roles until governed system-role policy is explicitly opened.
 - non-system, non-privileged role permission grant/revoke with `admin.role.change`, tenant scope enforcement, audit, and affected-user `tokenVersion` invalidation
 
+Current direct role permission slice allows only permissions explicitly classified as `LOW` risk. `MEDIUM`, `HIGH`, `PRIVILEGED`, and unclassified or unknown risk levels fail closed until maker-checker exists.
+
 If implementation chooses to require approval for user profile update too, that is allowed, but the code must follow this document consistently.
 
 ### Approval request typing
@@ -329,6 +331,8 @@ For these events, `oldValues.before` and `newValues.after` include sanitized use
 For direct role assignment events, `oldValues.beforeRoles` and `newValues.afterRoles` include active role summaries, while `oldValues.beforeTokenVersion` and `newValues.afterTokenVersion` capture the target user token invalidation boundary.
 For direct role permission events, `oldValues.beforePermissions` and `newValues.afterPermissions` include role permission summaries, while `oldValues.beforeTokenVersions` and `newValues.afterTokenVersions` capture affected active users holding the role.
 
+Direct permission grant still absolutely blocks `admin.role.change` even if a record were misclassified.
+
 ### Audit payload contract
 Current `AuditLog` schema stores:
 - `tenantId`
@@ -495,6 +499,12 @@ Required additions or explicit deferrals:
 - current direct-safe slice uses hard create and hard revoke for non-system, non-privileged roles
 - future governance may add `RolePermission` lifecycle metadata if approval-backed or reversible history requirements expand
 
+6. `Permission` risk classification: implemented as schema foundation
+- `riskLevel` is required and defaults to `PRIVILEGED`
+- direct role permission grant allows only explicitly `LOW` risk permissions
+- `MEDIUM`, `HIGH`, `PRIVILEGED`, and unknown classifications are blocked for the current direct-safe slice
+- new permissions fail closed unless explicitly classified as `LOW`
+
 ### Not required immediately
 - no new approval table is needed; existing `ApprovalRequest` is sufficient
 - no new audit table is needed; existing `AuditLog` is sufficient
@@ -522,7 +532,7 @@ Required additions or explicit deferrals:
 
 ### Phase 3: role and role-permission backend
 - create/update/archive role
-- non-system, non-privileged role permission grant/revoke: implemented with direct audit and affected-user `tokenVersion` invalidation
+- non-system, non-privileged role permission grant/revoke: implemented with direct audit, affected-user `tokenVersion` invalidation, and explicit `LOW`-risk permission requirement
 - privileged role permission grant/revoke: deferred pending maker-checker and permission risk classification
 - protected seeded role behavior
 
