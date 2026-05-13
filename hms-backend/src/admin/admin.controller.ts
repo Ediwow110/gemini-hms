@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   Patch,
   Post,
@@ -353,5 +354,11 @@ export class AdminController {
       requestId,
       dto.reason,
     );
+  }
+
+  @Get('health')
+  @RequirePermissions('admin.role.change')
+  async getHealth() {
+    return this.adminService.getHealth();
   }
 }
