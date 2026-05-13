@@ -1134,6 +1134,7 @@ describe('BillingService Reversals', () => {
         idempotencyRecord: {
           findUnique: jest.fn().mockResolvedValue(null),
           create: jest.fn().mockResolvedValue({ id: 'rec-temp' }),
+          updateMany: jest.fn(),
           update: jest.fn(),
         },
         $transaction: jest.fn().mockImplementation((cb: any) => cb(prisma)),
@@ -1181,11 +1182,10 @@ describe('BillingService Reversals', () => {
         cashierSessionId: sessionId,
         amount: 50,
         paymentMethod: 'CASH',
-        idempotencyKey: 'idem-1',
       };
 
       await expect(
-        service.postPayment(tenantId, userId, branchId, dto),
+        service.postPayment(tenantId, userId, branchId, dto, 'idem-1'),
       ).rejects.toThrow(ConflictException);
 
       expect(prisma.invoice.updateMany).toHaveBeenCalledWith({
@@ -1230,10 +1230,9 @@ describe('BillingService Reversals', () => {
         cashierSessionId: sessionId,
         amount: 50,
         paymentMethod: 'CASH',
-        idempotencyKey: 'idem-2',
       };
 
-      await service.postPayment(tenantId, userId, branchId, dto);
+      await service.postPayment(tenantId, userId, branchId, dto, 'idem-2');
 
       expect(prisma.payment.create).toHaveBeenCalled();
       expect(audit.log).toHaveBeenCalledWith(
@@ -1265,7 +1264,6 @@ describe('BillingService Reversals', () => {
       cashierSessionId: sessionId,
       amount: new Prisma.Decimal(50),
       paymentMethod: 'CASH',
-      idempotencyKey,
     };
 
     beforeEach(async () => {
@@ -1311,18 +1309,21 @@ describe('BillingService Reversals', () => {
       service = module.get<BillingService>(BillingService);
     });
 
-    it('should reject missing idempotency key', async () => {
-      const dtoMissingKey = { ...validDto, idempotencyKey: '' };
+    it('should reject missing idempotency key header', async () => {
+      const invalidHeader = undefined as unknown as string;
 
       await expect(
-        service.postPayment(tenantId, userId, branchId, dtoMissingKey),
+        service.postPayment(tenantId, userId, branchId, validDto, ''),
       ).rejects.toThrow(BadRequestException);
 
       await expect(
-        service.postPayment(tenantId, userId, branchId, {
-          ...validDto,
-          idempotencyKey: null as any,
-        }),
+        service.postPayment(
+          tenantId,
+          userId,
+          branchId,
+          validDto,
+          invalidHeader,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -1378,6 +1379,7 @@ describe('BillingService Reversals', () => {
         userId,
         branchId,
         validDto,
+        idempotencyKey,
       );
 
       expect(result.payment).toEqual(
@@ -1427,6 +1429,7 @@ describe('BillingService Reversals', () => {
         userId,
         branchId,
         validDto,
+        idempotencyKey,
       );
 
       expect(result._replayed).toBe(true);
@@ -1455,7 +1458,13 @@ describe('BillingService Reversals', () => {
       const dtoModified = { ...validDto, amount: new Prisma.Decimal(100) }; // Different amount
 
       await expect(
-        service.postPayment(tenantId, userId, branchId, dtoModified),
+        service.postPayment(
+          tenantId,
+          userId,
+          branchId,
+          dtoModified,
+          idempotencyKey,
+        ),
       ).rejects.toThrow(ConflictException);
 
       expect(prisma.payment.create).not.toHaveBeenCalled();
@@ -1481,7 +1490,13 @@ describe('BillingService Reversals', () => {
       const dtoModified = { ...validDto, paymentMethod: 'CARD' };
 
       await expect(
-        service.postPayment(tenantId, userId, branchId, dtoModified),
+        service.postPayment(
+          tenantId,
+          userId,
+          branchId,
+          dtoModified,
+          idempotencyKey,
+        ),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -1518,6 +1533,7 @@ describe('BillingService Reversals', () => {
         id: 'pay-other-1',
         invoiceId,
         amount: validDto.amount,
+        idempotencyKey,
       });
       prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
       prisma.invoice.findFirst.mockResolvedValueOnce({
@@ -1534,6 +1550,7 @@ describe('BillingService Reversals', () => {
         userId,
         branchId,
         validDto,
+        idempotencyKey,
       );
 
       expect(result.payment).toBeDefined();
@@ -1557,14 +1574,20 @@ describe('BillingService Reversals', () => {
       prisma.invoice.findFirst.mockResolvedValue(null); // Invoice not found
 
       await expect(
-        service.postPayment(tenantId, userId, branchId, validDto),
+        service.postPayment(
+          tenantId,
+          userId,
+          branchId,
+          validDto,
+          idempotencyKey,
+        ),
       ).rejects.toThrow(BadRequestException);
 
-      expect(prisma.idempotencyRecord.update).toHaveBeenCalledWith({
-        where: { id: 'rec-1' },
+      expect(prisma.idempotencyRecord.updateMany).toHaveBeenCalledWith({
+        where: { id: 'rec-1', status: 'IN_PROGRESS' },
         data: expect.objectContaining({
           status: 'FAILED',
-          error: expect.any(String),
+          error: 'Payment request failed before completion',
         }),
       });
     });
@@ -1576,7 +1599,13 @@ describe('BillingService Reversals', () => {
       });
 
       await expect(
-        service.postPayment(tenantId, userId, branchId, validDto),
+        service.postPayment(
+          tenantId,
+          userId,
+          branchId,
+          validDto,
+          idempotencyKey,
+        ),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -1613,6 +1642,7 @@ describe('BillingService Reversals', () => {
         userId,
         branchId,
         validDto,
+        idempotencyKey,
       );
 
       expect(result._replayed).toBe(true);
@@ -1641,7 +1671,13 @@ describe('BillingService Reversals', () => {
         },
       });
 
-      await service.postPayment(tenantId, userId, branchId, validDto);
+      await service.postPayment(
+        tenantId,
+        userId,
+        branchId,
+        validDto,
+        idempotencyKey,
+      );
 
       // Should not call payment.create again
       expect(prisma.payment.create).not.toHaveBeenCalled();
@@ -1671,7 +1707,13 @@ describe('BillingService Reversals', () => {
       // Reset the mock to track this specific call
       audit.log.mockClear();
 
-      await service.postPayment(tenantId, userId, branchId, validDto);
+      await service.postPayment(
+        tenantId,
+        userId,
+        branchId,
+        validDto,
+        idempotencyKey,
+      );
 
       // Audit.log should not be called on replay
       expect(audit.log).not.toHaveBeenCalled();
@@ -1683,7 +1725,6 @@ describe('BillingService Reversals', () => {
         cashierSessionId: 'sess-1',
         amount: new Prisma.Decimal(100),
         paymentMethod: 'CASH',
-        idempotencyKey: 'key-1',
       };
 
       const dto2 = {
@@ -1691,7 +1732,6 @@ describe('BillingService Reversals', () => {
         cashierSessionId: 'sess-1',
         amount: new Prisma.Decimal(100),
         paymentMethod: 'CASH',
-        idempotencyKey: 'key-different',
       };
 
       const fp1 = computePaymentFingerprint(
@@ -1705,7 +1745,7 @@ describe('BillingService Reversals', () => {
         dto2,
       );
 
-      // Same body (ignoring idempotencyKey) should produce same fingerprint
+      // Same body should produce same fingerprint regardless of header value.
       expect(fp1).toBe(fp2);
 
       const dto3 = { ...dto1, amount: new Prisma.Decimal(200) };
@@ -1774,6 +1814,7 @@ describe('BillingService Reversals', () => {
         userId,
         branchId,
         validDto,
+        idempotencyKey,
       );
 
       expect(result.payment).toEqual(
@@ -1821,11 +1862,238 @@ describe('BillingService Reversals', () => {
       const dtoModified = { ...validDto, amount: new Prisma.Decimal(100) };
 
       await expect(
-        service.postPayment(tenantId, userId, branchId, dtoModified),
+        service.postPayment(
+          tenantId,
+          userId,
+          branchId,
+          dtoModified,
+          idempotencyKey,
+        ),
       ).rejects.toThrow(ConflictException);
 
       expect(prisma.idempotencyRecord.updateMany).not.toHaveBeenCalled();
       expect(prisma.payment.create).not.toHaveBeenCalled();
+    });
+
+    it('should not duplicate invoice update or receipt generation on exact replay', async () => {
+      const fingerprint = computePaymentFingerprint(
+        tenantId,
+        'BILLING_PAYMENT_POST',
+        validDto,
+      );
+
+      prisma.idempotencyRecord.findUnique.mockResolvedValue({
+        id: 'rec-1',
+        tenantId,
+        operation: 'BILLING_PAYMENT_POST',
+        key: idempotencyKey,
+        requestFingerprint: fingerprint,
+        status: 'COMPLETED',
+        paymentId: 'pay-idem-1',
+        responseData: {
+          payment: { id: 'pay-idem-1', receiptNumber: 'RCP-000001' },
+          invoice: { id: invoiceId, status: 'PARTIALLY_PAID' },
+        },
+      });
+
+      await service.postPayment(
+        tenantId,
+        userId,
+        branchId,
+        validDto,
+        idempotencyKey,
+      );
+
+      expect(prisma.invoice.updateMany).not.toHaveBeenCalled();
+      expect(numbering.generateNumber).not.toHaveBeenCalled();
+    });
+
+    it('should sanitize internal errors and not expose raw details', async () => {
+      prisma.idempotencyRecord.findUnique.mockResolvedValue(null);
+      prisma.idempotencyRecord.create.mockResolvedValue({
+        id: 'rec-1',
+        status: 'IN_PROGRESS',
+      });
+
+      prisma.invoice.findFirst.mockResolvedValue({
+        id: invoiceId,
+        orderId: 'order-idem',
+        paidAmount: new Prisma.Decimal(0),
+        totalAmount: new Prisma.Decimal(100),
+        status: 'UNPAID',
+        order: { id: 'order-idem', tenantId, branchId },
+      });
+      prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.payment.create.mockRejectedValue(
+        new Error('database password leaked'),
+      );
+
+      await expect(
+        service.postPayment(
+          tenantId,
+          userId,
+          branchId,
+          validDto,
+          idempotencyKey,
+        ),
+      ).rejects.toThrow('Payment request failed before completion');
+
+      await expect(
+        service.postPayment(
+          tenantId,
+          userId,
+          branchId,
+          validDto,
+          idempotencyKey,
+        ),
+      ).rejects.not.toThrow('database password leaked');
+
+      expect(prisma.idempotencyRecord.updateMany).toHaveBeenCalledWith({
+        where: { id: 'rec-1', status: 'IN_PROGRESS' },
+        data: expect.objectContaining({
+          status: 'FAILED',
+          error: 'Payment request failed before completion',
+        }),
+      });
+    });
+
+    it('should keep replay state safe by completing inside the payment transaction', async () => {
+      prisma.idempotencyRecord.findUnique.mockResolvedValue(null);
+      prisma.idempotencyRecord.create.mockResolvedValue({
+        id: 'rec-1',
+        tenantId,
+        operation: 'BILLING_PAYMENT_POST',
+        key: idempotencyKey,
+        requestFingerprint: computePaymentFingerprint(
+          tenantId,
+          'BILLING_PAYMENT_POST',
+          validDto,
+        ),
+        status: 'IN_PROGRESS',
+      });
+
+      prisma.invoice.findFirst
+        .mockResolvedValueOnce({
+          id: invoiceId,
+          orderId: 'order-idem',
+          paidAmount: new Prisma.Decimal(0),
+          totalAmount: new Prisma.Decimal(100),
+          status: 'UNPAID',
+          order: { id: 'order-idem', tenantId, branchId },
+        })
+        .mockResolvedValueOnce({
+          id: invoiceId,
+          orderId: 'order-idem',
+          paidAmount: validDto.amount,
+          totalAmount: new Prisma.Decimal(100),
+          status: 'PARTIALLY_PAID',
+        });
+
+      prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.payment.create.mockResolvedValue({
+        id: 'pay-idem-1',
+        invoiceId,
+        cashierSessionId: sessionId,
+        receiptNumber: 'RCP-000001',
+        amount: validDto.amount,
+        paymentMethod: 'CASH',
+        status: 'POSTED',
+        idempotencyKey,
+      });
+      prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+      prisma.order.updateMany.mockResolvedValue({ count: 1 });
+
+      await service.postPayment(
+        tenantId,
+        userId,
+        branchId,
+        validDto,
+        idempotencyKey,
+      );
+
+      expect(prisma.idempotencyRecord.update).toHaveBeenCalledWith({
+        where: { id: 'rec-1' },
+        data: expect.objectContaining({
+          status: 'COMPLETED',
+          paymentId: 'pay-idem-1',
+        }),
+      });
+      expect(prisma.idempotencyRecord.updateMany).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 'rec-1',
+            status: 'IN_PROGRESS',
+          }),
+        }),
+      );
+    });
+
+    it('should mark FAILED when completion update fails before the transaction commits', async () => {
+      prisma.idempotencyRecord.findUnique.mockResolvedValue(null);
+      prisma.idempotencyRecord.create.mockResolvedValue({
+        id: 'rec-1',
+        tenantId,
+        operation: 'BILLING_PAYMENT_POST',
+        key: idempotencyKey,
+        requestFingerprint: computePaymentFingerprint(
+          tenantId,
+          'BILLING_PAYMENT_POST',
+          validDto,
+        ),
+        status: 'IN_PROGRESS',
+      });
+
+      prisma.invoice.findFirst
+        .mockResolvedValueOnce({
+          id: invoiceId,
+          orderId: 'order-idem',
+          paidAmount: new Prisma.Decimal(0),
+          totalAmount: new Prisma.Decimal(100),
+          status: 'UNPAID',
+          order: { id: 'order-idem', tenantId, branchId },
+        })
+        .mockResolvedValueOnce({
+          id: invoiceId,
+          orderId: 'order-idem',
+          paidAmount: validDto.amount,
+          totalAmount: new Prisma.Decimal(100),
+          status: 'PARTIALLY_PAID',
+        });
+
+      prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.payment.create.mockResolvedValue({
+        id: 'pay-idem-1',
+        invoiceId,
+        cashierSessionId: sessionId,
+        receiptNumber: 'RCP-000001',
+        amount: validDto.amount,
+        paymentMethod: 'CASH',
+        status: 'POSTED',
+        idempotencyKey,
+      });
+      prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+      prisma.order.updateMany.mockResolvedValue({ count: 1 });
+      prisma.idempotencyRecord.update.mockRejectedValueOnce(
+        new Error('completion write failed'),
+      );
+
+      await expect(
+        service.postPayment(
+          tenantId,
+          userId,
+          branchId,
+          validDto,
+          idempotencyKey,
+        ),
+      ).rejects.toThrow('Payment request failed before completion');
+
+      expect(prisma.idempotencyRecord.updateMany).toHaveBeenCalledWith({
+        where: { id: 'rec-1', status: 'IN_PROGRESS' },
+        data: expect.objectContaining({
+          status: 'FAILED',
+          error: 'Payment request failed before completion',
+        }),
+      });
     });
   });
 });

@@ -940,12 +940,13 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 
 **Idempotency Behavior**:
 - **Missing Key**: Request without `Idempotency-Key` header is rejected with 400 Bad Request.
+- **Header Only Contract**: `Idempotency-Key` must be sent via HTTP header. Body-supplied `idempotencyKey` is rejected and is not part of the API contract.
 - **First Request**: Creates payment transactionally, stores idempotency record with `COMPLETED` status, writes audit event.
 - **Exact Replay**: Same tenant + same key + same request fingerprint returns cached payment response without creating duplicate payment, invoice updates, or audit events.
 - **Modified Request**: Same tenant + same key + different fingerprint (amount, paymentMethod, invoiceId, or cashierSessionId changed) returns 409 Conflict.
 - **Tenant Isolation**: Same key in different tenants is independent; each tenant has its own idempotency namespace.
 - **Concurrent Requests**: If two identical requests race, one creates payment and the other returns the completed original result.
-- **Failed Transaction**: Failed/rolled-back payment does not store `COMPLETED` idempotency record; allows retry.
+- **Failed Transaction**: Failed/rolled-back payment does not store `COMPLETED` idempotency record; same-fingerprint retry is allowed.
 
 **Idempotency Record Model**:
 - `IdempotencyRecord` table with:
@@ -961,19 +962,21 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 **Request Fingerprint**:
 - Computed from normalized request body: `tenantId`, `operation`, `invoiceId`, `cashierSessionId`, `amount`, `paymentMethod`.
 - Uses SHA-256 hash of JSON-serialized normalized payload.
-- Does NOT include `idempotencyKey` itself (that's the lookup key).
+- Does NOT include the `Idempotency-Key` header value itself (that is the lookup key).
 - Does NOT include timestamps or volatile fields.
-- Stable for semantically identical requests with different key values.
+- Stable for semantically identical requests with different header key values.
 
 **Transaction Guarantees**:
 - Idempotency record created with `IN_PROGRESS` before payment creation.
-- On payment success: record updated to `COMPLETED` with paymentId and cached response.
-- On payment failure: record updated to `FAILED` with error message.
+- Payment creation, invoice/order changes, audit write, and idempotency completion update occur inside the same database transaction.
+- On payment success: record is committed as `COMPLETED` with paymentId and cached response in the same transaction as payment side effects.
+- Once payment side effects commit successfully, the idempotency record cannot later be marked `FAILED` for that same operation.
+- On payment failure before commit: record is updated to `FAILED` with a sanitized failure marker and same-fingerprint retry is allowed.
 - No duplicate payments, invoice updates, receipt numbers, or audit events on replay.
 - Audit event written only on first successful payment, not on replay.
 
 **DTO Contract**:
-- `CreatePaymentDto` requires `idempotencyKey` field (non-empty string).
+- `CreatePaymentDto` does not carry an idempotency key field.
 - Fingerprint includes: `invoiceId`, `cashierSessionId`, `amount`, `paymentMethod`.
 - Tenant and operation scope enforced in idempotency lookup.
 
@@ -982,7 +985,8 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 - If record is `COMPLETED` with matching fingerprint: returns cached response.
 - If record is `COMPLETED` with different fingerprint: returns 409 Conflict.
 - If record is `IN_PROGRESS`: returns 409 Conflict (another request processing).
-- If record is `FAILED`: allows retry (rejects with previous error message).
+- If record is `FAILED` with matching fingerprint: claims the record back to `IN_PROGRESS` and retries safely.
+- If record is `FAILED` with different fingerprint: returns 409 Conflict.
 
 **Audit Events**:
 - `PAYMENT_POSTED`: Written only on first successful payment creation.
@@ -991,6 +995,7 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 
 **Test Matrix Required**:
 - Missing Idempotency-Key rejected (400).
+- Body-only idempotency key rejected.
 - First request creates payment successfully.
 - Exact replay returns cached response with `_replayed: true` flag.
 - Exact replay does not create duplicate Payment.
@@ -1000,6 +1005,7 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 - Same key with different paymentMethod returns 409 Conflict.
 - Same key in different tenant is independent.
 - Failed transaction updates record to FAILED, allows retry.
+- Completion update failure is treated as pre-commit failure and cannot leave a charged-but-failed replay break.
 - Concurrent requests handled correctly (one succeeds, other returns cached).
 - Fingerprint stable for identical request bodies.
 - Tenant isolation enforced.
@@ -1008,7 +1014,9 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 - Idempotency keys are tenant-scoped to prevent cross-tenant collisions.
 - Fingerprint includes all payment-critical fields to detect modifications.
 - Response caching prevents replay attacks from returning stale data.
+- Previous internal/database failure details are not returned to the client or replay callers.
 - No raw request bodies stored (only hash/fingerprint).
+- No secrets, raw database errors, or cross-tenant existence details are exposed.
 - Transaction integrity ensures no partial state on failure.
 
 **Implementation Status**:

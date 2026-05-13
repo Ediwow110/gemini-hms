@@ -11,7 +11,7 @@ import { CreatePaymentDto } from '../dto/payment.dto';
  * - paymentMethod
  *
  * Does NOT include:
- * - idempotencyKey (that is the lookup key, not part of the fingerprint)
+ * - Idempotency-Key header value (that is the lookup key, not part of the fingerprint)
  * - timestamps or volatile data
  *
  * This ensures the fingerprint is stable for semantically identical requests,

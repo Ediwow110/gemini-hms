@@ -2,6 +2,8 @@ import {
   Injectable,
   BadRequestException,
   ConflictException,
+  HttpException,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -43,9 +45,10 @@ export class BillingService {
     userId: string,
     branchId: string,
     dto: CreatePaymentDto,
+    idempotencyKey: string,
   ) {
     // 1. Validate Idempotency-Key is present
-    if (!dto.idempotencyKey || !dto.idempotencyKey.trim()) {
+    if (!idempotencyKey || !idempotencyKey.trim()) {
       throw new BadRequestException('Idempotency-Key header is required');
     }
 
@@ -60,7 +63,7 @@ export class BillingService {
         tenantId_operation_key: {
           tenantId,
           operation: OPERATION,
-          key: dto.idempotencyKey,
+          key: idempotencyKey,
         },
       },
     });
@@ -119,7 +122,7 @@ export class BillingService {
               tenantId_operation_key: {
                 tenantId,
                 operation: OPERATION,
-                key: dto.idempotencyKey,
+                key: idempotencyKey,
               },
             },
           });
@@ -158,7 +161,7 @@ export class BillingService {
           data: {
             tenantId,
             operation: OPERATION,
-            key: dto.idempotencyKey,
+            key: idempotencyKey,
             requestFingerprint: fingerprint,
             status: 'IN_PROGRESS',
           },
@@ -172,7 +175,7 @@ export class BillingService {
               tenantId_operation_key: {
                 tenantId,
                 operation: OPERATION,
-                key: dto.idempotencyKey,
+                key: idempotencyKey,
               },
             },
           });
@@ -258,7 +261,7 @@ export class BillingService {
               receiptNumber,
               amount: dto.amount,
               paymentMethod: dto.paymentMethod,
-              idempotencyKey: dto.idempotencyKey,
+              idempotencyKey,
               status: 'POSTED',
             },
           });
@@ -325,6 +328,18 @@ export class BillingService {
             branchId,
           );
 
+          await tx.idempotencyRecord.update({
+            where: { id: idempotencyRecord!.id },
+            data: {
+              status: 'COMPLETED',
+              paymentId: payment.id,
+              responseData: {
+                payment,
+                invoice: updatedInvoice,
+              },
+            },
+          });
+
           return { payment, invoice: updatedInvoice };
         } catch (error) {
           if (error.code === 'P2002') {
@@ -336,34 +351,32 @@ export class BillingService {
         }
       });
 
-      // 14. Update IdempotencyRecord to COMPLETED with response
-      await this.prisma.idempotencyRecord.update({
-        where: { id: idempotencyRecord!.id },
-        data: {
-          status: 'COMPLETED',
-          paymentId: result.payment.id,
-          responseData: {
-            payment: result.payment,
-            invoice: result.invoice,
-          },
-          updatedAt: new Date(),
-        },
-      });
-
       return result;
     } catch (error) {
-      // 15. Update IdempotencyRecord to FAILED on any error
-      await this.prisma.idempotencyRecord.update({
-        where: { id: idempotencyRecord!.id },
+      const clientError = this.normalizePostPaymentError(error);
+
+      // The FAILED state is only valid while this request still owns IN_PROGRESS.
+      await this.prisma.idempotencyRecord.updateMany({
+        where: { id: idempotencyRecord!.id, status: 'IN_PROGRESS' },
         data: {
           status: 'FAILED',
-          error: error.message || 'Unknown error',
+          error: 'Payment request failed before completion',
           updatedAt: new Date(),
         },
       });
 
-      throw error;
+      throw clientError;
     }
+  }
+
+  private normalizePostPaymentError(error: unknown) {
+    if (error instanceof HttpException) {
+      return error;
+    }
+
+    return new InternalServerErrorException(
+      'Payment request failed before completion',
+    );
   }
 
   async requestRefund(
