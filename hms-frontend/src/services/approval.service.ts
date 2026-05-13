@@ -13,7 +13,7 @@ export interface ApprovalRequest {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'APPLIED';
   reason?: string;
   remarks?: string;
-  details?: any;
+  details?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }

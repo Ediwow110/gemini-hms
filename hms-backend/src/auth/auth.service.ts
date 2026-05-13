@@ -164,7 +164,11 @@ export class AuthService {
       where: {
         userId,
         status: 'ACTIVE',
-        role: { tenantId, status: 'ACTIVE', archivedAt: null },
+        role: {
+          tenantId,
+          status: 'ACTIVE',
+          archivedAt: null,
+        },
       },
       include: {
         role: {

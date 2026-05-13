@@ -351,32 +351,13 @@ export class AdminService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // 1. Fetch target user with tenant scoping
-      const target = await tx.user.findFirst({
-        where: { id: targetUserId, tenantId: actor.tenantId },
-      });
+      // 1. Fetch target user with tenant scoping and branch visibility
+      const target = await this.getScopedTarget(tx, actor, targetUserId);
 
-      if (!target) {
-        throw new NotFoundException('User not found');
-      }
+      // 3. Forbidden: Privileged users
+      this.assertNonPrivilegedTarget(target);
 
-      // 2. Branch scoping: Branch admins can only update users assigned to their branch
-      if (!this.isSuperAdmin(actor) && actor.branchId) {
-        const targetBranchAssignment = await tx.userBranch.findFirst({
-          where: {
-            userId: targetUserId,
-            branchId: actor.branchId,
-            isActive: true,
-          },
-        });
-        if (!targetBranchAssignment) {
-          throw new ForbiddenException(
-            'Branch-scoped actors can only update users in their own branch',
-          );
-        }
-      }
-
-      // 3. Email uniqueness check if changing
+      // 4. Email uniqueness check if changing
       if (dto.email && dto.email !== target.email) {
         const existing = await tx.user.findFirst({
           where: {

@@ -2852,10 +2852,13 @@ describe('AdminService', () => {
     });
 
     it('blocks branch-scoped actor from updating user in another branch', async () => {
-      prisma.user.findFirst.mockResolvedValue({
-        id: targetUserId,
-        tenantId: 'tenant-id',
-      });
+      prisma.user.findFirst.mockResolvedValue(
+        makeUser({
+          id: targetUserId,
+          tenantId: 'tenant-id',
+          userBranches: [{ branchId: 'other-branch', isActive: true }],
+        }),
+      );
       prisma.userBranch.findFirst.mockResolvedValue(null); // No assignment to actor's branch
       await expect(
         service.updateUser(branchActor, targetUserId, dto),
@@ -2864,11 +2867,13 @@ describe('AdminService', () => {
 
     it('rejects duplicate email in tenant', async () => {
       prisma.user.findFirst
-        .mockResolvedValueOnce({
-          id: targetUserId,
-          tenantId: 'tenant-id',
-          email: 'old@h.com',
-        })
+        .mockResolvedValueOnce(
+          makeUser({
+            id: targetUserId,
+            tenantId: 'tenant-id',
+            email: 'old@h.com',
+          }),
+        )
         .mockResolvedValueOnce({ id: 'other-id' }); // Duplicate found
       await expect(
         service.updateUser(superAdminActor, targetUserId, dto),
@@ -2883,7 +2888,13 @@ describe('AdminService', () => {
         isMfaEnabled: false,
       };
       prisma.user.findFirst
-        .mockResolvedValueOnce(oldUser) // Target lookup
+        .mockResolvedValueOnce(
+          makeUser({
+            id: targetUserId,
+            email: 'old@hospital.com',
+            isMfaEnabled: false,
+          }),
+        ) // Target lookup
         .mockResolvedValueOnce(null); // Uniqueness check
 
       prisma.user.update.mockResolvedValue({

@@ -21,8 +21,8 @@ export const ApprovalCenter = () => {
   const [modals, setModals] = useState({ confirm: false, reason: false, mode: "" });
   const currentUser = useUser();
 
-  const fetchRequests = useCallback(async () => {
-    setIsLoading(true);
+  const fetchRequests = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const data = await approvalService.getRequests();
       setRequests(data);
@@ -39,8 +39,9 @@ export const ApprovalCenter = () => {
   }, [selected]);
 
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchRequests(false);
+  }, [fetchRequests]);
 
   const handleAction = async (remarks: string) => {
     if (!selected) return;
@@ -66,7 +67,7 @@ export const ApprovalCenter = () => {
       <div className="flex justify-between items-center">
         <PageHeader title="Approval Center" description="Review and authorize high-risk clinical and operational requests." />
         <button 
-          onClick={fetchRequests} 
+          onClick={() => fetchRequests()} 
           disabled={isLoading}
           className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
           title="Refresh"
