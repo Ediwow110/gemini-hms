@@ -6,6 +6,8 @@ import { AuditService } from '../audit/audit.service';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { NumberingService } from '../numbering/numbering.service';
 import { computePaymentFingerprint } from './utils/idempotency';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
   BadRequestException,
   ConflictException,
@@ -1561,6 +1563,37 @@ describe('BillingService Reversals', () => {
             key: idempotencyKey,
           }),
         }),
+      );
+    });
+
+    it('should not rely on a globally unique payments.idempotency_key', () => {
+      const schema = readFileSync(
+        join(__dirname, '..', '..', 'prisma', 'schema.prisma'),
+        'utf8',
+      );
+      expect(schema).toContain('model Payment {');
+      expect(schema).toContain(
+        'idempotencyKey   String   @map("idempotency_key")',
+      );
+      expect(schema).not.toContain(
+        'idempotencyKey   String   @unique @map("idempotency_key")',
+      );
+
+      const migration = readFileSync(
+        join(
+          __dirname,
+          '..',
+          '..',
+          'prisma',
+          'migrations',
+          '20260513152000_drop_global_payment_idempotency_key_uniqueness',
+          'migration.sql',
+        ),
+        'utf8',
+      );
+
+      expect(migration).toContain(
+        'DROP INDEX IF EXISTS "payments_idempotency_key_key";',
       );
     });
 
