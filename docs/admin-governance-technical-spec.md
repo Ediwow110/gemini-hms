@@ -879,7 +879,15 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
   "timestamp": string
 }
 ```
-- **Safety**: Fails safely without exposing secrets, PHI, or raw error details.
+- **Safety**: 
+  - Fails safely without exposing secrets, PHI, or raw error details.
+  - No global or cross-tenant aggregate counts exposed (userCount removed).
+  - Backup configuration is computed independently from database and migration checks, ensuring accurate `backupConfig` boolean even when database or schema is unavailable.
+  - Database error handling returns sanitized `dbStatus: error` without raw exception messages.
+  - `dbStatus` indicates database connectivity only (SELECT 1 succeeds/fails).
+  - `migrationStatus` indicates schema/migration readiness via safe table existence checks (information_schema queries), NOT inferred from SELECT 1 alone.
+  - Required schema tables verified: users, roles, permissions, tenants, audit_logs.
+  - If database connectivity succeeds but schema tables missing: `dbStatus: ok`, `migrationStatus: error`, `appStatus: degraded`.
 - **Audit**: No audit required as it's a read-only status check.
 
 ### 14. Failure Modes

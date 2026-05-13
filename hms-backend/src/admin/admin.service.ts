@@ -3751,38 +3751,81 @@ export class AdminService {
     return details as PrivilegedUserChangeDetails;
   }
 
+  private async checkSchemaReadiness(): Promise<boolean> {
+    try {
+      // Check if core required tables exist by attempting to query them
+      // These tables are essential for the application to function
+      const requiredTables = [
+        'users',
+        'roles',
+        'permissions',
+        'tenants',
+        'audit_logs',
+      ];
+
+      for (const table of requiredTables) {
+        // Use raw query to check table existence via information_schema
+        // This is safe: doesn't count rows, just verifies table exists and is queryable
+        const result = await this.prisma.$queryRaw<
+          Array<{ table_exists: boolean }>
+        >`
+          SELECT EXISTS(
+            SELECT 1 FROM information_schema.tables 
+            WHERE table_name = ${table}
+          ) as table_exists
+        `;
+
+        if (!result || !result[0]?.table_exists) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch {
+      // If schema check fails for any reason, consider schema not ready
+      return false;
+    }
+  }
+
   async getHealth() {
     const timestamp = new Date().toISOString();
+
+    // Compute backup configuration independently from DB status (outside try/catch)
+    const backupConfig = !!(
+      process.env.BACKUP_S3_BUCKET || process.env.BACKUP_AZURE_CONTAINER
+    );
 
     try {
       // Check database connectivity
       await this.prisma.$queryRaw`SELECT 1`;
 
-      // Check migration/schema availability (simple check: count users table)
-      const userCount = await this.prisma.user.count();
+      // Check schema/migration readiness independently
+      const schemaReady = await this.checkSchemaReadiness();
 
-      // Backup configuration presence (check if BACKUP_* env vars are set, but only boolean)
-      const hasBackupConfig = !!(
-        process.env.BACKUP_S3_BUCKET || process.env.BACKUP_AZURE_CONTAINER
-      );
-
-      return {
-        status: 'ok',
-        timestamp,
-        database: { status: 'connected', userCount },
-        migrations: { status: 'applied' }, // Assuming migrations are applied if schema exists
-        backup: { configured: hasBackupConfig },
-      };
+      if (schemaReady) {
+        return {
+          appStatus: 'ok',
+          dbStatus: 'ok',
+          migrationStatus: 'ok',
+          backupConfig,
+          timestamp,
+        };
+      } else {
+        return {
+          appStatus: 'degraded',
+          dbStatus: 'ok',
+          migrationStatus: 'error',
+          backupConfig,
+          timestamp,
+        };
+      }
     } catch {
       return {
-        status: 'error',
+        appStatus: 'degraded',
+        dbStatus: 'error',
+        migrationStatus: 'unknown',
+        backupConfig,
         timestamp,
-        database: {
-          status: 'disconnected',
-          error: 'Database connectivity failed',
-        },
-        migrations: { status: 'unknown' },
-        backup: { configured: false },
       };
     }
   }
