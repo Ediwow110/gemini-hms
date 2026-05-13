@@ -10,14 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 import * as bcrypt from 'bcrypt';
-import {
-  AssignUserRoleDto,
-  CreateUserDto,
-  GrantRolePermissionDto,
-  PrivilegedUserProfileUpdateDto,
-  UpdateCustomRoleDto,
-  UpdateUserDto,
-} from './dto/user-lifecycle.dto';
+import { PrivilegedUserProfileUpdateDto } from './dto/user-lifecycle.dto';
 
 const USER_STATUS_ACTIVE = 'ACTIVE';
 const USER_STATUS_INACTIVE = 'INACTIVE';

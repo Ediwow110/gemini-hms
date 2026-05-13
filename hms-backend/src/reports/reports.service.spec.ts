@@ -24,8 +24,8 @@ describe('ReportsService', () => {
         riskLevel: ReportRiskLevel.LOW,
         allowedFields: ['id'],
         maskedFields: [],
-        fieldPolicySnapshot: { id: { riskLevel: 'LOW', sensitive: false } }
-      })
+        fieldPolicySnapshot: { id: { riskLevel: 'LOW', sensitive: false } },
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -124,7 +124,7 @@ describe('ReportsService', () => {
         reportType: 'CASHIER_REVERSAL_RECONCILIATION',
         filters: {},
         reason: 'testing',
-        requestedFields: ['unknown_field']
+        requestedFields: ['unknown_field'],
       }),
     ).rejects.toThrow(BadRequestException);
   });
@@ -143,7 +143,7 @@ describe('ReportsService', () => {
       riskLevel: ReportRiskLevel.HIGH,
       allowedFields: ['id', 'amount'],
       maskedFields: [],
-      fieldPolicySnapshot: {}
+      fieldPolicySnapshot: {},
     });
 
     const result = await service.createExport('tenant', 'branch', 'user', {

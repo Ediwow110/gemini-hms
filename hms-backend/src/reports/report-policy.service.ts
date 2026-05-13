@@ -32,7 +32,11 @@ export class ReportPolicyService {
         paymentId: { riskLevel: ReportRiskLevel.LOW, sensitive: false },
         invoiceId: { riskLevel: ReportRiskLevel.LOW, sensitive: false },
         approvalRequestId: { riskLevel: ReportRiskLevel.LOW, sensitive: false },
-        amount: { riskLevel: ReportRiskLevel.HIGH, sensitive: true, maskingRule: 'NONE' },
+        amount: {
+          riskLevel: ReportRiskLevel.HIGH,
+          sensitive: true,
+          maskingRule: 'NONE',
+        },
         type: { riskLevel: ReportRiskLevel.LOW, sensitive: false },
         status: { riskLevel: ReportRiskLevel.LOW, sensitive: false },
         reason: { riskLevel: ReportRiskLevel.MEDIUM, sensitive: false },
@@ -52,8 +56,16 @@ export class ReportPolicyService {
         eventKey: { riskLevel: ReportRiskLevel.LOW, sensitive: false },
         recordType: { riskLevel: ReportRiskLevel.LOW, sensitive: false },
         recordId: { riskLevel: ReportRiskLevel.LOW, sensitive: false },
-        oldValues: { riskLevel: ReportRiskLevel.PRIVILEGED, sensitive: true, maskingRule: 'NONE' },
-        newValues: { riskLevel: ReportRiskLevel.PRIVILEGED, sensitive: true, maskingRule: 'NONE' },
+        oldValues: {
+          riskLevel: ReportRiskLevel.PRIVILEGED,
+          sensitive: true,
+          maskingRule: 'NONE',
+        },
+        newValues: {
+          riskLevel: ReportRiskLevel.PRIVILEGED,
+          sensitive: true,
+          maskingRule: 'NONE',
+        },
         createdAt: { riskLevel: ReportRiskLevel.LOW, sensitive: false },
       },
     },
@@ -62,11 +74,16 @@ export class ReportPolicyService {
   getPolicyForExport(reportType: string, requestedFields?: string[] | null) {
     const policy = this.policies[reportType];
     if (!policy) {
-      throw new BadRequestException(`Unknown report type: ${reportType}. Fails closed.`);
+      throw new BadRequestException(
+        `Unknown report type: ${reportType}. Fails closed.`,
+      );
     }
 
     const availableFields = Object.keys(policy.fields);
-    const fieldsToExport = requestedFields && requestedFields.length > 0 ? requestedFields : availableFields;
+    const fieldsToExport =
+      requestedFields && requestedFields.length > 0
+        ? requestedFields
+        : availableFields;
 
     const allowedFields: string[] = [];
     const maskedFields: string[] = [];
@@ -75,7 +92,9 @@ export class ReportPolicyService {
     for (const field of fieldsToExport) {
       const fieldPolicy = policy.fields[field];
       if (!fieldPolicy) {
-        throw new BadRequestException(`Field '${field}' is not allowlisted for report '${reportType}'.`);
+        throw new BadRequestException(
+          `Field '${field}' is not allowlisted for report '${reportType}'.`,
+        );
       }
 
       allowedFields.push(field);
@@ -85,7 +104,10 @@ export class ReportPolicyService {
       }
 
       // Escalate risk based on fields requested
-      computedRiskLevel = this.escalateRisk(computedRiskLevel, fieldPolicy.riskLevel);
+      computedRiskLevel = this.escalateRisk(
+        computedRiskLevel,
+        fieldPolicy.riskLevel,
+      );
     }
 
     if (allowedFields.length === 0) {
@@ -100,14 +122,17 @@ export class ReportPolicyService {
     };
   }
 
-  private escalateRisk(currentRisk: ReportRiskLevel, newRisk: ReportRiskLevel): ReportRiskLevel {
+  private escalateRisk(
+    currentRisk: ReportRiskLevel,
+    newRisk: ReportRiskLevel,
+  ): ReportRiskLevel {
     const hierarchy = [
       ReportRiskLevel.LOW,
       ReportRiskLevel.MEDIUM,
       ReportRiskLevel.HIGH,
       ReportRiskLevel.PRIVILEGED,
     ];
-    
+
     const currentIndex = hierarchy.indexOf(currentRisk);
     const newIndex = hierarchy.indexOf(newRisk);
 

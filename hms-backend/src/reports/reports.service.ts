@@ -117,7 +117,9 @@ export class ReportsService {
         riskLevel: reportExport.riskLevel,
         rowCount: reportExport.rowCount,
         createdAt: reportExport.createdAt,
-        approvalRequired: policyResult.riskLevel === 'HIGH' || policyResult.riskLevel === 'PRIVILEGED',
+        approvalRequired:
+          policyResult.riskLevel === ReportRiskLevel.HIGH ||
+          policyResult.riskLevel === ReportRiskLevel.PRIVILEGED,
         fileGenerationAvailable: false,
       };
     });

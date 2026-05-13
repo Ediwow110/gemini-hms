@@ -1,9 +1,15 @@
-import { IsNotEmpty, IsString, IsObject, IsArray, IsOptional } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsObject,
+  IsArray,
+  IsOptional,
+} from 'class-validator';
 
 export class CreateReportExportDto {
   @IsString()
   @IsNotEmpty()
-  reportType: 'CASHIER_REVERSAL_RECONCILIATION' | 'AUDIT_EVENTS_SUMMARY' | string;
+  reportType: string;
 
   @IsObject()
   filters: Record<string, any>;
