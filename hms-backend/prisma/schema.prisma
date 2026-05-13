@@ -39,7 +39,8 @@ model Tenant {
   hmoPartners        HmoPartner[]
   claims             Claim[]
   userBranches       UserBranch[]
-  reportExports      ReportExport[]
+  reportExports       ReportExport[]
+  patientMergeRequests PatientMergeRequest[]
 
   @@map("tenants")
 }
@@ -84,6 +85,8 @@ model User {
   decidedExports     ReportExport[]    @relation("DecidedExports")
   requestedApprovals ApprovalRequest[] @relation("RequestedApprovals")
   approvedApprovals  ApprovalRequest[] @relation("ApprovedApprovals")
+  mergeRequested     PatientMergeRequest[] @relation("MergeRequested")
+  mergeApproved      PatientMergeRequest[] @relation("MergeApproved")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -675,4 +678,31 @@ model ReportExport {
   @@index([tenantId])
   @@index([branchId])
   @@map("report_exports")
+}
+
+model PatientMergeRequest {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  branchId        String?  @map("branch_id") @db.Uuid
+  requesterId     String   @map("requester_id") @db.Uuid
+  approverId      String?  @map("approver_id") @db.Uuid
+  sourcePatientId String   @map("source_patient_id") @db.Uuid
+  targetPatientId String   @map("target_patient_id") @db.Uuid
+  status          String   @default("PENDING")  // PENDING, APPROVED, REJECTED
+  reason          String   // Why merge is needed
+  remarks         String?  // Approver comments
+  riskLevel       String   @default("HIGH")     // Patient merge is always HIGH risk
+  fieldSnapshots  Json?    @map("field_snapshots")  // Snapshots of conflicting fields
+  appliedAt       DateTime? @map("applied_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  requester User   @relation("MergeRequested", fields: [requesterId], references: [id])
+  approver  User?  @relation("MergeApproved", fields: [approverId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([status])
+  @@map("patient_merge_requests")
 }

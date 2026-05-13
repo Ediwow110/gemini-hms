@@ -864,6 +864,72 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 - **Safety Rules**: oldValues/newValues only returned to Super Admin; non-admin users get sanitized metadata only; no secrets/PHI/raw blobs returned
 - **No Mutation/Delete/Update**: Read-only; no editing of audit logs
 
+### Implemented Patient Duplicate Merge Request Metadata Workflow
+
+**CRITICAL CAVEAT**: This implementation is **metadata-only** and stores no operational data. It does **NOT** merge, delete, overwrite, or modify any patient records, clinical data, billing data, files, documents, or PHI. The workflow captures merge request metadata for audit and future governance only.
+
+- **Endpoints**:
+  - `POST /api/v1/patients/merge-requests`: Create merge request
+  - `GET /api/v1/patients/merge-requests`: List merge requests (paginated, with filtering)
+  - `GET /api/v1/patients/merge-requests/:requestId`: Get specific merge request
+  - `POST /api/v1/patients/merge-requests/:requestId/approve`: Approve merge request
+  - `POST /api/v1/patients/merge-requests/:requestId/reject`: Reject merge request
+- **Required Permissions**:
+  - Create/List/Get: `patient.merge.request`
+  - Approve/Reject: `patient.merge.approve`
+- **Scope Rules**:
+  - All operations are tenant-scoped.
+  - Both source and target patients must belong to the same tenant.
+  - Requester must belong to the same tenant.
+  - Branch scope is optional; if present, both patients and requester must be branch-visible (if branch scope is enforced in future).
+  - Soft-deleted or inactive patients fail closed (source and target must have `status = 'ACTIVE'`).
+- **Request/Approve/Reject Constraints**:
+  - Source patient must differ from target patient.
+  - Requester cannot approve their own merge request.
+  - Approval requires a different actor (approver) than the requester.
+  - Status lifecycle: PENDING → APPROVED or REJECTED (no CANCELLED in this slice).
+  - APPROVED status indicates the merge request has been approved; it does NOT execute any patient record merge.
+- **Data Model**:
+  - `PatientMergeRequest` table with:
+    - `id`, `tenantId`, `branchId` (optional), `requesterId`, `approverId` (nullable until approved/rejected)
+    - `sourcePatientId`, `targetPatientId`
+    - `status`: PENDING, APPROVED, REJECTED
+    - `reason`: non-empty reason for the merge request
+    - `remarks`: optional additional context
+    - `riskLevel`: classification (LOW, MEDIUM, HIGH, CRITICAL) for future governance
+    - `fieldSnapshots`: optional JSON object for tracking conflicting/merging fields (no actual patient data, only field names/conflict metadata)
+    - `requestedAt`, `appliedAt`, timestamps
+  - Relationships: requesterId → User, approverId → User
+- **Validation**:
+  - Source and target patients are fetched and validated as ACTIVE at request time.
+  - Cross-tenant requests are rejected.
+  - Soft-deleted or inactive patients are rejected.
+  - Requester and approver separation is enforced at approval time.
+  - Duplicate pending merge requests (same source + target + tenant) are blocked.
+- **Audit Events**:
+  - `PATIENT_MERGE_REQUESTED`: Logged on request creation. Contains: tenantId, branchId, requestId, sourcePatientId, targetPatientId, requesterId, reason, riskLevel. Does NOT contain patient clinical/billing/file data.
+  - `PATIENT_MERGE_APPROVED`: Logged on approval. Contains: tenantId, branchId, requestId, sourcePatientId, targetPatientId, requesterId, approverId, reason, approvalTime. Does NOT contain patient data.
+  - `PATIENT_MERGE_REJECTED`: Logged on rejection. Contains: tenantId, branchId, requestId, sourcePatientId, targetPatientId, requesterId, approverId, rejectionReason. Does NOT contain patient data.
+- **DTO Contract**:
+  - Create: `{ sourcePatientId: string, targetPatientId: string, reason: string, remarks?: string }`
+  - Approve: `{ reason: string }`
+  - Reject: `{ reason: string }`
+- **Response**:
+  - Returns metadata only: requestId, status, sourcePatientId, targetPatientId, requesterId, approverId, reason, requestedAt, appliedAt, riskLevel.
+  - No patient records, clinical data, billing data, or file information returned.
+- **Transaction & Audit**:
+  - Request creation, approval, and rejection each execute within a Prisma transaction.
+  - Audit log is written transactionally alongside metadata mutation.
+  - If scope validation fails mid-transaction, entire operation rolls back and no audit is written.
+- **Explicit Non-Goals**:
+  - **NO destructive merge occurs in this slice**.
+  - **NO patient records are merged, deleted, or overwritten**.
+  - **NO clinical data, billing data, files, or documents are touched**.
+  - **NO PHI beyond existing patient API scope is exposed**.
+  - **NO reports, exports, or downloads are generated**.
+  - **NO actual merge execution occurs** — approval only advances the request status.
+  - Future merge execution endpoints (if built) must be a separate backend slice with explicit destructive governance, cross-slice audit linking, and maker-checker approval.
+
 ### Governed Health Endpoint
 - **Endpoint**: GET /api/v1/admin/health
 - **Required Permission**: admin.role.change
