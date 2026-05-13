@@ -644,8 +644,7 @@ model ReportExport {
   filters     Json
   reason      String
   rowCount    Int      @map("row_count")
-  status      String   @default("CREATED") // CREATED, COMPLETED, FAILED
-  fileId      String?  @map("file_id") @db.Uuid
+  status      String   @default("CREATED") // CREATED, FAILED
   requestedBy String   @map("requested_by") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at")
   completedAt DateTime @default(now()) @map("completed_at")
