@@ -1171,6 +1171,184 @@ export class AdminService {
     });
   }
 
+  async archiveCustomRole(
+    actor: RequestUser,
+    roleId: string,
+    reason: string,
+  ): Promise<{
+    roleId: string;
+    name: string;
+    status: string;
+    isSystem: boolean;
+    archivedAt: Date;
+    affectedUserCount: number;
+  }> {
+    const trimmedReason = this.validateReason(reason);
+    const normalizedRoleId = this.validateRoleId(roleId);
+    this.assertTenantWideRoleMutationActor(actor);
+
+    return this.prisma.$transaction(async (tx) => {
+      // Fetch the role with tenant scoping
+      const role = await tx.role.findFirst({
+        where: {
+          id: normalizedRoleId,
+          tenantId: actor.tenantId,
+        },
+      });
+
+      if (!role) {
+        throw new NotFoundException('Role not found');
+      }
+
+      // Validate role can be archived
+      if (role.isSystem) {
+        throw new ForbiddenException('System roles cannot be archived');
+      }
+
+      // Check if role is Super Admin by name
+      if (role.name === 'Super Admin') {
+        throw new ForbiddenException('Super Admin role cannot be archived');
+      }
+
+      // Check if role already archived
+      if (role.archivedAt !== null) {
+        throw new ConflictException('Role is already archived');
+      }
+
+      if (role.status !== USER_STATUS_ACTIVE) {
+        throw new ForbiddenException('Only active roles can be archived');
+      }
+
+      // Check if role carries admin.role.change permission
+      const roleWithPermissions = await tx.role.findFirst({
+        where: {
+          id: normalizedRoleId,
+          tenantId: actor.tenantId,
+        },
+        include: {
+          rolePermissions: {
+            include: { permission: true },
+          },
+        },
+      });
+
+      if (
+        roleWithPermissions?.rolePermissions.some(
+          (rp) => rp.permission.name === 'admin.role.change',
+        )
+      ) {
+        throw new ForbiddenException(
+          'Roles carrying admin.role.change cannot be archived in this slice',
+        );
+      }
+
+      // Get active users with this role
+      const affectedUsers = await tx.user.findMany({
+        where: {
+          tenantId: actor.tenantId,
+          status: USER_STATUS_ACTIVE,
+          deactivatedAt: null,
+          userRoles: {
+            some: {
+              roleId: normalizedRoleId,
+              status: USER_ROLE_STATUS_ACTIVE,
+            },
+          },
+        },
+        select: {
+          id: true,
+          tokenVersion: true,
+        },
+      });
+
+      const changedAt = new Date();
+      const archivedAt = changedAt;
+
+      // Archive the role
+      const updateResult = await tx.role.updateMany({
+        where: {
+          id: normalizedRoleId,
+          tenantId: actor.tenantId,
+          archivedAt: null, // Only archive if not already archived
+        },
+        data: {
+          status: USER_STATUS_INACTIVE, // Using INACTIVE status for archived roles
+          archivedAt,
+          archivedReason: trimmedReason,
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException(
+          'Role archival failed - role may have been archived concurrently',
+        );
+      }
+
+      // Increment tokenVersion for affected active users
+      if (affectedUsers.length > 0) {
+        await this.incrementAffectedUsersTokenVersion(
+          tx,
+          affectedUsers.map((user) => ({
+            id: user.id,
+            tokenVersion: user.tokenVersion,
+          })),
+        );
+      }
+
+      // Create audit log
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'ROLE_ARCHIVED',
+          recordType: 'Role',
+          recordId: normalizedRoleId,
+          oldValues: {
+            roleId: role.id,
+            roleName: role.name,
+            status: role.status,
+            isSystem: role.isSystem,
+            archivedAt: role.archivedAt,
+            archivedReason: role.archivedReason,
+          },
+          newValues: {
+            actorId: actor.userId,
+            roleId: role.id,
+            roleName: role.name,
+            reason: trimmedReason,
+            archivedAt: archivedAt.toISOString(),
+            tenantId: actor.tenantId,
+            branchId: actor.branchId ?? null,
+            isSystem: false,
+            previousStatus: role.status,
+            newStatus: USER_STATUS_INACTIVE,
+            affectedUserIds: affectedUsers.map((user) => user.id),
+            affectedUserCount: affectedUsers.length,
+            beforeTokenVersions: affectedUsers.map((user) => ({
+              id: user.id,
+              tokenVersion: user.tokenVersion,
+            })),
+            afterTokenVersions: affectedUsers.map((user) => ({
+              id: user.id,
+              tokenVersion: user.tokenVersion + 1,
+            })),
+          },
+        },
+        tx,
+        actor.branchId ?? undefined,
+      );
+
+      return {
+        roleId: role.id,
+        name: role.name,
+        status: USER_STATUS_INACTIVE,
+        isSystem: role.isSystem,
+        archivedAt,
+        affectedUserCount: affectedUsers.length,
+      };
+    });
+  }
+
   private validateReason(reason: string): string {
     const trimmed = reason.trim();
     if (!trimmed) {
@@ -1270,7 +1448,11 @@ export class AdminService {
       where: {
         userId,
         status: USER_ROLE_STATUS_ACTIVE,
-        role: { tenantId },
+        role: {
+          tenantId,
+          status: USER_STATUS_ACTIVE,
+          archivedAt: null,
+        },
       },
       include: {
         role: {

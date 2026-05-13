@@ -76,7 +76,12 @@ describe('AuthService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
-      userRoles: [{ status: 'ACTIVE', role: { name: 'Admin' } }],
+      userRoles: [
+        {
+          status: 'ACTIVE',
+          role: { name: 'Admin', status: 'ACTIVE', archivedAt: null },
+        },
+      ],
     };
 
     it('should include branchId when exactly one active branch assignment exists', async () => {
@@ -123,8 +128,14 @@ describe('AuthService', () => {
       await service.login({
         ...mockUser,
         userRoles: [
-          { status: 'ACTIVE', role: { name: 'Doctor' } },
-          { status: 'REVOKED', role: { name: 'Cashier' } },
+          {
+            status: 'ACTIVE',
+            role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+          },
+          {
+            status: 'REVOKED',
+            role: { name: 'Cashier', status: 'ACTIVE', archivedAt: null },
+          },
         ],
       });
 
@@ -410,14 +421,22 @@ describe('AuthService', () => {
         email: 'test@example.com',
         tenantId: 'tenant-456',
         userRoles: [
-          { status: 'ACTIVE', role: { name: 'Doctor' } },
-          { status: 'REVOKED', role: { name: 'Cashier' } },
+          {
+            status: 'ACTIVE',
+            role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+          },
+          {
+            status: 'REVOKED',
+            role: { name: 'Cashier', status: 'ACTIVE', archivedAt: null },
+          },
         ],
       });
       prisma.userRole.findMany.mockResolvedValue([
         {
           status: 'ACTIVE',
           role: {
+            status: 'ACTIVE',
+            archivedAt: null,
             rolePermissions: [
               { permission: { name: 'patient.view' } },
               { permission: { name: 'lab.result.view' } },
@@ -435,7 +454,7 @@ describe('AuthService', () => {
         where: {
           userId: 'user-123',
           status: 'ACTIVE',
-          role: { tenantId: 'tenant-456' },
+          role: { tenantId: 'tenant-456', status: 'ACTIVE', archivedAt: null },
         },
         include: {
           role: {
@@ -450,6 +469,56 @@ describe('AuthService', () => {
       expect(result?.roles).toEqual(['Doctor']);
       expect(result?.permissions).toEqual(['patient.view', 'lab.result.view']);
       expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it('should exclude permissions from archived/inactive roles even when UserRole is ACTIVE', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-123',
+        email: 'test@example.com',
+        tenantId: 'tenant-456',
+        userRoles: [
+          {
+            status: 'ACTIVE',
+            role: {
+              name: 'Archived Role',
+              status: 'INACTIVE',
+              archivedAt: new Date(),
+            },
+          },
+        ],
+      });
+      prisma.userRole.findMany.mockResolvedValue([]);
+      prisma.userBranch.findMany.mockResolvedValue([]);
+
+      const result = await service.getMe('user-123', 'tenant-456');
+
+      expect(result?.roles).toEqual([]);
+      expect(result?.permissions).toEqual([]);
+    });
+
+    it('should exclude permissions from role with archivedAt set even if status is ACTIVE', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-123',
+        email: 'test@example.com',
+        tenantId: 'tenant-456',
+        userRoles: [
+          {
+            status: 'ACTIVE',
+            role: {
+              name: 'Edge Role',
+              status: 'ACTIVE',
+              archivedAt: new Date(),
+            },
+          },
+        ],
+      });
+      prisma.userRole.findMany.mockResolvedValue([]);
+      prisma.userBranch.findMany.mockResolvedValue([]);
+
+      const result = await service.getMe('user-123', 'tenant-456');
+
+      expect(result?.roles).toEqual([]);
+      expect(result?.permissions).toEqual([]);
     });
   });
 });

@@ -607,7 +607,44 @@ Required additions or explicit deferrals:
   - Role creation and role-permission mappings execute transactionally.
   - A `ROLE_CREATED` audit event is written including `actorId`, `roleId`, `roleName`, `reason`, `tenantId`, `isSystem`, `status`, `permissionIds`, `permissionNames`, and `permissionRiskLevels`.
   - Duplicate or invalid requests fail closed and write no mutation audit.
-- **Limitations**: Role update and role archive endpoints remain explicitly deferred and are not yet implemented.
+- **Limitations**: Role update endpoint remains explicitly deferred and is not yet implemented.
+
+### Governed Custom Role Archive
+- **Endpoint**: `POST /api/v1/admin/roles/:roleId/archive`
+- **Required Permission**: `admin.role.change` (enforced at controller layer via `@RequirePermissions`)
+- **Scope Restriction**: Branch-scoped actors are strictly blocked from archiving roles unless they hold a tenant-wide Super Admin policy bypass. Tenant-wide actors (actors without `branchId`) are allowed.
+- **Reason**: A non-empty, trimmed reason is required for audit.
+- **Constraints**:
+  - Only custom, non-system roles may be archived (`isSystem` forced check).
+  - `Super Admin` role (matching by name) cannot be archived.
+  - Roles carrying the `admin.role.change` permission directly cannot be archived in this slice.
+  - Only active roles may be archived; inactive or already archived roles are rejected.
+  - Cross-tenant roles (via `roleId` not belonging to `actor.tenantId`) are rejected.
+- **Soft Archive**:
+  - Role `status` is set to `INACTIVE`.
+  - `archivedAt` and `archivedReason` are set.
+  - `UserRole` and `RolePermission` rows are NOT hard deleted. They remain as historical/config rows.
+- **Session Invalidation**:
+  - All active users holding the archived role (active `UserRole` with status `ACTIVE`) get their `User.tokenVersion` incremented exactly once.
+  - Users with revoked `UserRole` or inactive/deactivated status do NOT get token version increments.
+  - This invalidates existing JWTs for affected users.
+- **/auth/me and PermissionsGuard Compatibility**:
+  - Archived roles no longer contribute permissions because both derive permissions from DB queries that filter on both `UserRole.status = 'ACTIVE'` and `Role.status = 'ACTIVE'` and `Role.archivedAt = null`. Simply filtering `UserRole.status = 'ACTIVE'` is insufficient because an archived role's `UserRole` rows remain unchanged.
+  - The same three-condition filter (`UserRole.status = 'ACTIVE'`, `Role.status = 'ACTIVE'`, `Role.archivedAt = null`) is applied consistently across `auth.service.getUserPermissions`, `PermissionsGuard.canActivate`, `admin.service.getActorPermissions`, and `auth.service.getActiveRoleNames`.
+  - `tokenVersion` invalidation alone does not exclude archived role permissions; the refreshed authorization must also enforce Role lifecycle filtering. Both layers are now hardened.
+  - Role assignment and permission mutation flows already reject archived roles via `getRoleForDirectMutation`.
+- **Transaction & Audit**:
+  - Role archive, affected user tokenVersion updates, and audit write all execute in one Prisma transaction.
+  - If the role `updateMany` count is zero (concurrent archival), the transaction fails closed with a `ConflictException` and writes NO audit.
+  - `ROLE_ARCHIVED` audit event includes:
+    - `actorId`, `roleId`, `roleName`, `reason`, `archivedAt`, `tenantId`, `branchId`
+    - `isSystem`, `previousStatus`, `newStatus`
+    - `affectedUserIds`, `affectedUserCount`, `activeAssignmentCount`
+    - `beforeTokenVersions` and `afterTokenVersions` for affected users
+- **Response**: Sanitized result containing `roleId`, `name`, `status`, `isSystem`, `archivedAt`, `affectedUserCount`.
+  - No password hashes, internal Prisma metadata, or raw audit payload internals are returned.
+- **No Hard Delete**: Role rows, UserRole rows, and RolePermission rows are never hard deleted.
+- **Role update is still not implemented**.
 
 ## Final implementation guardrail
 Do not implement admin/user/role mutation endpoints until the schema prerequisites and the DTO/audit/approval/session rules in this document are accepted.

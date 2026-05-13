@@ -43,7 +43,11 @@ export class PermissionsGuard implements CanActivate {
       where: {
         userId: user.userId,
         status: 'ACTIVE',
-        role: { tenantId: user.tenantId },
+        role: {
+          tenantId: user.tenantId,
+          status: 'ACTIVE',
+          archivedAt: null,
+        },
       },
       include: {
         role: {

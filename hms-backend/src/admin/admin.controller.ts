@@ -32,6 +32,16 @@ export class AdminController {
     );
   }
 
+  @Post('roles/:roleId/archive')
+  @RequirePermissions('admin.role.change')
+  async archiveCustomRole(
+    @GetUser() actor: RequestUser,
+    @Param('roleId') roleId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.archiveCustomRole(actor, roleId, dto.reason);
+  }
+
   @Post('users/:id/deactivate')
   @RequirePermissions('admin.role.change')
   async deactivateUser(

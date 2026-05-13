@@ -16,7 +16,7 @@ type AuthenticatedUser = Omit<UserWithRoles, 'passwordHash'>;
 
 type UserRoleWithName = {
   status: string;
-  role: { name: string };
+  role: { name: string; status: string; archivedAt: Date | null };
 };
 
 @Injectable()
@@ -28,7 +28,12 @@ export class AuthService {
 
   private getActiveRoleNames(userRoles: UserRoleWithName[]): string[] {
     return userRoles
-      .filter((userRole) => userRole.status === 'ACTIVE')
+      .filter(
+        (userRole) =>
+          userRole.status === 'ACTIVE' &&
+          userRole.role.status === 'ACTIVE' &&
+          userRole.role.archivedAt === null,
+      )
       .map((userRole) => userRole.role.name);
   }
 
@@ -159,7 +164,11 @@ export class AuthService {
       where: {
         userId,
         status: 'ACTIVE',
-        role: { tenantId },
+        role: {
+          tenantId,
+          status: 'ACTIVE',
+          archivedAt: null,
+        },
       },
       include: {
         role: {

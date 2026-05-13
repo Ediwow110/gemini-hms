@@ -178,7 +178,11 @@ describe('PermissionsGuard', () => {
         where: {
           userId: 'user-uuid-123',
           status: 'ACTIVE',
-          role: { tenantId: 'tenant-uuid-789' },
+          role: {
+            tenantId: 'tenant-uuid-789',
+            status: 'ACTIVE',
+            archivedAt: null,
+          },
         },
       }),
     );
@@ -237,5 +241,33 @@ describe('PermissionsGuard', () => {
     expect(thrown).toBeInstanceOf(ForbiddenException);
     const response = thrown!.getResponse() as Record<string, unknown>;
     expect(response.message).toBe('permission_denied');
+  });
+
+  // ─── Archived/inactive role filtering ──────────────────────────────
+
+  it('should exclude permissions from archived roles when UserRole is ACTIVE', async () => {
+    jest
+      .spyOn(reflector, 'getAllAndOverride')
+      .mockReturnValue(['archived.role.perm']);
+    // Simulate DB filtering: archived roles are excluded, so findMany returns empty
+    findManyMock.mockResolvedValue([]);
+    const ctx = buildContext(
+      buildUser({ userId: 'user-uuid-123', tenantId: 'tenant-uuid-456' }),
+    );
+
+    await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+
+    expect(findManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: 'user-uuid-123',
+          status: 'ACTIVE',
+          role: expect.objectContaining({
+            status: 'ACTIVE',
+            archivedAt: null,
+          }),
+        },
+      }),
+    );
   });
 });

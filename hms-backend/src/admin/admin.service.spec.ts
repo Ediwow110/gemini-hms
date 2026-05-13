@@ -81,6 +81,7 @@ describe('AdminService', () => {
       role: {
         findFirst: jest.fn(),
         create: jest.fn(),
+        updateMany: jest.fn(),
       },
       permission: {
         findFirst: jest.fn(),
@@ -2842,6 +2843,351 @@ describe('AdminService', () => {
           ' perm-1 ',
         ]),
       ).rejects.toThrow('Duplicate permission ID provided');
+    });
+  });
+
+  describe('archiveCustomRole', () => {
+    const makeArchivableRole = (
+      overrides: Partial<{
+        id: string;
+        tenantId: string;
+        name: string;
+        status: string;
+        isSystem: boolean;
+        archivedAt: Date | null;
+        archivedReason: string | null;
+        rolePermissions: Array<{
+          roleId: string;
+          permissionId: string;
+          permission: {
+            id: string;
+            tenantId: string;
+            name: string;
+            scope: string;
+            riskLevel: string;
+          };
+        }>;
+      }> = {},
+    ) => ({
+      id: 'role-id',
+      tenantId: 'tenant-id',
+      name: 'Custom Role',
+      status: 'ACTIVE',
+      isSystem: false,
+      archivedAt: null as Date | null,
+      archivedReason: null as string | null,
+      rolePermissions: [],
+      ...overrides,
+    });
+
+    it('rejects branch-scoped actor unless Super Admin', async () => {
+      await expect(
+        service.archiveCustomRole(branchActor, 'role-id', 'valid reason'),
+      ).rejects.toThrow(ForbiddenException);
+
+      // Super Admin branch-scoped actor should be allowed
+      prisma.role.findFirst.mockResolvedValue(
+        makeArchivableRole({ name: 'Custom Role' }),
+      );
+      prisma.user.findMany.mockResolvedValue([]);
+      prisma.role.updateMany.mockResolvedValue({ count: 1 });
+      audit.log.mockResolvedValue({});
+
+      await expect(
+        service.archiveCustomRole(
+          { ...branchActor, roles: ['Super Admin'] },
+          'role-id',
+          'valid reason',
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it('rejects blank reason', async () => {
+      await expect(
+        service.archiveCustomRole(superAdminActor, 'role-id', '   '),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects missing role', async () => {
+      prisma.role.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.archiveCustomRole(superAdminActor, 'role-id', 'valid reason'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects cross-tenant role', async () => {
+      prisma.role.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.archiveCustomRole(superAdminActor, 'role-id', 'valid reason'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects Super Admin role', async () => {
+      prisma.role.findFirst.mockResolvedValue(
+        makeArchivableRole({ name: 'Super Admin', id: 'super-role-id' }),
+      );
+
+      await expect(
+        service.archiveCustomRole(
+          superAdminActor,
+          'super-role-id',
+          'valid reason',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects isSystem role', async () => {
+      prisma.role.findFirst.mockResolvedValue(
+        makeArchivableRole({ isSystem: true }),
+      );
+
+      await expect(
+        service.archiveCustomRole(superAdminActor, 'role-id', 'valid reason'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects inactive role', async () => {
+      prisma.role.findFirst.mockResolvedValue(
+        makeArchivableRole({ status: 'INACTIVE' }),
+      );
+
+      await expect(
+        service.archiveCustomRole(superAdminActor, 'role-id', 'valid reason'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects already archived role', async () => {
+      prisma.role.findFirst.mockResolvedValue(
+        makeArchivableRole({ archivedAt: new Date() }),
+      );
+
+      await expect(
+        service.archiveCustomRole(superAdminActor, 'role-id', 'valid reason'),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects role carrying admin.role.change', async () => {
+      prisma.role.findFirst.mockResolvedValue(
+        makeArchivableRole({
+          rolePermissions: [
+            {
+              roleId: 'role-id',
+              permissionId: 'permission-id',
+              permission: {
+                id: 'permission-id',
+                tenantId: 'tenant-id',
+                name: 'admin.role.change',
+                scope: 'tenant/system',
+                riskLevel: 'LOW',
+              },
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        service.archiveCustomRole(superAdminActor, 'role-id', 'valid reason'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('archives custom non-privileged role successfully', async () => {
+      const role = makeArchivableRole({
+        name: 'Custom Role',
+        rolePermissions: [
+          {
+            roleId: 'role-id',
+            permissionId: 'permission-id',
+            permission: {
+              id: 'permission-id',
+              tenantId: 'tenant-id',
+              name: 'patient.view',
+              scope: 'tenant',
+              riskLevel: 'LOW',
+            },
+          },
+        ],
+      });
+
+      const affectedUsers = [
+        { id: 'user-1', tokenVersion: 1 },
+        { id: 'user-2', tokenVersion: 2 },
+      ];
+
+      prisma.role.findFirst.mockResolvedValue(role);
+      prisma.user.findMany.mockResolvedValue(affectedUsers);
+      prisma.role.updateMany.mockResolvedValue({ count: 1 });
+      prisma.user.updateMany.mockResolvedValue({ count: 2 });
+      audit.log.mockResolvedValue({});
+
+      const result = await service.archiveCustomRole(
+        superAdminActor,
+        'role-id',
+        'valid reason for archiving',
+      );
+
+      expect(result).toMatchObject({
+        roleId: 'role-id',
+        name: 'Custom Role',
+        status: 'INACTIVE',
+        isSystem: false,
+        archivedAt: expect.any(Date),
+        affectedUserCount: 2,
+      });
+
+      expect(prisma.role.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 'role-id',
+            tenantId: 'tenant-id',
+            archivedAt: null,
+          }),
+          data: expect.objectContaining({
+            status: 'INACTIVE',
+            archivedAt: expect.any(Date),
+            archivedReason: 'valid reason for archiving',
+          }),
+        }),
+      );
+
+      expect(prisma.user.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: { in: ['user-1', 'user-2'] },
+          }),
+          data: expect.objectContaining({
+            tokenVersion: { increment: 1 },
+          }),
+        }),
+      );
+
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'ROLE_ARCHIVED',
+          tenantId: 'tenant-id',
+          userId: superAdminActor.userId,
+          recordType: 'Role',
+          recordId: 'role-id',
+          oldValues: expect.objectContaining({
+            roleId: 'role-id',
+            roleName: 'Custom Role',
+            status: 'ACTIVE',
+            isSystem: false,
+            archivedAt: null,
+            archivedReason: null,
+          }),
+          newValues: expect.objectContaining({
+            actorId: superAdminActor.userId,
+            roleId: 'role-id',
+            roleName: 'Custom Role',
+            reason: 'valid reason for archiving',
+            archivedAt: expect.any(String),
+            tenantId: 'tenant-id',
+            branchId: null,
+            isSystem: false,
+            previousStatus: 'ACTIVE',
+            newStatus: 'INACTIVE',
+            affectedUserIds: ['user-1', 'user-2'],
+            affectedUserCount: 2,
+            beforeTokenVersions: expect.arrayContaining([
+              expect.objectContaining({ id: 'user-1', tokenVersion: 1 }),
+              expect.objectContaining({ id: 'user-2', tokenVersion: 2 }),
+            ]),
+            afterTokenVersions: expect.arrayContaining([
+              expect.objectContaining({ id: 'user-1', tokenVersion: 2 }),
+              expect.objectContaining({ id: 'user-2', tokenVersion: 3 }),
+            ]),
+          }),
+        }),
+        prisma,
+        undefined,
+      );
+    });
+
+    it('does not increment tokenVersion for users without active role assignment', async () => {
+      const role = makeArchivableRole({
+        name: 'Custom Role',
+        rolePermissions: [
+          {
+            roleId: 'role-id',
+            permissionId: 'permission-id',
+            permission: {
+              id: 'permission-id',
+              tenantId: 'tenant-id',
+              name: 'patient.view',
+              scope: 'tenant',
+              riskLevel: 'LOW',
+            },
+          },
+        ],
+      });
+
+      // No active users with this role
+      prisma.role.findFirst.mockResolvedValue(role);
+      prisma.user.findMany.mockResolvedValue([]);
+      prisma.role.updateMany.mockResolvedValue({ count: 1 });
+      audit.log.mockResolvedValue({});
+
+      const result = await service.archiveCustomRole(
+        superAdminActor,
+        'role-id',
+        'valid reason',
+      );
+
+      expect(result.affectedUserCount).toBe(0);
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('does not increment tokenVersion for users with revoked role assignment', async () => {
+      const role = makeArchivableRole({
+        name: 'Custom Role',
+        rolePermissions: [
+          {
+            roleId: 'role-id',
+            permissionId: 'permission-id',
+            permission: {
+              id: 'permission-id',
+              tenantId: 'tenant-id',
+              name: 'patient.view',
+              scope: 'tenant',
+              riskLevel: 'LOW',
+            },
+          },
+        ],
+      });
+
+      prisma.role.findFirst.mockResolvedValue(role);
+      // Simulate users with revoked role assignments (status not ACTIVE)
+      prisma.user.findMany.mockResolvedValue([]);
+      prisma.role.updateMany.mockResolvedValue({ count: 1 });
+      audit.log.mockResolvedValue({});
+
+      const result = await service.archiveCustomRole(
+        superAdminActor,
+        'role-id',
+        'valid reason',
+      );
+
+      expect(result.affectedUserCount).toBe(0);
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('fails closed when role updateMany returns zero and writes no audit', async () => {
+      prisma.role.findFirst.mockResolvedValue(
+        makeArchivableRole({ name: 'Custom Role' }),
+      );
+      prisma.user.findMany.mockResolvedValue([
+        { id: 'user-1', tokenVersion: 1 },
+      ]);
+      prisma.role.updateMany.mockResolvedValue({ count: 0 }); // Simulate concurrent archival
+
+      await expect(
+        service.archiveCustomRole(superAdminActor, 'role-id', 'valid reason'),
+      ).rejects.toThrow(ConflictException);
+
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
+      expect(audit.log).not.toHaveBeenCalled();
     });
   });
 });
