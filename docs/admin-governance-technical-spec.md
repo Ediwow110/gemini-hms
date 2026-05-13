@@ -745,3 +745,143 @@ Required additions or explicit deferrals:
 
 ## Final implementation guardrail
 Do not implement admin/user/role mutation endpoints until the schema prerequisites and the DTO/audit/approval/session rules in this document are accepted.
+
+## Field-Level Governed Report File Generation/Download — Future Implementation Spec
+
+### 1. Current Status
+- Metadata-only exports are currently implemented.
+- File-based generation/download remains deferred.
+- No raw CSV/PDF/XLSX export is allowed until this specification is fully implemented.
+
+### 2. Core Security Model
+- `report.export` permission is strictly required.
+- A `reason` for the export is mandatory.
+- Tenant scope enforcement is strictly required.
+- Branch scope is enforced where applicable.
+- The backend remains the sole authorization authority; the UI is not an authority.
+- No raw rows may be returned directly to the frontend.
+- All generated export files must be private by default.
+
+### 3. Field-Level Export Policy
+- Explicit allowlists are required per report type; there is no default "allow-all".
+- Unclassified fields must fail closed (omitted or blocked).
+- Sensitive fields require masking or explicit approval to be included.
+- PHI fields, financial sensitive fields, audit/security fields, patient-identifying fields, and role/permission/admin fields are all classified separately and require explicit export policies.
+
+### 4. Export Risk Classification
+- **LOW**: Aggregate or non-identifying summaries.
+- **MEDIUM**: Operational rows without direct PHI.
+- **HIGH**: Rows containing patient identifiers, billing details, staff identifiers, or sensitive operations.
+- **PRIVILEGED/RESTRICTED**: Audit/security/admin access exports, lab result exports, bulk PHI exports.
+- Any unknown or unclassified report type must fail closed.
+
+### 5. Maker-Checker Requirements
+- **LOW** risk exports may be direct (requiring `report.export` + `reason` + audit log).
+- **MEDIUM** risk exports may require additional policy depending on row count or requested fields.
+- **HIGH/PRIVILEGED** exports strictly require `approval.request.process` maker-checker flow.
+- The requester cannot approve their own export request.
+- Approvals apply only the immutable export request payload.
+- Approval-time re-checks are mandatory for filters, scope, field policy, row count, and user permissions.
+
+### 6. Row Count and Threshold Policy
+- `rowCount` must be calculated *before* generation.
+- A "large export threshold" must be defined.
+- Breaching the large export threshold automatically escalates the risk level.
+- `rowCount` must be audited.
+- If a `rowCount` mismatch occurs at generation time, the process must fail or require re-approval according to strict policy.
+
+### 7. Storage Model
+- Private storage only.
+- No public direct file URLs.
+- If signed URLs are used, they must be short-lived.
+- File paths must include `tenantId` and `exportId`.
+- File metadata and a checksum must be stored in the database.
+- MIME type must be strictly fixed by the requested export format.
+- Generated files must expire or follow a strict retention policy.
+- A secure deletion/expiry background job is a future requirement.
+
+### 8. Download Governance
+- Every download attempt requires authentication.
+- The downloader must be the original requester, or an explicitly authorized approver/admin according to policy.
+- Tenant, branch, and scope limits must be re-checked on every single download.
+- A `DOWNLOAD_REPORT` or `REPORT_DOWNLOADED` audit event must be logged per download.
+- Track download count, `downloadedAt`, `downloaderId`, and IP/device (if available).
+- No cached public links are permitted.
+
+### 9. Data Masking
+- A report-specific masking policy must be defined.
+- Explicit masking rules are required for: patient name, phone, email, address, DOB, result values, diagnoses, invoice/payment details.
+- Low-privilege exports automatically mask sensitive fields.
+- No sensitive data may be present in filenames, logs, or notification bodies.
+
+### 10. Formats
+- CSV, XLSX, and PDF may be supported in the future.
+- Each format requires an explicit, secure serializer.
+- Escaping and injection protections are mandatory for CSV and Excel formulas.
+- PDF watermarking is required for sensitive exports.
+- Generated files must include the `exportId` and timestamp, but must NOT include PHI in the filename.
+
+### 11. Transaction and Background Job Model
+- Export request transactions must write the `ReportExport` record and the initial audit log.
+- Report generation may execute as a background job.
+- Jobs must carry and enforce tenant/export context.
+- Jobs must be idempotent.
+- Failed job status and audits must be recorded.
+- No tenantless jobs are permitted.
+- No raw data arrays should be held entirely in frontend memory.
+
+### 12. API Contract Proposal
+- `POST /api/v1/reports/exports`: Remains metadata/request creation.
+- `POST /api/v1/reports/exports/:id/approve`: For high-risk maker-checker approvals (if not reusing generic approvals).
+- `POST /api/v1/reports/exports/:id/generate`: Or a background generation trigger, if approved.
+- `GET /api/v1/reports/exports/:id/download`: For authorized, short-lived secure download.
+- `GET /api/v1/reports/exports/:id/status`: For polling export readiness.
+- (Exact permissions, request schemas, response schemas, failure codes, and audit events must be defined for each endpoint).
+
+### 13. Database / Model Additions Proposal
+- `ReportExport` model requires additional fields:
+  - `status`, `riskLevel`, `reportType`, `format`, `filtersSnapshot`, `fieldPolicySnapshot`, `rowCount`, `requestedBy`, `approvedBy`, `approvedAt`, `generatedAt`, `expiresAt`, `storageKey`, `checksum`, `downloadCount`, `lastDownloadedAt`, `failureReason`.
+- A `ReportDownload` audit/log model may be needed.
+- A relation to `ApprovalRequest` should be defined if reusing the generic approval model.
+
+### 14. Failure Modes
+- `permission_denied`
+- `tenant_scope_required`
+- `export_policy_missing`
+- `field_not_allowed`
+- `approval_required`
+- `export_too_large`
+- `export_expired`
+- `export_not_ready`
+- `file_not_found`
+- `generation_failed`
+
+### 15. Test Matrix
+Required tests for future implementation:
+- Cannot export without `report.export`.
+- Cannot export without `reason`.
+- Cross-tenant export blocked.
+- Branch scope enforced.
+- Unclassified report type blocked.
+- Unclassified field blocked.
+- Sensitive field masked or blocked according to policy.
+- High-risk export requires approval.
+- Requester cannot approve their own export.
+- Immutable payload applied after approval.
+- `rowCount` threshold escalates risk level.
+- Generated file remains strictly private.
+- Download requires fresh auth.
+- Download audit written.
+- Signed URL expires appropriately.
+- No PHI leaked in filename or logs.
+- CSV formula injection escaped safely.
+- Background job tenant context required.
+- Failed job recorded securely.
+- No raw rows returned directly to frontend.
+
+### 16. Explicit Non-Goals
+- No file generation is implemented in this specific task.
+- No frontend implementation is delivered in this task.
+- No raw CSV export is implemented.
+- No public file storage is enabled.
+- No bypass of the report metadata audit mechanism.
