@@ -15,6 +15,7 @@ import { RefundRequestDto, VoidRequestDto } from './dto/reversal.dto';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
+import { computePaymentFingerprint } from './utils/idempotency';
 
 export const REVERSAL_TYPE = {
   REFUND: 'REFUND',
@@ -43,135 +44,273 @@ export class BillingService {
     branchId: string,
     dto: CreatePaymentDto,
   ) {
-    // 1. Verify invoice belongs to tenant AND branch
-    const invoice = await this.prisma.invoice.findFirst({
-      where: {
-        id: dto.invoiceId,
-        order: { tenantId, branchId },
-      },
-      include: { order: true },
-    });
-
-    if (!invoice) {
-      throw new BadRequestException('Invoice not found or access denied');
+    // 1. Validate Idempotency-Key is present
+    if (!dto.idempotencyKey || !dto.idempotencyKey.trim()) {
+      throw new BadRequestException('Idempotency-Key header is required');
     }
 
-    if (invoice.status === 'PAID') {
-      throw new ConflictException('Invoice is already fully paid');
-    }
+    const OPERATION = 'BILLING_PAYMENT_POST';
 
-    // 2. Verify cashier session belongs to tenant AND branch AND user
-    const session = await this.prisma.cashierSession.findFirst({
+    // 2. Compute request fingerprint
+    const fingerprint = computePaymentFingerprint(tenantId, OPERATION, dto);
+
+    // 3. Look up existing IdempotencyRecord
+    let idempotencyRecord = await this.prisma.idempotencyRecord.findUnique({
       where: {
-        id: dto.cashierSessionId,
-        tenantId,
-        branchId,
-        userId,
-        status: 'OPEN',
+        tenantId_operation_key: {
+          tenantId,
+          operation: OPERATION,
+          key: dto.idempotencyKey,
+        },
       },
     });
 
-    if (!session) {
-      throw new BadRequestException(
-        'Active cashier session not found or unauthorized',
-      );
+    // 4. Handle existing idempotency record
+    if (idempotencyRecord) {
+      if (idempotencyRecord.status === 'COMPLETED') {
+        // Verify fingerprint matches
+        if (idempotencyRecord.requestFingerprint !== fingerprint) {
+          // Same key but different request = fraud/race condition
+          throw new ConflictException(
+            'Idempotency key already used with different request parameters',
+          );
+        }
+        // Return cached response for identical replay
+        const cached = idempotencyRecord.responseData as {
+          payment: unknown;
+          invoice: unknown;
+        } | null;
+        return {
+          payment: cached?.payment,
+          invoice: cached?.invoice,
+          _replayed: true,
+        };
+      } else if (idempotencyRecord.status === 'IN_PROGRESS') {
+        // Another request is processing with this key
+        throw new ConflictException(
+          'Payment creation with this idempotency key is already in progress',
+        );
+      } else if (idempotencyRecord.status === 'FAILED') {
+        // Previous attempt failed; allow retry by throwing original error
+        if (idempotencyRecord.error) {
+          throw new BadRequestException(
+            `Previous request with this key failed: ${idempotencyRecord.error}`,
+          );
+        }
+      }
     }
 
-    // 3. START TRANSACTION (Section 13 Boundary: Post Payment)
-    return this.prisma.$transaction(async (tx) => {
-      // 4. Generate Receipt Number
-      const receiptNumber = await this.numbering.generateNumber(
-        tenantId,
-        'RECEIPT',
-        branchId,
-      );
-
-      // 5. Create Payment record (Idempotency check handled by DB unique constraint)
-      try {
-        const payment = await tx.payment.create({
-          data: {
-            invoiceId: dto.invoiceId,
-            cashierSessionId: dto.cashierSessionId,
-            receiptNumber,
-            amount: dto.amount,
-            paymentMethod: dto.paymentMethod,
-            idempotencyKey: dto.idempotencyKey,
-            status: 'POSTED',
-          },
-        });
-
-        // 6. Update Invoice
-        const newPaidAmount = Number(invoice.paidAmount) + dto.amount;
-        const newStatus =
-          newPaidAmount >= Number(invoice.totalAmount)
-            ? 'PAID'
-            : 'PARTIALLY_PAID';
-
-        const invoiceUpdate = await tx.invoice.updateMany({
+    // 5. Create new IdempotencyRecord with IN_PROGRESS status
+    try {
+      idempotencyRecord = await this.prisma.idempotencyRecord.create({
+        data: {
+          tenantId,
+          operation: OPERATION,
+          key: dto.idempotencyKey,
+          requestFingerprint: fingerprint,
+          status: 'IN_PROGRESS',
+        },
+      });
+    } catch (error) {
+      // Race condition: another request created the record
+      if (error.code === 'P2002') {
+        // Fetch the record that was just created by another request
+        const raceRecord = await this.prisma.idempotencyRecord.findUnique({
           where: {
-            id: dto.invoiceId,
-            order: { tenantId, branchId },
-          },
-          data: {
-            paidAmount: newPaidAmount,
-            status: newStatus,
+            tenantId_operation_key: {
+              tenantId,
+              operation: OPERATION,
+              key: dto.idempotencyKey,
+            },
           },
         });
 
-        if (invoiceUpdate.count === 0) {
-          throw new ConflictException(
-            'Invoice not found in this branch or was modified concurrently',
-          );
-        }
-
-        const updatedInvoice = await tx.invoice.findFirst({
-          where: { id: dto.invoiceId, order: { tenantId, branchId } },
-        });
-
-        if (!updatedInvoice) {
-          throw new ConflictException(
-            'Invoice not found in this branch or was modified concurrently',
-          );
-        }
-
-        // 7. Update Order Status (Revenue Cycle Logic)
-        if (newStatus === 'PAID') {
-          const orderUpdate = await tx.order.updateMany({
-            where: { id: invoice.orderId, tenantId, branchId },
-            data: { status: 'PAID' },
-          });
-
-          if (orderUpdate.count === 0) {
+        if (raceRecord) {
+          if (raceRecord.status === 'COMPLETED') {
+            if (raceRecord.requestFingerprint === fingerprint) {
+              const cached = raceRecord.responseData as {
+                payment: unknown;
+                invoice: unknown;
+              } | null;
+              return {
+                payment: cached?.payment,
+                invoice: cached?.invoice,
+                _replayed: true,
+              };
+            } else {
+              throw new ConflictException(
+                'Idempotency key already used with different request parameters',
+              );
+            }
+          } else if (raceRecord.status === 'IN_PROGRESS') {
             throw new ConflictException(
-              'Order not found in this branch or was modified concurrently',
+              'Payment creation with this idempotency key is already in progress',
             );
           }
         }
+      }
+      throw error;
+    }
 
-        // 8. Log Audit Event (PAYMENT_POSTED)
-        await this.audit.log(
-          {
-            tenantId,
-            userId,
-            eventKey: 'PAYMENT_POSTED',
-            recordType: 'Payment',
-            recordId: payment.id,
-            newValues: { payment, invoiceStatus: newStatus },
-          },
-          tx,
+    try {
+      // 6. Verify invoice belongs to tenant AND branch
+      const invoice = await this.prisma.invoice.findFirst({
+        where: {
+          id: dto.invoiceId,
+          order: { tenantId, branchId },
+        },
+        include: { order: true },
+      });
+
+      if (!invoice) {
+        throw new BadRequestException('Invoice not found or access denied');
+      }
+
+      if (invoice.status === 'PAID') {
+        throw new ConflictException('Invoice is already fully paid');
+      }
+
+      // 7. Verify cashier session belongs to tenant AND branch AND user
+      const session = await this.prisma.cashierSession.findFirst({
+        where: {
+          id: dto.cashierSessionId,
+          tenantId,
+          branchId,
+          userId,
+          status: 'OPEN',
+        },
+      });
+
+      if (!session) {
+        throw new BadRequestException(
+          'Active cashier session not found or unauthorized',
+        );
+      }
+
+      // 8. START TRANSACTION (Section 13 Boundary: Post Payment)
+      const result = await this.prisma.$transaction(async (tx) => {
+        // 9. Generate Receipt Number
+        const receiptNumber = await this.numbering.generateNumber(
+          tenantId,
+          'RECEIPT',
           branchId,
         );
 
-        return { payment, invoice: updatedInvoice };
-      } catch (error) {
-        if (error.code === 'P2002') {
-          throw new ConflictException(
-            'Duplicate payment detected (Idempotency Key violation)',
+        // 10. Create Payment record
+        try {
+          const payment = await tx.payment.create({
+            data: {
+              invoiceId: dto.invoiceId,
+              cashierSessionId: dto.cashierSessionId,
+              receiptNumber,
+              amount: dto.amount,
+              paymentMethod: dto.paymentMethod,
+              idempotencyKey: dto.idempotencyKey,
+              status: 'POSTED',
+            },
+          });
+
+          // 11. Update Invoice
+          const newPaidAmount = Number(invoice.paidAmount) + dto.amount;
+          const newStatus =
+            newPaidAmount >= Number(invoice.totalAmount)
+              ? 'PAID'
+              : 'PARTIALLY_PAID';
+
+          const invoiceUpdate = await tx.invoice.updateMany({
+            where: {
+              id: dto.invoiceId,
+              order: { tenantId, branchId },
+            },
+            data: {
+              paidAmount: newPaidAmount,
+              status: newStatus,
+            },
+          });
+
+          if (invoiceUpdate.count === 0) {
+            throw new ConflictException(
+              'Invoice not found in this branch or was modified concurrently',
+            );
+          }
+
+          const updatedInvoice = await tx.invoice.findFirst({
+            where: { id: dto.invoiceId, order: { tenantId, branchId } },
+          });
+
+          if (!updatedInvoice) {
+            throw new ConflictException(
+              'Invoice not found in this branch or was modified concurrently',
+            );
+          }
+
+          // 12. Update Order Status (Revenue Cycle Logic)
+          if (newStatus === 'PAID') {
+            const orderUpdate = await tx.order.updateMany({
+              where: { id: invoice.orderId, tenantId, branchId },
+              data: { status: 'PAID' },
+            });
+
+            if (orderUpdate.count === 0) {
+              throw new ConflictException(
+                'Order not found in this branch or was modified concurrently',
+              );
+            }
+          }
+
+          // 13. Log Audit Event (PAYMENT_POSTED) - First request only (via idempotency record)
+          await this.audit.log(
+            {
+              tenantId,
+              userId,
+              eventKey: 'PAYMENT_POSTED',
+              recordType: 'Payment',
+              recordId: payment.id,
+              newValues: { payment, invoiceStatus: newStatus },
+            },
+            tx,
+            branchId,
           );
+
+          return { payment, invoice: updatedInvoice };
+        } catch (error) {
+          if (error.code === 'P2002') {
+            throw new ConflictException(
+              'Duplicate payment detected (Idempotency Key violation)',
+            );
+          }
+          throw error;
         }
-        throw error;
-      }
-    });
+      });
+
+      // 14. Update IdempotencyRecord to COMPLETED with response
+      await this.prisma.idempotencyRecord.update({
+        where: { id: idempotencyRecord.id },
+        data: {
+          status: 'COMPLETED',
+          paymentId: result.payment.id,
+          responseData: {
+            payment: result.payment,
+            invoice: result.invoice,
+          },
+          updatedAt: new Date(),
+        },
+      });
+
+      return result;
+    } catch (error) {
+      // 15. Update IdempotencyRecord to FAILED on any error
+      await this.prisma.idempotencyRecord.update({
+        where: { id: idempotencyRecord.id },
+        data: {
+          status: 'FAILED',
+          error: error.message || 'Unknown error',
+          updatedAt: new Date(),
+        },
+      });
+
+      throw error;
+    }
   }
 
   async requestRefund(

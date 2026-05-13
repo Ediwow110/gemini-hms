@@ -927,8 +927,95 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
   - **NO clinical data, billing data, files, or documents are touched**.
   - **NO PHI beyond existing patient API scope is exposed**.
   - **NO reports, exports, or downloads are generated**.
-  - **NO actual merge execution occurs** — approval only advances the request status.
-  - Future merge execution endpoints (if built) must be a separate backend slice with explicit destructive governance, cross-slice audit linking, and maker-checker approval.
+   - **NO actual merge execution occurs** — approval only advances the request status.
+   - Future merge execution endpoints (if built) must be a separate backend slice with explicit destructive governance, cross-slice audit linking, and maker-checker approval.
+
+### Payment Idempotency Guard for Billing Payment Creation
+
+**CRITICAL CAVEAT**: This implementation enforces true idempotency for payment creation to prevent duplicate payments on network retries, client re-submissions, or race conditions.
+
+- **Endpoint**: `POST /api/v1/billing/payments`
+- **Required Header**: `Idempotency-Key` (must be present and non-empty)
+- **Scope**: Tenant-scoped payment creation with branch context
+
+**Idempotency Behavior**:
+- **Missing Key**: Request without `Idempotency-Key` header is rejected with 400 Bad Request.
+- **First Request**: Creates payment transactionally, stores idempotency record with `COMPLETED` status, writes audit event.
+- **Exact Replay**: Same tenant + same key + same request fingerprint returns cached payment response without creating duplicate payment, invoice updates, or audit events.
+- **Modified Request**: Same tenant + same key + different fingerprint (amount, paymentMethod, invoiceId, or cashierSessionId changed) returns 409 Conflict.
+- **Tenant Isolation**: Same key in different tenants is independent; each tenant has its own idempotency namespace.
+- **Concurrent Requests**: If two identical requests race, one creates payment and the other returns the completed original result.
+- **Failed Transaction**: Failed/rolled-back payment does not store `COMPLETED` idempotency record; allows retry.
+
+**Idempotency Record Model**:
+- `IdempotencyRecord` table with:
+  - `id`, `tenantId`, `operation` (BILLING_PAYMENT_POST), `key`, `requestFingerprint`
+  - `status`: IN_PROGRESS, COMPLETED, FAILED
+  - `paymentId`: Set after successful payment creation
+  - `responseData`: Cached payment and invoice response for replay
+  - `error`: Failed attempt error message
+  - `createdAt`, `updatedAt`
+- Unique constraint on `(tenantId, operation, key)` prevents duplicate keys per tenant/operation.
+- Indexes on `tenantId` and `status` for efficient lookups.
+
+**Request Fingerprint**:
+- Computed from normalized request body: `tenantId`, `operation`, `invoiceId`, `cashierSessionId`, `amount`, `paymentMethod`.
+- Uses SHA-256 hash of JSON-serialized normalized payload.
+- Does NOT include `idempotencyKey` itself (that's the lookup key).
+- Does NOT include timestamps or volatile fields.
+- Stable for semantically identical requests with different key values.
+
+**Transaction Guarantees**:
+- Idempotency record created with `IN_PROGRESS` before payment creation.
+- On payment success: record updated to `COMPLETED` with paymentId and cached response.
+- On payment failure: record updated to `FAILED` with error message.
+- No duplicate payments, invoice updates, receipt numbers, or audit events on replay.
+- Audit event written only on first successful payment, not on replay.
+
+**DTO Contract**:
+- `CreatePaymentDto` requires `idempotencyKey` field (non-empty string).
+- Fingerprint includes: `invoiceId`, `cashierSessionId`, `amount`, `paymentMethod`.
+- Tenant and operation scope enforced in idempotency lookup.
+
+**Race Condition Handling**:
+- If idempotency record creation fails due to unique constraint (race), the system fetches the existing record.
+- If record is `COMPLETED` with matching fingerprint: returns cached response.
+- If record is `COMPLETED` with different fingerprint: returns 409 Conflict.
+- If record is `IN_PROGRESS`: returns 409 Conflict (another request processing).
+- If record is `FAILED`: allows retry (rejects with previous error message).
+
+**Audit Events**:
+- `PAYMENT_POSTED`: Written only on first successful payment creation.
+- No audit event on exact replay (prevents duplicate audit logging).
+- Idempotency record status transitions are tracked in database.
+
+**Test Matrix Required**:
+- Missing Idempotency-Key rejected (400).
+- First request creates payment successfully.
+- Exact replay returns cached response with `_replayed: true` flag.
+- Exact replay does not create duplicate Payment.
+- Exact replay does not duplicate invoice updates or receipt numbers.
+- Exact replay does not duplicate audit event.
+- Same key with different amount returns 409 Conflict.
+- Same key with different paymentMethod returns 409 Conflict.
+- Same key in different tenant is independent.
+- Failed transaction updates record to FAILED, allows retry.
+- Concurrent requests handled correctly (one succeeds, other returns cached).
+- Fingerprint stable for identical request bodies.
+- Tenant isolation enforced.
+
+**Security & Safety**:
+- Idempotency keys are tenant-scoped to prevent cross-tenant collisions.
+- Fingerprint includes all payment-critical fields to detect modifications.
+- Response caching prevents replay attacks from returning stale data.
+- No raw request bodies stored (only hash/fingerprint).
+- Transaction integrity ensures no partial state on failure.
+
+**Implementation Status**:
+- `IdempotencyRecord` model added to Prisma schema.
+- `computePaymentFingerprint()` utility function implemented.
+- `postPayment()` service method updated with full idempotency guard.
+- Tests added for all idempotency scenarios.
 
 ### Governed Health Endpoint
 - **Endpoint**: GET /api/v1/admin/health
