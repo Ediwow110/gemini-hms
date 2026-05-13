@@ -2714,6 +2714,27 @@ describe('AdminService', () => {
       );
     });
 
+    it('allows super admin branch-scoped actor to create custom role', async () => {
+      prisma.role.findFirst.mockResolvedValue(null);
+      prisma.permission.findMany.mockResolvedValue([]);
+      prisma.role.create.mockResolvedValue({
+        id: 'new-role-id',
+        name: 'New Role',
+        status: 'ACTIVE',
+        isSystem: false,
+        rolePermissions: [],
+      });
+
+      const result = await service.createCustomRole(
+        { ...branchActor, roles: ['Super Admin'] },
+        'New Role',
+        'reason',
+      );
+
+      expect(result.name).toBe('New Role');
+      expect(prisma.role.create).toHaveBeenCalled();
+    });
+
     it('rejects if role with same name already exists in tenant, case-insensitive', async () => {
       prisma.role.findFirst.mockResolvedValue({
         id: 'existing-id',
@@ -2812,6 +2833,15 @@ describe('AdminService', () => {
       await expect(
         service.createCustomRole(superAdminActor, 'New Role', 'reason', [' ']),
       ).rejects.toThrow('Invalid permission ID provided');
+    });
+
+    it('rejects duplicate permissionIds after trimming', async () => {
+      await expect(
+        service.createCustomRole(superAdminActor, 'New Role', 'reason', [
+          'perm-1',
+          ' perm-1 ',
+        ]),
+      ).rejects.toThrow('Duplicate permission ID provided');
     });
   });
 });

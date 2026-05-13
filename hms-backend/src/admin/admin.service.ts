@@ -172,26 +172,36 @@ export class AdminService {
         );
       }
 
-      const uniquePermissionIds = Array.from(new Set(permissionIds || []));
+      const normalizedPermissionIds = (permissionIds ?? []).map((id) => {
+        if (typeof id !== 'string') {
+          throw new BadRequestException('Invalid permission ID provided');
+        }
+
+        const normalized = id.trim();
+        if (!normalized) {
+          throw new BadRequestException('Invalid permission ID provided');
+        }
+
+        return normalized;
+      });
+
       if (
-        uniquePermissionIds.some(
-          (id) => typeof id !== 'string' || id.trim().length === 0,
-        )
+        new Set(normalizedPermissionIds).size !== normalizedPermissionIds.length
       ) {
-        throw new BadRequestException('Invalid permission ID provided');
+        throw new BadRequestException('Duplicate permission ID provided');
       }
 
       let validatedPermissions: AdminPermissionTarget[] = [];
 
-      if (uniquePermissionIds.length > 0) {
+      if (normalizedPermissionIds.length > 0) {
         validatedPermissions = await tx.permission.findMany({
           where: {
-            id: { in: uniquePermissionIds },
+            id: { in: normalizedPermissionIds },
             tenantId: actor.tenantId,
           },
         });
 
-        if (validatedPermissions.length !== uniquePermissionIds.length) {
+        if (validatedPermissions.length !== normalizedPermissionIds.length) {
           throw new BadRequestException(
             'One or more requested permissions do not exist or belong to another tenant',
           );
