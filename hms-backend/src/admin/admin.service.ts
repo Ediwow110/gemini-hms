@@ -329,6 +329,114 @@ export class AdminService {
     });
   }
 
+  async updateUser(
+    actor: RequestUser,
+    targetUserId: string,
+    dto: {
+      email?: string;
+      isMfaEnabled?: boolean;
+      reason: string;
+    },
+  ): Promise<{ userId: string; email: string; isMfaEnabled: boolean }> {
+    const trimmedReason = this.validateReason(dto.reason);
+
+    if (actor.userId === targetUserId) {
+      throw new ForbiddenException(
+        'Admins cannot update their own profile via administrative endpoints',
+      );
+    }
+
+    if (dto.email === undefined && dto.isMfaEnabled === undefined) {
+      throw new BadRequestException('No update fields provided');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Fetch target user with tenant scoping
+      const target = await tx.user.findFirst({
+        where: { id: targetUserId, tenantId: actor.tenantId },
+      });
+
+      if (!target) {
+        throw new NotFoundException('User not found');
+      }
+
+      // 2. Branch scoping: Branch admins can only update users assigned to their branch
+      if (!this.isSuperAdmin(actor) && actor.branchId) {
+        const targetBranchAssignment = await tx.userBranch.findFirst({
+          where: {
+            userId: targetUserId,
+            branchId: actor.branchId,
+            isActive: true,
+          },
+        });
+        if (!targetBranchAssignment) {
+          throw new ForbiddenException(
+            'Branch-scoped actors can only update users in their own branch',
+          );
+        }
+      }
+
+      // 3. Email uniqueness check if changing
+      if (dto.email && dto.email !== target.email) {
+        const existing = await tx.user.findFirst({
+          where: {
+            tenantId: actor.tenantId,
+            email: dto.email,
+            id: { not: targetUserId },
+          },
+        });
+        if (existing) {
+          throw new ConflictException(
+            'Email already in use by another user in this tenant',
+          );
+        }
+      }
+
+      // 4. Perform update
+      const updated = await tx.user.update({
+        where: { id: targetUserId },
+        data: {
+          email: dto.email ?? target.email,
+          isMfaEnabled: dto.isMfaEnabled ?? target.isMfaEnabled,
+        },
+      });
+
+      // 5. Log Audit
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'ADMIN_USER_UPDATED',
+          recordType: 'User',
+          recordId: updated.id,
+          oldValues: {
+            email: target.email,
+            isMfaEnabled: target.isMfaEnabled,
+          },
+          newValues: {
+            actorId: actor.userId,
+            targetUserId: updated.id,
+            email: updated.email,
+            isMfaEnabled: updated.isMfaEnabled,
+            reason: trimmedReason,
+            changedFields: [
+              ...(dto.email !== undefined ? ['email'] : []),
+              ...(dto.isMfaEnabled !== undefined ? ['isMfaEnabled'] : []),
+            ],
+          },
+        },
+        tx,
+        actor.branchId ?? undefined,
+      );
+
+      return {
+        userId: updated.id,
+        email: updated.email,
+        isMfaEnabled: updated.isMfaEnabled,
+      };
+    });
+  }
+
   async createCustomRole(
     actor: RequestUser,
     name: string,

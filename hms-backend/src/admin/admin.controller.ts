@@ -19,6 +19,7 @@ import {
   GrantRolePermissionDto,
   PrivilegedRoleRequestDto,
   UpdateCustomRoleDto,
+  UpdateUserDto,
   UserLifecycleReasonDto,
 } from './dto/user-lifecycle.dto';
 
@@ -31,6 +32,16 @@ export class AdminController {
   @RequirePermissions('admin.role.change')
   async createUser(@GetUser() actor: RequestUser, @Body() dto: CreateUserDto) {
     return this.adminService.createUser(actor, dto);
+  }
+
+  @Patch('users/:id')
+  @RequirePermissions('admin.role.change')
+  async updateUser(
+    @GetUser() actor: RequestUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.adminService.updateUser(actor, id, dto);
   }
 
   @Post('roles')

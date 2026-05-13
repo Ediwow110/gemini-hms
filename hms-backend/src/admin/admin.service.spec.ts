@@ -73,6 +73,7 @@ describe('AdminService', () => {
         findMany: jest.fn(),
         updateMany: jest.fn(),
         create: jest.fn(),
+        update: jest.fn(),
       },
       userRole: {
         create: jest.fn(),
@@ -81,6 +82,7 @@ describe('AdminService', () => {
         findMany: jest.fn(),
       },
       userBranch: {
+        findFirst: jest.fn(),
         createMany: jest.fn(),
       },
       role: {
@@ -2816,6 +2818,99 @@ describe('AdminService', () => {
       expect(prisma.userRole.createMany).toHaveBeenCalled();
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'ADMIN_USER_CREATED' }),
+        expect.anything(),
+        undefined,
+      );
+    });
+  });
+
+  describe('updateUser', () => {
+    const targetUserId = 'target-user-id';
+    const dto = {
+      email: 'updated@hospital.com',
+      isMfaEnabled: true,
+      reason: 'valid reason for update',
+    };
+
+    it('rejects self-update', async () => {
+      await expect(
+        service.updateUser(superAdminActor, superAdminActor.userId!, dto),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects if no update fields provided', async () => {
+      await expect(
+        service.updateUser(superAdminActor, targetUserId, { reason: 'valid' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects missing user', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      await expect(
+        service.updateUser(superAdminActor, targetUserId, dto),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('blocks branch-scoped actor from updating user in another branch', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: targetUserId,
+        tenantId: 'tenant-id',
+      });
+      prisma.userBranch.findFirst.mockResolvedValue(null); // No assignment to actor's branch
+      await expect(
+        service.updateUser(branchActor, targetUserId, dto),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects duplicate email in tenant', async () => {
+      prisma.user.findFirst
+        .mockResolvedValueOnce({
+          id: targetUserId,
+          tenantId: 'tenant-id',
+          email: 'old@h.com',
+        })
+        .mockResolvedValueOnce({ id: 'other-id' }); // Duplicate found
+      await expect(
+        service.updateUser(superAdminActor, targetUserId, dto),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('succeeds with metadata update and audit', async () => {
+      const oldUser = {
+        id: targetUserId,
+        tenantId: 'tenant-id',
+        email: 'old@hospital.com',
+        isMfaEnabled: false,
+      };
+      prisma.user.findFirst
+        .mockResolvedValueOnce(oldUser) // Target lookup
+        .mockResolvedValueOnce(null); // Uniqueness check
+
+      prisma.user.update.mockResolvedValue({
+        ...oldUser,
+        email: dto.email,
+        isMfaEnabled: dto.isMfaEnabled,
+      });
+
+      const result = await service.updateUser(
+        superAdminActor,
+        targetUserId,
+        dto,
+      );
+
+      expect(result.email).toBe(dto.email);
+      expect(prisma.user.update).toHaveBeenCalled();
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'ADMIN_USER_UPDATED',
+          oldValues: { email: 'old@hospital.com', isMfaEnabled: false },
+          newValues: expect.objectContaining({
+            email: dto.email,
+            isMfaEnabled: dto.isMfaEnabled,
+            reason: dto.reason,
+            changedFields: expect.arrayContaining(['email', 'isMfaEnabled']),
+          }),
+        }),
         expect.anything(),
         undefined,
       );

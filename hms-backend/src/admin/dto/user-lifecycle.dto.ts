@@ -5,6 +5,7 @@ import {
   IsArray,
   IsOptional,
   ArrayUnique,
+  IsEmail,
 } from 'class-validator';
 
 export class UserLifecycleReasonDto {
@@ -64,7 +65,7 @@ export class UpdateCustomRoleDto extends UserLifecycleReasonDto {
 }
 
 export class CreateUserDto extends UserLifecycleReasonDto {
-  @IsString()
+  @IsEmail()
   @IsNotEmpty()
   @Transform(({ value }) =>
     typeof value === 'string' ? value.toLowerCase().trim() : value,
@@ -90,4 +91,17 @@ export class CreateUserDto extends UserLifecycleReasonDto {
   @IsNotEmpty({ each: true })
   @ArrayUnique()
   roleIds?: string[];
+}
+
+export class UpdateUserDto extends UserLifecycleReasonDto {
+  @IsOptional()
+  @IsEmail()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toLowerCase().trim() : value,
+  )
+  @IsNotEmpty()
+  email?: string;
+
+  @IsOptional()
+  isMfaEnabled?: boolean;
 }

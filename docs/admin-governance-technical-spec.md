@@ -658,6 +658,18 @@ Required additions or explicit deferrals:
   - **Audit**: `ADMIN_USER_CREATED` event log.
 - **Transactional**: User creation and initial relation assignments (branches, roles) happen in one transaction.
 
+### Governed User Profile Update
+- **Endpoint**: `PATCH /api/v1/admin/users/:id`
+- **Required Permission**: `admin.role.change`
+- **Scope Restriction**: Branch-scoped actors can only update users assigned to their own branch.
+- **Self-Mutation Block**: Admins cannot update their own profile via this administrative endpoint.
+- **Reason**: A non-empty, trimmed reason (min 8 chars) is required.
+- **Allowed Fields**:
+  - `email`: optional, must be unique within tenant if changed.
+  - `isMfaEnabled`: optional boolean.
+- **Audit**: `ADMIN_USER_UPDATED` event log containing `oldValues` and `newValues`.
+- **Session Invalidation**: Does NOT increment `tokenVersion` for profile-only updates (consistent with role metadata update policy).
+
 ### Governed Custom Role Metadata Update
 - **Endpoint**: `PATCH /api/v1/admin/roles/:roleId`
 - **Required Permission**: `admin.role.change` (enforced at controller layer via `@RequirePermissions`)

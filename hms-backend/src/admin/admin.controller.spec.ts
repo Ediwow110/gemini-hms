@@ -12,6 +12,7 @@ import {
   GrantRolePermissionDto,
   PrivilegedRoleRequestDto,
   UpdateCustomRoleDto,
+  UpdateUserDto,
   UserLifecycleReasonDto,
 } from './dto/user-lifecycle.dto';
 
@@ -19,6 +20,7 @@ describe('AdminController', () => {
   let controller: AdminController;
   let adminService: {
     createUser: jest.Mock;
+    updateUser: jest.Mock;
     createCustomRole: jest.Mock;
     updateCustomRole: jest.Mock;
     archiveCustomRole: jest.Mock;
@@ -44,6 +46,7 @@ describe('AdminController', () => {
   beforeEach(async () => {
     adminService = {
       createUser: jest.fn(),
+      updateUser: jest.fn(),
       createCustomRole: jest.fn(),
       updateCustomRole: jest.fn(),
       archiveCustomRole: jest.fn(),
@@ -179,6 +182,35 @@ describe('AdminController', () => {
     await controller.createUser(actor, dto);
 
     expect(adminService.createUser).toHaveBeenCalledWith(actor, dto);
+  });
+
+  it('update user endpoint requires admin.role.change metadata', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      AdminController.prototype,
+      'updateUser',
+    );
+    const permissions = Reflect.getMetadata(
+      PERMISSIONS_KEY,
+      descriptor?.value as object,
+    );
+
+    expect(permissions).toEqual(['admin.role.change']);
+  });
+
+  it('updateUser calls adminService.updateUser', async () => {
+    const dto: UpdateUserDto = {
+      email: 'updated@hospital.com',
+      reason: 'valid reason',
+    };
+    adminService.updateUser.mockResolvedValue({
+      userId: 'user-id',
+      email: dto.email,
+      isMfaEnabled: false,
+    });
+
+    await controller.updateUser(actor, 'user-id', dto);
+
+    expect(adminService.updateUser).toHaveBeenCalledWith(actor, 'user-id', dto);
   });
 
   it('privileged assignment request endpoint requires admin.role.change metadata', () => {
@@ -523,6 +555,25 @@ describe('AdminController', () => {
   it('UpdateCustomRoleDto accepts valid metadata', async () => {
     const dto = plainToInstance(UpdateCustomRoleDto, {
       name: 'New Name',
+      reason: 'valid reason',
+    });
+    const errors = await validate(dto);
+    expect(errors.length).toBe(0);
+  });
+
+  it('UpdateUserDto rejects invalid data', async () => {
+    const dto = plainToInstance(UpdateUserDto, {
+      email: 'not-an-email',
+      reason: 'short',
+    });
+    const errors = await validate(dto);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('UpdateUserDto accepts valid data', async () => {
+    const dto = plainToInstance(UpdateUserDto, {
+      email: 'updated@hospital.com',
+      isMfaEnabled: true,
       reason: 'valid reason',
     });
     const errors = await validate(dto);
