@@ -1182,32 +1182,42 @@ export class BillingService {
     }
 
     // 2. Create the session and audit atomically
-    return this.prisma.$transaction(async (tx) => {
-      const session = await tx.cashierSession.create({
-        data: {
-          tenantId,
+    try {
+      return this.prisma.$transaction(async (tx) => {
+        const session = await tx.cashierSession.create({
+          data: {
+            tenantId,
+            branchId,
+            userId,
+            openingBalance: dto.openingBalance,
+            status: 'OPEN',
+          },
+        });
+
+        await this.audit.log(
+          {
+            tenantId,
+            userId,
+            eventKey: 'SESSION_OPENED',
+            recordType: 'CashierSession',
+            recordId: session.id,
+            newValues: { openingBalance: dto.openingBalance, branchId },
+          },
+          tx,
           branchId,
-          userId,
-          openingBalance: dto.openingBalance,
-          status: 'OPEN',
-        },
+        );
+
+        return session;
       });
+    } catch (error) {
+      if (error?.code === 'P2002') {
+        throw new ConflictException(
+          'You already have an open cashier session in this branch',
+        );
+      }
 
-      await this.audit.log(
-        {
-          tenantId,
-          userId,
-          eventKey: 'SESSION_OPENED',
-          recordType: 'CashierSession',
-          recordId: session.id,
-          newValues: { openingBalance: dto.openingBalance, branchId },
-        },
-        tx,
-        branchId,
-      );
-
-      return session;
-    });
+      throw error;
+    }
   }
 
   async closeSession(

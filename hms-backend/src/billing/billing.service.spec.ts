@@ -1103,6 +1103,40 @@ describe('BillingService Reversals', () => {
         mockBranchId,
       );
     });
+
+    it('keeps a database guard for one OPEN session per tenant, user, and branch', () => {
+      const migration = readFileSync(
+        join(
+          __dirname,
+          '..',
+          '..',
+          'prisma',
+          'migrations',
+          '20260513193000_add_unique_open_cashier_session_guard',
+          'migration.sql',
+        ),
+        'utf8',
+      );
+
+      expect(migration).toContain(
+        'CREATE UNIQUE INDEX "cashier_sessions_one_open_per_user_branch_idx"',
+      );
+      expect(migration).toContain(
+        'ON "cashier_sessions"("tenant_id", "user_id", "branch_id")',
+      );
+      expect(migration).toContain('WHERE "status" = \'OPEN\';');
+      expect(migration).toContain('RAISE EXCEPTION');
+      expect(migration).toContain(
+        'Duplicate OPEN cashier sessions exist; resolve them before applying cashier_sessions_one_open_per_user_branch_idx.',
+      );
+      expect(migration).toContain(
+        'GROUP BY "tenant_id", "user_id", "branch_id"',
+      );
+      expect(migration).toContain('HAVING COUNT(*) > 1');
+      expect(migration).toContain(
+        'Identify duplicates with: SELECT tenant_id, user_id, branch_id, COUNT(*) FROM cashier_sessions',
+      );
+    });
   });
 
   describe('postPayment scoped writes', () => {
