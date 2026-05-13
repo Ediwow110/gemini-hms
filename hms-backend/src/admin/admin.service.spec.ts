@@ -3984,8 +3984,10 @@ describe('AdminService', () => {
   });
 
   describe('getHealth', () => {
-    it('returns healthy status with database connectivity and backup config', async () => {
-      prisma.$queryRaw.mockResolvedValue([]);
+    it('returns healthy status when db connected and schema ready', async () => {
+      // First call: SELECT 1 for connectivity check
+      // Subsequent calls: schema readiness checks for each table
+      prisma.$queryRaw.mockResolvedValue([{ table_exists: true }]);
       process.env.BACKUP_S3_BUCKET = 'test-bucket';
 
       const result = await service.getHealth();
@@ -3998,6 +4000,23 @@ describe('AdminService', () => {
         timestamp: expect.any(String),
       });
       expect(prisma.user.count).not.toHaveBeenCalled();
+    });
+
+    it('returns degraded status when db connected but schema not ready', async () => {
+      // First call: SELECT 1 succeeds (connectivity ok)
+      // Second call: schema readiness check fails (table not found)
+      prisma.$queryRaw
+        .mockResolvedValueOnce([]) // SELECT 1 passes
+        .mockResolvedValueOnce([{ table_exists: false }]); // Schema check fails
+      process.env.BACKUP_S3_BUCKET = 'test-bucket';
+
+      const result = await service.getHealth();
+
+      expect(result.appStatus).toBe('degraded');
+      expect(result.dbStatus).toBe('ok');
+      expect(result.migrationStatus).toBe('error');
+      expect(result.backupConfig).toBe(true);
+      expect(result).not.toHaveProperty('database.error');
     });
 
     it('returns degraded status on database failure', async () => {
@@ -4014,7 +4033,7 @@ describe('AdminService', () => {
     });
 
     it('returns backup not configured when no env vars', async () => {
-      prisma.$queryRaw.mockResolvedValue([]);
+      prisma.$queryRaw.mockResolvedValue([{ table_exists: true }]);
       delete process.env.BACKUP_S3_BUCKET;
       delete process.env.BACKUP_AZURE_CONTAINER;
 
@@ -4033,8 +4052,21 @@ describe('AdminService', () => {
       expect(result.backupConfig).toBe(true);
     });
 
+    it('returns accurate backup config even when schema check fails', async () => {
+      // DB connectivity passes but schema check fails
+      prisma.$queryRaw
+        .mockResolvedValueOnce([]) // SELECT 1 passes
+        .mockResolvedValueOnce([{ table_exists: false }]); // Schema check fails
+      process.env.BACKUP_S3_BUCKET = 'test-bucket';
+
+      const result = await service.getHealth();
+
+      expect(result.migrationStatus).toBe('error');
+      expect(result.backupConfig).toBe(true);
+    });
+
     it('includes timestamp in response', async () => {
-      prisma.$queryRaw.mockResolvedValue([]);
+      prisma.$queryRaw.mockResolvedValue([{ table_exists: true }]);
       process.env.BACKUP_S3_BUCKET = '';
 
       const result = await service.getHealth();
@@ -4045,7 +4077,7 @@ describe('AdminService', () => {
     });
 
     it('does not include global user count in response', async () => {
-      prisma.$queryRaw.mockResolvedValue([]);
+      prisma.$queryRaw.mockResolvedValue([{ table_exists: true }]);
       process.env.BACKUP_S3_BUCKET = '';
 
       const result = await service.getHealth();
@@ -4053,6 +4085,21 @@ describe('AdminService', () => {
       expect(result).not.toHaveProperty('userCount');
       expect(result).not.toHaveProperty('database.userCount');
       expect(prisma.user.count).not.toHaveBeenCalled();
+    });
+
+    it('performs real schema readiness check, not just hardcoded ok', async () => {
+      // Verify that migrationStatus is not hardcoded to ok when SELECT 1 passes
+      // by checking that it actually calls the schema readiness check
+      prisma.$queryRaw
+        .mockResolvedValueOnce([]) // SELECT 1 passes
+        .mockResolvedValueOnce([{ table_exists: false }]); // First table check fails
+
+      const result = await service.getHealth();
+
+      // If migrationStatus was hardcoded to ok, this would fail
+      expect(result.migrationStatus).toBe('error');
+      // Verify queryRaw was called more than once (connectivity + schema check)
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
     });
   });
 });
