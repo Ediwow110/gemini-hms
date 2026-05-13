@@ -3,7 +3,11 @@ import { ReportsService } from './reports.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ReportPolicyService, ReportRiskLevel } from './report-policy.service';
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 describe('ReportsService', () => {
   let service: ReportsService;
@@ -16,7 +20,11 @@ describe('ReportsService', () => {
       $transaction: jest.fn().mockImplementation((cb) => cb(prisma)),
       paymentReversal: { count: jest.fn() },
       auditLog: { count: jest.fn() },
-      reportExport: { create: jest.fn() },
+      reportExport: {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
     };
     audit = { log: jest.fn() };
     policyService = {
@@ -62,7 +70,7 @@ describe('ReportsService', () => {
 
     expect(result.id).toBe('export-id');
     expect(audit.log).toHaveBeenCalledWith(
-      expect.objectContaining({ eventKey: 'REPORT_EXPORTED' }),
+      expect.objectContaining({ eventKey: 'REPORT_EXPORT_REQUESTED' }),
       expect.anything(),
       'branch',
     );
@@ -133,7 +141,7 @@ describe('ReportsService', () => {
     prisma.paymentReversal.count.mockResolvedValue(5);
     prisma.reportExport.create.mockResolvedValue({
       id: 'export-id',
-      status: 'REQUESTED',
+      status: 'PENDING_APPROVAL',
       reportType: 'CASHIER_REVERSAL_RECONCILIATION',
       riskLevel: 'HIGH',
       rowCount: 5,
@@ -159,5 +167,127 @@ describe('ReportsService', () => {
     expect(result).toHaveProperty('fileGenerationAvailable', false);
     expect(result).not.toHaveProperty('storageKey');
     expect(result).not.toHaveProperty('signedUrl');
+  });
+
+  describe('approveExport', () => {
+    it('should approve pending export and update metadata', async () => {
+      const exportRecord = {
+        id: 'export-id',
+        tenantId: 'tenant',
+        status: 'PENDING_APPROVAL',
+        reportType: 'CASHIER_REVERSAL_RECONCILIATION',
+        requestedBy: 'requester-id',
+        riskLevel: 'HIGH',
+        branchId: 'branch',
+      };
+      prisma.reportExport.findUnique.mockResolvedValue(exportRecord);
+      prisma.reportExport.update.mockResolvedValue({
+        ...exportRecord,
+        status: 'APPROVED',
+        decidedById: 'approver-id',
+        decidedAt: new Date(),
+        decisionReason: 'Approved for compliance',
+      });
+
+      const result = await service.approveExport(
+        'tenant',
+        'approver-id',
+        'export-id',
+        { reason: 'Approved for compliance' },
+      );
+
+      expect(result.status).toBe('APPROVED');
+      expect(result.decisionReason).toBe('Approved for compliance');
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'REPORT_EXPORT_APPROVED' }),
+        expect.anything(),
+        'branch',
+      );
+    });
+
+    it('should throw if export not found', async () => {
+      prisma.reportExport.findUnique.mockResolvedValue(null);
+      await expect(
+        service.approveExport('tenant', 'user', 'export-id', {}),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw if export not pending', async () => {
+      prisma.reportExport.findUnique.mockResolvedValue({ status: 'APPROVED' });
+      await expect(
+        service.approveExport('tenant', 'user', 'export-id', {}),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw if approver is requester', async () => {
+      prisma.reportExport.findUnique.mockResolvedValue({
+        status: 'PENDING_APPROVAL',
+        requestedBy: 'user',
+      });
+      await expect(
+        service.approveExport('tenant', 'user', 'export-id', {}),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('rejectExport', () => {
+    it('should reject pending export and update metadata', async () => {
+      const exportRecord = {
+        id: 'export-id',
+        tenantId: 'tenant',
+        status: 'PENDING_APPROVAL',
+        reportType: 'CASHIER_REVERSAL_RECONCILIATION',
+        requestedBy: 'requester-id',
+        riskLevel: 'HIGH',
+        branchId: 'branch',
+      };
+      prisma.reportExport.findUnique.mockResolvedValue(exportRecord);
+      prisma.reportExport.update.mockResolvedValue({
+        ...exportRecord,
+        status: 'REJECTED',
+        decidedById: 'rejector-id',
+        decidedAt: new Date(),
+        decisionReason: 'Insufficient justification',
+      });
+
+      const result = await service.rejectExport(
+        'tenant',
+        'rejector-id',
+        'export-id',
+        { reason: 'Insufficient justification' },
+      );
+
+      expect(result.status).toBe('REJECTED');
+      expect(result.decisionReason).toBe('Insufficient justification');
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'REPORT_EXPORT_REJECTED' }),
+        expect.anything(),
+        'branch',
+      );
+    });
+
+    it('should throw if export not found', async () => {
+      prisma.reportExport.findUnique.mockResolvedValue(null);
+      await expect(
+        service.rejectExport('tenant', 'user', 'export-id', { reason: 'test' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw if export not pending', async () => {
+      prisma.reportExport.findUnique.mockResolvedValue({ status: 'APPROVED' });
+      await expect(
+        service.rejectExport('tenant', 'user', 'export-id', { reason: 'test' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw if rejector is requester', async () => {
+      prisma.reportExport.findUnique.mockResolvedValue({
+        status: 'PENDING_APPROVAL',
+        requestedBy: 'user',
+      });
+      await expect(
+        service.rejectExport('tenant', 'user', 'export-id', { reason: 'test' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 });

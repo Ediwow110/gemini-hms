@@ -1,7 +1,14 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateReportExportDto } from './dto/create-export.dto';
+import { ApproveExportDto } from './dto/approve-export.dto';
+import { RejectExportDto } from './dto/reject-export.dto';
 import { Prisma } from '@prisma/client';
 import { ReportPolicyService, ReportRiskLevel } from './report-policy.service';
 
@@ -75,7 +82,11 @@ export class ReportsService {
           filters: appliedFilters,
           reason: dto.reason,
           rowCount,
-          status: 'REQUESTED',
+          status:
+            policyResult.riskLevel === ReportRiskLevel.HIGH ||
+            policyResult.riskLevel === ReportRiskLevel.PRIVILEGED
+              ? 'PENDING_APPROVAL'
+              : 'REQUESTED',
           requestedBy: userId,
           riskLevel: policyResult.riskLevel,
           filtersSnapshot: appliedFilters,
@@ -91,7 +102,7 @@ export class ReportsService {
         {
           tenantId,
           userId,
-          eventKey: 'REPORT_EXPORTED',
+          eventKey: 'REPORT_EXPORT_REQUESTED',
           recordType: 'ReportExport',
           recordId: reportExport.id,
           newValues: {
@@ -121,6 +132,130 @@ export class ReportsService {
           policyResult.riskLevel === ReportRiskLevel.HIGH ||
           policyResult.riskLevel === ReportRiskLevel.PRIVILEGED,
         fileGenerationAvailable: false,
+      };
+    });
+  }
+
+  async approveExport(
+    tenantId: string,
+    userId: string,
+    exportId: string,
+    dto: ApproveExportDto,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const exportRecord = await tx.reportExport.findUnique({
+        where: { id: exportId, tenantId },
+      });
+      if (!exportRecord) {
+        throw new NotFoundException('Export not found');
+      }
+      if (exportRecord.status !== 'PENDING_APPROVAL') {
+        throw new BadRequestException('Export is not pending approval');
+      }
+      if (exportRecord.requestedBy === userId) {
+        throw new ForbiddenException('Cannot approve own export');
+      }
+
+      const updatedExport = await tx.reportExport.update({
+        where: { id: exportId },
+        data: {
+          status: 'APPROVED',
+          decidedById: userId,
+          decidedAt: new Date(),
+          decisionReason: dto.reason,
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'REPORT_EXPORT_APPROVED',
+          recordType: 'ReportExport',
+          recordId: exportId,
+          newValues: {
+            exportId,
+            reportType: exportRecord.reportType,
+            requestedById: exportRecord.requestedBy,
+            decidedById: userId,
+            statusTransition: 'PENDING_APPROVAL -> APPROVED',
+            riskLevel: exportRecord.riskLevel,
+            reason: dto.reason,
+            tenantId,
+            branchId: exportRecord.branchId,
+          },
+        },
+        tx,
+        exportRecord.branchId || undefined,
+      );
+
+      return {
+        id: updatedExport.id,
+        status: updatedExport.status,
+        decidedAt: updatedExport.decidedAt,
+        decisionReason: updatedExport.decisionReason,
+      };
+    });
+  }
+
+  async rejectExport(
+    tenantId: string,
+    userId: string,
+    exportId: string,
+    dto: RejectExportDto,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const exportRecord = await tx.reportExport.findUnique({
+        where: { id: exportId, tenantId },
+      });
+      if (!exportRecord) {
+        throw new NotFoundException('Export not found');
+      }
+      if (exportRecord.status !== 'PENDING_APPROVAL') {
+        throw new BadRequestException('Export is not pending approval');
+      }
+      if (exportRecord.requestedBy === userId) {
+        throw new ForbiddenException('Cannot reject own export');
+      }
+
+      const updatedExport = await tx.reportExport.update({
+        where: { id: exportId },
+        data: {
+          status: 'REJECTED',
+          decidedById: userId,
+          decidedAt: new Date(),
+          decisionReason: dto.reason,
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'REPORT_EXPORT_REJECTED',
+          recordType: 'ReportExport',
+          recordId: exportId,
+          newValues: {
+            exportId,
+            reportType: exportRecord.reportType,
+            requestedById: exportRecord.requestedBy,
+            decidedById: userId,
+            statusTransition: 'PENDING_APPROVAL -> REJECTED',
+            riskLevel: exportRecord.riskLevel,
+            reason: dto.reason,
+            tenantId,
+            branchId: exportRecord.branchId,
+          },
+        },
+        tx,
+        exportRecord.branchId || undefined,
+      );
+
+      return {
+        id: updatedExport.id,
+        status: updatedExport.status,
+        decidedAt: updatedExport.decidedAt,
+        decisionReason: updatedExport.decisionReason,
       };
     });
   }

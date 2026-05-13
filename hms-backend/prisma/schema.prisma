@@ -81,7 +81,7 @@ model User {
   userRoles          UserRole[]
   userBranches       UserBranch[]
   reportExports      ReportExport[]    @relation("RequestedExports")
-  approvedExports    ReportExport[]    @relation("ApprovedExports")
+  decidedExports     ReportExport[]    @relation("DecidedExports")
   requestedApprovals ApprovalRequest[] @relation("RequestedApprovals")
   approvedApprovals  ApprovalRequest[] @relation("ApprovedApprovals")
 
@@ -645,7 +645,7 @@ model ReportExport {
   filters             Json
   reason              String
   rowCount            Int       @map("row_count")
-  status              String    @default("REQUESTED") // REQUESTED, PENDING, APPROVED, REJECTED, GENERATING, COMPLETED, FAILED
+  status              String    @default("PENDING_APPROVAL") // PENDING_APPROVAL, APPROVED, REJECTED, FAILED
   riskLevel           String    @default("HIGH") @map("risk_level") // LOW, MEDIUM, HIGH, PRIVILEGED
   format              String?
   filtersSnapshot     Json?     @map("filters_snapshot")
@@ -654,10 +654,12 @@ model ReportExport {
   allowedFields       Json?     @map("allowed_fields")
   maskedFields        Json?     @map("masked_fields")
   requestedBy         String    @map("requested_by") @db.Uuid
-  approvedById        String?   @map("approved_by_id") @db.Uuid
+  decidedById         String?   @map("decided_by_id") @db.Uuid
+  decidedAt           DateTime? @map("decided_at")
+  decisionReason      String?   @map("decision_reason")
   createdAt           DateTime  @default(now()) @map("created_at")
   completedAt         DateTime? @map("completed_at")
-  approvedAt          DateTime? @map("approved_at")
+  approvedAt          DateTime? @map("approved_at") // deprecated, use decidedAt
   generatedAt         DateTime? @map("generated_at")
   expiresAt           DateTime? @map("expires_at")
   storageKey          String?   @map("storage_key")
@@ -666,9 +668,9 @@ model ReportExport {
   lastDownloadedAt    DateTime? @map("last_downloaded_at")
   failureReason       String?   @map("failure_reason")
 
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-  user     User   @relation("RequestedExports", fields: [requestedBy], references: [id])
-  approver User?  @relation("ApprovedExports", fields: [approvedById], references: [id])
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  user      User    @relation("RequestedExports", fields: [requestedBy], references: [id])
+  decider   User?   @relation("DecidedExports", fields: [decidedById], references: [id])
 
   @@index([tenantId])
   @@index([branchId])
