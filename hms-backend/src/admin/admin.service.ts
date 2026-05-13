@@ -146,6 +146,7 @@ export class AdminService {
 
     return this.prisma.$transaction(async (tx) => {
       const target = await this.getScopedTarget(tx, actor, targetUserId);
+      this.assertRoleChangeTargetUserState(target);
       const role = await this.getRoleForPrivilegedApproval(
         tx,
         actor.tenantId,
@@ -196,6 +197,7 @@ export class AdminService {
 
     return this.prisma.$transaction(async (tx) => {
       const target = await this.getScopedTarget(tx, actor, targetUserId);
+      this.assertRoleChangeTargetUserState(target);
       const role = await this.getRoleForPrivilegedApproval(
         tx,
         actor.tenantId,
@@ -253,6 +255,7 @@ export class AdminService {
         actor,
         details.targetUserId,
       );
+      this.assertRoleChangeTargetUserState(target);
       const role = await this.getRoleForPrivilegedApproval(
         tx,
         actor.tenantId,
@@ -1057,6 +1060,14 @@ export class AdminService {
     if (actor.userId === targetUserId) {
       throw new ForbiddenException(
         'Self user lifecycle changes are not allowed',
+      );
+    }
+  }
+
+  private assertRoleChangeTargetUserState(target: AdminUserTarget) {
+    if (target.status !== USER_STATUS_ACTIVE || target.deactivatedAt !== null) {
+      throw new ConflictException(
+        'Target user must be active for privileged role changes',
       );
     }
   }

@@ -1925,6 +1925,135 @@ describe('AdminService', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
+  it('approve fails if actor lacks approval.request.process', async () => {
+    prisma.userRole.findMany.mockResolvedValue([
+      {
+        role: {
+          rolePermissions: [{ permission: { name: 'admin.role.change' } }],
+        },
+      },
+    ]);
+
+    await expect(
+      service.approvePrivilegedRoleChange(
+        superAdminActor,
+        'request-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('approve fails if actor lacks admin.role.change', async () => {
+    prisma.userRole.findMany.mockResolvedValue([
+      {
+        role: {
+          rolePermissions: [
+            { permission: { name: 'approval.request.process' } },
+          ],
+        },
+      },
+    ]);
+
+    await expect(
+      service.approvePrivilegedRoleChange(
+        superAdminActor,
+        'request-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('approve succeeds only when actor has both required permissions', async () => {
+    const role = makeRole({
+      id: 'role-id',
+      name: 'Custom Admin',
+      isSystem: false,
+      rolePermissions: [
+        {
+          roleId: 'role-id',
+          permissionId: 'admin-permission-id',
+          permission: makePermission({
+            id: 'admin-permission-id',
+            name: 'admin.role.change',
+            scope: 'tenant/system',
+            riskLevel: 'PRIVILEGED',
+          }),
+        },
+      ],
+    });
+    prisma.userRole.findMany.mockResolvedValue([
+      {
+        role: {
+          rolePermissions: [
+            { permission: { name: 'admin.role.change' } },
+            { permission: { name: 'approval.request.process' } },
+          ],
+        },
+      },
+    ]);
+    prisma.approvalRequest.findFirst.mockResolvedValue(
+      makeApprovalRequest({ requesterId: 'other-user' }),
+    );
+    prisma.user.findFirst
+      .mockResolvedValueOnce(makeUser({ userRoles: [] }))
+      .mockResolvedValueOnce(
+        makeUser({
+          tokenVersion: 2,
+          userRoles: [
+            {
+              userId: 'target-id',
+              roleId: 'role-id',
+              status: 'ACTIVE',
+              revokedAt: null,
+              revokedReason: null,
+              role,
+            },
+          ],
+        }),
+      );
+    prisma.role.findFirst.mockResolvedValue(role);
+    prisma.userRole.updateMany.mockResolvedValue({ count: 0 });
+    prisma.userRole.create.mockResolvedValue({});
+    prisma.user.updateMany.mockResolvedValue({ count: 1 });
+    prisma.approvalRequest.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await service.approvePrivilegedRoleChange(
+      superAdminActor,
+      'request-id',
+      'valid reason',
+    );
+
+    expect(result.approvalStatus).toBe('APPROVED');
+  });
+
+  it('decision reason rejects blank whitespace at service layer', async () => {
+    await expect(
+      service.approvePrivilegedRoleChange(superAdminActor, 'request-id', '   '),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('approval request lookup is tenant-scoped', async () => {
+    prisma.userRole.findMany.mockResolvedValue([
+      {
+        role: {
+          rolePermissions: [
+            { permission: { name: 'admin.role.change' } },
+            { permission: { name: 'approval.request.process' } },
+          ],
+        },
+      },
+    ]);
+    prisma.approvalRequest.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.approvePrivilegedRoleChange(
+        superAdminActor,
+        'request-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(NotFoundException);
+  });
+
   it('target user cannot approve request about themselves', async () => {
     const approver: RequestUser = {
       userId: 'target-id',
@@ -1969,6 +2098,100 @@ describe('AdminService', () => {
     prisma.approvalRequest.findFirst.mockResolvedValue(
       makeApprovalRequest({ status: 'APPROVED', requesterId: 'other-user' }),
     );
+
+    await expect(
+      service.approvePrivilegedRoleChange(
+        superAdminActor,
+        'request-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('approval-time role re-check catches role archived after request', async () => {
+    prisma.userRole.findMany.mockResolvedValue([
+      {
+        role: {
+          rolePermissions: [
+            { permission: { name: 'admin.role.change' } },
+            { permission: { name: 'approval.request.process' } },
+          ],
+        },
+      },
+    ]);
+    prisma.approvalRequest.findFirst.mockResolvedValue(
+      makeApprovalRequest({ requesterId: 'other-user' }),
+    );
+    prisma.user.findFirst.mockResolvedValue(makeUser({ userRoles: [] }));
+    prisma.role.findFirst.mockResolvedValue(
+      makeRole({
+        id: 'role-id',
+        name: 'Custom Admin',
+        isSystem: false,
+        archivedAt: new Date('2026-01-01T00:00:00.000Z'),
+        rolePermissions: [
+          {
+            roleId: 'role-id',
+            permissionId: 'admin-permission-id',
+            permission: makePermission({
+              id: 'admin-permission-id',
+              name: 'admin.role.change',
+              scope: 'tenant/system',
+              riskLevel: 'PRIVILEGED',
+            }),
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      service.approvePrivilegedRoleChange(
+        superAdminActor,
+        'request-id',
+        'valid reason',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('approval-time target user re-check catches deactivated target after request', async () => {
+    const role = makeRole({
+      id: 'role-id',
+      name: 'Custom Admin',
+      isSystem: false,
+      rolePermissions: [
+        {
+          roleId: 'role-id',
+          permissionId: 'admin-permission-id',
+          permission: makePermission({
+            id: 'admin-permission-id',
+            name: 'admin.role.change',
+            scope: 'tenant/system',
+            riskLevel: 'PRIVILEGED',
+          }),
+        },
+      ],
+    });
+    prisma.userRole.findMany.mockResolvedValue([
+      {
+        role: {
+          rolePermissions: [
+            { permission: { name: 'admin.role.change' } },
+            { permission: { name: 'approval.request.process' } },
+          ],
+        },
+      },
+    ]);
+    prisma.approvalRequest.findFirst.mockResolvedValue(
+      makeApprovalRequest({ requesterId: 'other-user' }),
+    );
+    prisma.user.findFirst.mockResolvedValue(
+      makeUser({
+        status: 'INACTIVE',
+        deactivatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        userRoles: [],
+      }),
+    );
+    prisma.role.findFirst.mockResolvedValue(role);
 
     await expect(
       service.approvePrivilegedRoleChange(

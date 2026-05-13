@@ -41,6 +41,10 @@ Implemented backend slice:
 - `POST /api/v1/admin/users/:id/roles/:roleId/revoke`
 - `POST /api/v1/admin/roles/:id/permissions`
 - `POST /api/v1/admin/roles/:id/permissions/:permissionId/revoke`
+- `POST /api/v1/admin/users/:id/roles/privileged-requests`
+- `POST /api/v1/admin/users/:id/roles/:roleId/privileged-revoke-requests`
+- `POST /api/v1/admin/role-change-requests/:requestId/approve`
+- `POST /api/v1/admin/role-change-requests/:requestId/reject`
 
 This slice directly processes only non-privileged users. Targets with `Super Admin` or any role carrying `admin.role.change` remain blocked until maker-checker processing for privileged admin lifecycle changes is implemented.
 Direct role assignment and revocation also reject `isSystem` roles in the current implementation.
@@ -160,6 +164,10 @@ Current direct role permission slice allows only permissions explicitly classifi
 
 If implementation chooses to require approval for user profile update too, that is allowed, but the code must follow this document consistently.
 
+Current privileged role approval slice requires `admin.role.change` to request and both `admin.role.change` plus `approval.request.process` to approve or reject. Because the current `PermissionsGuard` is require-any, the approve/reject service also explicitly enforces that both permissions are present.
+
+Current privileged role approval slice blocks branch-scoped actors from creating or deciding tenant-wide privileged role requests unless the actor is `Super Admin`.
+
 ### Approval request typing
 Current schema supports freeform string `ApprovalRequest.type`. Use explicit values:
 - `ADMIN_USER_DEACTIVATE`
@@ -250,6 +258,32 @@ Add action-specific fields as needed:
 }
 ```
 
+### Privileged role assign request
+`POST /api/v1/admin/users/:id/roles/privileged-requests`
+```ts
+{
+  roleId: string
+  reason: string
+}
+```
+
+### Privileged role revoke request
+`POST /api/v1/admin/users/:id/roles/:roleId/privileged-revoke-requests`
+```ts
+{
+  reason: string
+}
+```
+
+### Privileged role request approve/reject
+`POST /api/v1/admin/role-change-requests/:requestId/approve`
+`POST /api/v1/admin/role-change-requests/:requestId/reject`
+```ts
+{
+  reason: string
+}
+```
+
 ### Role create
 `POST /api/v1/admin/roles`
 ```ts
@@ -323,6 +357,11 @@ Current implemented user role slice uses:
 - `USER_ROLE_ASSIGNED`
 - `USER_ROLE_REVOKED`
 
+Current implemented privileged role approval slice uses:
+- `PRIVILEGED_ROLE_CHANGE_REQUESTED`
+- `PRIVILEGED_ROLE_CHANGE_APPROVED`
+- `PRIVILEGED_ROLE_CHANGE_REJECTED`
+
 Current implemented role permission slice uses:
 - `ROLE_PERMISSION_GRANTED`
 - `ROLE_PERMISSION_REVOKED`
@@ -330,6 +369,7 @@ Current implemented role permission slice uses:
 For these events, `oldValues.before` and `newValues.after` include sanitized user lifecycle metadata, including `status`, `tokenVersion`, deactivation fields, and branch context. `newValues` also includes `actorId`, `targetUserId`, `reason`, and `changedAt`.
 For direct role assignment events, `oldValues.beforeRoles` and `newValues.afterRoles` include active role summaries, while `oldValues.beforeTokenVersion` and `newValues.afterTokenVersion` capture the target user token invalidation boundary.
 For direct role permission events, `oldValues.beforePermissions` and `newValues.afterPermissions` include role permission summaries, while `oldValues.beforeTokenVersions` and `newValues.afterTokenVersions` capture affected active users holding the role.
+For privileged role approval events, request payloads include immutable request snapshots and decision payloads include approver, requester, target user, role, action, decision reason, approval request id, before/after roles, and before/after tokenVersion when apply occurs.
 
 Direct permission grant still absolutely blocks `admin.role.change` even if a record were misclassified.
 
@@ -380,12 +420,22 @@ Request creation transaction must include:
 - `ApprovalRequest.create`
 - audit log for `*_REQUESTED`
 
+Current privileged role approval implementation reuses `ApprovalRequest` with:
+- `type`: `ADMIN_PRIVILEGED_ROLE_ASSIGN` or `ADMIN_PRIVILEGED_ROLE_REVOKE`
+- `riskLevel`: `CRITICAL`
+- `recordId`: `<targetUserId>:<roleId>`
+- immutable `details` payload containing role, target user, requester, reason, and request-time snapshots
+
 Approval processing transaction must include:
 - scoped request fetch
 - tenant and branch validation
 - status transition using conditional `updateMany`
 - resulting domain write(s)
 - post-apply audit log
+
+Current privileged role approval implementation has no expiry support. Requests remain decisionable until approved or rejected; this is an explicit limitation and future hardening item.
+
+Current privileged role approval implementation re-checks target user state, role state, protected role policy, requester/approver separation, and target-user approval blocking at decision time before applying the immutable stored payload.
 
 All state-changing writes must fail closed at the mutation predicate.
 
@@ -525,7 +575,7 @@ Required additions or explicit deferrals:
 
 ### Phase 2: user-role mutation backend
 - non-privileged role assign/revoke: implemented with direct audit, soft-revoked `UserRole`, transactionally incremented `User.tokenVersion`, and `isSystem` role block
-- privileged role assign/revoke: deferred pending maker-checker
+- privileged role assign/revoke: maker-checker request/approve/reject slice implemented for custom non-system privileged roles; `Super Admin` and `isSystem` roles remain blocked
 - self-escalation blocks
 - approval processing
 - increment `User.tokenVersion` transactionally for affected users when role assignments change
