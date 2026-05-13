@@ -472,13 +472,13 @@ The spec must align with current auth behavior:
 
 ## Report governance compatibility
 
-This document must acknowledge that report export governance is already implemented and requires:
+This document must acknowledge that report export governance is currently limited to metadata-only tracking and requires:
 - `report.export`
 - tenant and branch scoping
 - non-empty `reason`
 - transactional audit creation
 
-Admin governance should mirror those patterns for high-risk actions.
+Full file-based report generation and download are explicitly **DEFERRED** until field-level export governance, PHI masking, and secure storage audit controls are implemented.
 
 ## Test matrix requirements
 
