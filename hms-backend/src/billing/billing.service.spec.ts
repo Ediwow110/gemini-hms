@@ -1103,6 +1103,29 @@ describe('BillingService Reversals', () => {
         mockBranchId,
       );
     });
+
+    it('keeps a database guard for one OPEN session per tenant, user, and branch', () => {
+      const migration = readFileSync(
+        join(
+          __dirname,
+          '..',
+          '..',
+          'prisma',
+          'migrations',
+          '20260513193000_add_unique_open_cashier_session_guard',
+          'migration.sql',
+        ),
+        'utf8',
+      );
+
+      expect(migration).toContain(
+        'CREATE UNIQUE INDEX "cashier_sessions_one_open_per_user_branch_idx"',
+      );
+      expect(migration).toContain(
+        'ON "cashier_sessions"("tenant_id", "user_id", "branch_id")',
+      );
+      expect(migration).toContain('WHERE "status" = \'OPEN\';');
+    });
   });
 
   describe('postPayment scoped writes', () => {
