@@ -38,6 +38,7 @@ describe('BillingService Reversals', () => {
         updateMany: jest.fn(),
         update: jest.fn(),
         findFirst: jest.fn(),
+        findUnique: jest.fn(),
       },
       order: {
         updateMany: jest.fn(),
@@ -1156,15 +1157,17 @@ describe('BillingService Reversals', () => {
 
       prisma = {
         invoice: {
-          findFirst: jest.fn(),
-          updateMany: jest.fn(),
+          findFirst: jest.fn().mockResolvedValue({ id: mockInvoiceId, totalAmount: new Prisma.Decimal(1000), paidAmount: new Prisma.Decimal(0), status: 'UNPAID', order: { id: 'o1', tenantId: mockTenantId, branchId: mockBranchId } }),
+          findUnique: jest.fn().mockResolvedValue({ id: mockInvoiceId, totalAmount: new Prisma.Decimal(1000), paidAmount: new Prisma.Decimal(0), status: 'UNPAID', order: { id: 'o1', tenantId: mockTenantId, branchId: mockBranchId } }),
+          update: jest.fn().mockResolvedValue({}),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
         cashierSession: {
-          findFirst: jest.fn(),
-          updateMany: jest.fn(),
+          findFirst: jest.fn().mockResolvedValue({ id: 'sess-temp' }),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
         payment: {
-          create: jest.fn(),
+          create: jest.fn().mockResolvedValue({ id: 'pay-temp' }),
         },
         order: {
           updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -1172,8 +1175,8 @@ describe('BillingService Reversals', () => {
         idempotencyRecord: {
           findUnique: jest.fn().mockResolvedValue(null),
           create: jest.fn().mockResolvedValue({ id: 'rec-temp' }),
-          updateMany: jest.fn(),
-          update: jest.fn(),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          update: jest.fn().mockResolvedValue({}),
         },
         $transaction: jest.fn().mockImplementation((cb: any) => cb(prisma)),
       };
