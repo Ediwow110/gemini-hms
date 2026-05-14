@@ -1161,6 +1161,7 @@ describe('BillingService Reversals', () => {
         },
         cashierSession: {
           findFirst: jest.fn(),
+          updateMany: jest.fn(),
         },
         payment: {
           create: jest.fn(),
@@ -1211,6 +1212,7 @@ describe('BillingService Reversals', () => {
         },
       });
       prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
       prisma.payment.create.mockResolvedValue({ id: 'pay-a' });
       prisma.invoice.updateMany.mockResolvedValue({ count: 0 });
 
@@ -1259,6 +1261,7 @@ describe('BillingService Reversals', () => {
           status: 'PARTIALLY_PAID',
         });
       prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
       prisma.payment.create.mockResolvedValue({ id: 'pay-a' });
       prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
 
@@ -1314,6 +1317,7 @@ describe('BillingService Reversals', () => {
         },
         cashierSession: {
           findFirst: jest.fn(),
+          updateMany: jest.fn(),
         },
         payment: {
           create: jest.fn(),
@@ -1397,6 +1401,7 @@ describe('BillingService Reversals', () => {
         });
 
       prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
       prisma.payment.create.mockResolvedValue({
         id: 'pay-idem-1',
         invoiceId,
@@ -1566,6 +1571,7 @@ describe('BillingService Reversals', () => {
       });
 
       prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
       prisma.payment.create.mockResolvedValue({
         id: 'pay-other-1',
         invoiceId,
@@ -1864,6 +1870,7 @@ describe('BillingService Reversals', () => {
         });
 
       prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
       prisma.payment.create.mockResolvedValue({
         id: 'pay-idem-retry-1',
         invoiceId,
@@ -1992,6 +1999,7 @@ describe('BillingService Reversals', () => {
         order: { id: 'order-idem', tenantId, branchId },
       });
       prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
       prisma.payment.create.mockRejectedValue(
         new Error('database password leaked'),
       );
@@ -2058,6 +2066,7 @@ describe('BillingService Reversals', () => {
         });
 
       prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
       prisma.payment.create.mockResolvedValue({
         id: 'pay-idem-1',
         invoiceId,
@@ -2129,6 +2138,7 @@ describe('BillingService Reversals', () => {
         });
 
       prisma.cashierSession.findFirst.mockResolvedValue({ id: sessionId });
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
       prisma.payment.create.mockResolvedValue({
         id: 'pay-idem-1',
         invoiceId,
@@ -2195,20 +2205,18 @@ describe('BillingService Reversals', () => {
         paidAmount: new Prisma.Decimal(0),
         totalAmount: new Prisma.Decimal(100),
         status: 'UNPAID',
-        order: { id: 'order-1', tenantId: mockTenantId, branchId: mockBranchId },
-      });
-
-      prisma.cashierSession.findFirst
-        // First check outside transaction returns OPEN session
-        .mockResolvedValueOnce({
-          id: 'sess-123',
+        order: {
+          id: 'order-1',
           tenantId: mockTenantId,
           branchId: mockBranchId,
-          userId: mockUserId,
-          status: 'OPEN',
-        })
-        // Inside transaction returns null indicating it was closed concurrently
-        .mockResolvedValueOnce(null);
+        },
+      });
+
+      prisma.cashierSession.findFirst.mockResolvedValue({ id: 'sess-123' });
+
+      prisma.cashierSession.updateMany
+        // Inside transaction returns count: 0 indicating it was closed concurrently
+        .mockResolvedValueOnce({ count: 0 });
 
       await expect(
         service.postPayment(
@@ -2231,12 +2239,18 @@ describe('BillingService Reversals', () => {
       });
 
       await expect(
-        service.closeSession(mockTenantId, mockUserId, mockBranchId, 'sess-123', {
-          actualClosingBalance: new Prisma.Decimal(50), // Variance = -50
-          remarks: '', // Missing remarks
-        }),
+        service.closeSession(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          'sess-123',
+          {
+            actualClosingBalance: new Prisma.Decimal(50), // Variance = -50
+            remarks: '', // Missing remarks
+          },
+        ),
       ).rejects.toThrow(BadRequestException);
-      
+
       expect(audit.log).not.toHaveBeenCalled();
     });
   });

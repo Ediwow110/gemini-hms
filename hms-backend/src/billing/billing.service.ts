@@ -246,7 +246,10 @@ export class BillingService {
       // 8. START TRANSACTION (Section 13 Boundary: Post Payment)
       const result = await this.prisma.$transaction(async (tx) => {
         // Double-check session is still OPEN inside the transaction
-        const activeSessionCheck = await tx.cashierSession.findFirst({
+        // We use updateMany here to acquire a row-level lock (FOR NO KEY UPDATE) 
+        // to ensure that concurrent closeSession calls (which also lock this row)
+        // are synchronized.
+        const activeSessionLock = await tx.cashierSession.updateMany({
           where: {
             id: dto.cashierSessionId,
             tenantId,
@@ -254,11 +257,14 @@ export class BillingService {
             userId,
             status: 'OPEN',
           },
+          data: {
+            status: 'OPEN', // No-op update to acquire lock
+          },
         });
 
-        if (!activeSessionCheck) {
+        if (activeSessionLock.count === 0) {
           throw new ConflictException(
-            'Cashier session was closed concurrently',
+            'Cashier session was closed concurrently or unauthorized',
           );
         }
 
@@ -1244,7 +1250,7 @@ export class BillingService {
     sessionId: string,
     dto: CloseSessionDto,
   ) {
-    // We do all reads and updates inside a transaction to prevent race conditions 
+    // We do all reads and updates inside a transaction to prevent race conditions
     // where payments are added while calculating the closing balance.
     return this.prisma.$transaction(async (tx) => {
       // 1. Lock the session by attempting to close it
