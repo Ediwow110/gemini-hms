@@ -46,6 +46,7 @@ describe('BillingService Reversals', () => {
         findUnique: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
       approvalRequest: {
         findFirst: jest.fn(),
@@ -2161,6 +2162,82 @@ describe('BillingService Reversals', () => {
           error: 'Payment request failed before completion',
         }),
       });
+    });
+  });
+
+  describe('transaction boundary invariants', () => {
+    const validDto = {
+      invoiceId: mockInvoiceId,
+      cashierSessionId: 'sess-123',
+      amount: new Prisma.Decimal(50),
+      paymentMethod: 'CASH',
+    };
+    const idempotencyKey = 'idem-123';
+
+    it('rejects postPayment if session is closed concurrently inside transaction', async () => {
+      prisma.idempotencyRecord.findUnique.mockResolvedValue(null);
+      prisma.idempotencyRecord.create.mockResolvedValue({
+        id: 'rec-1',
+        tenantId: mockTenantId,
+        operation: 'BILLING_PAYMENT_POST',
+        key: idempotencyKey,
+        requestFingerprint: computePaymentFingerprint(
+          mockTenantId,
+          'BILLING_PAYMENT_POST',
+          validDto,
+        ),
+        status: 'IN_PROGRESS',
+      });
+
+      prisma.invoice.findFirst.mockResolvedValue({
+        id: mockInvoiceId,
+        orderId: 'order-1',
+        paidAmount: new Prisma.Decimal(0),
+        totalAmount: new Prisma.Decimal(100),
+        status: 'UNPAID',
+        order: { id: 'order-1', tenantId: mockTenantId, branchId: mockBranchId },
+      });
+
+      prisma.cashierSession.findFirst
+        // First check outside transaction returns OPEN session
+        .mockResolvedValueOnce({
+          id: 'sess-123',
+          tenantId: mockTenantId,
+          branchId: mockBranchId,
+          userId: mockUserId,
+          status: 'OPEN',
+        })
+        // Inside transaction returns null indicating it was closed concurrently
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        service.postPayment(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          validDto,
+          idempotencyKey,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.payment.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects closeSession if session has variance but remarks are empty (restoring OPEN state)', async () => {
+      prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
+      prisma.cashierSession.findFirst.mockResolvedValue({
+        id: 'sess-123',
+        openingBalance: new Prisma.Decimal(100),
+        payments: [],
+      });
+
+      await expect(
+        service.closeSession(mockTenantId, mockUserId, mockBranchId, 'sess-123', {
+          actualClosingBalance: new Prisma.Decimal(50), // Variance = -50
+          remarks: '', // Missing remarks
+        }),
+      ).rejects.toThrow(BadRequestException);
+      
+      expect(audit.log).not.toHaveBeenCalled();
     });
   });
 });
