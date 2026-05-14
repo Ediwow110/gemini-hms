@@ -245,6 +245,23 @@ export class BillingService {
 
       // 8. START TRANSACTION (Section 13 Boundary: Post Payment)
       const result = await this.prisma.$transaction(async (tx) => {
+        // Double-check session is still OPEN inside the transaction
+        const activeSessionCheck = await tx.cashierSession.findFirst({
+          where: {
+            id: dto.cashierSessionId,
+            tenantId,
+            branchId,
+            userId,
+            status: 'OPEN',
+          },
+        });
+
+        if (!activeSessionCheck) {
+          throw new ConflictException(
+            'Cashier session was closed concurrently',
+          );
+        }
+
         // 9. Generate Receipt Number
         const receiptNumber = await this.numbering.generateNumber(
           tenantId,
@@ -1227,49 +1244,10 @@ export class BillingService {
     sessionId: string,
     dto: CloseSessionDto,
   ) {
-    const session = await this.prisma.cashierSession.findFirst({
-      where: { id: sessionId, tenantId, userId, branchId, status: 'OPEN' },
-      include: {
-        payments: {
-          include: {
-            reversals: {
-              where: { status: 'APPLIED' },
-            },
-          },
-        },
-      },
-    });
-
-    if (!session) {
-      throw new BadRequestException(
-        'Active session not found or already closed in this branch',
-      );
-    }
-
-    // 1. Calculate Expected Balance
-    // Sum all cash payments (assuming we only track cash in the drawer variance)
-    // Exclude VOIDED payments and subtract APPLIED refunds to reconcile net revenue
-    const cashPayments = session.payments
-      .filter((p) => p.paymentMethod === 'CASH' && p.status === 'POSTED')
-      .reduce((sum, p) => {
-        const paymentAmount = Number(p.amount);
-        const refunds = p.reversals
-          .filter((r) => r.type === 'REFUND')
-          .reduce((rSum, r) => rSum + Number(r.amount), 0);
-        return sum + (paymentAmount - refunds);
-      }, 0);
-
-    const expectedCash = Number(session.openingBalance) + cashPayments;
-    const variance = dto.actualClosingBalance - expectedCash;
-
-    if (variance !== 0 && !dto.remarks) {
-      throw new BadRequestException(
-        'Remarks are required when there is a cash variance',
-      );
-    }
-
-    // 2. Close the session in a transaction
+    // We do all reads and updates inside a transaction to prevent race conditions 
+    // where payments are added while calculating the closing balance.
     return this.prisma.$transaction(async (tx) => {
+      // 1. Lock the session by attempting to close it
       const closeSessionResult = await tx.cashierSession.updateMany({
         where: {
           id: sessionId,
@@ -1291,19 +1269,44 @@ export class BillingService {
         );
       }
 
-      const closed = await tx.cashierSession.findFirst({
-        where: {
-          id: sessionId,
-          tenantId,
-          branchId,
-          userId,
-          status: 'CLOSED',
+      // 2. Fetch the session with payments (which now represents the EXACT snapshot of the closed session)
+      const session = await tx.cashierSession.findFirst({
+        where: { id: sessionId },
+        include: {
+          payments: {
+            include: {
+              reversals: {
+                where: { status: 'APPLIED' },
+              },
+            },
+          },
         },
       });
 
-      if (!closed) {
+      if (!session) {
+        throw new BadRequestException('Cashier session could not be loaded');
+      }
+
+      // 3. Calculate Expected Balance based on locked snapshot
+      // Sum all cash payments (assuming we only track cash in the drawer variance)
+      // Exclude VOIDED payments and subtract APPLIED refunds to reconcile net revenue
+      const cashPayments = session.payments
+        .filter((p) => p.paymentMethod === 'CASH' && p.status === 'POSTED')
+        .reduce((sum, p) => {
+          const paymentAmount = Number(p.amount);
+          const refunds = p.reversals
+            .filter((r) => r.type === 'REFUND')
+            .reduce((rSum, r) => rSum + Number(r.amount), 0);
+          return sum + (paymentAmount - refunds);
+        }, 0);
+
+      const expectedCash = Number(session.openingBalance) + cashPayments;
+      const variance = dto.actualClosingBalance - expectedCash;
+
+      if (variance !== 0 && !dto.remarks) {
+        // This throw rolls back the transaction, restoring status to OPEN
         throw new BadRequestException(
-          'Cashier session was not closed or could not be loaded',
+          'Remarks are required when there is a cash variance',
         );
       }
 
@@ -1325,7 +1328,7 @@ export class BillingService {
         branchId,
       );
 
-      return { session: closed, variance, expectedCash };
+      return { session, variance, expectedCash };
     });
   }
 
