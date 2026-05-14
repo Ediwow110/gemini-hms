@@ -245,10 +245,35 @@ export class BillingService {
 
       // 8. START TRANSACTION (Section 13 Boundary: Post Payment)
       const result = await this.prisma.$transaction(async (tx) => {
-        // Double-check session is still OPEN inside the transaction
-        // We use updateMany here to acquire a row-level lock (FOR NO KEY UPDATE) 
-        // to ensure that concurrent closeSession calls (which also lock this row)
-        // are synchronized.
+        // 8.1 Acquire Row-Level Lock on Invoice
+        // This ensures concurrent payments for the same invoice are serialized
+        const invoiceLock = await tx.invoice.updateMany({
+          where: {
+            id: dto.invoiceId,
+            order: { tenantId, branchId },
+            status: { not: 'PAID' },
+          },
+          data: {
+            updatedAt: new Date(), // touch to acquire lock
+          },
+        });
+
+        if (invoiceLock.count === 0) {
+          throw new ConflictException(
+            'Invoice not found, already paid, or access denied',
+          );
+        }
+
+        // 8.2 Fetch current state from within transaction (consistent read after lock)
+        const invoice = await tx.invoice.findUnique({
+          where: { id: dto.invoiceId },
+        });
+
+        if (!invoice) {
+          throw new ConflictException('Invoice could not be re-loaded');
+        }
+
+        // 8.3 Acquire Row-Level Lock on Cashier Session
         const activeSessionLock = await tx.cashierSession.updateMany({
           where: {
             id: dto.cashierSessionId,
@@ -289,39 +314,34 @@ export class BillingService {
             },
           });
 
-          // 11. Update Invoice
-          const newPaidAmount = Number(invoice.paidAmount) + dto.amount;
-          const newStatus =
-            newPaidAmount >= Number(invoice.totalAmount)
-              ? 'PAID'
-              : 'PARTIALLY_PAID';
+          // 11. Update Invoice Balance using Decimal Math
+          const currentPaid = new Prisma.Decimal(invoice.paidAmount);
+          const currentTotal = new Prisma.Decimal(invoice.totalAmount);
+          const paymentAmount = new Prisma.Decimal(dto.amount);
+          const newPaidAmount = currentPaid.add(paymentAmount);
 
-          const invoiceUpdate = await tx.invoice.updateMany({
-            where: {
-              id: dto.invoiceId,
-              order: { tenantId, branchId },
-            },
+          // 11.1 Explicit Overpayment Check
+          if (newPaidAmount.gt(currentTotal)) {
+            throw new BadRequestException(
+              `Payment amount ${paymentAmount.toFixed(2)} would overpay the invoice (Remaining: ${currentTotal.sub(currentPaid).toFixed(2)})`,
+            );
+          }
+
+          const newStatus = newPaidAmount.equals(currentTotal)
+            ? 'PAID'
+            : 'PARTIALLY_PAID';
+
+          await tx.invoice.update({
+            where: { id: dto.invoiceId },
             data: {
               paidAmount: newPaidAmount,
               status: newStatus,
             },
           });
 
-          if (invoiceUpdate.count === 0) {
-            throw new ConflictException(
-              'Invoice not found in this branch or was modified concurrently',
-            );
-          }
-
-          const updatedInvoice = await tx.invoice.findFirst({
-            where: { id: dto.invoiceId, order: { tenantId, branchId } },
+          const updatedInvoice = await tx.invoice.findUnique({
+            where: { id: dto.invoiceId },
           });
-
-          if (!updatedInvoice) {
-            throw new ConflictException(
-              'Invoice not found in this branch or was modified concurrently',
-            );
-          }
 
           // 12. Update Order Status (Revenue Cycle Logic)
           if (newStatus === 'PAID') {
@@ -337,7 +357,7 @@ export class BillingService {
             }
           }
 
-          // 13. Log Audit Event (PAYMENT_POSTED) - First request only (via idempotency record)
+          // 13. Log Audit Event (PAYMENT_POSTED)
           await this.audit.log(
             {
               tenantId,
