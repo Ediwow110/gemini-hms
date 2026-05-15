@@ -23,15 +23,24 @@ export class OrdersService {
       throw new BadRequestException('Order must contain at least one item');
     }
 
-    // 2. Calculate total amount
+    // 2. Verify patient exists and belongs to this tenant
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: dto.patientId, tenantId },
+    });
+
+    if (!patient) {
+      throw new BadRequestException('Patient not found or access denied');
+    }
+
+    // 3. Calculate total amount
     const totalAmount = dto.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0,
     );
 
-    // 3. START TRANSACTION (Section 13 Boundary)
+    // 4. START TRANSACTION (Section 13 Boundary)
     return this.prisma.$transaction(async (tx) => {
-      // 4. Generate Order Number
+      // 5. Generate Order Number
       const orderNumber = await this.numbering.generateNumber(
         tenantId,
         'ORDER',
@@ -39,7 +48,7 @@ export class OrdersService {
         tx,
       );
 
-      // 5. Create Order
+      // 6. Create Order
       const order = await tx.order.create({
         data: {
           tenantId,
@@ -50,7 +59,7 @@ export class OrdersService {
         },
       });
 
-      // 6. Generate Invoice Number
+      // 7. Generate Invoice Number
       const invoiceNumber = await this.numbering.generateNumber(
         tenantId,
         'INVOICE',
@@ -58,7 +67,7 @@ export class OrdersService {
         tx,
       );
 
-      // 7. Create Invoice (Automatically linked to order)
+      // 8. Create Invoice (Automatically linked to order)
       const invoice = await tx.invoice.create({
         data: {
           tenantId,
@@ -70,7 +79,7 @@ export class OrdersService {
         },
       });
 
-      // 7. Log Audit Event (ORDER_CREATED)
+      // 9. Log Audit Event (ORDER_CREATED)
       await this.audit.log({
         tenantId,
         userId,
