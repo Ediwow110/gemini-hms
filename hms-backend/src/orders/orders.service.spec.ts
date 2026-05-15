@@ -155,7 +155,9 @@ describe('OrdersService', () => {
       const dto = {
         patientId: mockPatientId,
         branchId: mockBranchId,
-        items: [{ itemType: OrderItemType.SERVICE, itemId: 's-lab', quantity: 1 }],
+        items: [
+          { itemType: OrderItemType.SERVICE, itemId: 's-lab', quantity: 1 },
+        ],
       };
 
       await service.create(mockTenantId, mockUserId, mockBranchId, dto);

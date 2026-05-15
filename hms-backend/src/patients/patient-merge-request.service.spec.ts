@@ -3,10 +3,12 @@ import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
 import { PatientMergeRequestService } from './patient-merge-request.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { CreatePatientMergeRequestDto } from './dto/patient-merge.dto';
 
 describe('PatientMergeRequestService', () => {
   let service: PatientMergeRequestService;
@@ -145,6 +147,35 @@ describe('PatientMergeRequestService', () => {
         undefined,
         branchId,
       );
+    });
+
+    it('should throw ConflictException if a pending merge request already exists for these patients', async () => {
+      const sourcePatient = mockActivePatient(sourcePatientId, tenantId);
+      const targetPatient = mockActivePatient(targetPatientId, tenantId);
+
+      prisma.patient.findFirst
+        .mockResolvedValueOnce(sourcePatient)
+        .mockResolvedValueOnce(targetPatient);
+
+      // Simulate existing pending request
+      prisma.patientMergeRequest.findFirst.mockResolvedValue({
+        id: 'existing-req-id',
+        status: 'PENDING',
+      });
+
+      const createDto: CreatePatientMergeRequestDto = {
+        sourcePatientId,
+        targetPatientId,
+        reason: 'duplicate test',
+      };
+
+      await expect(
+        service.createMergeRequest(tenantId, userId, branchId, createDto),
+      ).rejects.toThrow(
+        'A pending merge request already exists for these patients',
+      );
+
+      expect(prisma.patientMergeRequest.create).not.toHaveBeenCalled();
     });
 
     it('should prevent merge when source and target are same', async () => {
