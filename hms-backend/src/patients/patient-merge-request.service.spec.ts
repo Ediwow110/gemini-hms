@@ -59,12 +59,7 @@ describe('PatientMergeRequestService', () => {
   beforeEach(async () => {
     // Mock Prisma Service
     prisma = {
-      $transaction: jest.fn(async (callback: any) =>
-        callback({
-          patient: prisma.patient,
-          patientMergeRequest: prisma.patientMergeRequest,
-        }),
-      ),
+      $transaction: jest.fn(async (callback: any) => callback(prisma)),
       patient: {
         findFirst: jest.fn(),
       },
@@ -72,6 +67,8 @@ describe('PatientMergeRequestService', () => {
         create: jest.fn(),
         findFirst: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
+        findUnique: jest.fn(),
         findMany: jest.fn(),
         count: jest.fn(),
       },
@@ -466,7 +463,7 @@ describe('PatientMergeRequestService', () => {
   });
 
   describe('approveMergeRequest', () => {
-    it('should approve PENDING merge request', async () => {
+    it('should approve PENDING merge request transactionally', async () => {
       const pendingRequest = mockMergeRequest({ status: 'PENDING' });
       const approveDto = { remarks: 'Approved - Records consolidated' };
       const approvedRequest = mockMergeRequest({
@@ -476,7 +473,8 @@ describe('PatientMergeRequestService', () => {
       });
 
       prisma.patientMergeRequest.findFirst.mockResolvedValue(pendingRequest);
-      prisma.patientMergeRequest.update.mockResolvedValue(approvedRequest);
+      prisma.patientMergeRequest.updateMany.mockResolvedValue({ count: 1 });
+      prisma.patientMergeRequest.findUnique.mockResolvedValue(approvedRequest);
 
       const result = await service.approveMergeRequest(
         tenantId,
@@ -489,8 +487,9 @@ describe('PatientMergeRequestService', () => {
       expect(result.approverId).toBe(approverId);
       expect(result.remarks).toBe(approveDto.remarks);
 
-      expect(prisma.patientMergeRequest.update).toHaveBeenCalledWith({
-        where: { id: mergeRequestId },
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.patientMergeRequest.updateMany).toHaveBeenCalledWith({
+        where: { id: mergeRequestId, tenantId, status: 'PENDING' },
         data: expect.objectContaining({
           status: 'APPROVED',
           approverId,
@@ -510,7 +509,26 @@ describe('PatientMergeRequestService', () => {
             approverId,
           }),
         }),
+        prisma,
       );
+    });
+
+    it('should rollback if audit logging fails during approval', async () => {
+      const pendingRequest = mockMergeRequest({ status: 'PENDING' });
+      prisma.patientMergeRequest.findFirst.mockResolvedValue(pendingRequest);
+      prisma.patientMergeRequest.updateMany.mockResolvedValue({ count: 1 });
+      prisma.patientMergeRequest.findUnique.mockResolvedValue({
+        ...pendingRequest,
+        status: 'APPROVED',
+      });
+
+      auditService.log.mockRejectedValue(new Error('Audit failure'));
+
+      await expect(
+        service.approveMergeRequest(tenantId, approverId, mergeRequestId, {
+          remarks: 'Approved',
+        }),
+      ).rejects.toThrow('Audit failure');
     });
 
     it('should prevent self-approval', async () => {
@@ -532,7 +550,7 @@ describe('PatientMergeRequestService', () => {
         ),
       ).rejects.toThrow(ForbiddenException);
 
-      expect(prisma.patientMergeRequest.update).not.toHaveBeenCalled();
+      expect(prisma.patientMergeRequest.updateMany).not.toHaveBeenCalled();
       expect(auditService.log).not.toHaveBeenCalled();
     });
 
@@ -555,44 +573,26 @@ describe('PatientMergeRequestService', () => {
         ),
       ).rejects.toThrow(BadRequestException);
 
-      expect(prisma.patientMergeRequest.update).not.toHaveBeenCalled();
+      expect(prisma.patientMergeRequest.updateMany).not.toHaveBeenCalled();
       expect(auditService.log).not.toHaveBeenCalled();
     });
 
-    it('should preserve reason and update remarks', async () => {
-      const originalReason = 'Duplicate found during registration';
-      const pendingRequest = mockMergeRequest({
-        status: 'PENDING',
-        reason: originalReason,
-        remarks: null,
-      });
-      const remarks = 'Approved - verified by admin';
-      const approveDto = { remarks };
-
-      const approvedRequest = mockMergeRequest({
-        status: 'APPROVED',
-        approverId,
-        reason: originalReason,
-        remarks,
-      });
-
+    it('should fail if request was modified between check and update', async () => {
+      const pendingRequest = mockMergeRequest({ status: 'PENDING' });
       prisma.patientMergeRequest.findFirst.mockResolvedValue(pendingRequest);
-      prisma.patientMergeRequest.update.mockResolvedValue(approvedRequest);
+      // Simulate race condition: updateMany finds 0 records because status is no longer PENDING
+      prisma.patientMergeRequest.updateMany.mockResolvedValue({ count: 0 });
 
-      const result = await service.approveMergeRequest(
-        tenantId,
-        approverId,
-        mergeRequestId,
-        approveDto,
-      );
-
-      expect(result.reason).toBe(originalReason);
-      expect(result.remarks).toBe(remarks);
+      await expect(
+        service.approveMergeRequest(tenantId, approverId, mergeRequestId, {
+          remarks: 'Approved',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('rejectMergeRequest', () => {
-    it('should reject PENDING merge request', async () => {
+    it('should reject PENDING merge request transactionally', async () => {
       const pendingRequest = mockMergeRequest({ status: 'PENDING' });
       const rejectDto = { reason: 'Not a duplicate - insufficient evidence' };
       const rejectedRequest = mockMergeRequest({
@@ -602,7 +602,8 @@ describe('PatientMergeRequestService', () => {
       });
 
       prisma.patientMergeRequest.findFirst.mockResolvedValue(pendingRequest);
-      prisma.patientMergeRequest.update.mockResolvedValue(rejectedRequest);
+      prisma.patientMergeRequest.updateMany.mockResolvedValue({ count: 1 });
+      prisma.patientMergeRequest.findUnique.mockResolvedValue(rejectedRequest);
 
       const result = await service.rejectMergeRequest(
         tenantId,
@@ -615,8 +616,9 @@ describe('PatientMergeRequestService', () => {
       expect(result.approverId).toBe(approverId);
       expect(result.remarks).toBe(rejectDto.reason);
 
-      expect(prisma.patientMergeRequest.update).toHaveBeenCalledWith({
-        where: { id: mergeRequestId },
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.patientMergeRequest.updateMany).toHaveBeenCalledWith({
+        where: { id: mergeRequestId, tenantId, status: 'PENDING' },
         data: expect.objectContaining({
           status: 'REJECTED',
           approverId,
@@ -636,7 +638,26 @@ describe('PatientMergeRequestService', () => {
             approverId,
           }),
         }),
+        prisma,
       );
+    });
+
+    it('should rollback if audit logging fails during rejection', async () => {
+      const pendingRequest = mockMergeRequest({ status: 'PENDING' });
+      prisma.patientMergeRequest.findFirst.mockResolvedValue(pendingRequest);
+      prisma.patientMergeRequest.updateMany.mockResolvedValue({ count: 1 });
+      prisma.patientMergeRequest.findUnique.mockResolvedValue({
+        ...pendingRequest,
+        status: 'REJECTED',
+      });
+
+      auditService.log.mockRejectedValue(new Error('Audit failure'));
+
+      await expect(
+        service.rejectMergeRequest(tenantId, approverId, mergeRequestId, {
+          reason: 'Reject',
+        }),
+      ).rejects.toThrow('Audit failure');
     });
 
     it('should prevent self-rejection', async () => {
@@ -658,7 +679,7 @@ describe('PatientMergeRequestService', () => {
         ),
       ).rejects.toThrow(ForbiddenException);
 
-      expect(prisma.patientMergeRequest.update).not.toHaveBeenCalled();
+      expect(prisma.patientMergeRequest.updateMany).not.toHaveBeenCalled();
       expect(auditService.log).not.toHaveBeenCalled();
     });
 
@@ -681,33 +702,8 @@ describe('PatientMergeRequestService', () => {
         ),
       ).rejects.toThrow(BadRequestException);
 
-      expect(prisma.patientMergeRequest.update).not.toHaveBeenCalled();
+      expect(prisma.patientMergeRequest.updateMany).not.toHaveBeenCalled();
       expect(auditService.log).not.toHaveBeenCalled();
-    });
-
-    it('should require reason for rejection', async () => {
-      // Note: This is validated by class-validator at the DTO level
-      // but we can test the service accepts it properly
-      const pendingRequest = mockMergeRequest({ status: 'PENDING' });
-      const rejectDto = { reason: 'Insufficient evidence for merge' };
-
-      prisma.patientMergeRequest.findFirst.mockResolvedValue(pendingRequest);
-      prisma.patientMergeRequest.update.mockResolvedValue(
-        mockMergeRequest({
-          status: 'REJECTED',
-          approverId,
-          remarks: rejectDto.reason,
-        }),
-      );
-
-      const result = await service.rejectMergeRequest(
-        tenantId,
-        approverId,
-        mergeRequestId,
-        rejectDto,
-      );
-
-      expect(result.remarks).toBe(rejectDto.reason);
     });
   });
 
@@ -894,16 +890,15 @@ describe('PatientMergeRequestService', () => {
 
   describe('No destructive operations', () => {
     it('should not delete patient records on approval', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const _sourcePatient = mockActivePatient(sourcePatientId, tenantId);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const _targetPatient = mockActivePatient(targetPatientId, tenantId);
       const pendingRequest = mockMergeRequest();
+      const approvedRequest = mockMergeRequest({
+        status: 'APPROVED',
+        approverId,
+      });
 
       prisma.patientMergeRequest.findFirst.mockResolvedValue(pendingRequest);
-      prisma.patientMergeRequest.update.mockResolvedValue(
-        mockMergeRequest({ status: 'APPROVED', approverId }),
-      );
+      prisma.patientMergeRequest.updateMany.mockResolvedValue({ count: 1 });
+      prisma.patientMergeRequest.findUnique.mockResolvedValue(approvedRequest);
 
       await service.approveMergeRequest(tenantId, approverId, mergeRequestId, {
         remarks: 'Approved',
@@ -941,23 +936,26 @@ describe('PatientMergeRequestService', () => {
 
     it('should not execute actual merge on approval', async () => {
       const pendingRequest = mockMergeRequest();
+      const approvedRequest = mockMergeRequest({
+        status: 'APPROVED',
+        approverId,
+      });
       prisma.patientMergeRequest.findFirst.mockResolvedValue(pendingRequest);
-      prisma.patientMergeRequest.update.mockResolvedValue(
-        mockMergeRequest({ status: 'APPROVED', approverId }),
-      );
+      prisma.patientMergeRequest.updateMany.mockResolvedValue({ count: 1 });
+      prisma.patientMergeRequest.findUnique.mockResolvedValue(approvedRequest);
 
       await service.approveMergeRequest(tenantId, approverId, mergeRequestId, {
         remarks: 'Approved',
       });
 
       // Verify merge-related operations don't occur
-      expect(prisma.patientMergeRequest.update).toHaveBeenCalled();
+      expect(prisma.patientMergeRequest.updateMany).toHaveBeenCalled();
       expect(prisma.patient.findFirst).not.toHaveBeenCalled();
       expect(prisma.patient.update).not.toBeDefined();
       expect(prisma.patient.delete).not.toBeDefined();
 
       // Verify only status changed
-      const updateCall = prisma.patientMergeRequest.update.mock.calls[0][0];
+      const updateCall = prisma.patientMergeRequest.updateMany.mock.calls[0][0];
       expect(updateCall.data).toEqual(
         expect.objectContaining({
           status: 'APPROVED',
@@ -1031,7 +1029,10 @@ describe('PatientMergeRequestService', () => {
         });
 
         prisma.patientMergeRequest.findFirst.mockResolvedValue(pendingRequest);
-        prisma.patientMergeRequest.update.mockResolvedValue(approvedRequest);
+        prisma.patientMergeRequest.updateMany.mockResolvedValue({ count: 1 });
+        prisma.patientMergeRequest.findUnique.mockResolvedValue(
+          approvedRequest,
+        );
 
         await service.approveMergeRequest(
           tenantId,
@@ -1081,7 +1082,10 @@ describe('PatientMergeRequestService', () => {
         });
 
         prisma.patientMergeRequest.findFirst.mockResolvedValue(pendingRequest);
-        prisma.patientMergeRequest.update.mockResolvedValue(rejectedRequest);
+        prisma.patientMergeRequest.updateMany.mockResolvedValue({ count: 1 });
+        prisma.patientMergeRequest.findUnique.mockResolvedValue(
+          rejectedRequest,
+        );
 
         await service.rejectMergeRequest(tenantId, approverId, mergeRequestId, {
           reason: 'Not sufficient evidence',
