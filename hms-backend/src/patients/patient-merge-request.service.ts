@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -61,6 +62,22 @@ export class PatientMergeRequestService {
 
       if (targetPatient.status !== 'ACTIVE') {
         throw new BadRequestException('Target patient is not active');
+      }
+
+      // Validate no pending merge request already exists for this pair (Section 13)
+      const existingRequest = await this.prisma.patientMergeRequest.findFirst({
+        where: {
+          tenantId,
+          sourcePatientId: dto.sourcePatientId,
+          targetPatientId: dto.targetPatientId,
+          status: 'PENDING',
+        },
+      });
+
+      if (existingRequest) {
+        throw new ConflictException(
+          'A pending merge request already exists for these patients',
+        );
       }
 
       // Create PatientMergeRequest with status=PENDING
