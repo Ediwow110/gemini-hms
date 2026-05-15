@@ -19,6 +19,7 @@ import { NumberingModule } from './numbering/numbering.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
 import { AdminModule } from './admin/admin.module';
+import { EncountersModule } from './encounters/encounters.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { AdminModule } from './admin/admin.module';
     NotificationsModule,
     ReportsModule,
     AdminModule,
+    EncountersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
