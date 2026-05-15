@@ -25,9 +25,25 @@ export const approvalService = {
   },
 
   approveRequest: async (id: string, type: string, remarks: string) => {
-    // Specialized admin endpoint for role changes
+    // Specialized admin endpoints for role/permission/user changes
     if (type === 'ADMIN_PRIVILEGED_ROLE_ASSIGN' || type === 'ADMIN_PRIVILEGED_ROLE_REVOKE') {
       return apiClient.post(`/v1/admin/role-change-requests/${id}/approve`, {
+        reason: remarks,
+      });
+    }
+
+    if (type === 'ADMIN_PRIVILEGED_PERMISSION_GRANT' || type === 'ADMIN_PRIVILEGED_PERMISSION_REVOKE') {
+      return apiClient.post(`/v1/admin/role-permission-change-requests/${id}/approve`, {
+        reason: remarks,
+      });
+    }
+
+    if (
+      type === 'ADMIN_PRIVILEGED_USER_DEACTIVATE' || 
+      type === 'ADMIN_PRIVILEGED_USER_ACTIVATE' || 
+      type === 'ADMIN_PRIVILEGED_USER_PROFILE_UPDATE'
+    ) {
+      return apiClient.post(`/v1/admin/privileged-user-change-requests/${id}/approve`, {
         reason: remarks,
       });
     }
@@ -39,9 +55,25 @@ export const approvalService = {
   },
 
   rejectRequest: async (id: string, type: string, remarks: string) => {
-    // Specialized admin endpoint for role changes
+    // Specialized admin endpoints for role/permission/user changes
     if (type === 'ADMIN_PRIVILEGED_ROLE_ASSIGN' || type === 'ADMIN_PRIVILEGED_ROLE_REVOKE') {
       return apiClient.post(`/v1/admin/role-change-requests/${id}/reject`, {
+        reason: remarks,
+      });
+    }
+
+    if (type === 'ADMIN_PRIVILEGED_PERMISSION_GRANT' || type === 'ADMIN_PRIVILEGED_PERMISSION_REVOKE') {
+      return apiClient.post(`/v1/admin/role-permission-change-requests/${id}/reject`, {
+        reason: remarks,
+      });
+    }
+
+    if (
+      type === 'ADMIN_PRIVILEGED_USER_DEACTIVATE' || 
+      type === 'ADMIN_PRIVILEGED_USER_ACTIVATE' || 
+      type === 'ADMIN_PRIVILEGED_USER_PROFILE_UPDATE'
+    ) {
+      return apiClient.post(`/v1/admin/privileged-user-change-requests/${id}/reject`, {
         reason: remarks,
       });
     }
