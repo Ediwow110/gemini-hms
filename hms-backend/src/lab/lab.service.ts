@@ -190,7 +190,7 @@ export class LabService {
           status: 'AMENDED', // Resetting to allow re-encoding/re-approval
           lockedAt: null,
           approvedById: null,
-          results: null, // Clear to allow re-encoding
+          results: Prisma.DbNull, // Clear to allow re-encoding
           remarks: null,
         },
       });
