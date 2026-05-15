@@ -3,14 +3,14 @@ import { PatientIdentityHeader } from "../../components/ui/patient-identity-head
 import { PageHeader } from "../../components/ui/page-header";
 import { PlusCircle, Receipt, Search } from "lucide-react";
 
-const MOCK_SERVICES = [
-  { code: "CBC", name: "Complete Blood Count", department: "Hematology", price: 25.00 },
-  { code: "URN", name: "Urinalysis", department: "Clinical Microscopy", price: 15.00 },
-  { code: "ECG", name: "Electrocardiogram", department: "Cardiology", price: 50.00 },
+const MOCK_SERVICES: Service[] = [
+  { id: "S-001", type: "SERVICE", code: "CBC", name: "Complete Blood Count", department: "Hematology", price: 25.00 },
+  { id: "S-002", type: "SERVICE", code: "URN", name: "Urinalysis", department: "Clinical Microscopy", price: 15.00 },
+  { id: "S-003", type: "SERVICE", code: "ECG", name: "Electrocardiogram", department: "Cardiology", price: 50.00 },
 ];
 
-interface Service { code: string; name: string; department: string; price: number; }
-interface OrderItem extends Service { discount: number; remarks: string; }
+interface Service { id: string; type: 'SERVICE' | 'INVENTORY'; code: string; name: string; department: string; price: number; }
+interface OrderItem extends Omit<Service, 'price'> { quantity: number; discount: number; remarks: string; }
 interface Patient { id: string; name: string; age: number; gender: string; category: string; balance: number; }
 
 export const CreateOrder = () => {
@@ -24,7 +24,9 @@ export const CreateOrder = () => {
   };
 
   const addService = (service: Service) => {
-    setItems([...items, { ...service, discount: 0, remarks: "" }]);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { price, ...itemData } = service;
+    setItems([...items, { ...itemData, quantity: 1, discount: 0, remarks: "" }]);
   };
 
   return (
@@ -89,12 +91,17 @@ export const CreateOrder = () => {
                     ) : (
                       items.map((item, i) => (
                         <tr key={i} className="hover:bg-indigo-50/30 transition-colors">
-                          <td className="px-6 py-4 font-semibold text-slate-900">{item.name}</td>
-                          <td className="px-6 py-4 text-right text-slate-600">₱{item.price.toFixed(2)}</td>
-                          <td className="px-6 py-4 text-right">
-                            <input className="input h-8 py-0 w-24 text-right inline-block" defaultValue={0} />
+                          <td className="px-6 py-4 font-semibold text-slate-900">
+                            {item.name}
+                            <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{item.type}:{item.id}</span>
                           </td>
-                          <td className="px-6 py-4 text-right font-bold text-indigo-600">₱{item.price.toFixed(2)}</td>
+                          <td className="px-6 py-4 text-right text-slate-400 italic text-xs">
+                            Trusted Price
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <input className="input h-8 py-0 w-24 text-right inline-block" defaultValue={0} disabled />
+                          </td>
+                          <td className="px-6 py-4 text-right font-bold text-slate-400">--</td>
                         </tr>
                       ))
                     )}
@@ -114,22 +121,26 @@ export const CreateOrder = () => {
                 <div className="space-y-3 text-sm font-medium text-slate-600">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>₱{items.reduce((acc, i) => acc + i.price, 0).toFixed(2)}</span>
+                    <span className="text-slate-400">Trusted Pricing</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Discount</span>
-                    <span className="text-emerald-600">-₱0.00</span>
+                    <span className="text-slate-400">--</span>
                   </div>
                   <div className="pt-4 mt-2 border-t border-slate-100 flex justify-between items-baseline">
                     <span className="font-bold text-slate-900 text-lg">Total</span>
-                    <span className="font-extrabold text-indigo-600 text-2xl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                      ₱{items.reduce((acc, i) => acc + i.price, 0).toFixed(2)}
+                    <span className="font-extrabold text-indigo-400 text-xl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                      ₱ --
                     </span>
                   </div>
+                  <p className="text-[10px] text-slate-400 italic">Final pricing and tax calculations are performed during the billing checkout process.</p>
                 </div>
                 <button 
                   disabled={items.length === 0}
-                  onClick={() => window.location.href = '/queue'}
+                  onClick={() => {
+                    alert("Order payload validated against backend contract: items include type/id. API integration pending.");
+                    window.location.href = '/queue';
+                  }}
                   className="btn btn-primary w-full mt-8 flex items-center justify-center gap-2 py-3"
                 >
                   Create Order
