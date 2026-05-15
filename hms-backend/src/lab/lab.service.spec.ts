@@ -94,11 +94,32 @@ describe('LabService Branch Isolation', () => {
 
       await expect(
         service.encodeResult(tenantId, 'user-1', otherBranchId, labResultId, {
-          results: 'any',
+          results: { hemoglobin: 14 },
         }),
       ).rejects.toThrow(NotFoundException);
 
       expect(prisma.labResult.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('should persist results and remarks in the LabResult record', async () => {
+      const mockResult = { id: labResultId, status: 'PENDING_COLLECTION' };
+      prisma.labResult.findFirst
+        .mockResolvedValueOnce(mockResult) // findOne
+        .mockResolvedValueOnce({ ...mockResult, status: 'ENCODED' }); // updated
+
+      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+
+      const dto = { results: { glucose: 100 }, remarks: 'Normal' };
+      await service.encodeResult(tenantId, 'user-1', branchId, labResultId, dto);
+
+      expect(prisma.labResult.updateMany).toHaveBeenCalledWith({
+        where: expect.anything(),
+        data: expect.objectContaining({
+          status: 'ENCODED',
+          results: dto.results,
+          remarks: dto.remarks,
+        }),
+      });
     });
   });
 

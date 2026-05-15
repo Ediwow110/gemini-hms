@@ -139,6 +139,41 @@ describe('OrdersService', () => {
       );
     });
 
+    it('should create a LabResult when a service with category LAB_TEST is ordered', async () => {
+      prisma.patient.findFirst.mockResolvedValue({
+        id: mockPatientId,
+        tenantId: mockTenantId,
+      });
+
+      prisma.serviceCatalog.findFirst.mockResolvedValue({
+        id: 's-lab',
+        name: 'CBC',
+        category: 'LAB_TEST',
+        price: new Prisma.Decimal(150),
+      });
+
+      const dto = {
+        patientId: mockPatientId,
+        branchId: mockBranchId,
+        items: [{ itemType: OrderItemType.SERVICE, itemId: 's-lab', quantity: 1 }],
+      };
+
+      await service.create(mockTenantId, mockUserId, mockBranchId, dto);
+
+      expect(prisma.order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            labResult: {
+              create: expect.objectContaining({
+                tenantId: mockTenantId,
+                status: 'PENDING_COLLECTION',
+              }),
+            },
+          }),
+        }),
+      );
+    });
+
     it('should fail if service item is not found or inactive', async () => {
       prisma.patient.findFirst.mockResolvedValue({
         id: mockPatientId,
