@@ -137,6 +137,17 @@ describe('OrdersService', () => {
           }),
         }),
       );
+
+      // Verify Audit Log Coupling (Batch 8)
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'ORDER_CREATED',
+          recordType: 'Order',
+          recordId: 'o1',
+        }),
+        expect.anything(), // tx
+        mockBranchId,
+      );
     });
 
     it('should create a LabResult when a service with category LAB_TEST is ordered', async () => {
@@ -155,7 +166,9 @@ describe('OrdersService', () => {
       const dto = {
         patientId: mockPatientId,
         branchId: mockBranchId,
-        items: [{ itemType: OrderItemType.SERVICE, itemId: 's-lab', quantity: 1 }],
+        items: [
+          { itemType: OrderItemType.SERVICE, itemId: 's-lab', quantity: 1 },
+        ],
       };
 
       await service.create(mockTenantId, mockUserId, mockBranchId, dto);

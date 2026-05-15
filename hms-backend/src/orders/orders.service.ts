@@ -142,14 +142,18 @@ export class OrdersService {
       });
 
       // 9. Log Audit Event (ORDER_CREATED)
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'ORDER_CREATED',
-        recordType: 'Order',
-        recordId: order.id,
-        newValues: { order, invoice, itemsCount: dto.items.length },
-      });
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'ORDER_CREATED',
+          recordType: 'Order',
+          recordId: order.id,
+          newValues: { order, invoice, itemsCount: dto.items.length },
+        },
+        tx,
+        branchId,
+      );
 
       return { order, invoice };
     });
