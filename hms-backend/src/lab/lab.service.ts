@@ -52,7 +52,7 @@ export class LabService {
 
     const updateResult = await this.prisma.labResult.updateMany({
       where: { id, order: { tenantId, branchId } },
-      data: { status: 'ENCODED' },
+      data: { status: 'ENCODED', results: dto.results, remarks: dto.remarks },
     });
 
     if (updateResult.count === 0) {
@@ -175,6 +175,12 @@ export class LabService {
           newStatus: 'AMENDED',
           amendedById: userId,
           reason: reason,
+          oldData: {
+            results: result.results,
+            remarks: result.remarks,
+            approvedById: result.approvedById,
+            lockedAt: result.lockedAt,
+          },
         },
       });
 
@@ -184,6 +190,8 @@ export class LabService {
           status: 'AMENDED', // Resetting to allow re-encoding/re-approval
           lockedAt: null,
           approvedById: null,
+          results: null, // Clear to allow re-encoding
+          remarks: null,
         },
       });
 
