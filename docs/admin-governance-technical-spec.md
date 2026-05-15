@@ -918,9 +918,10 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
   - Returns metadata only: requestId, status, sourcePatientId, targetPatientId, requesterId, approverId, reason, requestedAt, appliedAt, riskLevel.
   - No patient records, clinical data, billing data, or file information returned.
 - **Transaction & Audit**:
-  - Request creation, approval, and rejection each execute within a Prisma transaction.
-  - Audit log is written transactionally alongside metadata mutation.
-  - If scope validation fails mid-transaction, entire operation rolls back and no audit is written.
+  - Request creation executes within a Prisma transaction.
+  - Request-creation audit is written transactionally alongside the create-path metadata mutation.
+  - If create-path scope validation fails mid-transaction, the create operation rolls back and no create audit is written.
+  - Approval and rejection remain governed metadata transitions, but their audit transactional coupling is still a backlog item and is not yet implemented in this slice.
 - **Explicit Non-Goals**:
   - **NO destructive merge occurs in this slice**.
   - **NO patient records are merged, deleted, or overwritten**.
