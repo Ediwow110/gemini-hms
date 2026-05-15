@@ -47,6 +47,7 @@ model Tenant {
   reportExports       ReportExport[]
   patientMergeRequests PatientMergeRequest[]
   idempotencyRecords IdempotencyRecord[]
+  encounters         Encounter[]
 
   @@map("tenants")
 }
@@ -66,6 +67,7 @@ model Branch {
   stockLogs        StockLog[]
   employeeBranches EmployeeBranch[]
   payslips         Payslip[]
+  encounters       Encounter[]
 
   @@map("branches")
 }
@@ -150,6 +152,45 @@ model UserBranch {
   @@map("user_branches")
 }
 
+enum EncounterStatus {
+  PLANNED
+  ARRIVED
+  IN_PROGRESS
+  FINISHED
+  CANCELLED
+  ENTERED_IN_ERROR
+  UNKNOWN
+}
+
+model Encounter {
+  id        String   @id @default(uuid())
+  tenantId  String
+  branchId  String
+  patientId String
+  
+  status    EncounterStatus @default(IN_PROGRESS)
+  type      String?  // OUTPATIENT, INPATIENT, EMERGENCY, etc.
+  
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  
+  reason    String?
+  notes     String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([patientId])
+  @@index([status])
+  @@map("encounters")
+}
+
 model Patient {
   id            String   @id @default(uuid()) @db.Uuid
   tenantId      String   @map("tenant_id") @db.Uuid
@@ -161,8 +202,9 @@ model Patient {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  tenant Tenant  @relation(fields: [tenantId], references: [id])
-  orders Order[]
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  orders     Order[]
+  encounters Encounter[]
 
   @@unique([tenantId, patientNumber])
   @@map("patients")
