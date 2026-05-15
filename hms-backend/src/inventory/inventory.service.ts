@@ -4,7 +4,12 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateInventoryItemDto, ReceiveStockDto } from './dto/inventory.dto';
+import {
+  CreateInventoryItemDto,
+  ReceiveStockDto,
+  UpdateInventoryItemDto,
+  InventoryStatus,
+} from './dto/inventory.dto';
 import { AuditService } from '../audit/audit.service';
 
 @Injectable()
@@ -52,6 +57,79 @@ export class InventoryService {
       );
 
       return item;
+    });
+  }
+
+  async updateItem(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: UpdateInventoryItemDto,
+  ) {
+    const existing = await this.prisma.inventoryItem.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Inventory item not found');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.inventoryItem.update({
+        where: { id },
+        data: dto,
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'INVENTORY_ITEM_UPDATED',
+          recordType: 'InventoryItem',
+          recordId: id,
+          oldValues: existing,
+          newValues: updated,
+        },
+        tx,
+      );
+
+      return updated;
+    });
+  }
+
+  async deactivateItem(tenantId: string, userId: string, id: string) {
+    const existing = await this.prisma.inventoryItem.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Inventory item not found');
+    }
+
+    if (existing.status === (InventoryStatus.INACTIVE as string)) {
+      return existing;
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.inventoryItem.update({
+        where: { id },
+        data: { status: InventoryStatus.INACTIVE },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'INVENTORY_ITEM_DEACTIVATED',
+          recordType: 'InventoryItem',
+          recordId: id,
+          oldValues: existing,
+          newValues: updated,
+        },
+        tx,
+      );
+
+      return updated;
     });
   }
 
@@ -143,9 +221,16 @@ export class InventoryService {
     });
   }
 
-  async getCatalog(tenantId: string, branchId: string) {
+  async getCatalog(
+    tenantId: string,
+    branchId: string,
+    status: InventoryStatus = InventoryStatus.ACTIVE,
+  ) {
     const items = await this.prisma.inventoryItem.findMany({
-      where: { tenantId },
+      where: {
+        tenantId,
+        status: status,
+      },
       include: {
         branchStocks: {
           where: { branchId },

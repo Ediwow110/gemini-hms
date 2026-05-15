@@ -4,7 +4,13 @@ import {
   IsNumber,
   Min,
   IsOptional,
+  IsEnum,
 } from 'class-validator';
+
+export enum InventoryStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+}
 
 export class CreateInventoryItemDto {
   @IsString()
@@ -30,6 +36,38 @@ export class CreateInventoryItemDto {
   @IsNumber()
   @Min(0)
   price: number;
+
+  @IsEnum(InventoryStatus)
+  @IsOptional()
+  status?: InventoryStatus;
+}
+
+export class UpdateInventoryItemDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  category?: string;
+
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  reorderLevel?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  price?: number;
+
+  @IsEnum(InventoryStatus)
+  @IsOptional()
+  status?: InventoryStatus;
 }
 
 export class ReceiveStockDto {

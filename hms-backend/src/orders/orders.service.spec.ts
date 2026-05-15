@@ -151,7 +151,7 @@ describe('OrdersService', () => {
       ).rejects.toThrow('Service item s1 not found or inactive');
     });
 
-    it('should fail if inventory item is not found', async () => {
+    it('should fail if inventory item is not found or inactive', async () => {
       prisma.patient.findFirst.mockResolvedValue({
         id: mockPatientId,
         tenantId: mockTenantId,
@@ -161,11 +161,11 @@ describe('OrdersService', () => {
         name: 'S1',
         price: new Prisma.Decimal(100),
       });
-      prisma.inventoryItem.findFirst.mockResolvedValue(null);
+      prisma.inventoryItem.findFirst.mockResolvedValue(null); // Not found or inactive
 
       await expect(
         service.create(mockTenantId, mockUserId, mockBranchId, validDto),
-      ).rejects.toThrow('Inventory item v1 not found');
+      ).rejects.toThrow('Inventory item v1 not found or inactive');
     });
 
     it('should fail if patient tenant isolation is breached', async () => {
