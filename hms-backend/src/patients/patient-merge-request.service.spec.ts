@@ -3,12 +3,12 @@ import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
-  ConflictException,
 } from '@nestjs/common';
 import { PatientMergeRequestService } from './patient-merge-request.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreatePatientMergeRequestDto } from './dto/patient-merge.dto';
+import { Prisma } from '@prisma/client';
 
 describe('PatientMergeRequestService', () => {
   let service: PatientMergeRequestService;
@@ -59,6 +59,12 @@ describe('PatientMergeRequestService', () => {
   beforeEach(async () => {
     // Mock Prisma Service
     prisma = {
+      $transaction: jest.fn(async (callback: any) =>
+        callback({
+          patient: prisma.patient,
+          patientMergeRequest: prisma.patientMergeRequest,
+        }),
+      ),
       patient: {
         findFirst: jest.fn(),
       },
@@ -144,8 +150,18 @@ describe('PatientMergeRequestService', () => {
             targetPatientId,
           }),
         }),
-        undefined,
+        expect.objectContaining({
+          patient: prisma.patient,
+          patientMergeRequest: prisma.patientMergeRequest,
+        }),
         branchId,
+      );
+
+      expect(prisma.$transaction).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        }),
       );
     });
 
@@ -176,6 +192,30 @@ describe('PatientMergeRequestService', () => {
       );
 
       expect(prisma.patientMergeRequest.create).not.toHaveBeenCalled();
+    });
+
+    it('should translate serializable transaction conflicts to ConflictException', async () => {
+      prisma.$transaction.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError('transaction conflict', {
+          clientVersion: 'test',
+          code: 'P2034',
+        }),
+      );
+
+      const createDto: CreatePatientMergeRequestDto = {
+        sourcePatientId,
+        targetPatientId,
+        reason: 'duplicate test',
+      };
+
+      await expect(
+        service.createMergeRequest(tenantId, userId, branchId, createDto),
+      ).rejects.toThrow(
+        'A pending merge request is already being created for these patients',
+      );
+
+      expect(prisma.patientMergeRequest.create).not.toHaveBeenCalled();
+      expect(auditService.log).not.toHaveBeenCalled();
     });
 
     it('should prevent merge when source and target are same', async () => {
