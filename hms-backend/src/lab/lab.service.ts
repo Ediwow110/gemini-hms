@@ -68,14 +68,18 @@ export class LabService {
       throw new NotFoundException('Lab result not found');
     }
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'RESULT_ENCODED',
-      recordType: 'LabResult',
-      recordId: id,
-      newValues: { results: dto.results, remarks: dto.remarks },
-    });
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: 'RESULT_ENCODED',
+        recordType: 'LabResult',
+        recordId: id,
+        newValues: { results: dto.results, remarks: dto.remarks },
+      },
+      undefined,
+      branchId,
+    );
 
     return updated;
   }
@@ -112,14 +116,18 @@ export class LabService {
       throw new NotFoundException('Lab result not found');
     }
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'RESULT_APPROVED',
-      recordType: 'LabResult',
-      recordId: id,
-      newValues: { approvedBy: userId, remarks: dto.pathologistRemarks },
-    });
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: 'RESULT_APPROVED',
+        recordType: 'LabResult',
+        recordId: id,
+        newValues: { approvedBy: userId, remarks: dto.pathologistRemarks },
+      },
+      undefined,
+      branchId,
+    );
 
     return updated;
   }
@@ -209,14 +217,18 @@ export class LabService {
       }
 
       // 4. System Audit
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'RESULT_AMENDMENT_APPLIED',
-        recordType: 'LabResult',
-        recordId: id,
-        newValues: { versionId: version.id, status: 'AMENDED' },
-      });
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'RESULT_AMENDMENT_APPLIED',
+          recordType: 'LabResult',
+          recordId: id,
+          newValues: { versionId: version.id, status: 'AMENDED' },
+        },
+        tx,
+        branchId,
+      );
 
       return updated;
     });
@@ -253,14 +265,18 @@ export class LabService {
         throw new NotFoundException('Lab result not found');
       }
 
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'RESULT_RELEASED',
-        recordType: 'LabResult',
-        recordId: id,
-        newValues: { releasedAt: updated.lockedAt },
-      });
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'RESULT_RELEASED',
+          recordType: 'LabResult',
+          recordId: id,
+          newValues: { releasedAt: updated.lockedAt },
+        },
+        tx,
+        branchId,
+      );
 
       return updated;
     });
