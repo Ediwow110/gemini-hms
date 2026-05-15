@@ -1,8 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateOrderDto } from './dto/order.dto';
+import { CreateOrderDto, OrderItemType } from './dto/order.dto';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
@@ -32,14 +33,56 @@ export class OrdersService {
       throw new BadRequestException('Patient not found or access denied');
     }
 
-    // 3. Calculate total amount
-    const totalAmount = dto.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0,
-    );
-
-    // 4. START TRANSACTION (Section 13 Boundary)
+    // 3. START TRANSACTION (Section 13 Boundary)
     return this.prisma.$transaction(async (tx) => {
+      // 4. Resolve Trusted Prices and Items
+      const lineItems: any[] = [];
+      let calculatedTotal = new Prisma.Decimal(0);
+
+      for (const itemDto of dto.items) {
+        let trustedItem: { name: string; price: Prisma.Decimal };
+
+        if (itemDto.itemType === OrderItemType.SERVICE) {
+          const service = await tx.serviceCatalog.findFirst({
+            where: { id: itemDto.itemId, tenantId, status: 'ACTIVE' },
+          });
+          if (!service) {
+            throw new BadRequestException(
+              `Service item ${itemDto.itemId} not found or inactive`,
+            );
+          }
+          trustedItem = { name: service.name, price: service.price };
+        } else if (itemDto.itemType === OrderItemType.INVENTORY) {
+          const inventory = await tx.inventoryItem.findFirst({
+            where: { id: itemDto.itemId, tenantId },
+          });
+          if (!inventory) {
+            throw new BadRequestException(
+              `Inventory item ${itemDto.itemId} not found`,
+            );
+          }
+          trustedItem = { name: inventory.name, price: inventory.price };
+        } else {
+          throw new BadRequestException(
+            `Invalid item type: ${itemDto.itemType as string}`,
+          );
+        }
+
+        const quantity = new Prisma.Decimal(itemDto.quantity);
+        const lineTotal = trustedItem.price.mul(quantity);
+        calculatedTotal = calculatedTotal.add(lineTotal);
+
+        lineItems.push({
+          tenantId,
+          itemType: itemDto.itemType,
+          itemId: itemDto.itemId,
+          name: trustedItem.name,
+          quantity: itemDto.quantity,
+          unitPrice: trustedItem.price,
+          lineTotal,
+        });
+      }
+
       // 5. Generate Order Number
       const orderNumber = await this.numbering.generateNumber(
         tenantId,
@@ -56,6 +99,12 @@ export class OrdersService {
           patientId: dto.patientId,
           orderNumber,
           status: 'PENDING_PAYMENT',
+          items: {
+            create: lineItems,
+          },
+        },
+        include: {
+          items: true,
         },
       });
 
@@ -73,7 +122,7 @@ export class OrdersService {
           tenantId,
           orderId: order.id,
           invoiceNumber,
-          totalAmount: totalAmount,
+          totalAmount: calculatedTotal,
           paidAmount: 0,
           status: 'UNPAID',
         },
@@ -99,6 +148,7 @@ export class OrdersService {
       include: {
         patient: true,
         invoice: true,
+        items: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -109,6 +159,7 @@ export class OrdersService {
       where: { id, tenantId, branchId },
       include: {
         patient: true,
+        items: true,
         invoice: {
           include: {
             payments: true,

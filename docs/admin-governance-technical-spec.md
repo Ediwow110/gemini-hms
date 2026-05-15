@@ -1051,6 +1051,22 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
   - If database connectivity succeeds but schema tables missing: `dbStatus: ok`, `migrationStatus: error`, `appStatus: degraded`.
 - **Audit**: No audit required as it's a read-only status check.
 
+### 13. High-Integrity Multi-Tenant Billing (Hardened)
+
+#### 13.1 Deterministic Pricing Invariants
+- **Zero-Trust Client Pricing**: The server NEVER trusts price or total fields provided in the `CreateOrderDto`. Prices are fetched from the authoritative `ServiceCatalog` or `InventoryItem` records using server-side transactions.
+- **Service Catalog Foundation**: Non-inventory billable services (consultations, lab tests, etc.) are managed in a tenant-scoped `ServiceCatalog`.
+- **Immutable Line-Item Snapshots**: Every `Order` persists its line items as `OrderItem` snapshots. These snapshots capture the name, unit price, and line total at the moment of order creation, ensuring historical revenue records remain unchanged even if the catalog price is updated later.
+- **Decimal Math Sovereignty**: All currency calculations use `Prisma.Decimal` to prevent floating-point rounding errors.
+
+#### 13.2 Transactional Atomicity
+- **Atomic Creation Boundary**: `Order`, `OrderItem` snapshots, `Invoice`, `AuditLog`, and sequential numbering increments occur within a single ACID transaction.
+- **Gap-Free Numbering**: Sequential increments are bound to the caller transaction; if the order creation fails, the numbering sequence rolls back, preventing gaps in financial sequences.
+
+#### 13.3 Multi-Tenant Isolation
+- **Tenant-Scoped Pricing**: All catalog lookups are scoped by `tenantId`. A tenant cannot use or even discover another tenant's pricing or service codes.
+- **Patient Ownership Guard**: Before order creation, the system verifies that the `patientId` belongs to the authenticated `tenantId`.
+
 ### 14. Failure Modes
 - `permission_denied`
 - `tenant_scope_required`
