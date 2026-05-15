@@ -82,6 +82,9 @@ async function main() {
     { name: 'queue.manage', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'notification.view', scope: 'tenant/user', riskLevel: 'LOW' },
     { name: 'notification.manage', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+    { name: 'encounter.create', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'encounter.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'encounter.update', scope: 'tenant/branch', riskLevel: 'LOW' },
   ];
 
   console.log('Seeding Permissions...');
@@ -197,12 +200,14 @@ async function main() {
       'inventory.item.view', 'inventory.item.create', 'inventory.stock.receive', 'inventory.stock.dispense',
       'queue.view', 'queue.manage', 
       'approval.request.view', 'approval.request.process',
-      'report.export', 'audit.view'
+      'report.export', 'audit.view',
+      'encounter.create', 'encounter.view', 'encounter.update'
     ],
     'Receptionist': [
       'patient.view', 'patient.create', 'patient.update', 
       'order.create', 'order.view',
-      'queue.view', 'queue.manage'
+      'queue.view', 'queue.manage',
+      'encounter.create', 'encounter.view'
     ],
     'Cashier': [
       'patient.view', 'order.view', 'billing.invoice.view', 
@@ -215,7 +220,8 @@ async function main() {
     ],
     'Doctor': [
       'patient.view', 'lab.result.view', 'lab.result.approve', 'lab.result.release',
-      'inventory.item.view'
+      'inventory.item.view',
+      'encounter.create', 'encounter.view', 'encounter.update'
     ]
   };
 
