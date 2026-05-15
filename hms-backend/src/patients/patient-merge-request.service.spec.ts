@@ -191,7 +191,106 @@ describe('PatientMergeRequestService', () => {
         'A pending merge request already exists for these patients',
       );
 
+      expect(prisma.patientMergeRequest.findFirst).toHaveBeenCalledWith({
+        where: {
+          tenantId,
+          status: 'PENDING',
+          OR: [
+            { sourcePatientId, targetPatientId },
+            {
+              sourcePatientId: targetPatientId,
+              targetPatientId: sourcePatientId,
+            },
+          ],
+        },
+      });
       expect(prisma.patientMergeRequest.create).not.toHaveBeenCalled();
+    });
+
+    it('should block a reverse-direction pending merge request for the same pair', async () => {
+      const sourcePatient = mockActivePatient(sourcePatientId, tenantId);
+      const targetPatient = mockActivePatient(targetPatientId, tenantId);
+
+      prisma.patient.findFirst
+        .mockResolvedValueOnce(sourcePatient)
+        .mockResolvedValueOnce(targetPatient);
+
+      prisma.patientMergeRequest.findFirst.mockResolvedValue({
+        id: 'existing-req-id',
+        sourcePatientId: targetPatientId,
+        targetPatientId: sourcePatientId,
+        status: 'PENDING',
+      });
+
+      const createDto: CreatePatientMergeRequestDto = {
+        sourcePatientId,
+        targetPatientId,
+        reason: 'duplicate test',
+      };
+
+      await expect(
+        service.createMergeRequest(tenantId, userId, branchId, createDto),
+      ).rejects.toThrow(
+        'A pending merge request already exists for these patients',
+      );
+
+      expect(prisma.patientMergeRequest.create).not.toHaveBeenCalled();
+    });
+
+    it('should block a pending merge request when creating the reverse direction', async () => {
+      const sourcePatient = mockActivePatient(targetPatientId, tenantId);
+      const targetPatient = mockActivePatient(sourcePatientId, tenantId);
+
+      prisma.patient.findFirst
+        .mockResolvedValueOnce(sourcePatient)
+        .mockResolvedValueOnce(targetPatient);
+
+      prisma.patientMergeRequest.findFirst.mockResolvedValue({
+        id: 'existing-req-id',
+        sourcePatientId,
+        targetPatientId,
+        status: 'PENDING',
+      });
+
+      const createDto: CreatePatientMergeRequestDto = {
+        sourcePatientId: targetPatientId,
+        targetPatientId: sourcePatientId,
+        reason: 'duplicate test',
+      };
+
+      await expect(
+        service.createMergeRequest(tenantId, userId, branchId, createDto),
+      ).rejects.toThrow(
+        'A pending merge request already exists for these patients',
+      );
+
+      expect(prisma.patientMergeRequest.create).not.toHaveBeenCalled();
+    });
+
+    it('should allow a new request when the reverse-direction request is terminal', async () => {
+      const sourcePatient = mockActivePatient(sourcePatientId, tenantId);
+      const targetPatient = mockActivePatient(targetPatientId, tenantId);
+      const createDto: CreatePatientMergeRequestDto = {
+        sourcePatientId,
+        targetPatientId,
+        reason: 'duplicate test',
+      };
+
+      prisma.patient.findFirst
+        .mockResolvedValueOnce(sourcePatient)
+        .mockResolvedValueOnce(targetPatient);
+      prisma.patientMergeRequest.findFirst.mockResolvedValue(null);
+      prisma.patientMergeRequest.create.mockResolvedValue(mockMergeRequest());
+
+      const result = await service.createMergeRequest(
+        tenantId,
+        userId,
+        branchId,
+        createDto,
+      );
+
+      expect(result.status).toBe('PENDING');
+      expect(prisma.patientMergeRequest.create).toHaveBeenCalled();
     });
 
     it('should translate serializable transaction conflicts to ConflictException', async () => {

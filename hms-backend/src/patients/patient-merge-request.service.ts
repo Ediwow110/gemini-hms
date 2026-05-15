@@ -71,9 +71,17 @@ export class PatientMergeRequestService {
           const existingRequest = await tx.patientMergeRequest.findFirst({
             where: {
               tenantId,
-              sourcePatientId: dto.sourcePatientId,
-              targetPatientId: dto.targetPatientId,
               status: 'PENDING',
+              OR: [
+                {
+                  sourcePatientId: dto.sourcePatientId,
+                  targetPatientId: dto.targetPatientId,
+                },
+                {
+                  sourcePatientId: dto.targetPatientId,
+                  targetPatientId: dto.sourcePatientId,
+                },
+              ],
             },
           });
 
