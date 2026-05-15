@@ -217,6 +217,7 @@ export class PatientMergeRequestService {
             },
           },
           tx,
+          updated.branchId ?? undefined,
         );
 
         return updated;
@@ -308,6 +309,7 @@ export class PatientMergeRequestService {
             },
           },
           tx,
+          updated.branchId ?? undefined,
         );
 
         return updated;
