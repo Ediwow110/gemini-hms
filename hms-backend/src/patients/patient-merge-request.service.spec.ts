@@ -510,6 +510,7 @@ describe('PatientMergeRequestService', () => {
           }),
         }),
         prisma,
+        approvedRequest.branchId,
       );
     });
 
@@ -639,6 +640,7 @@ describe('PatientMergeRequestService', () => {
           }),
         }),
         prisma,
+        rejectedRequest.branchId,
       );
     });
 
