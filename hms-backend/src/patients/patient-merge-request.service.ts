@@ -154,53 +154,82 @@ export class PatientMergeRequestService {
     dto: ApproveMergeRequestDto,
   ) {
     try {
-      // Validate request exists and status=PENDING
-      const request = await this.prisma.patientMergeRequest.findFirst({
-        where: { id: requestId, tenantId },
-      });
+      return await this.prisma.$transaction(async (tx) => {
+        // Validate request exists and status=PENDING
+        const request = await tx.patientMergeRequest.findFirst({
+          where: { id: requestId, tenantId },
+        });
 
-      if (!request) {
-        throw new NotFoundException('Merge request not found');
-      }
+        if (!request) {
+          throw new NotFoundException('Merge request not found');
+        }
 
-      if (request.status !== 'PENDING') {
-        throw new BadRequestException(
-          `Cannot approve request with status ${request.status}`,
+        if (request.status !== 'PENDING') {
+          throw new BadRequestException(
+            `Cannot approve request with status ${request.status}`,
+          );
+        }
+
+        // Validate userId !== request.requesterId (no self-approval)
+        if (userId === request.requesterId) {
+          throw new ForbiddenException('Cannot approve your own merge request');
+        }
+
+        // Update status=APPROVED, approverId=userId, updatedAt=now
+        // Use updateMany for atomic status check to prevent race conditions
+        const updateResult = await tx.patientMergeRequest.updateMany({
+          where: { id: requestId, tenantId, status: 'PENDING' },
+          data: {
+            status: 'APPROVED',
+            approverId: userId,
+            remarks: dto.remarks,
+            updatedAt: new Date(),
+          },
+        });
+
+        if (updateResult.count === 0) {
+          throw new BadRequestException(
+            'Merge request was already processed or is no longer pending',
+          );
+        }
+
+        // Fetch updated record for audit and return
+        const updated = await tx.patientMergeRequest.findUnique({
+          where: { id: requestId },
+        });
+
+        if (!updated) {
+          throw new NotFoundException('Merge request not found after update');
+        }
+
+        // Audit: eventKey='PATIENT_MERGE_APPROVED', metadata only
+        await this.audit.log(
+          {
+            tenantId,
+            userId,
+            eventKey: 'PATIENT_MERGE_APPROVED',
+            recordType: 'PatientMergeRequest',
+            recordId: requestId,
+            newValues: {
+              id: updated.id,
+              status: updated.status,
+              approverId: updated.approverId,
+            },
+          },
+          tx,
         );
-      }
 
-      // Validate userId !== request.requesterId (no self-approval)
-      if (userId === request.requesterId) {
-        throw new ForbiddenException('Cannot approve your own merge request');
-      }
-
-      // Update status=APPROVED, approverId=userId, updatedAt=now
-      const updated = await this.prisma.patientMergeRequest.update({
-        where: { id: requestId },
-        data: {
-          status: 'APPROVED',
-          approverId: userId,
-          remarks: dto.remarks,
-          updatedAt: new Date(),
-        },
+        return updated;
       });
-
-      // Audit: eventKey='PATIENT_MERGE_APPROVED', metadata only
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'PATIENT_MERGE_APPROVED',
-        recordType: 'PatientMergeRequest',
-        recordId: requestId,
-        newValues: {
-          id: updated.id,
-          status: updated.status,
-          approverId: updated.approverId,
-        },
-      });
-
-      return updated;
     } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+
       this.logger.error(
         `Error approving merge request: ${error.message}`,
         error.stack,
@@ -216,53 +245,82 @@ export class PatientMergeRequestService {
     dto: RejectMergeRequestDto,
   ) {
     try {
-      // Validate request exists and status=PENDING
-      const request = await this.prisma.patientMergeRequest.findFirst({
-        where: { id: requestId, tenantId },
-      });
+      return await this.prisma.$transaction(async (tx) => {
+        // Validate request exists and status=PENDING
+        const request = await tx.patientMergeRequest.findFirst({
+          where: { id: requestId, tenantId },
+        });
 
-      if (!request) {
-        throw new NotFoundException('Merge request not found');
-      }
+        if (!request) {
+          throw new NotFoundException('Merge request not found');
+        }
 
-      if (request.status !== 'PENDING') {
-        throw new BadRequestException(
-          `Cannot reject request with status ${request.status}`,
+        if (request.status !== 'PENDING') {
+          throw new BadRequestException(
+            `Cannot reject request with status ${request.status}`,
+          );
+        }
+
+        // Validate userId !== request.requesterId
+        if (userId === request.requesterId) {
+          throw new ForbiddenException('Cannot reject your own merge request');
+        }
+
+        // Update status=REJECTED, approverId=userId, remarks=dto.reason, updatedAt=now
+        // Use updateMany for atomic status check to prevent race conditions
+        const updateResult = await tx.patientMergeRequest.updateMany({
+          where: { id: requestId, tenantId, status: 'PENDING' },
+          data: {
+            status: 'REJECTED',
+            approverId: userId,
+            remarks: dto.reason,
+            updatedAt: new Date(),
+          },
+        });
+
+        if (updateResult.count === 0) {
+          throw new BadRequestException(
+            'Merge request was already processed or is no longer pending',
+          );
+        }
+
+        // Fetch updated record for audit and return
+        const updated = await tx.patientMergeRequest.findUnique({
+          where: { id: requestId },
+        });
+
+        if (!updated) {
+          throw new NotFoundException('Merge request not found after update');
+        }
+
+        // Audit: eventKey='PATIENT_MERGE_REJECTED', metadata only
+        await this.audit.log(
+          {
+            tenantId,
+            userId,
+            eventKey: 'PATIENT_MERGE_REJECTED',
+            recordType: 'PatientMergeRequest',
+            recordId: requestId,
+            newValues: {
+              id: updated.id,
+              status: updated.status,
+              approverId: updated.approverId,
+            },
+          },
+          tx,
         );
-      }
 
-      // Validate userId !== request.requesterId
-      if (userId === request.requesterId) {
-        throw new ForbiddenException('Cannot reject your own merge request');
-      }
-
-      // Update status=REJECTED, approverId=userId, remarks=dto.reason, updatedAt=now
-      const updated = await this.prisma.patientMergeRequest.update({
-        where: { id: requestId },
-        data: {
-          status: 'REJECTED',
-          approverId: userId,
-          remarks: dto.reason,
-          updatedAt: new Date(),
-        },
+        return updated;
       });
-
-      // Audit: eventKey='PATIENT_MERGE_REJECTED', metadata only
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'PATIENT_MERGE_REJECTED',
-        recordType: 'PatientMergeRequest',
-        recordId: requestId,
-        newValues: {
-          id: updated.id,
-          status: updated.status,
-          approverId: updated.approverId,
-        },
-      });
-
-      return updated;
     } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException
+      ) {
+        throw error;
+      }
+
       this.logger.error(
         `Error rejecting merge request: ${error.message}`,
         error.stack,
