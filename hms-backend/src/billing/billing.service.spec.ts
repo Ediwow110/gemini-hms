@@ -30,9 +30,7 @@ describe('BillingService Reversals', () => {
     const mock: any = {
       payment: {
         findFirst: jest.fn(),
-        create: jest
-          .fn()
-          .mockResolvedValue({ id: 'pay-temp', amount: new Prisma.Decimal(0) }),
+        create: jest.fn().mockResolvedValue({ id: 'pay-temp', amount: new Prisma.Decimal(0) }),
         update: jest.fn(),
         updateMany: jest.fn(),
       },

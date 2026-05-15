@@ -94,14 +94,9 @@ describe('InventoryService', () => {
       prisma.inventoryItem.findFirst.mockResolvedValue(existing);
       prisma.inventoryItem.update.mockResolvedValue({ ...existing, price: 6 });
 
-      const result = await service.updateItem(
-        mockTenantId,
-        mockUserId,
-        'item-1',
-        {
-          price: 6,
-        },
-      );
+      const result = await service.updateItem(mockTenantId, mockUserId, 'item-1', {
+        price: 6,
+      });
 
       expect(result.price).toBe(6);
       expect(audit.log).toHaveBeenCalledWith(

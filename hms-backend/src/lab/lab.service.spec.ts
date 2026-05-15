@@ -110,13 +110,7 @@ describe('LabService Branch Isolation', () => {
       prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
 
       const dto = { results: { glucose: 100 }, remarks: 'Normal' };
-      await service.encodeResult(
-        tenantId,
-        'user-1',
-        branchId,
-        labResultId,
-        dto,
-      );
+      await service.encodeResult(tenantId, 'user-1', branchId, labResultId, dto);
 
       expect(prisma.labResult.updateMany).toHaveBeenCalledWith({
         where: expect.anything(),
