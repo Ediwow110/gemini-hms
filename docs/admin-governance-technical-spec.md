@@ -1056,6 +1056,7 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
 #### 13.1 Deterministic Pricing Invariants
 - **Zero-Trust Client Pricing**: The server NEVER trusts price or total fields provided in the `CreateOrderDto`. Prices are fetched from the authoritative `ServiceCatalog` or `InventoryItem` records using server-side transactions.
 - **Service Catalog Foundation**: Non-inventory billable services (consultations, lab tests, etc.) are managed in a tenant-scoped `ServiceCatalog`.
+- **Governed Catalog Management**: CRUD operations for `ServiceCatalog` are backend-governed, requiring specific permissions (`catalog.service.*`) and producing comprehensive audit trails for every price or status change.
 - **Immutable Line-Item Snapshots**: Every `Order` persists its line items as `OrderItem` snapshots. These snapshots capture the name, unit price, and line total at the moment of order creation, ensuring historical revenue records remain unchanged even if the catalog price is updated later.
 - **Decimal Math Sovereignty**: All currency calculations use `Prisma.Decimal` to prevent floating-point rounding errors.
 
