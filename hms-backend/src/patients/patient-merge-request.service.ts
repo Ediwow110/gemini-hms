@@ -6,6 +6,7 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -30,90 +31,106 @@ export class PatientMergeRequestService {
     dto: CreatePatientMergeRequestDto,
   ) {
     try {
-      // Validate sourcePatientId !== targetPatientId
-      if (dto.sourcePatientId === dto.targetPatientId) {
-        throw new BadRequestException(
-          'Source and target patients must be different',
-        );
-      }
+      return await this.prisma.$transaction(
+        async (tx) => {
+          // Validate sourcePatientId !== targetPatientId
+          if (dto.sourcePatientId === dto.targetPatientId) {
+            throw new BadRequestException(
+              'Source and target patients must be different',
+            );
+          }
 
-      // Validate both patients exist and belong to tenantId
-      const [sourcePatient, targetPatient] = await Promise.all([
-        this.prisma.patient.findFirst({
-          where: { id: dto.sourcePatientId, tenantId },
-        }),
-        this.prisma.patient.findFirst({
-          where: { id: dto.targetPatientId, tenantId },
-        }),
-      ]);
+          // Validate both patients exist and belong to tenantId
+          const [sourcePatient, targetPatient] = await Promise.all([
+            tx.patient.findFirst({
+              where: { id: dto.sourcePatientId, tenantId },
+            }),
+            tx.patient.findFirst({
+              where: { id: dto.targetPatientId, tenantId },
+            }),
+          ]);
 
-      if (!sourcePatient) {
-        throw new NotFoundException('Source patient not found');
-      }
+          if (!sourcePatient) {
+            throw new NotFoundException('Source patient not found');
+          }
 
-      if (!targetPatient) {
-        throw new NotFoundException('Target patient not found');
-      }
+          if (!targetPatient) {
+            throw new NotFoundException('Target patient not found');
+          }
 
-      // Validate patients are not soft-deleted/inactive
-      if (sourcePatient.status !== 'ACTIVE') {
-        throw new BadRequestException('Source patient is not active');
-      }
+          // Validate patients are not soft-deleted/inactive
+          if (sourcePatient.status !== 'ACTIVE') {
+            throw new BadRequestException('Source patient is not active');
+          }
 
-      if (targetPatient.status !== 'ACTIVE') {
-        throw new BadRequestException('Target patient is not active');
-      }
+          if (targetPatient.status !== 'ACTIVE') {
+            throw new BadRequestException('Target patient is not active');
+          }
 
-      // Validate no pending merge request already exists for this pair (Section 13)
-      const existingRequest = await this.prisma.patientMergeRequest.findFirst({
-        where: {
-          tenantId,
-          sourcePatientId: dto.sourcePatientId,
-          targetPatientId: dto.targetPatientId,
-          status: 'PENDING',
+          // Keep duplicate detection and insert in one serializable transaction.
+          const existingRequest = await tx.patientMergeRequest.findFirst({
+            where: {
+              tenantId,
+              sourcePatientId: dto.sourcePatientId,
+              targetPatientId: dto.targetPatientId,
+              status: 'PENDING',
+            },
+          });
+
+          if (existingRequest) {
+            throw new ConflictException(
+              'A pending merge request already exists for these patients',
+            );
+          }
+
+          // Create PatientMergeRequest with status=PENDING
+          const mergeRequest = await tx.patientMergeRequest.create({
+            data: {
+              tenantId,
+              branchId,
+              requesterId: userId,
+              sourcePatientId: dto.sourcePatientId,
+              targetPatientId: dto.targetPatientId,
+              status: 'PENDING',
+              reason: dto.reason,
+            },
+          });
+
+          // Audit: eventKey='PATIENT_MERGE_REQUESTED', metadata only (no PHI)
+          await this.audit.log(
+            {
+              tenantId,
+              userId,
+              eventKey: 'PATIENT_MERGE_REQUESTED',
+              recordType: 'PatientMergeRequest',
+              recordId: mergeRequest.id,
+              newValues: {
+                id: mergeRequest.id,
+                status: mergeRequest.status,
+                sourcePatientId: mergeRequest.sourcePatientId,
+                targetPatientId: mergeRequest.targetPatientId,
+              },
+            },
+            tx,
+            branchId,
+          );
+
+          return mergeRequest;
         },
-      });
-
-      if (existingRequest) {
-        throw new ConflictException(
-          'A pending merge request already exists for these patients',
-        );
-      }
-
-      // Create PatientMergeRequest with status=PENDING
-      const mergeRequest = await this.prisma.patientMergeRequest.create({
-        data: {
-          tenantId,
-          branchId,
-          requesterId: userId,
-          sourcePatientId: dto.sourcePatientId,
-          targetPatientId: dto.targetPatientId,
-          status: 'PENDING',
-          reason: dto.reason,
-        },
-      });
-
-      // Audit: eventKey='PATIENT_MERGE_REQUESTED', metadata only (no PHI)
-      await this.audit.log(
         {
-          tenantId,
-          userId,
-          eventKey: 'PATIENT_MERGE_REQUESTED',
-          recordType: 'PatientMergeRequest',
-          recordId: mergeRequest.id,
-          newValues: {
-            id: mergeRequest.id,
-            status: mergeRequest.status,
-            sourcePatientId: mergeRequest.sourcePatientId,
-            targetPatientId: mergeRequest.targetPatientId,
-          },
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         },
-        undefined,
-        branchId,
       );
-
-      return mergeRequest;
     } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034'
+      ) {
+        throw new ConflictException(
+          'A pending merge request is already being created for these patients',
+        );
+      }
+
       this.logger.error(
         `Error creating merge request: ${error.message}`,
         error.stack,
