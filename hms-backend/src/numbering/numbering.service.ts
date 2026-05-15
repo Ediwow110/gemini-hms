@@ -8,11 +8,13 @@ export class NumberingService {
   /**
    * Generates a sequential unique number for a given entity type.
    * Atomic increments prevent race conditions.
+   * Supports optional transaction client to maintain transaction atomicity with caller.
    */
   async generateNumber(
     tenantId: string,
     entityType: string,
     branchId?: string,
+    tx?: any,
   ): Promise<string> {
     const defaults: Record<string, { prefix: string; padding: number }> = {
       PATIENT: { prefix: 'PT-', padding: 6 },
@@ -29,10 +31,9 @@ export class NumberingService {
     };
     const safeBranchId = branchId || null;
 
-    // Use a transaction to ensure we can create or increment safely
-    return this.prisma.$transaction(async (tx) => {
+    const logic = async (db: any) => {
       // Find the existing sequence
-      let sequence = await tx.numberingSequence.findFirst({
+      let sequence = await db.numberingSequence.findFirst({
         where: {
           tenantId,
           branchId: safeBranchId,
@@ -42,13 +43,13 @@ export class NumberingService {
 
       if (sequence) {
         // Atomically increment
-        sequence = await tx.numberingSequence.update({
+        sequence = await db.numberingSequence.update({
           where: { id: sequence.id },
           data: { currentVal: { increment: 1 } },
         });
       } else {
         // Create new
-        sequence = await tx.numberingSequence.create({
+        sequence = await db.numberingSequence.create({
           data: {
             tenantId,
             branchId: safeBranchId,
@@ -65,6 +66,16 @@ export class NumberingService {
         '0',
       );
       return `${sequence.prefix}${paddedValue}`;
+    };
+
+    // If a transaction client is provided, use it directly
+    if (tx) {
+      return logic(tx);
+    }
+
+    // Otherwise, start a new transaction
+    return this.prisma.$transaction(async (newTx) => {
+      return logic(newTx);
     });
   }
 }

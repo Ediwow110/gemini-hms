@@ -27,6 +27,9 @@ model Tenant {
   cashierSessions    CashierSession[]
   numberingSequences NumberingSequence[]
   orders             Order[]
+  invoices           Invoice[]
+  payments           Payment[]
+  labResults         LabResult[]
   auditLogs          AuditLog[]
   inventoryItems     InventoryItem[]
   branchStocks       BranchStock[]
@@ -179,42 +182,49 @@ model Order {
   invoice   Invoice?
   labResult LabResult?
 
+  @@unique([tenantId, orderNumber])
   @@map("orders")
 }
 
 model Invoice {
   id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
   orderId       String   @unique @map("order_id") @db.Uuid
-  invoiceNumber String?  @unique @map("invoice_number")
+  invoiceNumber String?  @map("invoice_number")
   totalAmount   Decimal  @map("total_amount") @db.Decimal(12, 2)
   paidAmount    Decimal  @default(0) @map("paid_amount") @db.Decimal(12, 2)
   status        String   @default("UNPAID")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
+  tenant    Tenant            @relation(fields: [tenantId], references: [id])
   order     Order             @relation(fields: [orderId], references: [id])
   payments  Payment[]
   reversals PaymentReversal[]
   claims    Claim[]
 
+  @@unique([tenantId, invoiceNumber])
   @@map("invoices")
 }
 
 model Payment {
   id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
   invoiceId        String   @map("invoice_id") @db.Uuid
   cashierSessionId String   @map("cashier_session_id") @db.Uuid
-  receiptNumber    String?  @unique @map("receipt_number")
+  receiptNumber    String?  @map("receipt_number")
   amount           Decimal  @db.Decimal(12, 2)
   paymentMethod    String   @map("payment_method")
   status           String   @default("POSTED")
   idempotencyKey   String   @map("idempotency_key")
   createdAt        DateTime @default(now()) @map("created_at")
 
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
   invoice        Invoice           @relation(fields: [invoiceId], references: [id])
   cashierSession CashierSession    @relation(fields: [cashierSessionId], references: [id])
   reversals      PaymentReversal[]
 
+  @@unique([tenantId, receiptNumber])
   @@map("payments")
 }
 
@@ -241,6 +251,7 @@ model IdempotencyRecord {
 
 model LabResult {
   id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
   orderId      String    @unique @map("order_id") @db.Uuid
   status       String    @default("PENDING_COLLECTION")
   approvedById String?   @map("approved_by_id") @db.Uuid
@@ -248,6 +259,7 @@ model LabResult {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
+  tenant   Tenant             @relation(fields: [tenantId], references: [id])
   order    Order              @relation(fields: [orderId], references: [id])
   versions LabResultVersion[]
 
