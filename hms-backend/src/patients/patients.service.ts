@@ -17,51 +17,58 @@ export class PatientsService {
   ) {}
 
   async create(tenantId: string, userId: string, dto: CreatePatientDto) {
-    // 1. Generate unique patient number using Numbering Engine
-    const patientNumber = await this.numbering.generateNumber(
-      tenantId,
-      'PATIENT',
-    );
-
-    // 2. Check for duplicate (Basic check)
-    const existing = await this.prisma.patient.findFirst({
-      where: {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Generate unique patient number using Numbering Engine
+      const patientNumber = await this.numbering.generateNumber(
         tenantId,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        dob: new Date(dto.dob),
-      },
-    });
-
-    if (existing) {
-      throw new ConflictException(
-        'A patient with this name and birthdate already exists',
+        'PATIENT',
+        undefined,
+        tx,
       );
-    }
 
-    // 3. Create Patient inside a transaction
-    const patient = await this.prisma.patient.create({
-      data: {
-        tenantId,
-        patientNumber,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        dob: new Date(dto.dob),
-        status: 'ACTIVE',
-      },
+      // 2. Check for duplicate (Basic check)
+      const existing = await tx.patient.findFirst({
+        where: {
+          tenantId,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          dob: new Date(dto.dob),
+        },
+      });
+
+      if (existing) {
+        throw new ConflictException(
+          'A patient with this name and birthdate already exists',
+        );
+      }
+
+      // 3. Create Patient
+      const patient = await tx.patient.create({
+        data: {
+          tenantId,
+          patientNumber,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          dob: new Date(dto.dob),
+          status: 'ACTIVE',
+        },
+      });
+
+      // 4. Log Audit Event (PATIENT_CREATED)
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'PATIENT_CREATED',
+          recordType: 'Patient',
+          recordId: patient.id,
+          newValues: patient,
+        },
+        tx,
+      );
+
+      return patient;
     });
-
-    // 4. Log Audit Event (PATIENT_CREATED)
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'PATIENT_CREATED',
-      recordType: 'Patient',
-      recordId: patient.id,
-      newValues: patient,
-    });
-
-    return patient;
   }
 
   async findAll(tenantId: string) {

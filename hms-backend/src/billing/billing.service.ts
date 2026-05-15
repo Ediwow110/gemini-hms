@@ -298,12 +298,14 @@ export class BillingService {
           tenantId,
           'RECEIPT',
           branchId,
+          tx,
         );
 
         // 10. Create Payment record
         try {
           const payment = await tx.payment.create({
             data: {
+              tenantId,
               invoiceId: dto.invoiceId,
               cashierSessionId: dto.cashierSessionId,
               receiptNumber,

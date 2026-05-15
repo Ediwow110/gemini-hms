@@ -13,32 +13,42 @@ export class ClaimsService {
   ) {}
 
   async createClaim(tenantId: string, userId: string, dto: CreateClaimDto) {
-    // 1. Generate Claim Number safely using Numbering Engine
-    const claimNumber = await this.numbering.generateNumber(tenantId, 'CLAIM');
-
-    // 2. Create Claim
-    const claim = await this.prisma.claim.create({
-      data: {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Generate Claim Number safely using Numbering Engine
+      const claimNumber = await this.numbering.generateNumber(
         tenantId,
-        hmoPartnerId: dto.hmoPartnerId,
-        invoiceId: dto.invoiceId,
-        claimNumber,
-        loaNumber: dto.loaNumber,
-        amountClaimed: dto.amountClaimed,
-        status: 'PENDING',
-      },
-    });
+        'CLAIM',
+        undefined,
+        tx,
+      );
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'CLAIM_CREATED',
-      recordType: 'Claim',
-      recordId: claim.id,
-      newValues: claim,
-    });
+      // 2. Create Claim
+      const claim = await tx.claim.create({
+        data: {
+          tenantId,
+          hmoPartnerId: dto.hmoPartnerId,
+          invoiceId: dto.invoiceId,
+          claimNumber,
+          loaNumber: dto.loaNumber,
+          amountClaimed: dto.amountClaimed,
+          status: 'PENDING',
+        },
+      });
 
-    return claim;
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'CLAIM_CREATED',
+          recordType: 'Claim',
+          recordId: claim.id,
+          newValues: claim,
+        },
+        tx,
+      );
+
+      return claim;
+    });
   }
 
   async updateStatus(

@@ -36,6 +36,7 @@ export class OrdersService {
         tenantId,
         'ORDER',
         branchId,
+        tx,
       );
 
       // 5. Create Order
@@ -54,11 +55,13 @@ export class OrdersService {
         tenantId,
         'INVOICE',
         branchId,
+        tx,
       );
 
       // 7. Create Invoice (Automatically linked to order)
       const invoice = await tx.invoice.create({
         data: {
+          tenantId,
           orderId: order.id,
           invoiceNumber,
           totalAmount: totalAmount,
