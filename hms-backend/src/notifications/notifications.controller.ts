@@ -6,16 +6,16 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NotificationsService } from './notifications.service';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
-
-import type { AuthenticatedRequest } from '../common/types/authenticated-request.type';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { GetUser } from '../auth/decorators/get-user.decorator';
 
 @Controller('api/v1/notifications')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class NotificationsController {
   constructor(
     private notificationsService: NotificationsService,
@@ -23,16 +23,17 @@ export class NotificationsController {
   ) {}
 
   @Get()
+  @RequirePermissions('notification.view')
   async list(
-    @Request() req: AuthenticatedRequest,
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
     @Query('status') status?: string,
     @Query('category') category?: string,
     @Query('priority') priority?: string,
     @Query('type') type?: string,
     @Query('search') search?: string,
   ) {
-    const tenantId = req.user.tenantId;
-    return this.notificationsService.listNotifications(tenantId, {
+    return this.notificationsService.listNotifications(tenantId, userId, {
       status,
       category,
       priority,
@@ -42,38 +43,44 @@ export class NotificationsController {
   }
 
   @Get('stats')
-  async stats(@Request() req: AuthenticatedRequest) {
-    return this.notificationsService.getStats(req.user.tenantId);
+  @RequirePermissions('notification.view')
+  async stats(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+  ) {
+    return this.notificationsService.getStats(tenantId, userId);
   }
 
   @Post(':id/read')
   async markAsRead(
     @Param('id') id: string,
-    @Request() req: AuthenticatedRequest,
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
   ) {
-    if (!req.user.userId) {
+    if (!userId) {
       throw new ForbiddenException('Access denied');
     }
-    return this.notificationsService.markAsRead(
-      id,
-      req.user.tenantId,
-      req.user.userId,
-    );
+    return this.notificationsService.markAsRead(id, tenantId, userId);
   }
 
   @Post('read-all')
-  async markAllAsRead(@Request() req: AuthenticatedRequest) {
-    return this.notificationsService.markAllAsRead(req.user.tenantId);
+  async markAllAsRead(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+  ) {
+    return this.notificationsService.markAllAsRead(tenantId, userId);
   }
 
   @Post('dispatch-pending')
-  async dispatchPending(@Request() req: AuthenticatedRequest) {
-    return this.dispatcher.dispatchPending(req.user.tenantId);
+  @RequirePermissions('notification.manage')
+  async dispatchPending(@GetUser('tenantId') tenantId: string) {
+    return this.dispatcher.dispatchPending(tenantId);
   }
 
   @Post(':id/retry')
-  async retry(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    const result = await this.dispatcher.retryFailed(id, req.user.tenantId);
+  @RequirePermissions('notification.manage')
+  async retry(@Param('id') id: string, @GetUser('tenantId') tenantId: string) {
+    const result = await this.dispatcher.retryFailed(id, tenantId);
     return { success: result };
   }
 }

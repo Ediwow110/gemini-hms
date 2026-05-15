@@ -59,8 +59,14 @@ async function main() {
     { name: 'lab.result.release', scope: 'tenant/branch/department', riskLevel: 'HIGH' },
     { name: 'lab.result.view', scope: 'tenant/branch/department', riskLevel: 'LOW' },
     { name: 'lab.result.amend.request', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+    { name: 'catalog.service.view', scope: 'tenant', riskLevel: 'LOW' },
+    { name: 'catalog.service.create', scope: 'tenant', riskLevel: 'MEDIUM' },
+    { name: 'catalog.service.update', scope: 'tenant', riskLevel: 'MEDIUM' },
+    { name: 'catalog.service.deactivate', scope: 'tenant', riskLevel: 'HIGH' },
     { name: 'inventory.item.view', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'inventory.item.create', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'inventory.item.update', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'inventory.item.deactivate', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
     { name: 'inventory.stock.receive', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'inventory.stock.dispense', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'inventory.adjust.request', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
@@ -74,6 +80,8 @@ async function main() {
     { name: 'billing.reversal.apply', scope: 'tenant/branch', riskLevel: 'HIGH' },
     { name: 'queue.view', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'queue.manage', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'notification.view', scope: 'tenant/user', riskLevel: 'LOW' },
+    { name: 'notification.manage', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
   ];
 
   console.log('Seeding Permissions...');

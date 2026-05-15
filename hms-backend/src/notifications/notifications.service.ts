@@ -45,6 +45,7 @@ export class NotificationsService {
 
   async listNotifications(
     tenantId: string,
+    userId: string,
     filters?: {
       status?: string;
       category?: string;
@@ -53,17 +54,24 @@ export class NotificationsService {
       search?: string;
     },
   ) {
-    const where: Record<string, unknown> = { tenantId };
+    const where: Record<string, any> = {
+      tenantId,
+      OR: [{ userId: null }, { userId: userId }],
+    };
 
     if (filters?.status) where.status = filters.status;
     if (filters?.category) where.category = filters.category;
     if (filters?.priority) where.priority = filters.priority;
     if (filters?.type) where.type = filters.type;
     if (filters?.search) {
-      where.OR = [
-        { subject: { contains: filters.search, mode: 'insensitive' } },
-        { content: { contains: filters.search, mode: 'insensitive' } },
-        { recipient: { contains: filters.search, mode: 'insensitive' } },
+      where.AND = [
+        {
+          OR: [
+            { subject: { contains: filters.search, mode: 'insensitive' } },
+            { content: { contains: filters.search, mode: 'insensitive' } },
+            { recipient: { contains: filters.search, mode: 'insensitive' } },
+          ],
+        },
       ];
     }
 
@@ -93,24 +101,43 @@ export class NotificationsService {
     });
   }
 
-  async markAllAsRead(tenantId: string) {
+  async markAllAsRead(tenantId: string, userId: string) {
     return this.prisma.notification.updateMany({
-      where: { tenantId, status: { in: ['PENDING', 'SENT'] } },
+      where: {
+        tenantId,
+        status: { in: ['PENDING', 'SENT'] },
+        OR: [{ userId: null }, { userId: userId }],
+      },
       data: { status: 'READ', readAt: new Date() },
     });
   }
 
-  async getStats(tenantId: string) {
+  async getStats(tenantId: string, userId: string) {
+    const userScope = {
+      OR: [{ userId: null }, { userId: userId }],
+    };
+
     const [unread, critical, failed, pending] = await Promise.all([
       this.prisma.notification.count({
-        where: { tenantId, status: { in: ['PENDING', 'SENT'] } },
+        where: {
+          tenantId,
+          ...userScope,
+          status: { in: ['PENDING', 'SENT'] },
+        },
       }),
       this.prisma.notification.count({
-        where: { tenantId, priority: 'CRITICAL', status: { not: 'READ' } },
+        where: {
+          tenantId,
+          ...userScope,
+          priority: 'CRITICAL',
+          status: { not: 'READ' },
+        },
       }),
-      this.prisma.notification.count({ where: { tenantId, status: 'FAILED' } }),
       this.prisma.notification.count({
-        where: { tenantId, status: 'PENDING' },
+        where: { tenantId, ...userScope, status: 'FAILED' },
+      }),
+      this.prisma.notification.count({
+        where: { tenantId, ...userScope, status: 'PENDING' },
       }),
     ]);
     return { unread, critical, failed, pending };

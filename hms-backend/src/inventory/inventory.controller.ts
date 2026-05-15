@@ -52,7 +52,7 @@ export class InventoryController {
   }
 
   @Patch('items/:id')
-  @RequirePermissions('inventory.item.create') // Reusing item.create for updates for now, or use inventory.item.update if it exists
+  @RequirePermissions('inventory.item.update')
   updateItem(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -63,7 +63,7 @@ export class InventoryController {
   }
 
   @Delete('items/:id')
-  @RequirePermissions('inventory.item.create') // Reusing item.create for deactivation
+  @RequirePermissions('inventory.item.deactivate')
   deactivateItem(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
