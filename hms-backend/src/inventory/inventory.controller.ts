@@ -1,6 +1,21 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Patch,
+  Delete,
+  Query,
+} from '@nestjs/common';
 import { InventoryService } from './inventory.service';
-import { CreateInventoryItemDto, ReceiveStockDto } from './dto/inventory.dto';
+import {
+  CreateInventoryItemDto,
+  ReceiveStockDto,
+  UpdateInventoryItemDto,
+  InventoryStatus,
+} from './dto/inventory.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -19,8 +34,9 @@ export class InventoryController {
   getCatalog(
     @GetUser('tenantId') tenantId: string,
     @GetUser('branchId') branchId: string,
+    @Query('status') status?: InventoryStatus,
   ) {
-    return this.inventoryService.getCatalog(tenantId, branchId);
+    return this.inventoryService.getCatalog(tenantId, branchId, status);
   }
 
   @Post('items')
@@ -33,6 +49,27 @@ export class InventoryController {
     @Body() dto: CreateInventoryItemDto,
   ) {
     return this.inventoryService.createItem(tenantId, branchId, userId, dto);
+  }
+
+  @Patch('items/:id')
+  @RequirePermissions('inventory.item.create') // Reusing item.create for updates for now, or use inventory.item.update if it exists
+  updateItem(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateInventoryItemDto,
+  ) {
+    return this.inventoryService.updateItem(tenantId, userId, id, dto);
+  }
+
+  @Delete('items/:id')
+  @RequirePermissions('inventory.item.create') // Reusing item.create for deactivation
+  deactivateItem(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.inventoryService.deactivateItem(tenantId, userId, id);
   }
 
   @Post('items/:id/receive')

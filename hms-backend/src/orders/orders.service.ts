@@ -54,11 +54,11 @@ export class OrdersService {
           trustedItem = { name: service.name, price: service.price };
         } else if (itemDto.itemType === OrderItemType.INVENTORY) {
           const inventory = await tx.inventoryItem.findFirst({
-            where: { id: itemDto.itemId, tenantId },
+            where: { id: itemDto.itemId, tenantId, status: 'ACTIVE' },
           });
           if (!inventory) {
             throw new BadRequestException(
-              `Inventory item ${itemDto.itemId} not found`,
+              `Inventory item ${itemDto.itemId} not found or inactive`,
             );
           }
           trustedItem = { name: inventory.name, price: inventory.price };
