@@ -12,6 +12,7 @@ import {
 } from './dto/lab.dto';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { AuditService } from '../audit/audit.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class LabService {
