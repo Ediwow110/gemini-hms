@@ -3,7 +3,7 @@ import { LabService } from './lab.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ApprovalsService } from '../approvals/approvals.service';
-import { Prisma } from '@prisma/client';
+import { LabResultStatus } from '@prisma/client';
 
 describe('LabService Audit Coupling (Batch 8)', () => {
   let service: LabService;
@@ -19,14 +19,19 @@ describe('LabService Audit Coupling (Batch 8)', () => {
     const prismaMock = {
       labResult: {
         findFirst: jest.fn(),
-        updateMany: jest.fn(),
-        count: jest.fn(),
+        update: jest.fn(),
+      },
+      labResultItem: {
+        findMany: jest.fn().mockResolvedValue([]),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
       labResultVersion: {
         count: jest.fn(),
         create: jest.fn(),
       },
-      $transaction: jest.fn().mockImplementation(async (cb) => await cb(prismaMock)),
+      $transaction: jest
+        .fn()
+        .mockImplementation(async (cb) => await cb(prismaMock)),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -34,7 +39,7 @@ describe('LabService Audit Coupling (Batch 8)', () => {
         LabService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: AuditService, useValue: { log: jest.fn() } },
-        { provide: ApprovalsService, useValue: {} },
+        { provide: ApprovalsService, useValue: { createRequest: jest.fn() } },
       ],
     }).compile();
 
@@ -46,15 +51,28 @@ describe('LabService Audit Coupling (Batch 8)', () => {
   it('should pass tx and branchId to audit.log in applyAmendment', async () => {
     prisma.labResult.findFirst.mockResolvedValue({
       id: labResultId,
-      status: 'RELEASED',
-      results: {},
-      order: { tenantId, branchId },
+      status: LabResultStatus.RELEASED,
+      tenantId,
+      branchId,
+      remarks: null,
+      approvedById: null,
+      approvedAt: null,
     });
     prisma.labResultVersion.count.mockResolvedValue(0);
     prisma.labResultVersion.create.mockResolvedValue({ id: 'v1' });
-    prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+    prisma.labResult.update.mockResolvedValue({
+      id: labResultId,
+      status: LabResultStatus.AMENDED,
+      items: [],
+    });
 
-    await service.applyAmendment(tenantId, userId, branchId, labResultId, 'reason');
+    await service.applyAmendment(
+      tenantId,
+      userId,
+      branchId,
+      labResultId,
+      'reason',
+    );
 
     expect(audit.log).toHaveBeenCalledWith(
       expect.objectContaining({ eventKey: 'RESULT_AMENDMENT_APPLIED' }),
@@ -64,13 +82,19 @@ describe('LabService Audit Coupling (Batch 8)', () => {
   });
 
   it('should pass tx and branchId to audit.log in releaseResult', async () => {
+    const releasedAt = new Date();
     prisma.labResult.findFirst.mockResolvedValue({
       id: labResultId,
-      status: 'APPROVED',
-      order: { tenantId, branchId },
-      lockedAt: new Date(),
+      status: LabResultStatus.APPROVED,
+      tenantId,
+      branchId,
     });
-    prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+    prisma.labResult.update.mockResolvedValue({
+      id: labResultId,
+      status: LabResultStatus.RELEASED,
+      releasedById: userId,
+      releasedAt,
+    });
 
     await service.releaseResult(tenantId, userId, branchId, labResultId);
 

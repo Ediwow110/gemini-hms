@@ -38,7 +38,6 @@ export class OrdersService {
       // 4. Resolve Trusted Prices and Items
       const lineItems: any[] = [];
       let calculatedTotal = new Prisma.Decimal(0);
-      let hasLabTest = false;
 
       for (const itemDto of dto.items) {
         let trustedItem: { name: string; price: Prisma.Decimal };
@@ -53,9 +52,6 @@ export class OrdersService {
             );
           }
           trustedItem = { name: service.name, price: service.price };
-          if (service.category === 'LAB_TEST') {
-            hasLabTest = true;
-          }
         } else if (itemDto.itemType === OrderItemType.INVENTORY) {
           const inventory = await tx.inventoryItem.findFirst({
             where: { id: itemDto.itemId, tenantId, status: 'ACTIVE' },
@@ -106,18 +102,9 @@ export class OrdersService {
           items: {
             create: lineItems,
           },
-          labResult: hasLabTest
-            ? {
-                create: {
-                  tenantId,
-                  status: 'PENDING_COLLECTION',
-                },
-              }
-            : undefined,
         },
         include: {
           items: true,
-          labResult: true,
         },
       });
 

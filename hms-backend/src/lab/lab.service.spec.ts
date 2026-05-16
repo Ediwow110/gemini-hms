@@ -19,7 +19,10 @@ describe('LabService Branch Isolation', () => {
             labResult: {
               findFirst: jest.fn(),
               findMany: jest.fn(),
-              updateMany: jest.fn(),
+              update: jest.fn(),
+            },
+            labResultItem: {
+              deleteMany: jest.fn(),
             },
           },
         },
@@ -56,7 +59,8 @@ describe('LabService Branch Isolation', () => {
       expect(prisma.labResult.findFirst).toHaveBeenCalledWith({
         where: {
           id: labResultId,
-          order: { tenantId, branchId },
+          tenantId,
+          branchId,
         },
         include: expect.anything(),
       });
@@ -79,7 +83,8 @@ describe('LabService Branch Isolation', () => {
 
       expect(prisma.labResult.findMany).toHaveBeenCalledWith({
         where: expect.objectContaining({
-          order: { tenantId, branchId },
+          tenantId,
+          branchId,
         }),
         include: expect.anything(),
         orderBy: expect.anything(),
@@ -89,37 +94,53 @@ describe('LabService Branch Isolation', () => {
 
   describe('encodeResult', () => {
     it('should fail if lab result belongs to another branch', async () => {
-      // findOne will be called and it will throw NotFoundException if branch mismatch
       prisma.labResult.findFirst.mockResolvedValue(null);
 
       await expect(
         service.encodeResult(tenantId, 'user-1', otherBranchId, labResultId, {
-          results: { hemoglobin: 14 },
+          items: [{ testName: 'hemoglobin', value: '14' }],
         }),
       ).rejects.toThrow(NotFoundException);
 
-      expect(prisma.labResult.updateMany).not.toHaveBeenCalled();
+      expect(prisma.labResult.update).not.toHaveBeenCalled();
     });
 
-    it('should persist results and remarks in the LabResult record', async () => {
-      const mockResult = { id: labResultId, status: 'PENDING_COLLECTION' };
-      prisma.labResult.findFirst
-        .mockResolvedValueOnce(mockResult) // findOne
-        .mockResolvedValueOnce({ ...mockResult, status: 'ENCODED' }); // updated
-
-      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
-
-      const dto = { results: { glucose: 100 }, remarks: 'Normal' };
-      await service.encodeResult(tenantId, 'user-1', branchId, labResultId, dto);
-
-      expect(prisma.labResult.updateMany).toHaveBeenCalledWith({
-        where: expect.anything(),
-        data: expect.objectContaining({
-          status: 'ENCODED',
-          results: dto.results,
-          remarks: dto.remarks,
-        }),
+    it('should persist result items and remarks', async () => {
+      const mockResult = {
+        id: labResultId,
+        status: 'ENCODED',
+        tenantId,
+        branchId,
+      };
+      const transactionFn = jest.fn().mockImplementation(async (cb) => {
+        return cb({
+          labResultItem: {
+            deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+          labResult: {
+            update: jest.fn().mockResolvedValue({
+              ...mockResult,
+              items: [{ testName: 'glucose', value: '100' }],
+            }),
+          },
+        });
       });
+      prisma.$transaction = transactionFn;
+      prisma.labResult.findFirst.mockResolvedValue(mockResult);
+
+      const dto = {
+        items: [{ testName: 'glucose', value: '100' }],
+        remarks: 'Normal',
+      };
+      await service.encodeResult(
+        tenantId,
+        'user-1',
+        branchId,
+        labResultId,
+        dto,
+      );
+
+      expect(transactionFn).toHaveBeenCalled();
     });
   });
 
@@ -129,11 +150,11 @@ describe('LabService Branch Isolation', () => {
 
       await expect(
         service.approveResult(tenantId, 'user-1', otherBranchId, labResultId, {
-          pathologistRemarks: 'ok',
+          remarks: 'ok',
         }),
       ).rejects.toThrow(NotFoundException);
 
-      expect(prisma.labResult.updateMany).not.toHaveBeenCalled();
+      expect(prisma.labResult.update).not.toHaveBeenCalled();
     });
   });
 

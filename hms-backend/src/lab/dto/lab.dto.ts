@@ -1,9 +1,46 @@
-import { IsNotEmpty, IsString, IsObject, IsOptional } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsEnum,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+export enum ResultFlag {
+  NORMAL = 'NORMAL',
+  ABNORMAL = 'ABNORMAL',
+  CRITICAL = 'CRITICAL',
+}
+
+export class LabResultItemDto {
+  @IsString()
+  @IsNotEmpty()
+  testName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  value: string;
+
+  @IsString()
+  @IsOptional()
+  unit?: string;
+
+  @IsString()
+  @IsOptional()
+  referenceRange?: string;
+
+  @IsEnum(ResultFlag)
+  @IsOptional()
+  flag?: ResultFlag = ResultFlag.NORMAL;
+}
 
 export class EncodeLabResultDto {
-  @IsObject()
-  @IsNotEmpty()
-  results: Record<string, any>; // Key-value pairs of test parameters and values
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => LabResultItemDto)
+  items: LabResultItemDto[];
 
   @IsString()
   @IsOptional()
@@ -13,14 +50,10 @@ export class EncodeLabResultDto {
 export class ApproveLabResultDto {
   @IsString()
   @IsOptional()
-  pathologistRemarks?: string;
+  remarks?: string;
 }
 
 export class AmendLabResultDto {
-  @IsObject()
-  @IsOptional()
-  newResults?: Record<string, any>;
-
   @IsString()
   @IsNotEmpty()
   reason: string;

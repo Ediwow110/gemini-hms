@@ -31,7 +31,6 @@ model Tenant {
   orderItems         OrderItem[]
   invoices           Invoice[]
   payments           Payment[]
-  labResults         LabResult[]
   auditLogs          AuditLog[]
   inventoryItems     InventoryItem[]
   branchStocks       BranchStock[]
@@ -225,7 +224,6 @@ model Order {
   patient    Patient     @relation(fields: [patientId], references: [id])
   items      OrderItem[]
   invoice    Invoice?
-  labResult  LabResult?
 
   @@unique([tenantId, orderNumber])
   @@map("orders")
@@ -331,38 +329,112 @@ model IdempotencyRecord {
   @@map("idempotency_records")
 }
 
+enum SpecimenStatus {
+  PENDING_COLLECTION
+  COLLECTED
+  RECEIVED
+  REJECTED
+}
+
+model Specimen {
+  id            String          @id @default(uuid()) @db.Uuid
+  tenantId      String          @map("tenant_id") @db.Uuid
+  labOrderId    String          @map("lab_order_id") @db.Uuid
+  barcode       String          @map("barcode")
+  specimenType  String          @map("specimen_type")
+  status        SpecimenStatus  @default(PENDING_COLLECTION)
+  collectedAt   DateTime?       @map("collected_at")
+  receivedAt    DateTime?       @map("received_at")
+  rejectionReason String?       @map("rejection_reason") @db.Text
+
+  createdBy     String          @map("created_by") @default("") @db.Uuid
+  updatedBy     String          @map("updated_by") @default("") @db.Uuid
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  labResult     LabResult?
+
+  @@unique([tenantId, barcode])
+  @@index([tenantId, labOrderId])
+  @@index([tenantId, barcode])
+  @@map("specimens")
+}
+
+enum LabResultStatus {
+  ENCODED
+  VALIDATED
+  APPROVED
+  RELEASED
+  AMENDED
+  CANCELLED
+}
+
+enum ResultFlag {
+  NORMAL
+  ABNORMAL
+  CRITICAL
+}
+
 model LabResult {
-  id           String    @id @default(uuid()) @db.Uuid
-  tenantId     String    @map("tenant_id") @db.Uuid
-  orderId      String    @unique @map("order_id") @db.Uuid
-  status       String    @default("PENDING_COLLECTION")
-  results      Json? // Key-value results snapshot
-  remarks      String? // Clinical remarks
-  approvedById String?   @map("approved_by_id") @db.Uuid
-  lockedAt     DateTime? @map("locked_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  id            String         @id @default(uuid()) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  branchId      String         @map("branch_id") @db.Uuid
+  specimenId    String         @unique @map("specimen_id") @db.Uuid
+  status        LabResultStatus @default(ENCODED)
+  remarks       String?        @db.Text
 
-  tenant   Tenant             @relation(fields: [tenantId], references: [id])
-  order    Order              @relation(fields: [orderId], references: [id])
-  versions LabResultVersion[]
+  encodedById   String         @map("encoded_by_id") @db.Uuid
+  encodedAt     DateTime       @default(now()) @map("encoded_at")
+  validatedById String?        @map("validated_by_id") @db.Uuid
+  validatedAt   DateTime?      @map("validated_at")
+  approvedById  String?        @map("approved_by_id") @db.Uuid
+  approvedAt    DateTime?      @map("approved_at")
+  releasedById  String?        @map("released_by_id") @db.Uuid
+  releasedAt    DateTime?      @map("released_at")
 
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  specimen      Specimen       @relation(fields: [specimenId], references: [id])
+  items         LabResultItem[]
+  versions      LabResultVersion[]
+
+  @@index([tenantId, specimenId])
+  @@index([tenantId, status])
   @@map("lab_results")
 }
 
+model LabResultItem {
+  id              String      @id @default(uuid()) @db.Uuid
+  tenantId        String      @map("tenant_id") @db.Uuid
+  labResultId     String      @map("lab_result_id") @db.Uuid
+  testName        String      @map("test_name")
+  value           String      @db.Text
+  unit            String?
+  referenceRange  String?     @map("reference_range")
+  flag            ResultFlag  @default(NORMAL)
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  labResult       LabResult   @relation(fields: [labResultId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, labResultId])
+  @@map("lab_result_items")
+}
+
 model LabResultVersion {
-  id          String   @id @default(uuid()) @db.Uuid
-  labResultId String   @map("lab_result_id") @db.Uuid
-  version     Int      @default(1)
-  oldStatus   String   @map("old_status")
-  newStatus   String   @map("new_status")
-  amendedById String   @map("amended_by_id") @db.Uuid
-  reason      String
-  oldData     Json?    @map("old_data") // Stores the previous results snapshot
-  createdAt   DateTime @default(now()) @map("created_at")
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  labResultId         String   @map("lab_result_id") @db.Uuid
+  version             Int      @default(1)
+  previousData        Json     @map("previous_data")
+  reasonForAmendment  String   @map("reason_for_amendment") @db.Text
+  amendedById         String   @map("amended_by_id") @db.Uuid
+  createdAt           DateTime @default(now()) @map("created_at")
 
-  labResult LabResult @relation(fields: [labResultId], references: [id])
+  labResult           LabResult @relation(fields: [labResultId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId, labResultId])
   @@map("lab_result_versions")
 }
 
