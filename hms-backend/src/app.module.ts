@@ -22,6 +22,7 @@ import { AdminModule } from './admin/admin.module';
 import { EncountersModule } from './encounters/encounters.module';
 import { PortalModule } from './portal/portal.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { PharmacyModule } from './pharmacy/pharmacy.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
     EncountersModule,
     PortalModule,
     AppointmentsModule,
+    PharmacyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

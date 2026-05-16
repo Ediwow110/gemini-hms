@@ -56,6 +56,10 @@ model Tenant {
   appointments       Appointment[]
   doctorSchedules    DoctorSchedule[]
   queueTickets       QueueTicket[]
+  medications        Medication[]
+  prescriptions      Prescription[]
+  prescriptionItems  PrescriptionItem[]
+  dispenseLogs       DispenseLog[]
 
   @@map("tenants")
 }
@@ -86,6 +90,8 @@ model Branch {
   appointments     Appointment[]
   doctorSchedules  DoctorSchedule[]
   queueTickets     QueueTicket[]
+  medications      Medication[]
+  prescriptions    Prescription[]
 
   @@map("branches")
 }
@@ -118,6 +124,8 @@ model User {
   mergeApproved      PatientMergeRequest[] @relation("MergeApproved")
   doctorAppointments Appointment[]     @relation("DoctorAppointments")
   doctorSchedules    DoctorSchedule[]  @relation("DoctorSchedules")
+  prescriptions      Prescription[]    @relation("PrescribingDoctor")
+  dispenseLogs       DispenseLog[]     @relation("DispensingPharmacist")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -206,6 +214,7 @@ model Encounter {
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescriptions Prescription[]
 
   @@index([tenantId])
   @@index([branchId])
@@ -232,6 +241,7 @@ model Patient {
   portalOtps       PortalOtp[]
   appointments     Appointment[]
   queueTickets     QueueTicket[]
+  prescriptions    Prescription[]
 
   @@unique([tenantId, patientNumber])
   @@map("patients")
@@ -443,6 +453,7 @@ model InventoryItem {
   branch         Branch          @relation(fields: [branchId], references: [id])
   batches        StockBatch[]
   movements      StockMovement[]
+  medications    Medication[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
@@ -1114,4 +1125,114 @@ model QueueTicket {
   @@index([patientId])
   @@index([status])
   @@map("queue_tickets")
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Medication {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  branchId      String   @map("branch_id") @db.Uuid
+  inventoryItemId String? @unique @map("inventory_item_id") @db.Uuid
+  genericName   String   @map("generic_name")
+  brandName     String?  @map("brand_name")
+  form          String   // TABLET, SYRUP, etc.
+  strength      String
+  
+  createdBy     String   @map("created_by") @db.Uuid
+  updatedBy     String   @map("updated_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  branch        Branch         @relation(fields: [branchId], references: [id])
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  prescriptionItems PrescriptionItem[]
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@map("medications")
+}
+
+model Prescription {
+  id            String             @id @default(uuid()) @db.Uuid
+  tenantId      String             @map("tenant_id") @db.Uuid
+  branchId      String             @map("branch_id") @db.Uuid
+  patientId     String             @map("patient_id") @db.Uuid
+  encounterId   String             @map("encounter_id") @db.Uuid
+  doctorId      String             @map("doctor_id") @db.Uuid
+  status        PrescriptionStatus @default(ACTIVE)
+  notes         String?
+  
+  createdBy     String             @map("created_by") @db.Uuid
+  updatedBy     String             @map("updated_by") @db.Uuid
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  branch    Branch    @relation(fields: [branchId], references: [id])
+  patient   Patient   @relation(fields: [patientId], references: [id])
+  encounter Encounter @relation(fields: [encounterId], references: [id])
+  doctor    User      @relation("PrescribingDoctor", fields: [doctorId], references: [id])
+  items     PrescriptionItem[]
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([patientId])
+  @@index([encounterId])
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  branchId          String   @map("branch_id") @db.Uuid
+  prescriptionId    String   @map("prescription_id") @db.Uuid
+  medicationId      String   @map("medication_id") @db.Uuid
+  dosage            String
+  frequency         String
+  durationDays      Int      @map("duration_days")
+  quantityPrescribed Int      @map("quantity_prescribed")
+  quantityDispensed  Int      @default(0) @map("quantity_dispensed")
+  
+  createdBy         String   @map("created_by") @db.Uuid
+  updatedBy         String   @map("updated_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medication   Medication   @relation(fields: [medicationId], references: [id])
+  dispenseLogs DispenseLog[]
+
+  @@index([tenantId])
+  @@index([prescriptionId])
+  @@map("prescription_items")
+}
+
+model DispenseLog {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  branchId           String   @map("branch_id") @db.Uuid
+  prescriptionItemId String   @map("prescription_item_id") @db.Uuid
+  pharmacistId       String   @map("pharmacist_id") @db.Uuid
+  quantityDispensed  Int      @map("quantity_dispensed")
+  dispensedAt        DateTime @default(now()) @map("dispensed_at")
+  
+  createdBy          String   @map("created_by") @db.Uuid
+  updatedBy          String   @map("updated_by") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  prescriptionItem PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+  pharmacist       User             @relation("DispensingPharmacist", fields: [pharmacistId], references: [id])
+
+  @@index([tenantId])
+  @@index([prescriptionItemId])
+  @@map("dispense_logs")
 }
