@@ -53,6 +53,9 @@ model Tenant {
   encounters         Encounter[]
   notificationLogs   NotificationLog[]
   portalOtps         PortalOtp[]
+  appointments       Appointment[]
+  doctorSchedules    DoctorSchedule[]
+  queueTickets       QueueTicket[]
 
   @@map("tenants")
 }
@@ -80,6 +83,9 @@ model Branch {
   encounters       Encounter[]
   notificationLogs NotificationLog[]
   portalOtps       PortalOtp[]
+  appointments     Appointment[]
+  doctorSchedules  DoctorSchedule[]
+  queueTickets     QueueTicket[]
 
   @@map("branches")
 }
@@ -110,6 +116,8 @@ model User {
   reportExportLogs   ReportExportLog[]
   mergeRequested     PatientMergeRequest[] @relation("MergeRequested")
   mergeApproved      PatientMergeRequest[] @relation("MergeApproved")
+  doctorAppointments Appointment[]     @relation("DoctorAppointments")
+  doctorSchedules    DoctorSchedule[]  @relation("DoctorSchedules")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -222,6 +230,8 @@ model Patient {
   encounters       Encounter[]
   notificationLogs NotificationLog[]
   portalOtps       PortalOtp[]
+  appointments     Appointment[]
+  queueTickets     QueueTicket[]
 
   @@unique([tenantId, patientNumber])
   @@map("patients")
@@ -517,6 +527,8 @@ model Department {
   tenant    Tenant     @relation(fields: [tenantId], references: [id])
   branch    Branch     @relation(fields: [branchId], references: [id])
   employees Employee[]
+  appointments    Appointment[]
+  doctorSchedules DoctorSchedule[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -1001,4 +1013,105 @@ model PortalOtp {
   @@index([branchId])
   @@index([patientId])
   @@map("portal_otps")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  ARRIVED
+  IN_CONSULTATION
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Appointment {
+  id              String            @id @default(uuid()) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  branchId        String            @map("branch_id") @db.Uuid
+  patientId       String            @map("patient_id") @db.Uuid
+  doctorId        String            @map("doctor_id") @db.Uuid
+  departmentId    String            @map("department_id") @db.Uuid
+  appointmentDate DateTime          @map("appointment_date")
+  status          AppointmentStatus @default(SCHEDULED)
+  reason          String?
+  createdBy       String            @map("created_by") @db.Uuid
+  updatedBy       String            @map("updated_by") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  branch      Branch       @relation(fields: [branchId], references: [id])
+  patient     Patient      @relation(fields: [patientId], references: [id])
+  doctor      User         @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  department  Department   @relation(fields: [departmentId], references: [id])
+  queueTicket QueueTicket?
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([appointmentDate])
+  @@map("appointments")
+}
+
+model DoctorSchedule {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  branchId     String   @map("branch_id") @db.Uuid
+  doctorId     String   @map("doctor_id") @db.Uuid
+  departmentId String   @map("department_id") @db.Uuid
+  dayOfWeek    Int      @map("day_of_week") // 0-6
+  startTime    String   @map("start_time") // HH:mm
+  endTime      String   @map("end_time")   // HH:mm
+  isActive     Boolean  @default(true) @map("is_active")
+  createdBy    String   @map("created_by") @db.Uuid
+  updatedBy    String   @map("updated_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  branch     Branch     @relation(fields: [branchId], references: [id])
+  doctor     User       @relation("DoctorSchedules", fields: [doctorId], references: [id])
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@unique([tenantId, branchId, doctorId, dayOfWeek, startTime])
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([doctorId])
+  @@map("doctor_schedules")
+}
+
+enum QueueStatus {
+  WAITING
+  CALLED
+  SKIPPED
+  COMPLETED
+}
+
+model QueueTicket {
+  id            String      @id @default(uuid()) @db.Uuid
+  tenantId      String      @map("tenant_id") @db.Uuid
+  branchId      String      @map("branch_id") @db.Uuid
+  patientId     String      @map("patient_id") @db.Uuid
+  appointmentId String?     @unique @map("appointment_id") @db.Uuid
+  ticketNumber  String      @map("ticket_number")
+  status        QueueStatus @default(WAITING)
+  date          DateTime    @default(now()) @db.Date
+  createdBy     String      @map("created_by") @db.Uuid
+  updatedBy     String      @map("updated_by") @db.Uuid
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  branch      Branch       @relation(fields: [branchId], references: [id])
+  patient     Patient      @relation(fields: [patientId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@unique([tenantId, branchId, date, ticketNumber])
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([patientId])
+  @@index([status])
+  @@map("queue_tickets")
 }

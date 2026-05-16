@@ -1,0 +1,8 @@
+import { IsEnum, IsNotEmpty } from 'class-validator';
+import { AppointmentStatus } from '@prisma/client';
+
+export class UpdateAppointmentStatusDto {
+  @IsNotEmpty()
+  @IsEnum(AppointmentStatus)
+  status: AppointmentStatus;
+}

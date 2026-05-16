@@ -21,6 +21,7 @@ import { ReportsModule } from './reports/reports.module';
 import { AdminModule } from './admin/admin.module';
 import { EncountersModule } from './encounters/encounters.module';
 import { PortalModule } from './portal/portal.module';
+import { AppointmentsModule } from './appointments/appointments.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { PortalModule } from './portal/portal.module';
     AdminModule,
     EncountersModule,
     PortalModule,
+    AppointmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
