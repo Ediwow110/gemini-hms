@@ -1,16 +1,16 @@
 import {
   Injectable,
   NotFoundException,
-  BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import {
   CreateInventoryItemDto,
   ReceiveStockDto,
-  UpdateInventoryItemDto,
-  InventoryStatus,
+  AdjustStockDto,
 } from './dto/inventory.dto';
-import { AuditService } from '../audit/audit.service';
+import { StockMovementType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class InventoryService {
@@ -25,21 +25,34 @@ export class InventoryService {
     userId: string,
     dto: CreateInventoryItemDto,
   ) {
+    // Check if SKU already exists for this tenant
+    const existing = await this.prisma.inventoryItem.findUnique({
+      where: {
+        tenantId_sku: {
+          tenantId,
+          sku: dto.sku,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException('SKU already exists for this tenant');
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const item = await tx.inventoryItem.create({
         data: {
           tenantId,
-          ...dto,
-        },
-      });
-
-      // Initialize stock at 0 for this branch
-      await tx.branchStock.create({
-        data: {
-          tenantId,
           branchId,
-          inventoryItemId: item.id,
-          quantity: 0,
+          name: dto.name,
+          sku: dto.sku,
+          unitOfMeasure: dto.unitOfMeasure,
+          reorderLevel: dto.reorderLevel || 0,
+          totalQuantity: 0,
+          price: new Prisma.Decimal(dto.price),
+          status: 'ACTIVE',
+          createdBy: userId,
+          updatedBy: userId,
         },
       });
 
@@ -60,322 +73,237 @@ export class InventoryService {
     });
   }
 
-  async updateItem(
-    tenantId: string,
-    userId: string,
-    id: string,
-    dto: UpdateInventoryItemDto,
-  ) {
-    const existing = await this.prisma.inventoryItem.findFirst({
-      where: { id, tenantId },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Inventory item not found');
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.inventoryItem.update({
-        where: { id },
-        data: dto,
-      });
-
-      await this.audit.log(
-        {
-          tenantId,
-          userId,
-          eventKey: 'INVENTORY_ITEM_UPDATED',
-          recordType: 'InventoryItem',
-          recordId: id,
-          oldValues: existing,
-          newValues: updated,
-        },
-        tx,
-      );
-
-      return updated;
-    });
-  }
-
-  async deactivateItem(tenantId: string, userId: string, id: string) {
-    const existing = await this.prisma.inventoryItem.findFirst({
-      where: { id, tenantId },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Inventory item not found');
-    }
-
-    if (existing.status === (InventoryStatus.INACTIVE as string)) {
-      return existing;
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.inventoryItem.update({
-        where: { id },
-        data: { status: InventoryStatus.INACTIVE },
-      });
-
-      await this.audit.log(
-        {
-          tenantId,
-          userId,
-          eventKey: 'INVENTORY_ITEM_DEACTIVATED',
-          recordType: 'InventoryItem',
-          recordId: id,
-          oldValues: existing,
-          newValues: updated,
-        },
-        tx,
-      );
-
-      return updated;
-    });
-  }
-
   async receiveStock(
     tenantId: string,
     branchId: string,
     userId: string,
-    id: string,
     dto: ReceiveStockDto,
   ) {
     const item = await this.prisma.inventoryItem.findFirst({
-      where: { id, tenantId },
+      where: { id: dto.inventoryItemId, tenantId },
     });
 
     if (!item) {
       throw new NotFoundException('Inventory item not found');
     }
 
-    const stock = await this.prisma.branchStock.upsert({
-      where: {
-        tenantId_branchId_inventoryItemId: {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Update or Create the StockBatch quantity
+      // Assuming batch_number is unique per item in a branch
+      let batch = await tx.stockBatch.findFirst({
+        where: {
           tenantId,
           branchId,
-          inventoryItemId: id,
+          inventoryItemId: dto.inventoryItemId,
+          batchNumber: dto.batchNumber,
         },
-      },
-      update: {},
-      create: {
-        tenantId,
-        branchId,
-        inventoryItemId: id,
-        quantity: 0,
-      },
-    });
-
-    // Atomic Stock Transaction
-    return this.prisma.$transaction(async (tx) => {
-      const previousStock = stock.quantity;
-      const newStock = previousStock + dto.quantity;
-
-      const stockUpdate = await tx.branchStock.updateMany({
-        where: { id: stock.id, tenantId, branchId },
-        data: { quantity: newStock },
       });
 
-      if (stockUpdate.count === 0) {
-        throw new NotFoundException('Stock not found for this branch');
+      if (batch) {
+        batch = await tx.stockBatch.update({
+          where: { id: batch.id },
+          data: {
+            quantity: { increment: dto.quantity },
+            expiryDate: dto.expiryDate
+              ? new Date(dto.expiryDate)
+              : batch.expiryDate,
+            updatedBy: userId,
+          },
+        });
+      } else {
+        batch = await tx.stockBatch.create({
+          data: {
+            tenantId,
+            branchId,
+            inventoryItemId: dto.inventoryItemId,
+            batchNumber: dto.batchNumber,
+            expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null,
+            quantity: dto.quantity,
+            createdBy: userId,
+            updatedBy: userId,
+          },
+        });
       }
 
-      const updatedStock = await tx.branchStock.findFirst({
-        where: { id: stock.id, tenantId, branchId },
+      // 2. Update the InventoryItem total_quantity
+      const updatedItem = await tx.inventoryItem.update({
+        where: { id: dto.inventoryItemId },
+        data: {
+          totalQuantity: { increment: dto.quantity },
+          updatedBy: userId,
+        },
       });
 
-      if (!updatedStock) {
-        throw new NotFoundException('Stock not found for this branch');
-      }
-
-      // 2. Insert Stock Log (Traceability)
-      const log = await tx.stockLog.create({
+      // 3. Create the StockMovement record
+      const movement = await tx.stockMovement.create({
         data: {
           tenantId,
           branchId,
-          inventoryItemId: id,
-          type: 'IN',
-          quantity: dto.quantity,
-          previousStock,
-          newStock,
-          remarks:
-            dto.remarks ||
-            `Stock received from ${dto.supplierName || 'unknown'}`,
+          inventoryItemId: dto.inventoryItemId,
+          stockBatchId: batch.id,
+          movementType: StockMovementType.RECEIVE,
+          quantityChange: dto.quantity,
+          referenceId: dto.referenceId,
+          reason: `Stock received into batch ${dto.batchNumber}`,
+          createdBy: userId,
+          updatedBy: userId,
         },
       });
 
-      // 3. Log System Audit
+      // 4. Call AuditService.log
       await this.audit.log(
         {
           tenantId,
           userId,
           eventKey: 'STOCK_RECEIVED',
-          recordType: 'InventoryItem',
-          recordId: id,
-          newValues: { log, updatedStock },
+          recordType: 'StockMovement',
+          recordId: movement.id,
+          newValues: {
+            item: updatedItem,
+            batch,
+            movement,
+          },
         },
         tx,
         branchId,
       );
 
-      return updatedStock;
+      return { item: updatedItem, batch, movement };
     });
   }
 
-  async getCatalog(
-    tenantId: string,
-    branchId: string,
-    status: InventoryStatus = InventoryStatus.ACTIVE,
-  ) {
-    const items = await this.prisma.inventoryItem.findMany({
-      where: {
-        tenantId,
-        status: status,
-      },
-      include: {
-        branchStocks: {
-          where: { branchId },
-        },
-      },
-      orderBy: { name: 'asc' },
-    });
-
-    return items.map((item) => ({
-      ...item,
-      stock: item.branchStocks[0]?.quantity || 0,
-      reorderLevel: item.branchStocks[0]?.reorderLevel || item.reorderLevel,
-      branchStocks: undefined,
-    }));
-  }
-
-  async getStockLogs(tenantId: string, branchId: string, itemId: string) {
-    return this.prisma.stockLog.findMany({
-      where: { tenantId, branchId, inventoryItemId: itemId },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async dispenseItem(
+  async adjustStock(
     tenantId: string,
     branchId: string,
     userId: string,
-    id: string,
-    quantity: number,
-    orderId?: string,
+    dto: AdjustStockDto,
   ) {
-    const stock = await this.prisma.branchStock.findUnique({
-      where: {
-        tenantId_branchId_inventoryItemId: {
-          tenantId,
-          branchId,
-          inventoryItemId: id,
-        },
-      },
+    const item = await this.prisma.inventoryItem.findFirst({
+      where: { id: dto.inventoryItemId, tenantId },
     });
 
-    if (!stock) {
-      throw new NotFoundException('Stock not found for this branch');
+    if (!item) {
+      throw new NotFoundException('Inventory item not found');
     }
 
-    // Guardrail (Section 15): Insufficient stock
-    if (stock.quantity < quantity) {
-      throw new BadRequestException(
-        `insufficient_stock: Only ${stock.quantity} available`,
-      );
-    }
-
-    // Atomic Stock Transaction
     return this.prisma.$transaction(async (tx) => {
-      const previousStock = stock.quantity;
-      const newStock = previousStock - quantity;
+      let batch = null;
 
-      const stockUpdate = await tx.branchStock.updateMany({
-        where: { id: stock.id, tenantId, branchId },
-        data: { quantity: newStock },
-      });
-
-      if (stockUpdate.count === 0) {
-        throw new NotFoundException('Stock not found for this branch');
+      // 1. Negative Stock Guard (Item Level)
+      if (item.totalQuantity + dto.quantityChange < 0) {
+        throw new ConflictException('insufficient_stock');
       }
 
-      const updatedStock = await tx.branchStock.findFirst({
-        where: { id: stock.id, tenantId, branchId },
-      });
-
-      if (!updatedStock) {
-        throw new NotFoundException('Stock not found for this branch');
-      }
-
-      // 2. Insert Stock Log (Traceability)
-      const log = await tx.stockLog.create({
-        data: {
-          tenantId,
-          branchId,
-          inventoryItemId: id,
-          type: 'OUT',
-          quantity: quantity,
-          previousStock,
-          newStock,
-          referenceType: 'DISPENSING',
-          referenceId: orderId,
-          remarks: `Dispensed ${quantity} for order ${orderId || 'N/A'}`,
-        },
-      });
-
-      // 3. Trigger Low-Stock Notification if crossing threshold
-      if (
-        newStock <= updatedStock.reorderLevel &&
-        previousStock > updatedStock.reorderLevel
-      ) {
-        const item = await tx.inventoryItem.findUnique({ where: { id } });
-        const existingAlert = await tx.notification.findFirst({
+      if (dto.stockBatchId) {
+        batch = await tx.stockBatch.findFirst({
           where: {
+            id: dto.stockBatchId,
+            inventoryItemId: dto.inventoryItemId,
             tenantId,
-            status: 'PENDING',
-            content: { contains: `(SKU: ${item?.sku})` },
           },
         });
 
-        if (!existingAlert) {
-          await tx.notification.create({
-            data: {
-              tenantId,
-              type: 'IN_APP',
-              recipient: 'ROLE:Pharmacist',
-              subject: 'LOW STOCK ALERT: ' + item?.name,
-              content: `Item ${item?.name} (SKU: ${item?.sku}) has fallen to ${newStock}. Reorder level is ${updatedStock.reorderLevel}.`,
-              status: 'PENDING',
-            },
-          });
+        if (!batch) {
+          throw new NotFoundException('Stock batch not found');
         }
+
+        // Negative Stock Guard (Batch Level)
+        if (batch.quantity + dto.quantityChange < 0) {
+          throw new ConflictException('insufficient_stock');
+        }
+
+        // 2. Update StockBatch quantity
+        batch = await tx.stockBatch.update({
+          where: { id: batch.id },
+          data: {
+            quantity: { increment: dto.quantityChange },
+            updatedBy: userId,
+          },
+        });
+      } else if (dto.quantityChange < 0) {
+        // If no batch ID and negative adjustment, we should ideally know which batch to deduct from.
+        // But for generic adjustment, we might need a policy.
+        // For now, if no batch ID is provided for negative adjustment, we fail if it's not allowed by business rules.
+        // However, the requirement says "Adjust existing stock".
+        // I will assume adjustments can be global if no batch is specified, but usually adjustments are batch-specific in healthcare.
+        // If I must allow it, I won't update any batch.
       }
 
-      // 4. Log System Audit
+      // 3. Update the InventoryItem total_quantity
+      const updatedItem = await tx.inventoryItem.update({
+        where: { id: dto.inventoryItemId },
+        data: {
+          totalQuantity: { increment: dto.quantityChange },
+          updatedBy: userId,
+        },
+      });
+
+      // 4. Create the StockMovement record
+      const movement = await tx.stockMovement.create({
+        data: {
+          tenantId,
+          branchId,
+          inventoryItemId: dto.inventoryItemId,
+          stockBatchId: dto.stockBatchId,
+          movementType: StockMovementType.ADJUSTMENT,
+          quantityChange: dto.quantityChange,
+          referenceId: dto.referenceId,
+          reason: dto.reason,
+          createdBy: userId,
+          updatedBy: userId,
+        },
+      });
+
+      // 5. Call AuditService.log
       await this.audit.log(
         {
           tenantId,
           userId,
-          eventKey: 'STOCK_DISPENSED',
-          recordType: 'InventoryItem',
-          recordId: id,
-          newValues: { log, updatedStock },
+          eventKey: 'STOCK_ADJUSTED',
+          recordType: 'StockMovement',
+          recordId: movement.id,
+          newValues: {
+            item: updatedItem,
+            batch,
+            movement,
+          },
         },
         tx,
         branchId,
       );
 
-      return updatedStock;
+      return { item: updatedItem, batch, movement };
     });
   }
 
-  async getLowStockAlerts(tenantId: string, branchId: string) {
-    return this.prisma.branchStock.findMany({
-      where: {
-        tenantId,
-        branchId,
-        quantity: { lte: this.prisma.branchStock.fields.reorderLevel },
+  async getCatalog(tenantId: string, branchId: string) {
+    return this.prisma.inventoryItem.findMany({
+      where: { tenantId, branchId },
+      include: {
+        batches: {
+          where: { quantity: { gt: 0 } },
+        },
       },
-      include: { inventoryItem: true },
-      orderBy: { quantity: 'asc' },
+      orderBy: { name: 'asc' },
     });
+  }
+
+  async getItem(tenantId: string, id: string) {
+    const item = await this.prisma.inventoryItem.findFirst({
+      where: { id, tenantId },
+      include: {
+        batches: true,
+        movements: {
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        },
+      },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Inventory item not found');
+    }
+
+    return item;
   }
 }

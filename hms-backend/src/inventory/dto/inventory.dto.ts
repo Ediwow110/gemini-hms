@@ -4,13 +4,10 @@ import {
   IsNumber,
   Min,
   IsOptional,
-  IsEnum,
+  IsDateString,
+  IsInt,
+  NotEquals,
 } from 'class-validator';
-
-export enum InventoryStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-}
 
 export class CreateInventoryItemDto {
   @IsString()
@@ -18,68 +15,63 @@ export class CreateInventoryItemDto {
   name: string;
 
   @IsString()
-  @IsOptional()
-  sku?: string;
+  @IsNotEmpty()
+  sku: string;
 
   @IsString()
   @IsNotEmpty()
-  category: string; // DRUG, SUPPLY, EQUIPMENT
+  unitOfMeasure: string;
 
-  @IsString()
-  @IsNotEmpty()
-  unit: string;
-
-  @IsNumber()
-  @Min(0)
-  reorderLevel: number;
-
-  @IsNumber()
-  @Min(0)
-  price: number;
-
-  @IsEnum(InventoryStatus)
-  @IsOptional()
-  status?: InventoryStatus;
-}
-
-export class UpdateInventoryItemDto {
-  @IsString()
-  @IsOptional()
-  name?: string;
-
-  @IsString()
-  @IsOptional()
-  category?: string;
-
-  @IsString()
-  @IsOptional()
-  unit?: string;
-
-  @IsNumber()
+  @IsInt()
   @Min(0)
   @IsOptional()
   reorderLevel?: number;
 
   @IsNumber()
   @Min(0)
-  @IsOptional()
-  price?: number;
-
-  @IsEnum(InventoryStatus)
-  @IsOptional()
-  status?: InventoryStatus;
+  price: number;
 }
 
 export class ReceiveStockDto {
-  @IsNumber()
+  @IsString()
+  @IsNotEmpty()
+  inventoryItemId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  batchNumber: string;
+
+  @IsDateString()
+  @IsOptional()
+  expiryDate?: string;
+
+  @IsInt()
   @Min(1)
   quantity: number;
 
   @IsString()
   @IsOptional()
-  remarks?: string;
+  referenceId?: string;
+}
+
+export class AdjustStockDto {
+  @IsString()
+  @IsNotEmpty()
+  inventoryItemId: string;
 
   @IsString()
   @IsOptional()
-  supplierName?: string;
+  stockBatchId?: string;
+
+  @IsInt()
+  @NotEquals(0)
+  quantityChange: number;
+
+  @IsString()
+  @IsNotEmpty()
+  reason: string;
+
+  @IsString()
+  @IsOptional()
+  referenceId?: string;
 }

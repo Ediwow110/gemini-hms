@@ -34,8 +34,8 @@ model Tenant {
   labResults         LabResult[]
   auditLogs          AuditLog[]
   inventoryItems     InventoryItem[]
-  branchStocks       BranchStock[]
-  stockLogs          StockLog[]
+  stockBatches       StockBatch[]
+  stockMovements     StockMovement[]
   departments        Department[]
   employees          Employee[]
   employeeBranches   EmployeeBranch[]
@@ -63,8 +63,9 @@ model Branch {
   tenant           Tenant           @relation(fields: [tenantId], references: [id])
   orders           Order[]
   userBranches     UserBranch[]
-  branchStocks     BranchStock[]
-  stockLogs        StockLog[]
+  inventoryItems   InventoryItem[]
+  stockBatches     StockBatch[]
+  stockMovements   StockMovement[]
   employeeBranches EmployeeBranch[]
   payslips         Payslip[]
   encounters       Encounter[]
@@ -388,69 +389,92 @@ model AuditLog {
 
 // --- MODULE 4: INVENTORY & PHARMACY ---
 
-model InventoryItem {
-  id           String   @id @default(uuid()) @db.Uuid
-  tenantId     String   @map("tenant_id") @db.Uuid
-  name         String
-  sku          String?
-  category     String // DRUG, SUPPLY, EQUIPMENT
-  unit         String // TABLET, BOX, PIECE
-  reorderLevel Int      @default(10) @map("reorder_level")
-  currentStock Int      @default(0) @map("current_stock")
-  price        Decimal  @db.Decimal(12, 2)
-  status       String   @default("ACTIVE") // ACTIVE, INACTIVE
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+enum StockMovementType {
+  RECEIVE
+  ISSUE
+  ADJUSTMENT
+  TRANSFER
+}
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id])
-  stockLogs    StockLog[]
-  branchStocks BranchStock[]
+model InventoryItem {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  branchId      String   @map("branch_id") @db.Uuid
+  name          String
+  sku           String   @map("sku")
+  unitOfMeasure String   @map("unit_of_measure")
+  reorderLevel  Int      @default(0) @map("reorder_level")
+  totalQuantity Int      @default(0) @map("total_quantity")
+  price         Decimal  @db.Decimal(12, 2)
+  status        String   @default("ACTIVE") // ACTIVE, INACTIVE
+  
+  createdBy     String   @map("created_by") @db.Uuid
+  updatedBy     String   @map("updated_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  branch         Branch          @relation(fields: [branchId], references: [id])
+  batches        StockBatch[]
+  movements      StockMovement[]
 
   @@unique([tenantId, sku])
+  @@index([tenantId])
+  @@index([branchId])
   @@map("inventory_items")
 }
 
-model BranchStock {
-  id              String   @id @default(uuid()) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  branchId        String   @map("branch_id") @db.Uuid
-  inventoryItemId String   @map("inventory_item_id") @db.Uuid
-  quantity        Int      @default(0)
-  reorderLevel    Int      @default(10) @map("reorder_level")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+model StockBatch {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  branchId        String    @map("branch_id") @db.Uuid
+  inventoryItemId String    @map("inventory_item_id") @db.Uuid
+  batchNumber     String    @map("batch_number")
+  expiryDate      DateTime? @map("expiry_date")
+  quantity        Int       @default(0)
+
+  createdBy      String   @map("created_by") @db.Uuid
+  updatedBy      String   @map("updated_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id])
   branch        Branch        @relation(fields: [branchId], references: [id])
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  movements     StockMovement[]
 
-  @@unique([tenantId, branchId, inventoryItemId])
   @@index([tenantId])
   @@index([branchId])
   @@index([inventoryItemId])
-  @@index([tenantId, branchId])
-  @@map("branch_stocks")
+  @@map("stock_batches")
 }
 
-model StockLog {
-  id              String   @id @default(uuid()) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  branchId        String   @map("branch_id") @db.Uuid
-  inventoryItemId String   @map("inventory_item_id") @db.Uuid
-  type            String // IN, OUT, ADJUSTMENT, RETURN
-  quantity        Int
-  previousStock   Int      @map("previous_stock")
-  newStock        Int      @map("new_stock")
-  referenceType   String?  @map("reference_type") // PURCHASE_ORDER, DISPENSING
-  referenceId     String?  @map("reference_id") @db.Uuid
-  remarks         String?
-  createdAt       DateTime @default(now()) @map("created_at")
+model StockMovement {
+  id              String            @id @default(uuid()) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  branchId        String            @map("branch_id") @db.Uuid
+  inventoryItemId String            @map("inventory_item_id") @db.Uuid
+  stockBatchId    String?           @map("stock_batch_id") @db.Uuid
+  movementType    StockMovementType @map("movement_type")
+  quantityChange  Int               @map("quantity_change")
+  referenceId     String?           @map("reference_id")
+  reason          String
 
-  tenant Tenant        @relation(fields: [tenantId], references: [id])
-  branch Branch        @relation(fields: [branchId], references: [id])
-  item   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  createdBy      String   @map("created_by") @db.Uuid
+  updatedBy      String   @map("updated_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  @@map("stock_logs")
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  branch        Branch        @relation(fields: [branchId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  stockBatch    StockBatch?   @relation(fields: [stockBatchId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([inventoryItemId])
+  @@index([stockBatchId])
+  @@map("stock_movements")
 }
 
 // --- MODULE 5: HUMAN RESOURCES & PAYROLL ---

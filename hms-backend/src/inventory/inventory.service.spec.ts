@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { InventoryStatus } from './dto/inventory.dto';
+import { StockMovementType } from '@prisma/client';
 
 describe('InventoryService', () => {
   let service: InventoryService;
@@ -15,28 +15,20 @@ describe('InventoryService', () => {
       $transaction: jest.fn(async (cb) => cb(prisma)),
       inventoryItem: {
         findFirst: jest.fn(),
+        findUnique: jest.fn(),
+        create: jest.fn(),
         update: jest.fn(),
-        findUnique: jest.fn(),
-        findMany: jest.fn(),
-        create: jest.fn(),
-      },
-      branchStock: {
-        findUnique: jest.fn(),
-        updateMany: jest.fn(),
-        findFirst: jest.fn(),
-        create: jest.fn(),
-        upsert: jest.fn(),
         findMany: jest.fn(),
       },
-      stockLog: {
-        create: jest.fn(),
-      },
-      notification: {
+      stockBatch: {
         findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+      stockMovement: {
         create: jest.fn(),
       },
     };
-    prisma.branchStock.fields = { reorderLevel: 'reorderLevel' };
 
     audit = {
       log: jest.fn(),
@@ -53,20 +45,20 @@ describe('InventoryService', () => {
     service = module.get<InventoryService>(InventoryService);
   });
 
-  describe('lifecycle management', () => {
-    const mockTenantId = 'tenant-uuid';
-    const mockUserId = 'user-uuid';
-    const mockBranchId = 'branch-uuid';
+  const mockTenantId = 'tenant-uuid';
+  const mockBranchId = 'branch-uuid';
+  const mockUserId = 'user-uuid';
 
-    it('should create an item and initialize stock', async () => {
+  describe('createItem', () => {
+    it('should create an item and log audit', async () => {
       const dto = {
         name: 'Aspirin',
         sku: 'ASP-001',
-        category: 'DRUG',
-        unit: 'TAB',
+        unitOfMeasure: 'TABLET',
         reorderLevel: 100,
         price: 5,
       };
+      prisma.inventoryItem.findUnique.mockResolvedValue(null);
       prisma.inventoryItem.create.mockResolvedValue({ id: 'item-1', ...dto });
 
       const result = await service.createItem(
@@ -77,11 +69,7 @@ describe('InventoryService', () => {
       );
 
       expect(result.id).toBe('item-1');
-      expect(prisma.branchStock.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ branchId: mockBranchId }),
-        }),
-      );
+      expect(prisma.inventoryItem.create).toHaveBeenCalled();
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'INVENTORY_ITEM_CREATED' }),
         expect.anything(),
@@ -89,217 +77,212 @@ describe('InventoryService', () => {
       );
     });
 
-    it('should update an item and log audit', async () => {
-      const existing = { id: 'item-1', tenantId: mockTenantId, price: 5 };
-      prisma.inventoryItem.findFirst.mockResolvedValue(existing);
-      prisma.inventoryItem.update.mockResolvedValue({ ...existing, price: 6 });
-
-      const result = await service.updateItem(mockTenantId, mockUserId, 'item-1', {
-        price: 6,
-      });
-
-      expect(result.price).toBe(6);
-      expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventKey: 'INVENTORY_ITEM_UPDATED',
-          oldValues: existing,
+    it('should throw ConflictException if SKU exists', async () => {
+      prisma.inventoryItem.findUnique.mockResolvedValue({ id: 'existing' });
+      await expect(
+        service.createItem(mockTenantId, mockBranchId, mockUserId, {
+          name: 'test',
+          sku: 'SKU1',
+          unitOfMeasure: 'EA',
         }),
-        expect.anything(),
-      );
+      ).rejects.toThrow(ConflictException);
     });
+  });
 
-    it('should deactivate an item and log audit', async () => {
-      const existing = {
+  describe('receiveStock', () => {
+    it('should receive stock, update batch and item, and create movement', async () => {
+      const dto = {
+        inventoryItemId: 'item-1',
+        batchNumber: 'B001',
+        quantity: 50,
+      };
+      const mockItem = {
         id: 'item-1',
         tenantId: mockTenantId,
-        status: InventoryStatus.ACTIVE,
+        totalQuantity: 10,
       };
-      prisma.inventoryItem.findFirst.mockResolvedValue(existing);
+      prisma.inventoryItem.findFirst.mockResolvedValue(mockItem);
+      prisma.stockBatch.findFirst.mockResolvedValue(null); // New batch
+      prisma.stockBatch.create.mockResolvedValue({
+        id: 'batch-1',
+        quantity: 50,
+      });
       prisma.inventoryItem.update.mockResolvedValue({
-        ...existing,
-        status: InventoryStatus.INACTIVE,
+        ...mockItem,
+        totalQuantity: 60,
       });
+      prisma.stockMovement.create.mockResolvedValue({ id: 'move-1' });
 
-      const result = await service.deactivateItem(
+      const result = await service.receiveStock(
         mockTenantId,
+        mockBranchId,
         mockUserId,
-        'item-1',
+        dto,
       );
 
-      expect(result.status).toBe(InventoryStatus.INACTIVE);
-      expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ eventKey: 'INVENTORY_ITEM_DEACTIVATED' }),
-        expect.anything(),
-      );
-    });
-
-    it('should fail update if item not found in tenant', async () => {
-      prisma.inventoryItem.findFirst.mockResolvedValue(null);
-      await expect(
-        service.updateItem(mockTenantId, mockUserId, 'item-1', { price: 10 }),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('Alerts', () => {
-    it('should not create an alert if stock remains above reorder level', async () => {
-      prisma.branchStock.findUnique.mockResolvedValue({
-        id: '1',
-        quantity: 20,
-        reorderLevel: 10,
-      });
-      prisma.branchStock.updateMany.mockResolvedValue({ count: 1 });
-      prisma.branchStock.findFirst.mockResolvedValue({
-        id: '1',
-        quantity: 15,
-        reorderLevel: 10,
-      });
-      prisma.inventoryItem.findUnique.mockResolvedValue({
-        id: 'item-1',
-        sku: 'SKU1',
-        name: 'Test',
-      });
-
-      await service.dispenseItem('tenant1', 'branch1', 'user1', '1', 5);
-
-      expect(prisma.notification.create).not.toHaveBeenCalled();
-    });
-
-    it('should create an alert on threshold crossing', async () => {
-      prisma.branchStock.findUnique.mockResolvedValue({
-        id: '1',
-        quantity: 15,
-        reorderLevel: 10,
-      });
-      prisma.branchStock.updateMany.mockResolvedValue({ count: 1 });
-      prisma.branchStock.findFirst.mockResolvedValue({
-        id: '1',
-        quantity: 10,
-        reorderLevel: 10,
-      });
-      prisma.inventoryItem.findUnique.mockResolvedValue({
-        id: 'item-1',
-        sku: 'SKU1',
-        name: 'Test',
-      });
-      prisma.notification.findFirst.mockResolvedValue(null);
-
-      await service.dispenseItem('tenant1', 'branch1', 'user1', '1', 5);
-
-      expect(prisma.notification.create).toHaveBeenCalledWith(
+      expect(result.item.totalQuantity).toBe(60);
+      expect(prisma.stockBatch.create).toHaveBeenCalled();
+      expect(prisma.stockMovement.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ subject: 'LOW STOCK ALERT: Test' }),
+          data: expect.objectContaining({
+            movementType: StockMovementType.RECEIVE,
+            quantityChange: 50,
+          }),
         }),
       );
-    });
-
-    it('should prevent duplicate unresolved alert spam', async () => {
-      prisma.branchStock.findUnique.mockResolvedValue({
-        id: '1',
-        quantity: 15,
-        reorderLevel: 10,
-      });
-      prisma.branchStock.updateMany.mockResolvedValue({ count: 1 });
-      prisma.branchStock.findFirst.mockResolvedValue({
-        id: '1',
-        quantity: 10,
-        reorderLevel: 10,
-      });
-      prisma.inventoryItem.findUnique.mockResolvedValue({
-        id: 'item-1',
-        sku: 'SKU1',
-        name: 'Test',
-      });
-      prisma.notification.findFirst.mockResolvedValue({
-        id: 'notif1',
-        status: 'PENDING',
-      }); // Existing alert
-
-      await service.dispenseItem('tenant1', 'branch1', 'user1', '1', 5);
-
-      expect(prisma.notification.create).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('scoped branch stock writes', () => {
-    it('receiveStock rejects when scoped stock update touches no row', async () => {
-      prisma.inventoryItem.findFirst.mockResolvedValue({
-        id: 'item-99',
-        tenantId: 'tenant1',
-      });
-      prisma.branchStock.upsert.mockResolvedValue({
-        id: 'bs-99',
-        tenantId: 'tenant1',
-        branchId: 'branch1',
-        quantity: 0,
-      });
-      prisma.branchStock.updateMany.mockResolvedValue({ count: 0 });
-
-      await expect(
-        service.receiveStock('tenant1', 'branch1', 'user1', 'item-99', {
-          quantity: 10,
-          supplierName: 'ACME',
-          remarks: 'in',
-        }),
-      ).rejects.toThrow(NotFoundException);
-
-      expect(prisma.branchStock.updateMany).toHaveBeenCalledWith({
-        where: {
-          id: 'bs-99',
-          tenantId: 'tenant1',
-          branchId: 'branch1',
-        },
-        data: expect.objectContaining({ quantity: 10 }),
-      });
-      expect(prisma.stockLog.create).not.toHaveBeenCalled();
-    });
-
-    it('receiveStock writes audit entries with branch context', async () => {
-      prisma.inventoryItem.findFirst.mockResolvedValue({
-        id: 'item-99',
-        tenantId: 'tenant1',
-      });
-      prisma.branchStock.upsert.mockResolvedValue({
-        id: 'bs-99',
-        tenantId: 'tenant1',
-        branchId: 'branch1',
-        quantity: 5,
-      });
-      prisma.branchStock.updateMany.mockResolvedValue({ count: 1 });
-      prisma.branchStock.findFirst.mockResolvedValue({
-        id: 'bs-99',
-        tenantId: 'tenant1',
-        branchId: 'branch1',
-        quantity: 15,
-      });
-      prisma.stockLog.create.mockResolvedValue({ id: 'log-1' });
-
-      await service.receiveStock('tenant1', 'branch1', 'user1', 'item-99', {
-        quantity: 10,
-        supplierName: 'ACME',
-        remarks: 'in',
-      });
-
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'STOCK_RECEIVED' }),
         expect.anything(),
-        'branch1',
+        mockBranchId,
       );
     });
 
-    it('dispenseItem rejects when scoped stock update touches no row', async () => {
-      prisma.branchStock.findUnique.mockResolvedValue({
-        id: 'bs-1',
+    it('should update existing batch if found', async () => {
+      const dto = {
+        inventoryItemId: 'item-1',
+        batchNumber: 'B001',
+        quantity: 50,
+      };
+      prisma.inventoryItem.findFirst.mockResolvedValue({ id: 'item-1' });
+      prisma.stockBatch.findFirst.mockResolvedValue({
+        id: 'batch-1',
         quantity: 10,
-        reorderLevel: 5,
       });
-      prisma.branchStock.updateMany.mockResolvedValue({ count: 0 });
+      prisma.stockBatch.update.mockResolvedValue({
+        id: 'batch-1',
+        quantity: 60,
+      });
+      prisma.inventoryItem.update.mockResolvedValue({});
+      prisma.stockMovement.create.mockResolvedValue({});
+
+      await service.receiveStock(mockTenantId, mockBranchId, mockUserId, dto);
+
+      expect(prisma.stockBatch.update).toHaveBeenCalled();
+      expect(prisma.stockBatch.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('adjustStock', () => {
+    it('should adjust stock and create movement', async () => {
+      const dto = {
+        inventoryItemId: 'item-1',
+        stockBatchId: 'batch-1',
+        quantityChange: -5,
+        reason: 'Damage',
+      };
+      const mockItem = {
+        id: 'item-1',
+        tenantId: mockTenantId,
+        totalQuantity: 10,
+      };
+      const mockBatch = { id: 'batch-1', quantity: 10 };
+
+      prisma.inventoryItem.findFirst.mockResolvedValue(mockItem);
+      prisma.stockBatch.findFirst.mockResolvedValue(mockBatch);
+      prisma.stockBatch.update.mockResolvedValue({ ...mockBatch, quantity: 5 });
+      prisma.inventoryItem.update.mockResolvedValue({
+        ...mockItem,
+        totalQuantity: 5,
+      });
+      prisma.stockMovement.create.mockResolvedValue({ id: 'move-2' });
+
+      const result = await service.adjustStock(
+        mockTenantId,
+        mockBranchId,
+        mockUserId,
+        dto,
+      );
+
+      expect(result.item.totalQuantity).toBe(5);
+      expect(prisma.stockBatch.update).toHaveBeenCalled();
+      expect(prisma.stockMovement.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            movementType: StockMovementType.ADJUSTMENT,
+            quantityChange: -5,
+          }),
+        }),
+      );
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'STOCK_ADJUSTED' }),
+        expect.anything(),
+        mockBranchId,
+      );
+    });
+
+    it('should throw ConflictException if adjustment results in negative stock (item level)', async () => {
+      const dto = {
+        inventoryItemId: 'item-1',
+        quantityChange: -20,
+        reason: 'Test',
+      };
+      prisma.inventoryItem.findFirst.mockResolvedValue({
+        id: 'item-1',
+        totalQuantity: 10,
+      });
 
       await expect(
-        service.dispenseItem('tenant1', 'branch1', 'user1', 'item-1', 2),
-      ).rejects.toThrow(NotFoundException);
+        service.adjustStock(mockTenantId, mockBranchId, mockUserId, dto),
+      ).rejects.toThrow(ConflictException);
+    });
 
-      expect(prisma.stockLog.create).not.toHaveBeenCalled();
+    it('should throw ConflictException if adjustment results in negative stock (batch level)', async () => {
+      const dto = {
+        inventoryItemId: 'item-1',
+        stockBatchId: 'batch-1',
+        quantityChange: -20,
+        reason: 'Test',
+      };
+      prisma.inventoryItem.findFirst.mockResolvedValue({
+        id: 'item-1',
+        totalQuantity: 100,
+      });
+      prisma.stockBatch.findFirst.mockResolvedValue({
+        id: 'batch-1',
+        quantity: 10,
+      });
+
+      await expect(
+        service.adjustStock(mockTenantId, mockBranchId, mockUserId, dto),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('Tenant Isolation', () => {
+    it('receiveStock should fail if item belongs to another tenant', async () => {
+      prisma.inventoryItem.findFirst.mockResolvedValue(null); // findFirst with tenantId filter returns null if mismatched
+
+      await expect(
+        service.receiveStock('tenant-A', mockBranchId, mockUserId, {
+          inventoryItemId: 'item-B',
+          batchNumber: 'B1',
+          quantity: 10,
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('Atomic Rollback', () => {
+    it('should rollback if audit log fails', async () => {
+      const dto = {
+        inventoryItemId: 'item-1',
+        batchNumber: 'B1',
+        quantity: 10,
+      };
+      prisma.inventoryItem.findFirst.mockResolvedValue({ id: 'item-1' });
+      prisma.stockBatch.findFirst.mockResolvedValue(null);
+      prisma.stockBatch.create.mockResolvedValue({ id: 'batch-1' });
+      prisma.inventoryItem.update.mockResolvedValue({});
+      prisma.stockMovement.create.mockResolvedValue({});
+
+      audit.log.mockRejectedValue(new Error('Audit DB Down'));
+
+      await expect(
+        service.receiveStock(mockTenantId, mockBranchId, mockUserId, dto),
+      ).rejects.toThrow('Audit DB Down');
+
+      // The transaction callback should have been called, and error propagated
+      expect(prisma.$transaction).toHaveBeenCalled();
     });
   });
 });
