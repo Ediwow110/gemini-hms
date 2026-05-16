@@ -921,7 +921,7 @@ Do not implement admin/user/role mutation endpoints until the schema prerequisit
   - Request creation executes within a Prisma transaction.
   - Request-creation audit is written transactionally alongside the create-path metadata mutation.
   - If create-path scope validation fails mid-transaction, the create operation rolls back and no create audit is written.
-  - Approval and rejection remain governed metadata transitions, but their audit transactional coupling is still a backlog item and is not yet implemented in this slice.
+   - Approval and rejection execute within a Prisma `$transaction`, with audit logs written transactionally alongside the status update. If audit logging fails, the status update rolls back.
 - **Explicit Non-Goals**:
   - **NO destructive merge occurs in this slice**.
   - **NO patient records are merged, deleted, or overwritten**.
