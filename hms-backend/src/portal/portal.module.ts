@@ -10,9 +10,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     PrismaModule,
     NotificationsModule,
     JwtModule.register({
-      secret:
-        process.env.JWT_SECRET ||
-        'super-secret-default-change-me-in-prod-32-chars',
+      secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '1h' },
     }),
   ],
