@@ -10,7 +10,7 @@ import { OrdersModule } from './orders/orders.module';
 import { BillingModule } from './billing/billing.module';
 import { LabModule } from './lab/lab.module';
 import { InventoryModule } from './inventory/inventory.module';
-import { ServiceCatalogModule } from './catalog/service-catalog.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { HrModule } from './hr/hr.module';
 import { QueueModule } from './queue/queue.module';
 import { ClaimsModule } from './claims/claims.module';
@@ -32,7 +32,7 @@ import { EncountersModule } from './encounters/encounters.module';
     BillingModule,
     LabModule,
     InventoryModule,
-    ServiceCatalogModule,
+    CatalogModule,
     HrModule,
     QueueModule,
     ClaimsModule,

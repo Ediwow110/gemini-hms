@@ -26,7 +26,9 @@ describe('LabService Audit Coupling (Batch 8)', () => {
         count: jest.fn(),
         create: jest.fn(),
       },
-      $transaction: jest.fn().mockImplementation(async (cb) => await cb(prismaMock)),
+      $transaction: jest
+        .fn()
+        .mockImplementation(async (cb) => await cb(prismaMock)),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -54,7 +56,13 @@ describe('LabService Audit Coupling (Batch 8)', () => {
     prisma.labResultVersion.create.mockResolvedValue({ id: 'v1' });
     prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
 
-    await service.applyAmendment(tenantId, userId, branchId, labResultId, 'reason');
+    await service.applyAmendment(
+      tenantId,
+      userId,
+      branchId,
+      labResultId,
+      'reason',
+    );
 
     expect(audit.log).toHaveBeenCalledWith(
       expect.objectContaining({ eventKey: 'RESULT_AMENDMENT_APPLIED' }),

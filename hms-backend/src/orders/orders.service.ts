@@ -44,16 +44,30 @@ export class OrdersService {
         let trustedItem: { name: string; price: Prisma.Decimal };
 
         if (itemDto.itemType === OrderItemType.SERVICE) {
-          const service = await tx.serviceCatalog.findFirst({
-            where: { id: itemDto.itemId, tenantId, status: 'ACTIVE' },
+          const service = await tx.serviceItem.findFirst({
+            where: { id: itemDto.itemId, tenantId, isActive: true },
+            include: {
+              prices: {
+                where: { branchId, isActive: true },
+                orderBy: { effectiveDate: 'desc' },
+                take: 1,
+              },
+              category: true,
+            },
           });
           if (!service) {
             throw new BadRequestException(
               `Service item ${itemDto.itemId} not found or inactive`,
             );
           }
-          trustedItem = { name: service.name, price: service.price };
-          if (service.category === 'LAB_TEST') {
+          const activePrice = service.prices[0];
+          if (!activePrice) {
+            throw new BadRequestException(
+              `Service item ${itemDto.itemId} has no active price for branch ${branchId}`,
+            );
+          }
+          trustedItem = { name: service.name, price: activePrice.amount };
+          if (service.category.name === 'LAB_TEST') {
             hasLabTest = true;
           }
         } else if (itemDto.itemType === OrderItemType.INVENTORY) {

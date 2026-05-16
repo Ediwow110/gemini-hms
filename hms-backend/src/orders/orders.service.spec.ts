@@ -22,7 +22,7 @@ describe('OrdersService', () => {
       patient: {
         findFirst: jest.fn(),
       },
-      serviceCatalog: {
+      serviceItem: {
         findFirst: jest.fn(),
       },
       inventoryItem: {
@@ -81,11 +81,12 @@ describe('OrdersService', () => {
         tenantId: mockTenantId,
       });
 
-      // Mock ServiceCatalog price: 500
-      prisma.serviceCatalog.findFirst.mockResolvedValue({
+      // Mock ServiceItem price: 500
+      prisma.serviceItem.findFirst.mockResolvedValue({
         id: 's1',
         name: 'Consultation',
-        price: new Prisma.Decimal(500),
+        category: { name: 'CONSULTATION' },
+        prices: [{ amount: new Prisma.Decimal(500) }],
       });
 
       // Mock InventoryItem price: 200
@@ -156,11 +157,11 @@ describe('OrdersService', () => {
         tenantId: mockTenantId,
       });
 
-      prisma.serviceCatalog.findFirst.mockResolvedValue({
+      prisma.serviceItem.findFirst.mockResolvedValue({
         id: 's-lab',
         name: 'CBC',
-        category: 'LAB_TEST',
-        price: new Prisma.Decimal(150),
+        category: { name: 'LAB_TEST' },
+        prices: [{ amount: new Prisma.Decimal(150) }],
       });
 
       const dto = {
@@ -192,11 +193,30 @@ describe('OrdersService', () => {
         id: mockPatientId,
         tenantId: mockTenantId,
       });
-      prisma.serviceCatalog.findFirst.mockResolvedValue(null);
+      prisma.serviceItem.findFirst.mockResolvedValue(null);
 
       await expect(
         service.create(mockTenantId, mockUserId, mockBranchId, validDto),
       ).rejects.toThrow('Service item s1 not found or inactive');
+    });
+
+    it('should fail if service item has no price for branch', async () => {
+      prisma.patient.findFirst.mockResolvedValue({
+        id: mockPatientId,
+        tenantId: mockTenantId,
+      });
+      prisma.serviceItem.findFirst.mockResolvedValue({
+        id: 's1',
+        name: 'Consultation',
+        category: { name: 'CONSULTATION' },
+        prices: [], // No price for branch
+      });
+
+      await expect(
+        service.create(mockTenantId, mockUserId, mockBranchId, validDto),
+      ).rejects.toThrow(
+        `Service item s1 has no active price for branch ${mockBranchId}`,
+      );
     });
 
     it('should fail if inventory item is not found or inactive', async () => {
@@ -204,10 +224,11 @@ describe('OrdersService', () => {
         id: mockPatientId,
         tenantId: mockTenantId,
       });
-      prisma.serviceCatalog.findFirst.mockResolvedValue({
+      prisma.serviceItem.findFirst.mockResolvedValue({
         id: 's1',
         name: 'S1',
-        price: new Prisma.Decimal(100),
+        category: { name: 'S1' },
+        prices: [{ amount: new Prisma.Decimal(100) }],
       });
       prisma.inventoryItem.findFirst.mockResolvedValue(null); // Not found or inactive
 

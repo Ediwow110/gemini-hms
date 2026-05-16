@@ -26,7 +26,9 @@ model Tenant {
   files              File[]
   cashierSessions    CashierSession[]
   numberingSequences NumberingSequence[]
-  serviceCatalog     ServiceCatalog[]
+  serviceCategories  ServiceCategory[]
+  serviceItems       ServiceItem[]
+  servicePrices      ServicePrice[]
   orders             Order[]
   orderItems         OrderItem[]
   invoices           Invoice[]
@@ -39,7 +41,7 @@ model Tenant {
   departments        Department[]
   employees          Employee[]
   employeeBranches   EmployeeBranch[]
-  payslips           Payslip[]
+  payslips         Payslip[]
   queueEntries       QueueEntry[]
   hmoPartners        HmoPartner[]
   claims             Claim[]
@@ -68,6 +70,7 @@ model Branch {
   employeeBranches EmployeeBranch[]
   payslips         Payslip[]
   encounters       Encounter[]
+  servicePrices    ServicePrice[]
 
   @@map("branches")
 }
@@ -251,21 +254,67 @@ model OrderItem {
   @@map("order_items")
 }
 
-model ServiceCatalog {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  name      String
-  code      String
-  category  String // CONSULTATION, LAB_TEST, RADIOLOGY, etc.
-  price     Decimal  @db.Decimal(12, 2)
-  status    String   @default("ACTIVE") // ACTIVE, ARCHIVED
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+model ServiceCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  name        String
+  description String?
+  createdBy   String   @map("created_by") @db.Uuid
+  updatedBy   String   @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant Tenant        @relation(fields: [tenantId], references: [id])
+  items  ServiceItem[]
+
+  @@index([tenantId])
+  @@map("service_categories")
+}
+
+model ServiceItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  categoryId  String   @map("category_id") @db.Uuid
+  code        String
+  name        String
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdBy   String   @map("created_by") @db.Uuid
+  updatedBy   String   @map("updated_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id])
+  category ServiceCategory @relation(fields: [categoryId], references: [id])
+  prices   ServicePrice[]
 
   @@unique([tenantId, code])
-  @@map("service_catalog")
+  @@index([tenantId])
+  @@index([categoryId])
+  @@map("service_items")
+}
+
+model ServicePrice {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  serviceItemId String   @map("service_item_id") @db.Uuid
+  branchId      String   @map("branch_id") @db.Uuid
+  amount        Decimal  @db.Decimal(12, 2)
+  effectiveDate DateTime @default(now()) @map("effective_date")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdBy     String   @map("created_by") @db.Uuid
+  updatedBy     String   @map("updated_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  serviceItem ServiceItem @relation(fields: [serviceItemId], references: [id])
+  branch      Branch      @relation(fields: [branchId], references: [id])
+
+  @@index([tenantId])
+  @@index([serviceItemId])
+  @@index([branchId])
+  @@map("service_prices")
 }
 
 model Invoice {
