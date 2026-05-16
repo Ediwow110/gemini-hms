@@ -1,77 +1,80 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { HrService } from './hr.service';
 import {
   CreateEmployeeDto,
-  CreateDepartmentDto,
-  CreatePayslipDto,
+  UpdateEmployeeStatusDto,
+  ClockInDto,
 } from './dto/hr.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { BranchGuard } from '../auth/guards/branch.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import * as AuthTypes from '../common/types/authenticated-request.type';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, BranchGuard)
 @Controller('api/v1/hr')
 export class HrController {
   constructor(private readonly hrService: HrService) {}
 
-  @Get('departments')
-  @Roles(
-    'Super Admin',
-    'Branch Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Manager',
-  )
-  getDepartments(@GetUser('tenantId') tenantId: string) {
-    return this.hrService.getDepartments(tenantId);
-  }
-
-  @Post('departments')
-  @Roles('Super Admin', 'HR Manager', 'HR Staff')
-  createDepartment(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
-    @Body() dto: CreateDepartmentDto,
-  ) {
-    return this.hrService.createDepartment(tenantId, userId, dto);
-  }
-
   @Get('employees')
-  @Roles(
-    'Super Admin',
-    'Branch Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Manager',
-  )
+  @RequirePermissions('hr.employee.view')
+  @RequireBranchContext()
   getEmployees(
     @GetUser('tenantId') tenantId: string,
-    @GetUser() user: AuthTypes.RequestUser,
+    @GetUser('branchId') branchId: string,
   ) {
-    return this.hrService.getEmployees(tenantId, user);
+    return this.hrService.getEmployees(tenantId, branchId);
   }
 
   @Post('employees')
-  @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff')
+  @RequirePermissions('hr.employee.manage')
+  @RequireBranchContext()
   createEmployee(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
     @GetUser('userId') userId: string,
-    @GetUser() user: AuthTypes.RequestUser,
     @Body() dto: CreateEmployeeDto,
   ) {
-    return this.hrService.createEmployee(tenantId, userId, dto, user);
+    return this.hrService.createEmployee(tenantId, branchId, userId, dto);
   }
 
-  @Post('payroll/generate')
-  @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff')
-  generatePayslip(
+  @Patch('employees/:id/status')
+  @RequirePermissions('hr.employee.manage')
+  @RequireBranchContext()
+  updateEmployeeStatus(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
     @GetUser('userId') userId: string,
-    @GetUser() user: AuthTypes.RequestUser,
-    @Body() dto: CreatePayslipDto,
+    @Param('id') id: string,
+    @Body() dto: UpdateEmployeeStatusDto,
   ) {
-    return this.hrService.generatePayslip(tenantId, userId, dto, user);
+    return this.hrService.updateEmployeeStatus(
+      tenantId,
+      branchId,
+      userId,
+      id,
+      dto,
+    );
+  }
+
+  @Post('attendance/clock-in')
+  @RequirePermissions('hr.attendance.manage')
+  @RequireBranchContext()
+  clockIn(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+    @GetUser('userId') userId: string,
+    @Body() dto: ClockInDto,
+  ) {
+    return this.hrService.clockIn(tenantId, branchId, userId, dto);
   }
 }

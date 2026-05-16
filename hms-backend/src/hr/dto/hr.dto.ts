@@ -1,24 +1,28 @@
 import {
+  IsEnum,
   IsNotEmpty,
-  IsString,
-  IsNumber,
-  Min,
   IsOptional,
+  IsString,
   IsUUID,
   IsDateString,
+  IsNumber,
+  Min,
 } from 'class-validator';
-
-export class CreateDepartmentDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsString()
-  @IsNotEmpty()
-  code: string;
-}
+import { EmployeeStatus } from '@prisma/client';
 
 export class CreateEmployeeDto {
+  @IsUUID()
+  @IsOptional()
+  userId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  departmentId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  employeeIdNumber: string;
+
   @IsString()
   @IsNotEmpty()
   firstName: string;
@@ -31,41 +35,27 @@ export class CreateEmployeeDto {
   @IsNotEmpty()
   jobTitle: string;
 
-  @IsUUID()
-  @IsOptional()
-  departmentId?: string;
-
-  @IsUUID()
-  @IsNotEmpty()
-  primaryBranchId: string;
-
   @IsDateString()
   @IsNotEmpty()
-  joiningDate: string;
+  hireDate: string;
 
   @IsNumber()
   @Min(0)
   salary: number;
 }
 
-export class CreatePayslipDto {
+export class UpdateEmployeeStatusDto {
+  @IsEnum(EmployeeStatus)
+  @IsNotEmpty()
+  status: EmployeeStatus;
+
+  @IsString()
+  @IsOptional()
+  reason?: string;
+}
+
+export class ClockInDto {
   @IsUUID()
   @IsNotEmpty()
   employeeId: string;
-
-  @IsDateString()
-  @IsNotEmpty()
-  periodStart: string;
-
-  @IsDateString()
-  @IsNotEmpty()
-  periodEnd: string;
-
-  @IsNumber()
-  @Min(0)
-  totalAllowances: number;
-
-  @IsNumber()
-  @Min(0)
-  totalDeductions: number;
 }

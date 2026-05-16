@@ -10,7 +10,9 @@ import {
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { BranchGuard } from '../auth/guards/branch.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 import {
@@ -24,11 +26,34 @@ import {
   UpdateUserDto,
   UserLifecycleReasonDto,
 } from './dto/user-lifecycle.dto';
+import { CreateDepartmentDto } from './dto/admin.dto';
 
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, BranchGuard)
 @Controller('api/v1/admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  @Get('departments')
+  @RequirePermissions('admin.settings.view')
+  @RequireBranchContext()
+  getDepartments(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+  ) {
+    return this.adminService.getDepartments(tenantId, branchId);
+  }
+
+  @Post('departments')
+  @RequirePermissions('admin.settings.manage')
+  @RequireBranchContext()
+  createDepartment(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+    @GetUser('userId') userId: string,
+    @Body() dto: CreateDepartmentDto,
+  ) {
+    return this.adminService.createDepartment(tenantId, branchId, userId, dto);
+  }
 
   @Post('users')
   @RequirePermissions('admin.role.change')

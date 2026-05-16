@@ -63,6 +63,7 @@ export class AuthService {
     if (
       user &&
       user.status === 'ACTIVE' &&
+      user.isActive === true &&
       user.deactivatedAt === null &&
       (await bcrypt.compare(pass, user.passwordHash))
     ) {
@@ -126,6 +127,7 @@ export class AuthService {
       !user ||
       user.tenantId !== tenantId ||
       user.status !== 'ACTIVE' ||
+      user.isActive === false ||
       user.deactivatedAt !== null
     ) {
       return null;

@@ -1,17 +1,17 @@
 import {
   Injectable,
   NotFoundException,
-  BadRequestException,
+  ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import {
   CreateEmployeeDto,
-  CreateDepartmentDto,
-  CreatePayslipDto,
+  UpdateEmployeeStatusDto,
+  ClockInDto,
 } from './dto/hr.dto';
-import { AuditService } from '../audit/audit.service';
-import { RequestUser } from '../common/types/authenticated-request.type';
+import { EmployeeStatus, Prisma } from '@prisma/client';
 
 @Injectable()
 export class HrService {
@@ -20,221 +20,227 @@ export class HrService {
     private audit: AuditService,
   ) {}
 
-  private isTenantWideHr(roles: string[]): boolean {
-    return roles.some((r) =>
-      ['Super Admin', 'HR Manager', 'HR Staff'].includes(r),
-    );
-  }
-
-  private isBranchScopedHr(roles: string[]): boolean {
-    return roles.some((r) => ['Branch Admin', 'Branch Manager'].includes(r));
-  }
-
-  async createDepartment(
-    tenantId: string,
-    userId: string,
-    dto: CreateDepartmentDto,
-  ) {
-    const department = await this.prisma.department.create({
-      data: {
-        tenantId,
-        ...dto,
-      },
-    });
-
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'DEPARTMENT_CREATED',
-      recordType: 'Department',
-      recordId: department.id,
-      newValues: department,
-    });
-
-    return department;
-  }
-
   async createEmployee(
     tenantId: string,
+    branchId: string,
     userId: string,
     dto: CreateEmployeeDto,
-    user: RequestUser,
   ) {
-    const roles = user.roles || [];
+    // Check if employee ID number already exists for this tenant
+    const existing = await this.prisma.employee.findUnique({
+      where: {
+        tenantId_employeeIdNumber: {
+          tenantId,
+          employeeIdNumber: dto.employeeIdNumber,
+        },
+      },
+    });
 
-    if (this.isBranchScopedHr(roles)) {
-      if (!user.branchId) {
-        throw new BadRequestException('Branch context required');
-      }
-      if (dto.primaryBranchId !== user.branchId) {
-        throw new ForbiddenException(
-          'Branch Admin can only create employees for their own branch',
-        );
-      }
-    } else if (!this.isTenantWideHr(roles)) {
-      throw new ForbiddenException('Insufficient permissions');
+    if (existing) {
+      throw new ConflictException('Employee ID number already exists');
     }
 
-    // 1. Generate employee number
-    const count = await this.prisma.employee.count({ where: { tenantId } });
-    const employeeNumber = `EMP-${(count + 1).toString().padStart(5, '0')}`;
+    if (dto.userId) {
+      const existingUser = await this.prisma.user.findFirst({
+        where: { id: dto.userId, tenantId },
+      });
+      if (!existingUser) {
+        throw new NotFoundException('Linked user not found');
+      }
 
-    // 2. Create Employee with primary branch assignment
-    const employee = await this.prisma.employee.create({
-      data: {
-        tenantId,
-        employeeNumber,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        jobTitle: dto.jobTitle,
-        departmentId: dto.departmentId,
-        joiningDate: new Date(dto.joiningDate),
-        salary: dto.salary,
-        status: 'ACTIVE',
-        employeeBranches: {
-          create: {
-            tenantId,
-            branchId: dto.primaryBranchId,
-            isPrimary: true,
-            isActive: true,
-          },
+      const userLinked = await this.prisma.employee.findUnique({
+        where: { userId: dto.userId },
+      });
+      if (userLinked) {
+        throw new ConflictException(
+          'User is already linked to another employee',
+        );
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const employee = await tx.employee.create({
+        data: {
+          tenantId,
+          branchId,
+          userId: dto.userId,
+          departmentId: dto.departmentId,
+          employeeIdNumber: dto.employeeIdNumber,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          jobTitle: dto.jobTitle,
+          hireDate: new Date(dto.hireDate),
+          salary: new Prisma.Decimal(dto.salary),
+          status: EmployeeStatus.ACTIVE,
+          createdBy: userId,
+          updatedBy: userId,
         },
-      },
-      include: {
-        employeeBranches: true,
-      },
-    });
+      });
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'EMPLOYEE_CREATED',
-      recordType: 'Employee',
-      recordId: employee.id,
-      newValues: employee,
-    });
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'EMPLOYEE_CREATED',
+          recordType: 'Employee',
+          recordId: employee.id,
+          newValues: employee,
+        },
+        tx,
+        branchId,
+      );
 
-    return employee;
+      return employee;
+    });
   }
 
-  async generatePayslip(
+  async updateEmployeeStatus(
     tenantId: string,
+    branchId: string,
     userId: string,
-    dto: CreatePayslipDto,
-    user: RequestUser,
+    employeeId: string,
+    dto: UpdateEmployeeStatusDto,
   ) {
-    const roles = user.roles || [];
-
     const employee = await this.prisma.employee.findFirst({
-      where: { id: dto.employeeId, tenantId },
-      include: {
-        employeeBranches: {
-          where: { isActive: true },
-        },
-      },
+      where: { id: employeeId, tenantId },
     });
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
     }
 
-    let targetBranchId: string;
+    const isOffboarding =
+      dto.status === EmployeeStatus.TERMINATED ||
+      dto.status === EmployeeStatus.SUSPENDED;
 
-    if (this.isBranchScopedHr(roles)) {
-      if (!user.branchId) {
-        throw new BadRequestException('Branch context required');
-      }
-      const branchAssignment = employee.employeeBranches.find(
-        (eb) => eb.branchId === user.branchId,
+    return this.prisma.$transaction(async (tx) => {
+      const updatedEmployee = await tx.employee.update({
+        where: { id: employeeId },
+        data: {
+          status: dto.status,
+          terminationDate:
+            dto.status === EmployeeStatus.TERMINATED
+              ? new Date()
+              : employee.terminationDate,
+          updatedBy: userId,
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: isOffboarding
+            ? 'EMPLOYEE_TERMINATED'
+            : 'EMPLOYEE_STATUS_UPDATED',
+          recordType: 'Employee',
+          recordId: employee.id,
+          newValues: { status: dto.status, reason: dto.reason },
+        },
+        tx,
+        branchId,
       );
-      if (!branchAssignment) {
-        throw new ForbiddenException(
-          'Branch Admin can only generate payslips for employees in their branch',
+
+      if (isOffboarding && employee.userId) {
+        await tx.user.update({
+          where: { id: employee.userId },
+          data: {
+            isActive: false,
+            deactivatedAt: new Date(),
+            deactivatedReason: `Employee ${dto.status}: ${dto.reason || 'No reason provided'}`,
+          },
+        });
+
+        await this.audit.log(
+          {
+            tenantId,
+            userId,
+            eventKey: 'USER_ACCESS_REVOKED',
+            recordType: 'User',
+            recordId: employee.userId,
+            newValues: { isActive: false },
+          },
+          tx,
+          branchId,
         );
       }
-      targetBranchId = user.branchId;
-    } else if (this.isTenantWideHr(roles)) {
-      const primaryBranch = employee.employeeBranches.find(
-        (eb) => eb.isPrimary,
-      );
-      if (!primaryBranch) {
-        throw new BadRequestException(
-          'Employee has no active primary branch assignment',
-        );
-      }
-      targetBranchId = primaryBranch.branchId;
-    } else {
-      throw new ForbiddenException('Insufficient permissions');
+
+      return updatedEmployee;
+    });
+  }
+
+  async clockIn(
+    tenantId: string,
+    branchId: string,
+    userId: string,
+    dto: ClockInDto,
+  ) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: dto.employeeId, tenantId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
     }
 
-    const basicSalary = Number(employee.salary);
-    const netSalary = basicSalary + dto.totalAllowances - dto.totalDeductions;
+    if (employee.status !== EmployeeStatus.ACTIVE) {
+      throw new ForbiddenException(
+        `Employee is not active (Status: ${employee.status})`,
+      );
+    }
 
-    const payslip = await this.prisma.payslip.create({
-      data: {
-        tenantId,
-        branchId: targetBranchId,
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const existingLog = await this.prisma.attendanceLog.findFirst({
+      where: {
         employeeId: dto.employeeId,
-        periodStart: new Date(dto.periodStart),
-        periodEnd: new Date(dto.periodEnd),
-        basicSalary,
-        totalAllowances: dto.totalAllowances,
-        totalDeductions: dto.totalDeductions,
-        netSalary,
-        status: 'DRAFT',
+        date: today,
       },
     });
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'PAYSLIP_GENERATED',
-      recordType: 'Payslip',
-      recordId: payslip.id,
-      newValues: payslip,
-    });
-
-    return payslip;
-  }
-
-  async getEmployees(tenantId: string, user: RequestUser) {
-    const roles = user.roles || [];
-
-    if (this.isTenantWideHr(roles)) {
-      return this.prisma.employee.findMany({
-        where: { tenantId },
-        include: { department: true, employeeBranches: true },
-        orderBy: { lastName: 'asc' },
-      });
+    if (existingLog) {
+      throw new ConflictException('Employee already clocked in today');
     }
 
-    if (this.isBranchScopedHr(roles)) {
-      if (!user.branchId) {
-        throw new BadRequestException('Branch context required');
-      }
-      return this.prisma.employee.findMany({
-        where: {
+    return this.prisma.$transaction(async (tx) => {
+      const log = await tx.attendanceLog.create({
+        data: {
           tenantId,
-          employeeBranches: {
-            some: {
-              branchId: user.branchId,
-              isActive: true,
-            },
-          },
+          branchId,
+          employeeId: dto.employeeId,
+          date: today,
+          clockIn: new Date(),
+          createdBy: userId,
+          updatedBy: userId,
         },
-        include: { department: true, employeeBranches: true },
-        orderBy: { lastName: 'asc' },
       });
-    }
 
-    throw new ForbiddenException('Insufficient permissions');
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'EMPLOYEE_CLOCK_IN',
+          recordType: 'AttendanceLog',
+          recordId: log.id,
+          newValues: log,
+        },
+        tx,
+        branchId,
+      );
+
+      return log;
+    });
   }
 
-  async getDepartments(tenantId: string) {
-    return this.prisma.department.findMany({
-      where: { tenantId },
-      include: { _count: { select: { employees: true } } },
-      orderBy: { name: 'asc' },
+  async getEmployees(tenantId: string, branchId: string) {
+    return this.prisma.employee.findMany({
+      where: { tenantId, branchId },
+      include: {
+        department: true,
+        user: { select: { email: true, isActive: true } },
+      },
+      orderBy: { lastName: 'asc' },
     });
   }
 }

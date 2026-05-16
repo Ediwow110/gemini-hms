@@ -64,7 +64,9 @@ describe('AuthService', () => {
       passwordHash: 'redacted',
       isMfaEnabled: false,
       status: 'ACTIVE',
+      isActive: true,
       deactivatedAt: null,
+
       deactivatedReason: null,
       tokenVersion: 0,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -204,6 +206,7 @@ describe('AuthService', () => {
         passwordHash: 'redacted',
         isMfaEnabled: false,
         status: 'ACTIVE',
+        isActive: true,
         deactivatedAt: null,
         deactivatedReason: null,
         tokenVersion: 0,
@@ -282,6 +285,7 @@ describe('AuthService', () => {
         passwordHash,
         isMfaEnabled: false,
         status: 'ACTIVE',
+        isActive: true,
         deactivatedAt: null,
         deactivatedReason: null,
         tokenVersion: 0,
@@ -535,6 +539,7 @@ describe('JWT Claim Consistency', () => {
           email: 'test@hospital.com',
           tenantId: 'tenant-uuid-456',
           status: 'ACTIVE',
+          isActive: true,
           deactivatedAt: null,
           tokenVersion: 0,
         }),
@@ -700,7 +705,9 @@ describe('JWT Claim Consistency', () => {
       email: 'test@hospital.com',
       tenantId: 'tenant-uuid-456',
       status: 'ACTIVE',
+      isActive: true,
       deactivatedAt: null,
+
       tokenVersion: 2,
     });
 
@@ -721,7 +728,9 @@ describe('JWT Claim Consistency', () => {
       email: 'test@hospital.com',
       tenantId: 'tenant-uuid-456',
       status: 'ACTIVE',
+      isActive: true,
       deactivatedAt: null,
+
       tokenVersion: 3,
     });
 

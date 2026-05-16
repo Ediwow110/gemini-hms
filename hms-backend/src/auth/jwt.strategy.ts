@@ -52,6 +52,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         email: true,
         tenantId: true,
         status: true,
+        isActive: true,
         deactivatedAt: true,
         tokenVersion: true,
       },
@@ -60,6 +61,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (
       !user ||
       user.status !== 'ACTIVE' ||
+      user.isActive === false ||
       user.deactivatedAt !== null ||
       payload.tokenVersion !== user.tokenVersion
     ) {

@@ -11,6 +11,7 @@ import { AuditService } from '../audit/audit.service';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 import * as bcrypt from 'bcrypt';
 import { PrivilegedUserProfileUpdateDto } from './dto/user-lifecycle.dto';
+import { CreateDepartmentDto } from './dto/admin.dto';
 
 const USER_STATUS_ACTIVE = 'ACTIVE';
 const USER_STATUS_INACTIVE = 'INACTIVE';
@@ -268,6 +269,63 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
+
+  async createDepartment(
+    tenantId: string,
+    branchId: string,
+    userId: string,
+    dto: CreateDepartmentDto,
+  ) {
+    const existing = await this.prisma.department.findUnique({
+      where: {
+        tenantId_code: {
+          tenantId,
+          code: dto.code,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        'Department code already exists for this tenant',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const department = await tx.department.create({
+        data: {
+          tenantId,
+          branchId,
+          name: dto.name,
+          code: dto.code,
+          createdBy: userId,
+          updatedBy: userId,
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'DEPARTMENT_CREATED',
+          recordType: 'Department',
+          recordId: department.id,
+          newValues: department,
+        },
+        tx,
+        branchId,
+      );
+
+      return department;
+    });
+  }
+
+  async getDepartments(tenantId: string, branchId: string) {
+    return this.prisma.department.findMany({
+      where: { tenantId, branchId },
+      orderBy: { name: 'asc' },
+    });
+  }
 
   async createUser(
     actor: RequestUser,

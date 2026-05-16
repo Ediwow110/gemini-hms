@@ -1,290 +1,241 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
+import {
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { HrService } from './hr.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
-import { RequestUser } from '../common/types/authenticated-request.type';
+import { EmployeeStatus } from '@prisma/client';
 
 describe('HrService', () => {
   let service: HrService;
-  let prisma: PrismaService;
-
-  const mockTenantId = '00000000-0000-0000-0000-000000000001';
-  const mockBranchId = '00000000-0000-0000-0000-000000000010';
-  const mockUserId = 'user-1';
-
-  const superAdminUser: RequestUser = {
-    tenantId: mockTenantId,
-    roles: ['Super Admin'],
-  };
-
-  const branchAdminUser: RequestUser = {
-    tenantId: mockTenantId,
-    branchId: mockBranchId,
-    roles: ['Branch Admin'],
-  };
-
-  const otherBranchAdminUser: RequestUser = {
-    tenantId: mockTenantId,
-    branchId: 'other-branch',
-    roles: ['Branch Admin'],
-  };
+  let prisma: any;
+  let audit: any;
 
   beforeEach(async () => {
+    prisma = {
+      $transaction: jest.fn(async (cb) => cb(prisma)),
+      employee: {
+        findFirst: jest.fn(),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        findMany: jest.fn(),
+      },
+      user: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      },
+      attendanceLog: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+      },
+    };
+
+    audit = {
+      log: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         HrService,
-        {
-          provide: PrismaService,
-          useValue: {
-            employee: {
-              count: jest.fn(),
-              create: jest.fn(),
-              findFirst: jest.fn(),
-              findMany: jest.fn(),
-            },
-            employeeBranch: {
-              create: jest.fn(),
-            },
-            payslip: {
-              create: jest.fn(),
-            },
-            department: {
-              create: jest.fn(),
-            },
-          },
-        },
-        {
-          provide: AuditService,
-          useValue: {
-            log: jest.fn(),
-          },
-        },
+        { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: audit },
       ],
     }).compile();
 
     service = module.get<HrService>(HrService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
+  const mockTenantId = 'tenant-uuid';
+  const mockBranchId = 'branch-uuid';
+  const mockUserId = 'user-uuid';
 
   describe('createEmployee', () => {
-    const dto = {
-      firstName: 'John',
-      lastName: 'Doe',
-      jobTitle: 'Nurse',
-      joiningDate: '2026-01-01',
-      salary: 50000,
-      primaryBranchId: mockBranchId,
-    };
-
-    it('should allow Super Admin to create an employee for any branch', async () => {
-      (prisma.employee.count as jest.Mock).mockResolvedValue(0);
-      (prisma.employee.create as jest.Mock).mockResolvedValue({
-        id: 'emp-1',
-        ...dto,
-        employeeNumber: 'EMP-00001',
-      });
+    it('should create an employee and log audit', async () => {
+      const dto = {
+        employeeIdNumber: 'EMP001',
+        firstName: 'John',
+        lastName: 'Doe',
+        jobTitle: 'Nurse',
+        hireDate: '2026-01-01',
+        salary: 50000,
+      };
+      prisma.employee.findUnique.mockResolvedValue(null);
+      prisma.employee.create.mockResolvedValue({ id: 'emp-1', ...dto });
 
       const result = await service.createEmployee(
         mockTenantId,
+        mockBranchId,
         mockUserId,
         dto,
-        superAdminUser,
       );
 
-      expect(prisma.employee.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            employeeBranches: {
-              create: {
-                tenantId: mockTenantId,
-                branchId: mockBranchId,
-                isPrimary: true,
-                isActive: true,
-              },
-            },
-          }),
-        }),
-      );
-      expect(result.employeeNumber).toBe('EMP-00001');
-    });
-
-    it('should allow Branch Admin to create an employee for their own branch', async () => {
-      (prisma.employee.count as jest.Mock).mockResolvedValue(0);
-      (prisma.employee.create as jest.Mock).mockResolvedValue({
-        id: 'emp-1',
-        ...dto,
-        employeeNumber: 'EMP-00001',
-      });
-
-      const result = await service.createEmployee(
-        mockTenantId,
-        mockUserId,
-        dto,
-        branchAdminUser,
-      );
-
-      expect(prisma.employee.create).toHaveBeenCalled();
       expect(result.id).toBe('emp-1');
+      expect(prisma.employee.create).toHaveBeenCalled();
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'EMPLOYEE_CREATED' }),
+        expect.anything(),
+        mockBranchId,
+      );
     });
 
-    it('should reject Branch Admin creating an employee for a different branch', async () => {
+    it('should throw ConflictException if Employee ID number exists', async () => {
+      prisma.employee.findUnique.mockResolvedValue({ id: 'existing' });
       await expect(
-        service.createEmployee(
-          mockTenantId,
-          mockUserId,
-          dto,
-          otherBranchAdminUser,
-        ),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('should fail if Branch Admin has no branch context', async () => {
-      const invalidBranchAdmin: RequestUser = {
-        tenantId: mockTenantId,
-        roles: ['Branch Admin'],
-      };
-      await expect(
-        service.createEmployee(
-          mockTenantId,
-          mockUserId,
-          dto,
-          invalidBranchAdmin,
-        ),
-      ).rejects.toThrow(BadRequestException);
+        service.createEmployee(mockTenantId, mockBranchId, mockUserId, {
+          employeeIdNumber: 'EMP001',
+          firstName: 'a',
+          lastName: 'b',
+          jobTitle: 'c',
+          hireDate: '2026',
+          salary: 1,
+        }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
-  describe('generatePayslip', () => {
-    const dto = {
-      employeeId: 'emp-1',
-      periodStart: '2026-05-01',
-      periodEnd: '2026-05-31',
-      totalAllowances: 1000,
-      totalDeductions: 500,
-    };
-
-    it('should allow Super Admin to generate payslip for any tenant employee', async () => {
-      const mockEmployee = {
-        id: 'emp-1',
-        salary: 50000,
-        employeeBranches: [
-          { branchId: mockBranchId, isPrimary: true, isActive: true },
-        ],
+  describe('Offboarding Lock (The Golden Rule)', () => {
+    it('terminating an employee should revoke user access transactionally', async () => {
+      const employeeId = 'emp-1';
+      const linkedUserId = 'linked-user-uuid';
+      const employee = {
+        id: employeeId,
+        tenantId: mockTenantId,
+        userId: linkedUserId,
       };
 
-      (prisma.employee.findFirst as jest.Mock).mockResolvedValue(mockEmployee);
-      (prisma.payslip.create as jest.Mock).mockResolvedValue({
-        id: 'ps-1',
-        ...dto,
-        branchId: mockBranchId,
+      prisma.employee.findFirst.mockResolvedValue(employee);
+      prisma.employee.update.mockResolvedValue({
+        ...employee,
+        status: EmployeeStatus.TERMINATED,
+      });
+      prisma.user.update.mockResolvedValue({
+        id: linkedUserId,
+        isActive: false,
       });
 
-      const result = await service.generatePayslip(
+      await service.updateEmployeeStatus(
         mockTenantId,
+        mockBranchId,
         mockUserId,
-        dto,
-        superAdminUser,
+        employeeId,
+        {
+          status: EmployeeStatus.TERMINATED,
+          reason: 'Violation of policy',
+        },
       );
 
-      expect(prisma.payslip.create).toHaveBeenCalledWith(
+      expect(prisma.employee.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ branchId: mockBranchId }),
+          where: { id: employeeId },
+          data: expect.objectContaining({ status: EmployeeStatus.TERMINATED }),
         }),
       );
-      expect(result.branchId).toBe(mockBranchId);
-    });
 
-    it('should allow Branch Admin to generate payslip for same-branch employee', async () => {
-      const mockEmployee = {
-        id: 'emp-1',
-        salary: 50000,
-        employeeBranches: [
-          { branchId: mockBranchId, isPrimary: true, isActive: true },
-        ],
-      };
-
-      (prisma.employee.findFirst as jest.Mock).mockResolvedValue(mockEmployee);
-      (prisma.payslip.create as jest.Mock).mockResolvedValue({
-        id: 'ps-1',
-        ...dto,
-        branchId: mockBranchId,
-      });
-
-      const result = await service.generatePayslip(
-        mockTenantId,
-        mockUserId,
-        dto,
-        branchAdminUser,
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: linkedUserId },
+          data: expect.objectContaining({ isActive: false }),
+        }),
       );
 
-      expect(result.branchId).toBe(mockBranchId);
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'EMPLOYEE_TERMINATED' }),
+        expect.anything(),
+        mockBranchId,
+      );
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'USER_ACCESS_REVOKED' }),
+        expect.anything(),
+        mockBranchId,
+      );
     });
 
-    it('should reject Branch Admin generating payslip for cross-branch employee', async () => {
-      const mockEmployee = {
-        id: 'emp-1',
-        salary: 50000,
-        employeeBranches: [
-          { branchId: 'other-branch', isPrimary: true, isActive: true },
-        ],
-      };
-
-      (prisma.employee.findFirst as jest.Mock).mockResolvedValue(mockEmployee);
+    it('should rollback termination if audit log fails', async () => {
+      prisma.employee.findFirst.mockResolvedValue({ id: 'e1', userId: 'u1' });
+      audit.log.mockRejectedValue(new Error('Audit Failure'));
 
       await expect(
-        service.generatePayslip(mockTenantId, mockUserId, dto, branchAdminUser),
-      ).rejects.toThrow(ForbiddenException);
+        service.updateEmployeeStatus(
+          mockTenantId,
+          mockBranchId,
+          mockUserId,
+          'e1',
+          {
+            status: EmployeeStatus.TERMINATED,
+          },
+        ),
+      ).rejects.toThrow('Audit Failure');
+
+      expect(prisma.$transaction).toHaveBeenCalled();
     });
   });
 
-  describe('getEmployees', () => {
-    it('should return all employees for Super Admin', async () => {
-      (prisma.employee.findMany as jest.Mock).mockResolvedValue([
-        { id: 'emp-1' },
-        { id: 'emp-2' },
-      ]);
+  describe('Clock-In Constraints', () => {
+    it('should throw ForbiddenException if employee is not ACTIVE', async () => {
+      prisma.employee.findFirst.mockResolvedValue({
+        id: 'e1',
+        status: EmployeeStatus.TERMINATED,
+      });
 
-      const result = await service.getEmployees(mockTenantId, superAdminUser);
-
-      expect(prisma.employee.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { tenantId: mockTenantId } }),
-      );
-      expect(result.length).toBe(2);
-    });
-
-    it('should return only same-branch employees for Branch Admin', async () => {
-      (prisma.employee.findMany as jest.Mock).mockResolvedValue([
-        { id: 'emp-1' },
-      ]);
-
-      const result = await service.getEmployees(mockTenantId, branchAdminUser);
-
-      expect(prisma.employee.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            employeeBranches: {
-              some: { branchId: mockBranchId, isActive: true },
-            },
-          }),
-        }),
-      );
-      expect(result.length).toBe(1);
-    });
-
-    it('should fail if Branch Admin has no branch context', async () => {
-      const invalidBranchAdmin: RequestUser = {
-        tenantId: mockTenantId,
-        roles: ['Branch Admin'],
-      };
       await expect(
-        service.getEmployees(mockTenantId, invalidBranchAdmin),
-      ).rejects.toThrow(BadRequestException);
+        service.clockIn(mockTenantId, mockBranchId, mockUserId, {
+          employeeId: 'e1',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw ConflictException if already clocked in today', async () => {
+      prisma.employee.findFirst.mockResolvedValue({
+        id: 'e1',
+        status: EmployeeStatus.ACTIVE,
+      });
+      prisma.attendanceLog.findFirst.mockResolvedValue({ id: 'log1' });
+
+      await expect(
+        service.clockIn(mockTenantId, mockBranchId, mockUserId, {
+          employeeId: 'e1',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should create attendance log for active employee', async () => {
+      prisma.employee.findFirst.mockResolvedValue({
+        id: 'e1',
+        status: EmployeeStatus.ACTIVE,
+      });
+      prisma.attendanceLog.findFirst.mockResolvedValue(null);
+      prisma.attendanceLog.create.mockResolvedValue({ id: 'log2' });
+
+      const result = await service.clockIn(
+        mockTenantId,
+        mockBranchId,
+        mockUserId,
+        { employeeId: 'e1' },
+      );
+
+      expect(result.id).toBe('log2');
+      expect(prisma.attendanceLog.create).toHaveBeenCalled();
+    });
+  });
+
+  describe('Tenant Isolation', () => {
+    it('should fail if employee belongs to another tenant', async () => {
+      prisma.employee.findFirst.mockResolvedValue(null);
+      await expect(
+        service.updateEmployeeStatus(
+          'tenant-A',
+          mockBranchId,
+          mockUserId,
+          'emp-B',
+          {
+            status: EmployeeStatus.TERMINATED,
+          },
+        ),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

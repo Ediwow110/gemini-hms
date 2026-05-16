@@ -38,6 +38,8 @@ model Tenant {
   stockMovements     StockMovement[]
   departments        Department[]
   employees          Employee[]
+  attendanceLogs     AttendanceLog[]
+  leaveRequests      LeaveRequest[]
   employeeBranches   EmployeeBranch[]
   payslips           Payslip[]
   queueEntries       QueueEntry[]
@@ -67,6 +69,10 @@ model Branch {
   inventoryItems   InventoryItem[]
   stockBatches     StockBatch[]
   stockMovements   StockMovement[]
+  departments      Department[]
+  employees        Employee[]
+  attendanceLogs   AttendanceLog[]
+  leaveRequests    LeaveRequest[]
   employeeBranches EmployeeBranch[]
   payslips         Payslip[]
   encounters       Encounter[]
@@ -81,6 +87,7 @@ model User {
   passwordHash      String    @map("password_hash")
   isMfaEnabled      Boolean   @default(false) @map("is_mfa_enabled")
   status            String    @default("ACTIVE")
+  isActive          Boolean   @default(true) @map("is_active")
   deactivatedAt     DateTime? @map("deactivated_at")
   deactivatedReason String?   @map("deactivated_reason")
   tokenVersion      Int       @default(0) @map("token_version")
@@ -91,6 +98,7 @@ model User {
   auditLogs          AuditLog[]
   userRoles          UserRole[]
   userBranches       UserBranch[]
+  employee           Employee?
   reportExports      ReportExport[]    @relation("RequestedExports")
   decidedExports     ReportExport[]    @relation("DecidedExports")
   requestedApprovals ApprovalRequest[] @relation("RequestedApprovals")
@@ -480,44 +488,118 @@ model StockMovement {
 }
 
 // --- MODULE 5: HUMAN RESOURCES & PAYROLL ---
-// DEFERRED: HR & Payroll module not currently wired/supported. Do not implement.
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  TERMINATED
+}
 
 model Department {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
+  branchId  String   @map("branch_id") @db.Uuid
   name      String
   code      String
+  
+  createdBy String   @map("created_by") @db.Uuid
+  updatedBy String   @map("updated_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  branch    Branch     @relation(fields: [branchId], references: [id])
   employees Employee[]
 
   @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([branchId])
   @@map("departments")
 }
 
 model Employee {
-  id             String   @id @default(uuid()) @db.Uuid
-  tenantId       String   @map("tenant_id") @db.Uuid
-  departmentId   String?  @map("department_id") @db.Uuid
-  employeeNumber String   @map("employee_number")
-  firstName      String   @map("first_name")
-  lastName       String   @map("last_name")
-  jobTitle       String   @map("job_title")
-  status         String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
-  joiningDate    DateTime @map("joining_date") @db.Date
-  salary         Decimal  @db.Decimal(12, 2)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id               String         @id @default(uuid()) @db.Uuid
+  tenantId         String         @map("tenant_id") @db.Uuid
+  branchId         String         @map("branch_id") @db.Uuid
+  userId           String?        @unique @map("user_id") @db.Uuid
+  departmentId     String?        @map("department_id") @db.Uuid
+  employeeIdNumber String         @map("employee_id_number")
+  firstName        String         @map("first_name")
+  lastName         String         @map("last_name")
+  jobTitle         String         @map("job_title")
+  status           EmployeeStatus @default(ACTIVE)
+  hireDate         DateTime       @map("hire_date")
+  terminationDate  DateTime?      @map("termination_date")
+  salary           Decimal        @db.Decimal(12, 2)
+  
+  createdBy        String         @map("created_by") @db.Uuid
+  updatedBy        String         @map("updated_by") @db.Uuid
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
   tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  branch           Branch           @relation(fields: [branchId], references: [id])
+  user             User?            @relation(fields: [userId], references: [id])
   department       Department?      @relation(fields: [departmentId], references: [id])
+  attendanceLogs   AttendanceLog[]
+  leaveRequests    LeaveRequest[]
   employeeBranches EmployeeBranch[]
   payslips         Payslip[]
 
-  @@unique([tenantId, employeeNumber])
+  @@unique([tenantId, employeeIdNumber])
+  @@index([tenantId])
+  @@index([branchId])
   @@map("employees")
+}
+
+model AttendanceLog {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  branchId   String    @map("branch_id") @db.Uuid
+  employeeId String    @map("employee_id") @db.Uuid
+  date       DateTime  @db.Date
+  clockIn    DateTime  @map("clock_in")
+  clockOut   DateTime? @map("clock_out")
+  
+  createdBy  String    @map("created_by") @db.Uuid
+  updatedBy  String    @map("updated_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([employeeId])
+  @@map("attendance_logs")
+}
+
+model LeaveRequest {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  branchId   String   @map("branch_id") @db.Uuid
+  employeeId String   @map("employee_id") @db.Uuid
+  type       String   // e.g. SICK, VACATION
+  startDate  DateTime @map("start_date")
+  endDate    DateTime @map("end_date")
+  status     String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  createdBy  String   @map("created_by") @db.Uuid
+  updatedBy  String   @map("updated_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([employeeId])
+  @@map("leave_requests")
 }
 
 model EmployeeBranch {
@@ -531,8 +613,8 @@ model EmployeeBranch {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, employeeId, branchId])
   @@index([tenantId])
