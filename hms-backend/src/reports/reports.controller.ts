@@ -1,48 +1,46 @@
-import { Controller, Post, Body, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { ReportsService } from './reports.service';
-import { CreateReportExportDto } from './dto/create-export.dto';
-import { ApproveExportDto } from './dto/approve-export.dto';
-import { RejectExportDto } from './dto/reject-export.dto';
+import { ExportReportDto, SalesSummaryQueryDto } from './dto/reports.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { BranchGuard } from '../auth/guards/branch.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
-@UseGuards(JwtAuthGuard, PermissionsGuard)
-@Controller('reports')
+@UseGuards(JwtAuthGuard, PermissionsGuard, BranchGuard)
+@Controller('api/v1/reports')
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
-  @Post('exports')
+  @Get('sales')
+  @RequirePermissions('report.view')
+  @RequireBranchContext()
+  getSalesSummary(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+    @Query() query: SalesSummaryQueryDto,
+  ) {
+    return this.reportsService.getSalesSummary(tenantId, branchId, query);
+  }
+
+  @Post('export')
   @RequirePermissions('report.export')
-  async createExport(
+  @RequireBranchContext()
+  exportReport(
     @GetUser('tenantId') tenantId: string,
-    @GetUser('branchId') branchId: string | undefined,
+    @GetUser('branchId') branchId: string,
     @GetUser('userId') userId: string,
-    @Body() dto: CreateReportExportDto,
+    @GetUser('permissions') permissions: string[],
+    @Body() dto: ExportReportDto,
   ) {
-    return this.reportsService.createExport(tenantId, branchId, userId, dto);
-  }
-
-  @Post('exports/:exportId/approve')
-  @RequirePermissions('report.export', 'approval.request.process')
-  async approveExport(
-    @Param('exportId') exportId: string,
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
-    @Body() dto: ApproveExportDto,
-  ) {
-    return this.reportsService.approveExport(tenantId, userId, exportId, dto);
-  }
-
-  @Post('exports/:exportId/reject')
-  @RequirePermissions('report.export', 'approval.request.process')
-  async rejectExport(
-    @Param('exportId') exportId: string,
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
-    @Body() dto: RejectExportDto,
-  ) {
-    return this.reportsService.rejectExport(tenantId, userId, exportId, dto);
+    const hasUnmaskedAccess = permissions.includes('report.view.unmasked');
+    return this.reportsService.exportReport(
+      tenantId,
+      branchId,
+      userId,
+      dto,
+      hasUnmaskedAccess,
+    );
   }
 }

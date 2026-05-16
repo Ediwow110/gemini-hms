@@ -45,6 +45,7 @@ model Tenant {
   claims             Claim[]
   userBranches       UserBranch[]
   reportExports       ReportExport[]
+  reportExportLogs    ReportExportLog[]
   patientMergeRequests PatientMergeRequest[]
   idempotencyRecords IdempotencyRecord[]
   encounters         Encounter[]
@@ -94,6 +95,7 @@ model User {
   decidedExports     ReportExport[]    @relation("DecidedExports")
   requestedApprovals ApprovalRequest[] @relation("RequestedApprovals")
   approvedApprovals  ApprovalRequest[] @relation("ApprovedApprovals")
+  reportExportLogs   ReportExportLog[]
   mergeRequested     PatientMergeRequest[] @relation("MergeRequested")
   mergeApproved      PatientMergeRequest[] @relation("MergeApproved")
 
@@ -848,4 +850,24 @@ model PatientMergeRequest {
   @@index([branchId])
   @@index([status])
   @@map("patient_merge_requests")
+}
+
+model ReportExportLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  userId         String   @map("created_by") @db.Uuid
+  reportType     String   @map("report_type")
+  format         String
+  rowCount       Int      @map("row_count")
+  filtersApplied Json     @map("filters_applied")
+  reason         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@map("report_export_logs")
 }

@@ -1,100 +1,131 @@
 import {
   Injectable,
   BadRequestException,
-  NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { CreateReportExportDto } from './dto/create-export.dto';
-import { ApproveExportDto } from './dto/approve-export.dto';
-import { RejectExportDto } from './dto/reject-export.dto';
-import { Prisma } from '@prisma/client';
-import { ReportPolicyService, ReportRiskLevel } from './report-policy.service';
+import {
+  ExportReportDto,
+  ReportType,
+  SalesSummaryQueryDto,
+} from './dto/reports.dto';
 
 @Injectable()
 export class ReportsService {
+  private readonly EXPORT_THRESHOLD = 1000;
+
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
-    private reportPolicy: ReportPolicyService,
   ) {}
 
-  async createExport(
+  async getSalesSummary(
     tenantId: string,
-    branchId: string | undefined,
-    userId: string,
-    dto: CreateReportExportDto,
+    branchId: string,
+    query: SalesSummaryQueryDto,
   ) {
-    if (dto.reason.trim().length === 0) {
-      throw new BadRequestException('Reason is required for export');
+    const { startDate, endDate } = query;
+    const where: any = {
+      tenantId,
+      cashierSession: {
+        branchId,
+      },
+      status: 'POSTED',
+    };
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
     }
 
-    const policyResult = this.reportPolicy.getPolicyForExport(
-      dto.reportType,
-      dto.requestedFields,
+    const payments = await this.prisma.payment.findMany({
+      where,
+      select: {
+        amount: true,
+        paymentMethod: true,
+        createdAt: true,
+      },
+    });
+
+    const totalSales = payments.reduce(
+      (acc, curr) => acc + Number(curr.amount),
+      0,
+    );
+    const byMethod = payments.reduce(
+      (acc, curr) => {
+        acc[curr.paymentMethod] =
+          (acc[curr.paymentMethod] || 0) + Number(curr.amount);
+        return acc;
+      },
+      {} as Record<string, number>,
     );
 
+    return {
+      totalSales,
+      byMethod,
+      count: payments.length,
+    };
+  }
+
+  async exportReport(
+    tenantId: string,
+    branchId: string,
+    userId: string,
+    dto: ExportReportDto,
+    hasUnmaskedAccess: boolean,
+  ) {
+    const { reportType, format, filters, reason } = dto;
+
+    // 1. Execute Query (scoped by tenant) and Count Rows
+    let rowCount = 0;
+    let data: any[] = [];
+
+    switch (reportType) {
+      case ReportType.SALES:
+        data = await this.prisma.payment.findMany({
+          where: { ...filters, tenantId, cashierSession: { branchId } },
+        });
+        rowCount = data.length;
+        break;
+      case ReportType.INVENTORY:
+        data = await this.prisma.inventoryItem.findMany({
+          where: { ...filters, tenantId, branchId },
+        });
+        rowCount = data.length;
+        break;
+      case ReportType.PATIENT_LIST:
+        data = await this.prisma.patient.findMany({
+          where: { ...filters, tenantId },
+        });
+        rowCount = data.length;
+        break;
+      default:
+        throw new BadRequestException('Invalid report type');
+    }
+
+    // 2. Export Governance: Threshold Check
+    if (rowCount > this.EXPORT_THRESHOLD && !reason) {
+      throw new BadRequestException(
+        `Reason is required for large exports (over ${this.EXPORT_THRESHOLD} rows)`,
+      );
+    }
+
+    // 3. Data Masking
+    const maskedData = this.maskSensitiveData(data, hasUnmaskedAccess);
+
+    // 4. Create ReportExportLog and Audit (Transactional)
     return this.prisma.$transaction(async (tx) => {
-      let rowCount = 0;
-
-      // Scope validation for filters
-      const appliedFilters = { ...dto.filters };
-      if (
-        appliedFilters.branchId &&
-        branchId &&
-        appliedFilters.branchId !== branchId
-      ) {
-        throw new BadRequestException('Cannot export data from another branch');
-      }
-
-      const branchScope = branchId ? { branchId } : {};
-
-      if (dto.reportType === 'CASHIER_REVERSAL_RECONCILIATION') {
-        const where: Prisma.PaymentReversalWhereInput = {
-          tenantId,
-          ...branchScope,
-        };
-        if (appliedFilters.startDate) {
-          where.createdAt = {
-            gte: new Date(appliedFilters.startDate as string),
-          };
-        }
-        rowCount = await tx.paymentReversal.count({ where });
-      } else if (dto.reportType === 'AUDIT_EVENTS_SUMMARY') {
-        const where: Prisma.AuditLogWhereInput = {
-          tenantId,
-          ...branchScope,
-        };
-        if (appliedFilters.startDate) {
-          where.createdAt = {
-            gte: new Date(appliedFilters.startDate as string),
-          };
-        }
-        rowCount = await tx.auditLog.count({ where });
-      }
-
-      const reportExport = await tx.reportExport.create({
+      const log = await tx.reportExportLog.create({
         data: {
           tenantId,
           branchId,
-          reportType: dto.reportType,
-          filters: appliedFilters,
-          reason: dto.reason,
+          userId,
+          reportType,
+          format,
           rowCount,
-          status:
-            policyResult.riskLevel === ReportRiskLevel.HIGH ||
-            policyResult.riskLevel === ReportRiskLevel.PRIVILEGED
-              ? 'PENDING_APPROVAL'
-              : 'REQUESTED',
-          requestedBy: userId,
-          riskLevel: policyResult.riskLevel,
-          filtersSnapshot: appliedFilters,
-          fieldPolicySnapshot: policyResult.fieldPolicySnapshot as any,
-          requestedFields: dto.requestedFields as any,
-          allowedFields: policyResult.allowedFields,
-          maskedFields: policyResult.maskedFields,
-          format: 'CSV', // Deferred file generation
+          filtersApplied: filters || {},
+          reason,
         },
       });
 
@@ -102,19 +133,14 @@ export class ReportsService {
         {
           tenantId,
           userId,
-          eventKey: 'REPORT_EXPORT_REQUESTED',
-          recordType: 'ReportExport',
-          recordId: reportExport.id,
+          eventKey: 'REPORT_EXPORTED',
+          recordType: 'ReportExportLog',
+          recordId: log.id,
           newValues: {
-            reportExportId: reportExport.id,
-            reportType: dto.reportType,
+            reportType,
+            format,
             rowCount,
-            reason: dto.reason,
-            riskLevel: policyResult.riskLevel,
-            requestedFields: dto.requestedFields,
-            allowedFields: policyResult.allowedFields,
-            fileGenerationAvailable: false,
-            storageKey: null,
+            reason,
           },
         },
         tx,
@@ -122,141 +148,27 @@ export class ReportsService {
       );
 
       return {
-        id: reportExport.id,
-        status: reportExport.status,
-        reportType: reportExport.reportType,
-        riskLevel: reportExport.riskLevel,
-        rowCount: reportExport.rowCount,
-        createdAt: reportExport.createdAt,
-        approvalRequired:
-          policyResult.riskLevel === ReportRiskLevel.HIGH ||
-          policyResult.riskLevel === ReportRiskLevel.PRIVILEGED,
-        fileGenerationAvailable: false,
+        logId: log.id,
+        rowCount,
+        data: maskedData, // In a real scenario, this might return a download URL
       };
     });
   }
 
-  async approveExport(
-    tenantId: string,
-    userId: string,
-    exportId: string,
-    dto: ApproveExportDto,
-  ) {
-    return this.prisma.$transaction(async (tx) => {
-      const exportRecord = await tx.reportExport.findUnique({
-        where: { id: exportId, tenantId },
-      });
-      if (!exportRecord) {
-        throw new NotFoundException('Export not found');
+  private maskSensitiveData(data: any[], hasUnmaskedAccess: boolean) {
+    if (hasUnmaskedAccess) return data;
+
+    return data.map((item) => {
+      const masked = { ...item };
+      // Example of sensitive data masking
+      if ('ssn' in masked) masked.ssn = '***-**-****';
+      if ('patientNumber' in masked) {
+        // Maybe patient number is semi-sensitive
+        masked.patientNumber = masked.patientNumber.substring(0, 3) + '****';
       }
-      if (exportRecord.status !== 'PENDING_APPROVAL') {
-        throw new BadRequestException('Export is not pending approval');
-      }
-      if (exportRecord.requestedBy === userId) {
-        throw new ForbiddenException('Cannot approve own export');
-      }
-
-      const updatedExport = await tx.reportExport.update({
-        where: { id: exportId },
-        data: {
-          status: 'APPROVED',
-          decidedById: userId,
-          decidedAt: new Date(),
-          decisionReason: dto.reason,
-        },
-      });
-
-      await this.audit.log(
-        {
-          tenantId,
-          userId,
-          eventKey: 'REPORT_EXPORT_APPROVED',
-          recordType: 'ReportExport',
-          recordId: exportId,
-          newValues: {
-            exportId,
-            reportType: exportRecord.reportType,
-            requestedById: exportRecord.requestedBy,
-            decidedById: userId,
-            statusTransition: 'PENDING_APPROVAL -> APPROVED',
-            riskLevel: exportRecord.riskLevel,
-            reason: dto.reason,
-            tenantId,
-            branchId: exportRecord.branchId,
-          },
-        },
-        tx,
-        exportRecord.branchId || undefined,
-      );
-
-      return {
-        id: updatedExport.id,
-        status: updatedExport.status,
-        decidedAt: updatedExport.decidedAt,
-        decisionReason: updatedExport.decisionReason,
-      };
-    });
-  }
-
-  async rejectExport(
-    tenantId: string,
-    userId: string,
-    exportId: string,
-    dto: RejectExportDto,
-  ) {
-    return this.prisma.$transaction(async (tx) => {
-      const exportRecord = await tx.reportExport.findUnique({
-        where: { id: exportId, tenantId },
-      });
-      if (!exportRecord) {
-        throw new NotFoundException('Export not found');
-      }
-      if (exportRecord.status !== 'PENDING_APPROVAL') {
-        throw new BadRequestException('Export is not pending approval');
-      }
-      if (exportRecord.requestedBy === userId) {
-        throw new ForbiddenException('Cannot reject own export');
-      }
-
-      const updatedExport = await tx.reportExport.update({
-        where: { id: exportId },
-        data: {
-          status: 'REJECTED',
-          decidedById: userId,
-          decidedAt: new Date(),
-          decisionReason: dto.reason,
-        },
-      });
-
-      await this.audit.log(
-        {
-          tenantId,
-          userId,
-          eventKey: 'REPORT_EXPORT_REJECTED',
-          recordType: 'ReportExport',
-          recordId: exportId,
-          newValues: {
-            exportId,
-            reportType: exportRecord.reportType,
-            requestedById: exportRecord.requestedBy,
-            decidedById: userId,
-            statusTransition: 'PENDING_APPROVAL -> REJECTED',
-            riskLevel: exportRecord.riskLevel,
-            reason: dto.reason,
-            tenantId,
-            branchId: exportRecord.branchId,
-          },
-        },
-        tx,
-        exportRecord.branchId || undefined,
-      );
-
-      return {
-        id: updatedExport.id,
-        status: updatedExport.status,
-        decidedAt: updatedExport.decidedAt,
-        decisionReason: updatedExport.decisionReason,
-      };
+      // Mask clinical notes if they exist in some report data
+      if ('notes' in masked) masked.notes = '[MASKED]';
+      return masked;
     });
   }
 }
