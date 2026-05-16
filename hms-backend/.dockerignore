@@ -2,7 +2,10 @@ node_modules
 dist
 npm-debug.log
 .env
-Dockerfile
-docker-compose.yml
 .git
-.cursor
+.gitignore
+README.md
+Dockerfile
+docker-compose*
+prisma/migrations
+!prisma/migrations/*.sql
