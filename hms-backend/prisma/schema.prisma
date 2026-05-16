@@ -95,6 +95,7 @@ model User {
   approvedApprovals  ApprovalRequest[] @relation("ApprovedApprovals")
   mergeRequested     PatientMergeRequest[] @relation("MergeRequested")
   mergeApproved      PatientMergeRequest[] @relation("MergeApproved")
+  labOrders          LabOrder[]            @relation("LabOrderPhysician")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -329,6 +330,76 @@ model IdempotencyRecord {
   @@index([tenantId])
   @@index([status])
   @@map("idempotency_records")
+}
+
+enum LabOrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum LabOrderPriority {
+  ROUTINE
+  STAT
+  URGENT
+}
+
+enum SpecimenStatus {
+  PENDING_COLLECTION
+  COLLECTED
+  RECEIVED
+  REJECTED
+}
+
+model LabOrder {
+  id            String          @id @default(uuid()) @db.Uuid
+  tenantId      String          @map("tenant_id") @db.Uuid
+  branchId      String          @map("branch_id") @db.Uuid
+  patientId     String          @map("patient_id") @db.Uuid
+  encounterId   String?         @map("encounter_id") @db.Uuid
+  orderingPhysicianId String    @map("ordering_physician_id") @db.Uuid
+
+  status        LabOrderStatus  @default(PENDING)
+  priority      LabOrderPriority @default(ROUTINE)
+  notes         String?         @db.Text
+
+  specimens     Specimen[]
+
+  createdBy     String          @map("created_by") @default("") @db.Uuid
+  updatedBy     String          @map("updated_by") @default("") @db.Uuid
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  orderingPhysician User        @relation("LabOrderPhysician", fields: [orderingPhysicianId], references: [id])
+
+  @@index([tenantId, patientId])
+  @@index([tenantId, status])
+  @@map("lab_orders")
+}
+
+model Specimen {
+  id            String          @id @default(uuid()) @db.Uuid
+  tenantId      String          @map("tenant_id") @db.Uuid
+  labOrderId    String          @map("lab_order_id") @db.Uuid
+  barcode       String          @map("barcode")
+  specimenType  String          @map("specimen_type") // BLOOD, URINE, STOOL, etc.
+  status        SpecimenStatus  @default(PENDING_COLLECTION)
+  collectedAt   DateTime?       @map("collected_at")
+  receivedAt    DateTime?       @map("received_at")
+  rejectionReason String?       @map("rejection_reason") @db.Text
+
+  createdBy     String          @map("created_by") @default("") @db.Uuid
+  updatedBy     String          @map("updated_by") @default("") @db.Uuid
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  labOrder      LabOrder        @relation(fields: [labOrderId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, barcode])
+  @@index([tenantId, labOrderId])
+  @@index([tenantId, barcode])
+  @@map("specimens")
 }
 
 model LabResult {

@@ -20,6 +20,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
 import { AdminModule } from './admin/admin.module';
 import { EncountersModule } from './encounters/encounters.module';
+import { LisModule } from './lis/lis.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { EncountersModule } from './encounters/encounters.module';
     ReportsModule,
     AdminModule,
     EncountersModule,
+    LisModule,
   ],
   controllers: [AppController],
   providers: [AppService],
