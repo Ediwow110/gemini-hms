@@ -57,4 +57,70 @@ describe('NotificationsService Privacy Audit', () => {
       }),
     );
   });
+
+  describe('Privacy Shield (The Golden Rule)', () => {
+    it('should reject notifications containing diagnosis', async () => {
+      await expect(
+        service.createNotification({
+          tenantId: mockTenantId,
+          type: 'EMAIL',
+          recipient: 'patient@example.com',
+          content: 'Your diagnosis is flu',
+          // @ts-expect-error - testing runtime shield
+          diagnosis: 'flu',
+        }),
+      ).rejects.toThrow(/Privacy Shield violation/);
+    });
+
+    it('should reject notifications containing lab_result_value', async () => {
+      await expect(
+        service.createNotification({
+          tenantId: mockTenantId,
+          type: 'EMAIL',
+          recipient: 'patient@example.com',
+          content: 'Your result is 5.0',
+          // @ts-expect-error - testing runtime shield
+          lab_result_value: '5.0',
+        }),
+      ).rejects.toThrow(/Privacy Shield violation/);
+    });
+
+    it('should reject external notifications with PHI in templateData', async () => {
+      await expect(
+        service.sendExternalNotification({
+          tenantId: mockTenantId,
+          branchId: 'branch-1',
+          patientId: 'patient-1',
+          channel: 'EMAIL',
+          recipient: 'patient@example.com',
+          templateName: 'RESULT_READY',
+          templateData: {
+            patientName: 'John',
+            diagnosis: 'Malaria',
+          },
+        }),
+      ).rejects.toThrow(/Privacy Shield violation/);
+    });
+
+    it('should allow notifications with safe keys', async () => {
+      prisma.notificationLog = {
+        create: jest.fn().mockResolvedValue({ id: 'log-1' }),
+      };
+
+      const result = await service.sendExternalNotification({
+        tenantId: mockTenantId,
+        branchId: 'branch-1',
+        patientId: 'patient-1',
+        channel: 'EMAIL',
+        recipient: 'patient@example.com',
+        templateName: 'RESULT_READY',
+        templateData: {
+          patientName: 'John',
+          secureLink: 'https://portal.hms.ph/results/123',
+        },
+      });
+
+      expect(result.id).toBe('log-1');
+    });
+  });
 });

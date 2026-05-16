@@ -1,5 +1,6 @@
 export interface RequestUser {
   userId?: string;
+  patientId?: string;
   email?: string;
   tenantId: string;
   branchId?: string;

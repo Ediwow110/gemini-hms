@@ -51,6 +51,8 @@ model Tenant {
   patientMergeRequests PatientMergeRequest[]
   idempotencyRecords IdempotencyRecord[]
   encounters         Encounter[]
+  notificationLogs   NotificationLog[]
+  portalOtps         PortalOtp[]
 
   @@map("tenants")
 }
@@ -76,6 +78,8 @@ model Branch {
   employeeBranches EmployeeBranch[]
   payslips         Payslip[]
   encounters       Encounter[]
+  notificationLogs NotificationLog[]
+  portalOtps       PortalOtp[]
 
   @@map("branches")
 }
@@ -213,9 +217,11 @@ model Patient {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  tenant     Tenant      @relation(fields: [tenantId], references: [id])
-  orders     Order[]
-  encounters Encounter[]
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  orders           Order[]
+  encounters       Encounter[]
+  notificationLogs NotificationLog[]
+  portalOtps       PortalOtp[]
 
   @@unique([tenantId, patientNumber])
   @@map("patients")
@@ -952,4 +958,47 @@ model ReportExportLog {
   @@index([tenantId])
   @@index([branchId])
   @@map("report_export_logs")
+}
+
+model NotificationLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  branchId     String   @map("branch_id") @db.Uuid
+  patientId    String   @map("patient_id") @db.Uuid
+  channel      String   // SMS, EMAIL, IN_APP
+  status       String   @default("PENDING") // PENDING, SENT, FAILED
+  templateName String   @map("template_name")
+  recipient    String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([patientId])
+  @@map("notification_logs")
+}
+
+model PortalOtp {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  branchId  String   @map("branch_id") @db.Uuid
+  patientId String   @map("patient_id") @db.Uuid
+  otpCode   String   @map("otp_code")
+  expiresAt DateTime @map("expires_at")
+  isUsed    Boolean  @default(false) @map("is_used")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([patientId])
+  @@map("portal_otps")
 }

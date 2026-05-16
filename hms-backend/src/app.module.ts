@@ -20,6 +20,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
 import { AdminModule } from './admin/admin.module';
 import { EncountersModule } from './encounters/encounters.module';
+import { PortalModule } from './portal/portal.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { EncountersModule } from './encounters/encounters.module';
     ReportsModule,
     AdminModule,
     EncountersModule,
+    PortalModule,
   ],
   controllers: [AppController],
   providers: [AppService],
