@@ -23,6 +23,7 @@ import { EncountersModule } from './encounters/encounters.module';
 import { PortalModule } from './portal/portal.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { PharmacyModule } from './pharmacy/pharmacy.module';
+import { RadiologyModule } from './radiology/radiology.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { PharmacyModule } from './pharmacy/pharmacy.module';
     PortalModule,
     AppointmentsModule,
     PharmacyModule,
+    RadiologyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

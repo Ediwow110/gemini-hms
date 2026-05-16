@@ -60,6 +60,8 @@ model Tenant {
   prescriptions      Prescription[]
   prescriptionItems  PrescriptionItem[]
   dispenseLogs       DispenseLog[]
+  radiologyOrders    RadiologyOrder[]
+  radiologyReports   RadiologyReport[]
 
   @@map("tenants")
 }
@@ -92,6 +94,8 @@ model Branch {
   queueTickets     QueueTicket[]
   medications      Medication[]
   prescriptions    Prescription[]
+  radiologyOrders  RadiologyOrder[]
+  radiologyReports RadiologyReport[]
 
   @@map("branches")
 }
@@ -126,6 +130,8 @@ model User {
   doctorSchedules    DoctorSchedule[]  @relation("DoctorSchedules")
   prescriptions      Prescription[]    @relation("PrescribingDoctor")
   dispenseLogs       DispenseLog[]     @relation("DispensingPharmacist")
+  radiologyOrders    RadiologyOrder[]  @relation("OrderingDoctor")
+  radiologyReports   RadiologyReport[] @relation("Radiologist")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -215,6 +221,7 @@ model Encounter {
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   prescriptions Prescription[]
+  radiologyOrders RadiologyOrder[]
 
   @@index([tenantId])
   @@index([branchId])
@@ -242,6 +249,7 @@ model Patient {
   appointments     Appointment[]
   queueTickets     QueueTicket[]
   prescriptions    Prescription[]
+  radiologyOrders  RadiologyOrder[]
 
   @@unique([tenantId, patientNumber])
   @@map("patients")
@@ -1235,4 +1243,103 @@ model DispenseLog {
   @@index([tenantId])
   @@index([prescriptionItemId])
   @@map("dispense_logs")
+}
+
+enum RadiologyModality {
+  XRAY
+  CT
+  MRI
+  ULTRASOUND
+  OTHER
+}
+
+enum RadiologyOrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RadiologyReportStatus {
+  DRAFT
+  APPROVED
+  AMENDED
+}
+
+model RadiologyOrder {
+  id            String               @id @default(uuid()) @db.Uuid
+  tenantId      String               @map("tenant_id") @db.Uuid
+  branchId      String               @map("branch_id") @db.Uuid
+  patientId     String               @map("patient_id") @db.Uuid
+  encounterId   String?              @map("encounter_id") @db.Uuid
+  orderingDoctorId String            @map("ordering_doctor_id") @db.Uuid
+  modality      RadiologyModality
+  clinicalNotes String?              @map("clinical_notes")
+  status        RadiologyOrderStatus @default(PENDING)
+  
+  createdBy     String               @map("created_by") @db.Uuid
+  updatedBy     String               @map("updated_by") @db.Uuid
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+
+  tenant         Tenant           @relation(fields: [tenantId], references: [id])
+  branch         Branch           @relation(fields: [branchId], references: [id])
+  patient        Patient          @relation(fields: [patientId], references: [id])
+  encounter      Encounter?       @relation(fields: [encounterId], references: [id])
+  orderingDoctor User             @relation("OrderingDoctor", fields: [orderingDoctorId], references: [id])
+  report         RadiologyReport?
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([patientId])
+  @@index([status])
+  @@map("radiology_orders")
+}
+
+model RadiologyReport {
+  id               String                @id @default(uuid()) @db.Uuid
+  tenantId         String                @map("tenant_id") @db.Uuid
+  branchId         String                @map("branch_id") @db.Uuid
+  radiologyOrderId String                @unique @map("radiology_order_id") @db.Uuid
+  radiologistId    String                @map("radiologist_id") @db.Uuid
+  findings         String                @db.Text
+  conclusion       String                @db.Text
+  dicomStudyUid    String?               @map("dicom_study_uid")
+  status           RadiologyReportStatus @default(DRAFT)
+  
+  createdBy        String                @map("created_by") @db.Uuid
+  updatedBy        String                @map("updated_by") @db.Uuid
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  tenant         Tenant                 @relation(fields: [tenantId], references: [id])
+  branch         Branch                 @relation(fields: [branchId], references: [id])
+  radiologyOrder RadiologyOrder         @relation(fields: [radiologyOrderId], references: [id])
+  radiologist    User                   @relation("Radiologist", fields: [radiologistId], references: [id])
+  versions       RadiologyReportVersion[]
+
+  @@index([tenantId])
+  @@index([radiologistId])
+  @@map("radiology_reports")
+}
+
+model RadiologyReportVersion {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  branchId          String   @map("branch_id") @db.Uuid
+  radiologyReportId String   @map("radiology_report_id") @db.Uuid
+  previousFindings  String   @map("previous_findings") @db.Text
+  previousConclusion String  @map("previous_conclusion") @db.Text
+  reasonForAmendment String  @map("reason_for_amendment")
+  
+  createdBy         String   @map("created_by") @db.Uuid
+  updatedBy         String   @map("updated_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  radiologyReport RadiologyReport @relation(fields: [radiologyReportId], references: [id])
+
+  @@index([tenantId])
+  @@index([radiologyReportId])
+  @@map("radiology_report_versions")
 }
