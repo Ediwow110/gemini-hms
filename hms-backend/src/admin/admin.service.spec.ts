@@ -22,37 +22,7 @@ describe('AdminService', () => {
   const APPROVAL_STATUS_REJECTED = 'REJECTED';
   const ADMIN_ROLE_PERMISSION_GRANT = 'ADMIN_ROLE_PERMISSION_GRANT';
   let service: AdminService;
-  let prisma: {
-    $transaction: jest.Mock;
-    user: {
-      findFirst: jest.Mock;
-      findMany: jest.Mock;
-      updateMany: jest.Mock;
-    };
-    userRole: {
-      create: jest.Mock;
-      updateMany: jest.Mock;
-      findMany: jest.Mock;
-    };
-    role: {
-      findFirst: jest.Mock;
-      findUnique: jest.Mock;
-      create: jest.Mock;
-    };
-    permission: {
-      findFirst: jest.Mock;
-      findMany: jest.Mock;
-    };
-    rolePermission: {
-      create: jest.Mock;
-      deleteMany: jest.Mock;
-    };
-    approvalRequest: {
-      create: jest.Mock;
-      findFirst: jest.Mock;
-      updateMany: jest.Mock;
-    };
-  };
+  let prisma: any;
   let audit: { log: jest.Mock };
   let metrics: { getMetrics: jest.Mock };
 
@@ -85,25 +55,23 @@ describe('AdminService', () => {
         update: jest.fn(),
         count: jest.fn(),
       },
+      userBranch: {
+        createMany: jest.fn(),
+        findFirst: jest.fn(),
+      },
       userRole: {
         create: jest.fn(),
         createMany: jest.fn(),
         updateMany: jest.fn(),
         findMany: jest.fn(),
       },
-      userBranch: {
-        findFirst: jest.fn(),
-        createMany: jest.fn(),
-      },
       role: {
         findFirst: jest.fn(),
         findUnique: jest.fn(),
         create: jest.fn(),
+        update: jest.fn(),
+        findMany: jest.fn(),
         updateMany: jest.fn(),
-        findMany: jest.fn(),
-      },
-      branch: {
-        findMany: jest.fn(),
       },
       permission: {
         findFirst: jest.fn(),
@@ -118,24 +86,38 @@ describe('AdminService', () => {
         findFirst: jest.fn(),
         updateMany: jest.fn(),
       },
-    };
-    audit = { log: jest.fn() };
-    metrics = {
-      getMetrics: jest
-        .fn()
-        .mockReturnValue({ totalRequests: 0, totalErrors: 0 }),
+      branch: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+      },
+      notification: {
+        count: jest.fn(),
+      },
+      auditLog: {
+        findFirst: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminService,
-        { provide: PrismaService, useValue: prisma },
-        { provide: AuditService, useValue: audit },
-        { provide: MetricsService, useValue: metrics },
+        {
+          provide: PrismaService,
+          useValue: prisma,
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            log: jest.fn(),
+          },
+        },
+        MetricsService,
       ],
     }).compile();
 
     service = module.get<AdminService>(AdminService);
+    audit = module.get(AuditService);
+    metrics = module.get(MetricsService);
   });
 
   const makeRole = (
@@ -203,6 +185,8 @@ describe('AdminService', () => {
       email: string;
       passwordHash: string;
       isMfaEnabled: boolean;
+      mfaEnabled: boolean;
+      mfaSecret: string | null;
       status: string;
       deactivatedAt: Date | null;
       deactivatedReason: string | null;
@@ -225,6 +209,8 @@ describe('AdminService', () => {
     email: 'target@example.com',
     passwordHash: 'hidden',
     isMfaEnabled: false,
+    mfaEnabled: false,
+    mfaSecret: null as string | null,
     status: 'ACTIVE',
     deactivatedAt: null as Date | null,
     deactivatedReason: null as string | null,
@@ -1695,8 +1681,12 @@ describe('AdminService', () => {
         }),
       },
     };
+    const mockConfigService = {
+      get: jest.fn().mockReturnValue('a'.repeat(32)),
+    };
     const strategy = new JwtStrategy(
       strategyPrisma as unknown as PrismaService,
+      mockConfigService as any,
     );
 
     await expect(
@@ -1723,8 +1713,12 @@ describe('AdminService', () => {
         }),
       },
     };
+    const mockConfigService = {
+      get: jest.fn().mockReturnValue('a'.repeat(32)),
+    };
     const strategy = new JwtStrategy(
       strategyPrisma as unknown as PrismaService,
+      mockConfigService as any,
     );
 
     await expect(
@@ -2845,7 +2839,7 @@ describe('AdminService', () => {
     const targetUserId = 'target-user-id';
     const dto = {
       email: 'updated@hospital.com',
-      isMfaEnabled: true,
+      mfaEnabled: true,
       reason: 'valid reason for update',
     };
 
@@ -2902,14 +2896,14 @@ describe('AdminService', () => {
         id: targetUserId,
         tenantId: 'tenant-id',
         email: 'old@hospital.com',
-        isMfaEnabled: false,
+        mfaEnabled: false,
       };
       prisma.user.findFirst
         .mockResolvedValueOnce(
           makeUser({
             id: targetUserId,
             email: 'old@hospital.com',
-            isMfaEnabled: false,
+            mfaEnabled: false,
           }),
         ) // Target lookup
         .mockResolvedValueOnce(null); // Uniqueness check
@@ -2917,7 +2911,7 @@ describe('AdminService', () => {
       prisma.user.update.mockResolvedValue({
         ...oldUser,
         email: dto.email,
-        isMfaEnabled: dto.isMfaEnabled,
+        mfaEnabled: dto.mfaEnabled,
       });
 
       const result = await service.updateUser(
@@ -2931,12 +2925,12 @@ describe('AdminService', () => {
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({
           eventKey: 'ADMIN_USER_UPDATED',
-          oldValues: { email: 'old@hospital.com', isMfaEnabled: false },
+          oldValues: { email: 'old@hospital.com', mfaEnabled: false },
           newValues: expect.objectContaining({
             email: dto.email,
-            isMfaEnabled: dto.isMfaEnabled,
+            mfaEnabled: dto.mfaEnabled,
             reason: dto.reason,
-            changedFields: expect.arrayContaining(['email', 'isMfaEnabled']),
+            changedFields: expect.arrayContaining(['email', 'mfaEnabled']),
           }),
         }),
         expect.anything(),
@@ -3619,6 +3613,7 @@ describe('AdminService', () => {
           status: 'ACTIVE',
           role: privilegedRole,
           revokedAt: null,
+          revokedReason: null,
         },
       ],
     });
@@ -4071,6 +4066,8 @@ describe('AdminService', () => {
       prisma.$queryRaw
         .mockResolvedValueOnce([]) // SELECT 1 passes
         .mockResolvedValueOnce([{ table_exists: false }]); // Schema check fails
+      prisma.notification = { count: jest.fn().mockResolvedValue(0) };
+      prisma.auditLog = { findFirst: jest.fn().mockResolvedValue(null) };
       process.env.BACKUP_S3_BUCKET = 'test-bucket';
 
       const result = await service.getHealth();

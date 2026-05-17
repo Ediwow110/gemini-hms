@@ -97,6 +97,7 @@ describe('AuthService', () => {
       passwordHash: 'redacted',
       isMfaEnabled: false,
       mfaEnabled: false,
+      mfaSecret: null,
       status: 'ACTIVE',
       deactivatedAt: null,
       deactivatedReason: null,
@@ -158,11 +159,27 @@ describe('AuthService', () => {
         userRoles: [
           {
             status: 'ACTIVE',
-            role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+            role: {
+              id: 'role-1',
+              tenantId: 'tenant-456',
+              name: 'Doctor',
+              status: 'ACTIVE',
+              isSystem: true,
+              archivedAt: null,
+              archivedReason: null,
+            },
           },
           {
             status: 'REVOKED',
-            role: { name: 'Cashier', status: 'ACTIVE', archivedAt: null },
+            role: {
+              id: 'role-2',
+              tenantId: 'tenant-456',
+              name: 'Cashier',
+              status: 'ACTIVE',
+              isSystem: true,
+              archivedAt: null,
+              archivedReason: null,
+            },
           },
         ],
       });
@@ -180,6 +197,15 @@ describe('AuthService', () => {
     const branchId = 'branch-789';
 
     it('should return refreshed token when active assignment exists', async () => {
+      const mockUser = {
+        id: userId,
+        email: 'test@example.com',
+        tenantId,
+        status: 'ACTIVE',
+        deactivatedAt: null,
+        tokenVersion: 1,
+      };
+
       prisma.userBranch.findFirst.mockResolvedValue({
         userId,
         tenantId,
@@ -270,8 +296,9 @@ describe('AuthService', () => {
       );
 
       expect(result).toBeDefined();
-      expect(result.passwordHash).toBeUndefined();
-      expect(result.email).toBe('test@example.com');
+      expect(result).not.toBeNull();
+      expect((result as any).passwordHash).toBeUndefined();
+      expect(result!.email).toBe('test@example.com');
     });
 
     it('should reject users whose status is not ACTIVE', async () => {
@@ -490,10 +517,29 @@ describe('AuthService', () => {
 
 describe('JWT Claim Consistency', () => {
   let strategy: JwtStrategy;
-  let prisma: { user: { findFirst: jest.Mock } };
+  let prisma: {
+    session: { findUnique: jest.Mock };
+    user: { findFirst: jest.Mock };
+  };
 
   beforeEach(async () => {
     prisma = {
+      session: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'session-uuid-789',
+          userId: 'user-uuid-123',
+          tenantId: 'tenant-uuid-456',
+          expiresAt: new Date(Date.now() + 86400000),
+          user: {
+            id: 'user-uuid-123',
+            email: 'test@hospital.com',
+            tenantId: 'tenant-uuid-456',
+            status: 'ACTIVE',
+            deactivatedAt: null,
+            tokenVersion: 0,
+          },
+        }),
+      },
       user: {
         findFirst: jest.fn().mockResolvedValue({
           id: 'user-uuid-123',
@@ -532,6 +578,7 @@ describe('JWT Claim Consistency', () => {
   it('JwtStrategy.validate() should return tenantId from payload.tenantId (camelCase)', async () => {
     const payload = {
       sub: 'user-uuid-123',
+      sid: 'session-uuid-789',
       email: 'test@hospital.com',
       tenantId: 'tenant-uuid-456',
       roles: ['Doctor'],
@@ -551,6 +598,7 @@ describe('JWT Claim Consistency', () => {
   it('tenantId must NOT be undefined when payload uses camelCase', async () => {
     const payload = {
       sub: 'user-uuid-123',
+      sid: 'session-uuid-789',
       email: 'test@hospital.com',
       tenantId: 'tenant-uuid-456',
       roles: [],
@@ -570,6 +618,7 @@ describe('JWT Claim Consistency', () => {
     // but validate() reads camelCase — tenantId should still be correct
     const payload = {
       sub: 'user-uuid-123',
+      sid: 'session-uuid-789',
       email: 'test@hospital.com',
       tenantId: 'tenant-uuid-456', // This is what AuthService signs
       roles: ['Admin'],
@@ -586,6 +635,7 @@ describe('JWT Claim Consistency', () => {
   it('JwtStrategy.validate() should propagate branchId when present in payload', async () => {
     const payload = {
       sub: 'user-uuid-123',
+      sid: 'session-uuid-789',
       email: 'test@hospital.com',
       tenantId: 'tenant-uuid-456',
       branchId: 'branch-uuid-789',
@@ -602,6 +652,7 @@ describe('JWT Claim Consistency', () => {
   it('JwtStrategy.validate() should safely omit branchId when missing in payload', async () => {
     const payload = {
       sub: 'user-uuid-123',
+      sid: 'session-uuid-789',
       email: 'test@hospital.com',
       tenantId: 'tenant-uuid-456',
       roles: ['Doctor'],
@@ -614,11 +665,12 @@ describe('JWT Claim Consistency', () => {
   });
 
   it('JwtStrategy.validate() should reject a missing user', async () => {
-    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.session.findUnique.mockResolvedValue(null);
 
     await expect(
       strategy.validate({
         sub: 'user-uuid-123',
+        sid: 'session-uuid-789',
         email: 'test@hospital.com',
         tenantId: 'tenant-uuid-456',
         roles: ['Doctor'],
@@ -628,18 +680,25 @@ describe('JWT Claim Consistency', () => {
   });
 
   it('JwtStrategy.validate() should reject inactive users', async () => {
-    prisma.user.findFirst.mockResolvedValue({
-      id: 'user-uuid-123',
-      email: 'test@hospital.com',
+    prisma.session.findUnique.mockResolvedValue({
+      id: 'session-uuid-789',
+      userId: 'user-uuid-123',
       tenantId: 'tenant-uuid-456',
-      status: 'SUSPENDED',
-      deactivatedAt: null,
-      tokenVersion: 0,
+      expiresAt: new Date(Date.now() + 86400000),
+      user: {
+        id: 'user-uuid-123',
+        email: 'test@hospital.com',
+        tenantId: 'tenant-uuid-456',
+        status: 'SUSPENDED',
+        deactivatedAt: null,
+        tokenVersion: 0,
+      },
     });
 
     await expect(
       strategy.validate({
         sub: 'user-uuid-123',
+        sid: 'session-uuid-789',
         email: 'test@hospital.com',
         tenantId: 'tenant-uuid-456',
         roles: ['Doctor'],
@@ -649,18 +708,25 @@ describe('JWT Claim Consistency', () => {
   });
 
   it('JwtStrategy.validate() should reject deactivated users', async () => {
-    prisma.user.findFirst.mockResolvedValue({
-      id: 'user-uuid-123',
-      email: 'test@hospital.com',
+    prisma.session.findUnique.mockResolvedValue({
+      id: 'session-uuid-789',
+      userId: 'user-uuid-123',
       tenantId: 'tenant-uuid-456',
-      status: 'ACTIVE',
-      deactivatedAt: new Date('2026-01-01T00:00:00.000Z'),
-      tokenVersion: 0,
+      expiresAt: new Date(Date.now() + 86400000),
+      user: {
+        id: 'user-uuid-123',
+        email: 'test@hospital.com',
+        tenantId: 'tenant-uuid-456',
+        status: 'ACTIVE',
+        deactivatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        tokenVersion: 0,
+      },
     });
 
     await expect(
       strategy.validate({
         sub: 'user-uuid-123',
+        sid: 'session-uuid-789',
         email: 'test@hospital.com',
         tenantId: 'tenant-uuid-456',
         roles: ['Doctor'],
@@ -670,18 +736,25 @@ describe('JWT Claim Consistency', () => {
   });
 
   it('JwtStrategy.validate() should reject tokenVersion mismatches', async () => {
-    prisma.user.findFirst.mockResolvedValue({
-      id: 'user-uuid-123',
-      email: 'test@hospital.com',
+    prisma.session.findUnique.mockResolvedValue({
+      id: 'session-uuid-789',
+      userId: 'user-uuid-123',
       tenantId: 'tenant-uuid-456',
-      status: 'ACTIVE',
-      deactivatedAt: null,
-      tokenVersion: 2,
+      expiresAt: new Date(Date.now() + 86400000),
+      user: {
+        id: 'user-uuid-123',
+        email: 'test@hospital.com',
+        tenantId: 'tenant-uuid-456',
+        status: 'ACTIVE',
+        deactivatedAt: null,
+        tokenVersion: 2,
+      },
     });
 
     await expect(
       strategy.validate({
         sub: 'user-uuid-123',
+        sid: 'session-uuid-789',
         email: 'test@hospital.com',
         tenantId: 'tenant-uuid-456',
         roles: ['Doctor'],
@@ -691,17 +764,24 @@ describe('JWT Claim Consistency', () => {
   });
 
   it('JwtStrategy.validate() should accept matching tokenVersion', async () => {
-    prisma.user.findFirst.mockResolvedValue({
-      id: 'user-uuid-123',
-      email: 'test@hospital.com',
+    prisma.session.findUnique.mockResolvedValue({
+      id: 'session-uuid-789',
+      userId: 'user-uuid-123',
       tenantId: 'tenant-uuid-456',
-      status: 'ACTIVE',
-      deactivatedAt: null,
-      tokenVersion: 3,
+      expiresAt: new Date(Date.now() + 86400000),
+      user: {
+        id: 'user-uuid-123',
+        email: 'test@hospital.com',
+        tenantId: 'tenant-uuid-456',
+        status: 'ACTIVE',
+        deactivatedAt: null,
+        tokenVersion: 3,
+      },
     });
 
     const result = await strategy.validate({
       sub: 'user-uuid-123',
+      sid: 'session-uuid-789',
       email: 'test@hospital.com',
       tenantId: 'tenant-uuid-456',
       roles: ['Doctor'],
@@ -715,6 +795,7 @@ describe('JWT Claim Consistency', () => {
     await expect(
       strategy.validate({
         sub: 'user-uuid-123',
+        sid: 'session-uuid-789',
         email: 'test@hospital.com',
         tenantId: 'tenant-uuid-456',
         roles: ['Doctor'],

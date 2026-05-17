@@ -61,20 +61,23 @@ describe('AuthController', () => {
     it('should throw UnauthorizedException if validation fails', async () => {
       authService.validateUser.mockResolvedValue(null);
       const loginDto = { tenantCode: 't1', email: 'e', password: 'p' };
+      const mockRes = { status: jest.fn() };
 
-      await expect(controller.login(loginDto)).rejects.toThrow(
+      await expect(controller.login(loginDto, mockRes as any)).rejects.toThrow(
         UnauthorizedException,
       );
     });
 
     it('should return token if validation succeeds', async () => {
       const mockUser = { id: 'u1' };
-      authService.validateUser.mockResolvedValue(mockUser);
-      authService.login.mockResolvedValue({ access_token: 'token' });
+      authService.validateUser.mockResolvedValue(mockUser as any);
+      authService.login.mockResolvedValue({ access_token: 'token' } as any);
       const loginDto = { tenantCode: 't1', email: 'e', password: 'p' };
+      const mockRes = { status: jest.fn() };
 
-      const result = await controller.login(loginDto);
+      const result = await controller.login(loginDto, mockRes as any);
       expect(result).toEqual({ access_token: 'token' });
+      expect(mockRes.status).toHaveBeenCalledWith(200);
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(authService.login).toHaveBeenCalledWith(mockUser);
     });
@@ -95,7 +98,7 @@ describe('AuthController', () => {
         access_token: 'new-token',
         user: { id: 'user-123', branchId: 'branch-789' },
       };
-      authService.selectBranch.mockResolvedValue(mockResult);
+      authService.selectBranch.mockResolvedValue(mockResult as any);
 
       const result = await controller.selectBranch(mockUser, selectBranchDto);
 

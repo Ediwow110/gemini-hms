@@ -1204,6 +1204,10 @@ describe('BillingService Reversals', () => {
             useValue: { createRequest: jest.fn() },
           },
           { provide: NumberingService, useValue: numbering },
+          {
+            provide: LedgerService,
+            useValue: { postEntry: jest.fn().mockResolvedValue(undefined) },
+          },
         ],
       }).compile();
 
@@ -1333,6 +1337,10 @@ describe('BillingService Reversals', () => {
             useValue: { createRequest: jest.fn() },
           },
           { provide: NumberingService, useValue: numbering },
+          {
+            provide: LedgerService,
+            useValue: { postEntry: jest.fn().mockResolvedValue(undefined) },
+          },
         ],
       }).compile();
 

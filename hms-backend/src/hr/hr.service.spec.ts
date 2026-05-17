@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { RequestUser } from '../common/types/authenticated-request.type';
+import { CreateEmployeeDto } from './dto/hr.dto';
 
 describe('HrService', () => {
   let service: HrService;
@@ -27,7 +28,7 @@ describe('HrService', () => {
 
   const otherBranchAdminUser: RequestUser = {
     tenantId: mockTenantId,
-    branchId: 'other-branch',
+    branchId: '00000000-0000-0000-0000-000000000020',
     roles: ['Branch Admin'],
   };
 
@@ -53,25 +54,48 @@ describe('HrService', () => {
             department: {
               create: jest.fn(),
             },
-            $transaction: jest.fn(async (cb) =>
-              cb({
+            $transaction: jest.fn(async (cb) => {
+              const mockTx = {
                 employee: {
-                  count: jest.fn(),
-                  create: jest.fn(),
-                  findFirst: jest.fn(),
-                  findMany: jest.fn(),
+                  count: jest
+                    .fn()
+                    .mockImplementation((args) => prisma.employee.count(args)),
+                  create: jest
+                    .fn()
+                    .mockImplementation((args) => prisma.employee.create(args)),
+                  findFirst: jest
+                    .fn()
+                    .mockImplementation((args) =>
+                      prisma.employee.findFirst(args),
+                    ),
+                  findMany: jest
+                    .fn()
+                    .mockImplementation((args) =>
+                      prisma.employee.findMany(args),
+                    ),
                 },
                 employeeBranch: {
-                  create: jest.fn(),
+                  create: jest
+                    .fn()
+                    .mockImplementation((args) =>
+                      prisma.employeeBranch.create(args),
+                    ),
                 },
                 payslip: {
-                  create: jest.fn(),
+                  create: jest
+                    .fn()
+                    .mockImplementation((args) => prisma.payslip.create(args)),
                 },
                 department: {
-                  create: jest.fn(),
+                  create: jest
+                    .fn()
+                    .mockImplementation((args) =>
+                      prisma.department.create(args),
+                    ),
                 },
-              }),
-            ),
+              };
+              return cb(mockTx);
+            }),
           },
         },
         {
@@ -92,13 +116,14 @@ describe('HrService', () => {
   });
 
   describe('createEmployee', () => {
-    const dto = {
+    const dto: CreateEmployeeDto = {
       firstName: 'John',
       lastName: 'Doe',
-      jobTitle: 'Nurse',
-      joiningDate: '2026-01-01',
+      branchId: mockBranchId,
+      department: 'Nursing',
+      position: 'Nurse',
+      hireDate: '2026-01-01',
       salary: 50000,
-      primaryBranchId: mockBranchId,
     };
 
     it('should allow Super Admin to create an employee for any branch', async () => {
@@ -119,14 +144,7 @@ describe('HrService', () => {
       expect(prisma.employee.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            employeeBranches: {
-              create: {
-                tenantId: mockTenantId,
-                branchId: mockBranchId,
-                isPrimary: true,
-                isActive: true,
-              },
-            },
+            branchId: mockBranchId,
           }),
         }),
       );
@@ -192,6 +210,7 @@ describe('HrService', () => {
       const mockEmployee = {
         id: 'emp-1',
         salary: 50000,
+        branchId: mockBranchId,
         employeeBranches: [
           { branchId: mockBranchId, isPrimary: true, isActive: true },
         ],
@@ -223,6 +242,7 @@ describe('HrService', () => {
       const mockEmployee = {
         id: 'emp-1',
         salary: 50000,
+        branchId: mockBranchId,
         employeeBranches: [
           { branchId: mockBranchId, isPrimary: true, isActive: true },
         ],
@@ -249,6 +269,7 @@ describe('HrService', () => {
       const mockEmployee = {
         id: 'emp-1',
         salary: 50000,
+        branchId: 'other-branch',
         employeeBranches: [
           { branchId: 'other-branch', isPrimary: true, isActive: true },
         ],
@@ -287,9 +308,8 @@ describe('HrService', () => {
       expect(prisma.employee.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            employeeBranches: {
-              some: { branchId: mockBranchId, isActive: true },
-            },
+            tenantId: mockTenantId,
+            branchId: mockBranchId,
           }),
         }),
       );

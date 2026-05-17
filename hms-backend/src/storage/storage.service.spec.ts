@@ -10,6 +10,7 @@ describe('StorageService', () => {
   let audit: AuditService;
 
   beforeEach(async () => {
+    process.env.JWT_SECRET = 'a'.repeat(32);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StorageService,
