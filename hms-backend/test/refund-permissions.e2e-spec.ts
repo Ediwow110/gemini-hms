@@ -18,13 +18,14 @@ import { randomUUID } from 'crypto';
 describe('Refund Permissions & Approval (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  
+
   let tenantId: string;
   let branchId: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
@@ -36,9 +37,11 @@ describe('Refund Permissions & Approval (e2e)', () => {
       ],
       providers: [],
     })
-    .overrideGuard(PermissionsGuard).useClass(MockPermissionsGuard)
-    .overrideGuard(BranchGuard).useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(PermissionsGuard)
+      .useClass(MockPermissionsGuard)
+      .overrideGuard(BranchGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalGuards(new MockJwtAuthGuard());
@@ -46,17 +49,19 @@ describe('Refund Permissions & Approval (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
-    
-    const tenant = await prisma.tenant.create({ data: { name: `Refund-Tenant-${randomUUID()}` } });
+
+    const tenant = await prisma.tenant.create({
+      data: { name: `Refund-Tenant-${randomUUID()}` },
+    });
     tenantId = tenant.id;
-    
+
     const branch = await prisma.branch.create({
       data: {
         id: randomUUID(),
         tenantId,
         name: 'Refund Branch',
         code: `RF-${randomUUID().substring(0, 4)}`,
-      }
+      },
     });
     branchId = branch.id;
 
@@ -70,7 +75,7 @@ describe('Refund Permissions & Approval (e2e)', () => {
   describe('POST /api/v1/billing/refunds/request', () => {
     it('should fail (403) when user lacks billing.refund.request', async () => {
       MockJwtAuthGuard.user.permissions = [];
-      
+
       return request(app.getHttpServer())
         .post('/api/v1/billing/refunds/request')
         .send({
@@ -83,25 +88,53 @@ describe('Refund Permissions & Approval (e2e)', () => {
 
     it('should succeed (201) when user has billing.refund.request', async () => {
       MockJwtAuthGuard.user.permissions = ['billing.refund.request'];
-      
+
       const patientId = randomUUID();
       await prisma.patient.create({
-        data: { id: patientId, tenantId, patientNumber: `PT-REF-${randomUUID()}`, firstName: 'A', lastName: 'B', dob: new Date() }
+        data: {
+          id: patientId,
+          tenantId,
+          patientNumber: `PT-REF-${randomUUID()}`,
+          firstName: 'A',
+          lastName: 'B',
+          dob: new Date(),
+        },
       });
 
       const orderId = randomUUID();
       await prisma.order.create({
-        data: { id: orderId, tenantId, branchId, patientId, orderNumber: randomUUID() }
+        data: {
+          id: orderId,
+          tenantId,
+          branchId,
+          patientId,
+          orderNumber: randomUUID(),
+        },
       });
 
       const invoiceId = randomUUID();
       await prisma.invoice.create({
-        data: { id: invoiceId, tenantId, orderId, invoiceNumber: randomUUID(), totalAmount: 1000, paidAmount: 1000, status: 'PAID' }
+        data: {
+          id: invoiceId,
+          tenantId,
+          orderId,
+          invoiceNumber: randomUUID(),
+          totalAmount: 1000,
+          paidAmount: 1000,
+          status: 'PAID',
+        },
       });
 
       const sessionId = randomUUID();
       await prisma.cashierSession.create({
-        data: { id: sessionId, tenantId, branchId, userId: MockJwtAuthGuard.user.userId, openingBalance: 0, status: 'OPEN' }
+        data: {
+          id: sessionId,
+          tenantId,
+          branchId,
+          userId: MockJwtAuthGuard.user.userId,
+          openingBalance: 0,
+          status: 'OPEN',
+        },
       });
 
       const paymentId = randomUUID();
@@ -116,7 +149,7 @@ describe('Refund Permissions & Approval (e2e)', () => {
           status: 'POSTED',
           receiptNumber: `R-${randomUUID().substring(0, 8)}`,
           idempotencyKey: randomUUID(),
-        }
+        },
       });
 
       const res = await request(app.getHttpServer())
@@ -136,4 +169,3 @@ describe('Refund Permissions & Approval (e2e)', () => {
     await app.close();
   });
 });
-

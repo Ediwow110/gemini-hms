@@ -198,7 +198,7 @@ export class OrdersService {
         },
       },
     });
-    
+
     if (!order) {
       throw new BadRequestException('Order not found or access denied');
     }

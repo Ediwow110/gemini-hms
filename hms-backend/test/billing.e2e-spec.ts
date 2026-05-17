@@ -22,8 +22,9 @@ describe('Billing Branch Scoping (e2e)', () => {
   let branchId: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
@@ -35,9 +36,11 @@ describe('Billing Branch Scoping (e2e)', () => {
       ],
       providers: [],
     })
-    .overrideGuard(PermissionsGuard).useValue({ canActivate: () => true })
-    .overrideGuard(BranchGuard).useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(BranchGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -46,17 +49,19 @@ describe('Billing Branch Scoping (e2e)', () => {
 
     prisma = app.get(PrismaService);
     await cleanupDatabase(prisma);
-    
-    const tenant = await prisma.tenant.create({ data: { name: `Billing-Tenant-${randomUUID()}` } });
+
+    const tenant = await prisma.tenant.create({
+      data: { name: `Billing-Tenant-${randomUUID()}` },
+    });
     tenantId = tenant.id;
-    
+
     const branch = await prisma.branch.create({
       data: {
         id: randomUUID(),
         tenantId,
         name: 'Test Branch',
         code: `B-${randomUUID().substring(0, 4)}`,
-      }
+      },
     });
     branchId = branch.id;
 
@@ -83,4 +88,3 @@ describe('Billing Branch Scoping (e2e)', () => {
     await app.close();
   });
 });
-

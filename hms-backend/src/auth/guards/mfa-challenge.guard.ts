@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
@@ -16,7 +21,9 @@ export class MfaChallengeGuard implements CanActivate {
     try {
       const payload = this.jwtService.verify(token);
       if (payload.scope !== 'mfa_challenge') {
-          throw new UnauthorizedException('Invalid token scope for MFA challenge');
+        throw new UnauthorizedException(
+          'Invalid token scope for MFA challenge',
+        );
       }
       request.user = payload;
       return true;

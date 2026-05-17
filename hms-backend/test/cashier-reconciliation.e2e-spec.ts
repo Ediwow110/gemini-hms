@@ -17,14 +17,15 @@ import { randomUUID } from 'crypto';
 describe('Cashier Reconciliation (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  
+
   let tenantId: string;
   let branchId: string;
   let userId: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
@@ -36,9 +37,11 @@ describe('Cashier Reconciliation (e2e)', () => {
       ],
       providers: [],
     })
-    .overrideGuard(PermissionsGuard).useValue({ canActivate: () => true })
-    .overrideGuard(BranchGuard).useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(BranchGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -46,17 +49,19 @@ describe('Cashier Reconciliation (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
-    
-    const tenant = await prisma.tenant.create({ data: { name: `Recon-Tenant-${randomUUID()}` } });
+
+    const tenant = await prisma.tenant.create({
+      data: { name: `Recon-Tenant-${randomUUID()}` },
+    });
     tenantId = tenant.id;
-    
+
     const branch = await prisma.branch.create({
       data: {
         id: randomUUID(),
         tenantId,
         name: 'Recon Branch',
         code: `R-${randomUUID().substring(0, 4)}`,
-      }
+      },
     });
     branchId = branch.id;
     userId = '11111111-1111-4111-8111-111111111111';
@@ -77,7 +82,7 @@ describe('Cashier Reconciliation (e2e)', () => {
         openingBalance: 1000,
       })
       .expect(201);
-      
+
     const sessionId = openRes.body.id;
 
     // 2. Create Patient and Order
@@ -90,7 +95,7 @@ describe('Cashier Reconciliation (e2e)', () => {
         firstName: 'John',
         lastName: 'Doe',
         dob: new Date(),
-      }
+      },
     });
 
     const orderId = randomUUID();
@@ -102,7 +107,7 @@ describe('Cashier Reconciliation (e2e)', () => {
         patientId,
         orderNumber: `ORD-RECON-${randomUUID()}`,
         status: 'PENDING_PAYMENT',
-      }
+      },
     });
 
     const invoiceId = randomUUID();
@@ -115,7 +120,7 @@ describe('Cashier Reconciliation (e2e)', () => {
         totalAmount: 500,
         paidAmount: 0,
         status: 'UNPAID',
-      }
+      },
     });
 
     // 3. Post Payment
@@ -145,4 +150,3 @@ describe('Cashier Reconciliation (e2e)', () => {
     await app.close();
   });
 });
-

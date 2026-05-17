@@ -18,13 +18,14 @@ import { randomUUID } from 'crypto';
 describe('Cross-Tenant Security (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  
+
   let tenantAId: string;
   let tenantBId: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
@@ -37,9 +38,11 @@ describe('Cross-Tenant Security (e2e)', () => {
       ],
       providers: [],
     })
-    .overrideGuard(PermissionsGuard).useValue({ canActivate: () => true })
-    .overrideGuard(BranchGuard).useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(BranchGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -47,11 +50,15 @@ describe('Cross-Tenant Security (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
-    
+
     // Create unique tenants
-    const tA = await prisma.tenant.create({ data: { name: `TenantA-${randomUUID()}` } });
+    const tA = await prisma.tenant.create({
+      data: { name: `TenantA-${randomUUID()}` },
+    });
     tenantAId = tA.id;
-    const tB = await prisma.tenant.create({ data: { name: `TenantB-${randomUUID()}` } });
+    const tB = await prisma.tenant.create({
+      data: { name: `TenantB-${randomUUID()}` },
+    });
     tenantBId = tB.id;
 
     // Mock user is in Tenant A
@@ -68,7 +75,7 @@ describe('Cross-Tenant Security (e2e)', () => {
         firstName: 'Tenant B',
         lastName: 'Patient',
         dob: new Date(),
-      }
+      },
     });
     (global as any).patientBId = patientBId;
 
@@ -80,7 +87,7 @@ describe('Cross-Tenant Security (e2e)', () => {
         tenantId: tenantBId,
         name: 'Branch B',
         code: `B-B-${randomUUID().substring(0, 4)}`,
-      }
+      },
     });
 
     const orderBId = randomUUID();
@@ -91,7 +98,7 @@ describe('Cross-Tenant Security (e2e)', () => {
         branchId: branchBId,
         patientId: patientBId,
         orderNumber: `ORD-B-${randomUUID().substring(0, 8)}`,
-      }
+      },
     });
     (global as any).orderBId = orderBId;
 
@@ -103,7 +110,7 @@ describe('Cross-Tenant Security (e2e)', () => {
         tenantId: tenantBId,
         orderId: orderBId,
         status: 'RELEASED',
-      }
+      },
     });
     (global as any).resultBId = resultBId;
   });
@@ -112,9 +119,9 @@ describe('Cross-Tenant Security (e2e)', () => {
     return request(app.getHttpServer())
       .get(`/api/v1/patients/${(global as any).patientBId}`)
       .expect((res) => {
-          if (res.status !== 403 && res.status !== 404) {
-              throw new Error(`Expected 403 or 404, got ${res.status}`);
-          }
+        if (res.status !== 403 && res.status !== 404) {
+          throw new Error(`Expected 403 or 404, got ${res.status}`);
+        }
       });
   });
 
@@ -122,9 +129,9 @@ describe('Cross-Tenant Security (e2e)', () => {
     return request(app.getHttpServer())
       .get(`/api/v1/orders/${(global as any).orderBId}`)
       .expect((res) => {
-          if (res.status !== 403 && res.status !== 404 && res.status !== 400) {
-              throw new Error(`Expected 403, 404 or 400, got ${res.status}`);
-          }
+        if (res.status !== 403 && res.status !== 404 && res.status !== 400) {
+          throw new Error(`Expected 403, 404 or 400, got ${res.status}`);
+        }
       });
   });
 
@@ -132,9 +139,9 @@ describe('Cross-Tenant Security (e2e)', () => {
     return request(app.getHttpServer())
       .get(`/api/v1/lab/results/${(global as any).resultBId}`)
       .expect((res) => {
-          if (res.status !== 403 && res.status !== 404) {
-              throw new Error(`Expected 403 or 404, got ${res.status}`);
-          }
+        if (res.status !== 403 && res.status !== 404) {
+          throw new Error(`Expected 403 or 404, got ${res.status}`);
+        }
       });
   });
 
@@ -142,4 +149,3 @@ describe('Cross-Tenant Security (e2e)', () => {
     await app.close();
   });
 });
-

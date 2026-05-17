@@ -52,6 +52,115 @@ export class BillingController {
     return this.billingService.requestVoid(tenantId, userId, branchId, dto);
   }
 
+  @Post('payments/:id/void')
+  @RequirePermissions('billing.payment.void.request')
+  @RequireBranchContext()
+  requestVoidNew(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') paymentId: string,
+    @Body() body: { reason: string },
+  ) {
+    return this.billingService.requestVoid(tenantId, userId, branchId, {
+      paymentId,
+      reason: body.reason,
+    });
+  }
+
+  @Patch('payments/voids/:id/approve')
+  @RequirePermissions('billing.reversal.apply')
+  @RequireBranchContext()
+  approveVoid(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') reversalId: string,
+    @Body() body: { remarks?: string },
+  ) {
+    return this.billingService.approveVoid(
+      tenantId,
+      userId,
+      branchId,
+      reversalId,
+      body,
+    );
+  }
+
+  @Patch('payments/voids/:id/reject')
+  @RequirePermissions('billing.reversal.apply')
+  @RequireBranchContext()
+  rejectVoid(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') reversalId: string,
+    @Body() body: { remarks?: string },
+  ) {
+    return this.billingService.rejectVoid(
+      tenantId,
+      userId,
+      branchId,
+      reversalId,
+      body,
+    );
+  }
+
+  @Post('invoices/:id/refund')
+  @RequirePermissions('billing.refund.request')
+  @RequireBranchContext()
+  requestRefundNew(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') invoiceId: string,
+    @Body() body: { paymentId: string; amount: number; reason: string },
+  ) {
+    return this.billingService.requestRefund(tenantId, userId, branchId, {
+      paymentId: body.paymentId,
+      amount: body.amount,
+      reason: body.reason,
+    });
+  }
+
+  @Patch('refunds/:id/approve')
+  @RequirePermissions('billing.reversal.apply')
+  @RequireBranchContext()
+  approveRefund(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') reversalId: string,
+    @Body() body: { remarks?: string },
+  ) {
+    return this.billingService.approveRefund(
+      tenantId,
+      userId,
+      branchId,
+      reversalId,
+      body,
+    );
+  }
+
+  @Patch('refunds/:id/reject')
+  @RequirePermissions('billing.reversal.apply')
+  @RequireBranchContext()
+  rejectRefund(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') reversalId: string,
+    @Body() body: { remarks?: string },
+  ) {
+    return this.billingService.rejectRefund(
+      tenantId,
+      userId,
+      branchId,
+      reversalId,
+      body,
+    );
+  }
+
   @Post('payments')
   @RequirePermissions('billing.payment.create')
   @RequireBranchContext()

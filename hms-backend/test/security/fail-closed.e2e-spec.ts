@@ -6,14 +6,17 @@ import { AppModule } from '../../src/app.module';
 @Controller('unprotected-test')
 class UnprotectedController {
   @Get()
-  index() { return 'should never reach here'; }
+  index() {
+    return 'should never reach here';
+  }
 }
 
 describe('Security Posture: Fail-Closed (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [UnprotectedController],
@@ -24,9 +27,7 @@ describe('Security Posture: Fail-Closed (e2e)', () => {
   });
 
   it('should return 401 for a route with NO decorators (Fail-Closed)', () => {
-    return request(app.getHttpServer())
-      .get('/unprotected-test')
-      .expect(401);
+    return request(app.getHttpServer()).get('/unprotected-test').expect(401);
   });
 
   afterAll(async () => {

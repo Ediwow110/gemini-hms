@@ -53,10 +53,11 @@ export class SessionService {
     }
 
     const isValid = await bcrypt.compare(oldRtPlain, session.refreshTokenHash);
-    
+
     if (!isValid) {
       // 1. Check 30s leeway to handle race conditions (multi-tab refresh)
-      const isLeewayValid = Date.now() - session.lastRotatedAt.getTime() < 30000;
+      const isLeewayValid =
+        Date.now() - session.lastRotatedAt.getTime() < 30000;
       if (isLeewayValid) {
         return session; // Replay within leeway: return existing state
       }
@@ -103,7 +104,10 @@ export class SessionService {
     });
   }
 
-  async setInitialRefreshToken(sessionId: string, rtHash: string): Promise<void> {
+  async setInitialRefreshToken(
+    sessionId: string,
+    rtHash: string,
+  ): Promise<void> {
     await this.prisma.session.update({
       where: { id: sessionId },
       data: {
@@ -113,4 +117,3 @@ export class SessionService {
     });
   }
 }
-

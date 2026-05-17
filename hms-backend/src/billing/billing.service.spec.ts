@@ -90,6 +90,18 @@ describe('BillingService Reversals', () => {
         update: jest.fn(),
         create: jest.fn(),
       },
+      paymentVoid: {
+        create: jest.fn().mockResolvedValue({}),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      refund: {
+        create: jest.fn().mockResolvedValue({}),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      cashierLedgerEntry: {
+        create: jest.fn().mockResolvedValue({}),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       $transaction: jest.fn().mockImplementation(async (cb) => await cb(mock)),
     };
     return mock;

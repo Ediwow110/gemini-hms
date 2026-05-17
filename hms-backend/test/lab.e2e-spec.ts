@@ -16,20 +16,22 @@ describe('Lab Branch Scoping (e2e)', () => {
   let prisma: PrismaService;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
         PrismaModule,
         LabModule,
       ],
-      providers: [
-      ],
+      providers: [],
     })
-    .overrideGuard(PermissionsGuard).useValue({ canActivate: () => true })
-    .overrideGuard(BranchGuard).useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(BranchGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -39,9 +41,16 @@ describe('Lab Branch Scoping (e2e)', () => {
     prisma = app.get(PrismaService);
     await cleanupDatabase(prisma);
 
-    const tenant = await prisma.tenant.create({ data: { name: `Lab-Tenant-${randomUUID()}` } });
+    const tenant = await prisma.tenant.create({
+      data: { name: `Lab-Tenant-${randomUUID()}` },
+    });
     const branch = await prisma.branch.create({
-        data: { id: randomUUID(), tenantId: tenant.id, name: 'Lab Branch', code: `LB-${randomUUID().substring(0,4)}` }
+      data: {
+        id: randomUUID(),
+        tenantId: tenant.id,
+        name: 'Lab Branch',
+        code: `LB-${randomUUID().substring(0, 4)}`,
+      },
     });
 
     MockJwtAuthGuard.user.tenantId = tenant.id;
@@ -50,9 +59,10 @@ describe('Lab Branch Scoping (e2e)', () => {
 
   describe('GET /api/v1/lab/worklist', () => {
     it('should bypass guard correctly and hit business logic', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/v1/lab/worklist');
-      
+      const res = await request(app.getHttpServer()).get(
+        '/api/v1/lab/worklist',
+      );
+
       expect([200, 404, 400]).toContain(res.status);
     });
   });
@@ -61,4 +71,3 @@ describe('Lab Branch Scoping (e2e)', () => {
     await app.close();
   });
 });
-

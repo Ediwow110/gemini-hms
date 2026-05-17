@@ -17,13 +17,14 @@ import { randomUUID } from 'crypto';
 describe('Invoice Locking Rules (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  
+
   let tenantId: string;
   let branchId: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
@@ -35,9 +36,11 @@ describe('Invoice Locking Rules (e2e)', () => {
       ],
       providers: [],
     })
-    .overrideGuard(PermissionsGuard).useValue({ canActivate: () => true })
-    .overrideGuard(BranchGuard).useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(BranchGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -45,17 +48,19 @@ describe('Invoice Locking Rules (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
-    
-    const tenant = await prisma.tenant.create({ data: { name: `Lock-Tenant-${randomUUID()}` } });
+
+    const tenant = await prisma.tenant.create({
+      data: { name: `Lock-Tenant-${randomUUID()}` },
+    });
     tenantId = tenant.id;
-    
+
     const branch = await prisma.branch.create({
       data: {
         id: randomUUID(),
         tenantId,
         name: 'Lock Branch',
         code: `L-${randomUUID().substring(0, 4)}`,
-      }
+      },
     });
     branchId = branch.id;
 
@@ -76,15 +81,36 @@ describe('Invoice Locking Rules (e2e)', () => {
     // 2. Create Invoice already PAID
     const patientId = randomUUID();
     await prisma.patient.create({
-      data: { id: patientId, tenantId, patientNumber: `PT-LCK-${randomUUID()}`, firstName: 'L', lastName: 'K', dob: new Date() }
+      data: {
+        id: patientId,
+        tenantId,
+        patientNumber: `PT-LCK-${randomUUID()}`,
+        firstName: 'L',
+        lastName: 'K',
+        dob: new Date(),
+      },
     });
     const orderId = randomUUID();
     await prisma.order.create({
-      data: { id: orderId, tenantId, branchId, patientId, orderNumber: randomUUID() }
+      data: {
+        id: orderId,
+        tenantId,
+        branchId,
+        patientId,
+        orderNumber: randomUUID(),
+      },
     });
     const invoiceId = randomUUID();
     await prisma.invoice.create({
-      data: { id: invoiceId, tenantId, orderId, invoiceNumber: randomUUID(), totalAmount: 100, paidAmount: 100, status: 'PAID' }
+      data: {
+        id: invoiceId,
+        tenantId,
+        orderId,
+        invoiceNumber: randomUUID(),
+        totalAmount: 100,
+        paidAmount: 100,
+        status: 'PAID',
+      },
     });
 
     // 3. Attempt payment
@@ -104,4 +130,3 @@ describe('Invoice Locking Rules (e2e)', () => {
     await app.close();
   });
 });
-

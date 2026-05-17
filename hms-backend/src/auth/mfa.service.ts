@@ -18,10 +18,15 @@ export class MfaService {
   ) {
     let key = this.configService.get<string>('MASTER_MFA_KEY');
     if (!key || key.length < 32) {
-      if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined) {
+      if (
+        process.env.NODE_ENV === 'test' ||
+        process.env.JEST_WORKER_ID !== undefined
+      ) {
         key = 'fallback-master-mfa-key-for-tests-32-chars-long';
       } else {
-        throw new Error('CRITICAL: MASTER_MFA_KEY must be at least 32 characters.');
+        throw new Error(
+          'CRITICAL: MASTER_MFA_KEY must be at least 32 characters.',
+        );
       }
     }
     this.masterKey = Buffer.from(key.substring(0, 32));
@@ -32,13 +37,13 @@ export class MfaService {
    */
   async generateSecret(userId: string, email: string) {
     const secret = speakeasy.generateSecret({
-        name: `Gemini-HMS (${email})`,
-        issuer: 'Gemini-HMS'
+      name: `Gemini-HMS (${email})`,
+      issuer: 'Gemini-HMS',
     });
-    
-    return { 
-        secret: secret.base32, 
-        otpauthUrl: secret.otpauth_url 
+
+    return {
+      secret: secret.base32,
+      otpauthUrl: secret.otpauth_url,
     };
   }
 
@@ -48,7 +53,10 @@ export class MfaService {
   encryptSecret(text: string): string {
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv(this.algorithm, this.masterKey, iv);
-    const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+    const encrypted = Buffer.concat([
+      cipher.update(text, 'utf8'),
+      cipher.final(),
+    ]);
     const tag = cipher.getAuthTag();
     return `${iv.toString('hex')}:${encrypted.toString('hex')}:${tag.toString('hex')}`;
   }
@@ -61,9 +69,16 @@ export class MfaService {
     const iv = Buffer.from(ivHex, 'hex');
     const encrypted = Buffer.from(encryptedHex, 'hex');
     const tag = Buffer.from(tagHex, 'hex');
-    const decipher = crypto.createDecipheriv(this.algorithm, this.masterKey, iv);
+    const decipher = crypto.createDecipheriv(
+      this.algorithm,
+      this.masterKey,
+      iv,
+    );
     decipher.setAuthTag(tag);
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
     return decrypted.toString('utf8');
   }
 
@@ -83,10 +98,10 @@ export class MfaService {
     try {
       const secret = this.decryptSecret(user.mfaSecret);
       return speakeasy.totp.verify({
-          secret,
-          encoding: 'base32',
-          token: code,
-          window: 1 // Allow 1-step window
+        secret,
+        encoding: 'base32',
+        token: code,
+        window: 1, // Allow 1-step window
       });
     } catch (e) {
       return false;
@@ -98,11 +113,11 @@ export class MfaService {
    */
   async enableMfa(userId: string, secret: string, code: string) {
     const isValid = speakeasy.totp.verify({
-        secret,
-        encoding: 'base32',
-        token: code
+      secret,
+      encoding: 'base32',
+      token: code,
     });
-    
+
     if (!isValid) {
       throw new UnauthorizedException('Invalid MFA code during setup');
     }
@@ -121,7 +136,10 @@ export class MfaService {
    * invalidates old unused codes.
    * returns plaintext codes only once.
    */
-  async generateRecoveryCodes(userId: string, tenantId: string): Promise<string[]> {
+  async generateRecoveryCodes(
+    userId: string,
+    tenantId: string,
+  ): Promise<string[]> {
     // 1. Invalidate old codes
     await this.prisma.userMfaRecoveryCode.deleteMany({
       where: { userId },
@@ -141,7 +159,7 @@ export class MfaService {
           userId,
           codeHash,
         };
-      })
+      }),
     );
 
     await this.prisma.userMfaRecoveryCode.createMany({
@@ -164,7 +182,11 @@ export class MfaService {
   /**
    * Verifies a recovery code. Returns true if match found, not expired, and marked used.
    */
-  async verifyRecoveryCode(userId: string, code: string, tenantId: string): Promise<boolean> {
+  async verifyRecoveryCode(
+    userId: string,
+    code: string,
+    tenantId: string,
+  ): Promise<boolean> {
     const records = await this.prisma.userMfaRecoveryCode.findMany({
       where: { userId, usedAt: null },
     });
@@ -189,7 +211,8 @@ export class MfaService {
       return false;
     }
 
-    const isExpired = Date.now() - matchedRecord.createdAt.getTime() > 30 * 24 * 60 * 60 * 1000;
+    const isExpired =
+      Date.now() - matchedRecord.createdAt.getTime() > 30 * 24 * 60 * 60 * 1000;
     if (isExpired) {
       await this.audit.log({
         tenantId,

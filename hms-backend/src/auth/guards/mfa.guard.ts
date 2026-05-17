@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 
@@ -6,7 +11,12 @@ import { SKIP_MFA_KEY } from '../decorators/skip-mfa.decorator';
 
 @Injectable()
 export class MfaGuard implements CanActivate {
-  private readonly SENSITIVE_ROLES = ['Super Admin', 'Branch Admin', 'Doctor', 'Cashier'];
+  private readonly SENSITIVE_ROLES = [
+    'Super Admin',
+    'Branch Admin',
+    'Doctor',
+    'Cashier',
+  ];
 
   constructor(private reflector: Reflector) {}
 
@@ -28,14 +38,16 @@ export class MfaGuard implements CanActivate {
 
     if (!user) return false;
 
-    const isSensitive = user.roles?.some((role: string) => this.SENSITIVE_ROLES.includes(role));
-    
+    const isSensitive = user.roles?.some((role: string) =>
+      this.SENSITIVE_ROLES.includes(role),
+    );
+
     // If user has a sensitive role but hasn't verified MFA in this session, block.
     if (isSensitive && !user.mfaVerified) {
       throw new ForbiddenException({
-          statusCode: 403,
-          message: 'MFA_REQUIRED',
-          error: 'Forbidden'
+        statusCode: 403,
+        message: 'MFA_REQUIRED',
+        error: 'Forbidden',
       });
     }
 

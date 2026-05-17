@@ -16,32 +16,33 @@ describe('Auth Branches (e2e)', () => {
   let prisma: PrismaService;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
         PrismaModule,
         AuthModule,
         JwtModule.register({
-            secret: 'test-secret-key-for-e2e-tests-that-is-long-enough',
-            signOptions: { expiresIn: '1h' },
+          secret: 'test-secret-key-for-e2e-tests-that-is-long-enough',
+          signOptions: { expiresIn: '1h' },
         }),
       ],
-      providers: [
-      ],
-    })
-    .compile();
+      providers: [],
+    }).compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     app.useGlobalGuards(new MockJwtAuthGuard());
     await app.init();
-    
+
     prisma = app.get(PrismaService);
     await cleanupDatabase(prisma);
 
-    const tenant = await prisma.tenant.create({ data: { name: `AuthBr-Tenant-${randomUUID()}` } });
+    const tenant = await prisma.tenant.create({
+      data: { name: `AuthBr-Tenant-${randomUUID()}` },
+    });
     MockJwtAuthGuard.user.tenantId = tenant.id;
     MockJwtAuthGuard.user.userId = '11111111-1111-4111-8111-111111111111';
 
@@ -51,13 +52,23 @@ describe('Auth Branches (e2e)', () => {
   describe('GET /api/v1/auth/branches', () => {
     it('should return active branch assignments', async () => {
       const branchId1 = randomUUID();
-      
+
       // Seed a branch and assignment
       await prisma.branch.create({
-        data: { id: branchId1, tenantId: MockJwtAuthGuard.user.tenantId, name: 'B1', code: 'B1' }
+        data: {
+          id: branchId1,
+          tenantId: MockJwtAuthGuard.user.tenantId,
+          name: 'B1',
+          code: 'B1',
+        },
       });
       await prisma.userBranch.create({
-        data: { userId: MockJwtAuthGuard.user.userId, branchId: branchId1, tenantId: MockJwtAuthGuard.user.tenantId, isActive: true }
+        data: {
+          userId: MockJwtAuthGuard.user.userId,
+          branchId: branchId1,
+          tenantId: MockJwtAuthGuard.user.tenantId,
+          isActive: true,
+        },
       });
 
       const response = await request(app.getHttpServer())
@@ -73,4 +84,3 @@ describe('Auth Branches (e2e)', () => {
     await app.close();
   });
 });
-

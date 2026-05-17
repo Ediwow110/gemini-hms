@@ -20,8 +20,9 @@ describe('Maker-Checker Security (e2e)', () => {
   let userId: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
@@ -29,12 +30,13 @@ describe('Maker-Checker Security (e2e)', () => {
         AuditModule,
         ApprovalsModule,
       ],
-      providers: [
-      ],
+      providers: [],
     })
-    .overrideGuard(PermissionsGuard).useValue({ canActivate: () => true })
-    .overrideGuard(BranchGuard).useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(BranchGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalGuards(new MockJwtAuthGuard());
@@ -44,7 +46,9 @@ describe('Maker-Checker Security (e2e)', () => {
     prisma = app.get(PrismaService);
     await cleanupDatabase(prisma);
 
-    const tenant = await prisma.tenant.create({ data: { name: `Maker-Tenant-${randomUUID()}` } });
+    const tenant = await prisma.tenant.create({
+      data: { name: `Maker-Tenant-${randomUUID()}` },
+    });
     tenantId = tenant.id;
     userId = '11111111-1111-4111-8111-111111111111';
     await seedUser(prisma, tenantId, 'maker@hms.local');
@@ -55,7 +59,7 @@ describe('Maker-Checker Security (e2e)', () => {
 
   it('Creator should not be able to approve own request', async () => {
     const approvalId = randomUUID();
-    
+
     // Seed ApprovalRequest created by the test user
     await prisma.approvalRequest.create({
       data: {
@@ -67,7 +71,7 @@ describe('Maker-Checker Security (e2e)', () => {
         riskLevel: 'LOW',
         recordId: '123',
         details: { invoiceId: '123' },
-      }
+      },
     });
 
     return request(app.getHttpServer())
@@ -80,4 +84,3 @@ describe('Maker-Checker Security (e2e)', () => {
     await app.close();
   });
 });
-

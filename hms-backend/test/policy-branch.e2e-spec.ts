@@ -1,5 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe, Controller, Post, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import {
+  INestApplication,
+  ValidationPipe,
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
 import request from 'supertest';
 import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
@@ -20,29 +29,25 @@ class PolicyTestController {
 
 describe('Cross-Branch Policy (e2e)', () => {
   let app: INestApplication;
-  
+
   const tenantId = randomUUID();
   const branchAId = randomUUID();
   const branchBId = randomUUID();
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
-      ],
+      imports: [ConfigModule.forRoot({ isGlobal: true })],
       controllers: [PolicyTestController],
-      providers: [
-          BranchGuard,
-      ]
+      providers: [BranchGuard],
     }).compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
-    
+
     const reflector = app.get(Reflector);
     app.useGlobalGuards(new MockJwtAuthGuard());
     app.useGlobalGuards(new BranchGuard(reflector));
-    
+
     await app.init();
 
     MockJwtAuthGuard.user.tenantId = tenantId;

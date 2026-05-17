@@ -16,8 +16,9 @@ describe('Queue Branch Scoping (e2e)', () => {
   let prisma: PrismaService;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
@@ -25,11 +26,11 @@ describe('Queue Branch Scoping (e2e)', () => {
         AuditModule,
         QueueModule,
       ],
-      providers: [
-      ],
+      providers: [],
     })
-    .overrideGuard(PermissionsGuard).useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalGuards(new MockJwtAuthGuard());
@@ -39,9 +40,16 @@ describe('Queue Branch Scoping (e2e)', () => {
     prisma = app.get(PrismaService);
     await cleanupDatabase(prisma);
 
-    const tenant = await prisma.tenant.create({ data: { name: `Queue-Tenant-${randomUUID()}` } });
+    const tenant = await prisma.tenant.create({
+      data: { name: `Queue-Tenant-${randomUUID()}` },
+    });
     const branch = await prisma.branch.create({
-        data: { id: randomUUID(), tenantId: tenant.id, name: 'Queue Branch', code: `QB-${randomUUID().substring(0,4)}` }
+      data: {
+        id: randomUUID(),
+        tenantId: tenant.id,
+        name: 'Queue Branch',
+        code: `QB-${randomUUID().substring(0, 4)}`,
+      },
     });
 
     MockJwtAuthGuard.user.tenantId = tenant.id;
@@ -64,4 +72,3 @@ describe('Queue Branch Scoping (e2e)', () => {
     await app.close();
   });
 });
-

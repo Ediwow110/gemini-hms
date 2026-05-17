@@ -30,7 +30,10 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: any) {
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) res: any,
+  ) {
     const user = await this.authService.validateUser(
       loginDto.tenantCode,
       loginDto.email,
@@ -78,7 +81,11 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  async refresh(@Body('refreshToken') refreshToken: string, @Body('sessionId') sessionId: string, @Body('userId') userId: string) {
+  async refresh(
+    @Body('refreshToken') refreshToken: string,
+    @Body('sessionId') sessionId: string,
+    @Body('userId') userId: string,
+  ) {
     return this.authService.refreshTokens(userId, sessionId, refreshToken);
   }
 
@@ -93,24 +100,35 @@ export class AuthController {
   @UseGuards(MfaChallengeGuard)
   @Post('mfa/setup')
   async mfaSetup(@GetUser() user: any) {
-    return this.mfaService.generateSecret(user.sub, user.email || 'user@hms.local');
+    return this.mfaService.generateSecret(
+      user.sub,
+      user.email || 'user@hms.local',
+    );
   }
 
   @HttpCode(HttpStatus.OK)
   @SkipMfa()
   @UseGuards(MfaChallengeGuard)
   @Post('mfa/verify')
-  async mfaVerify(@GetUser() user: any, @Body('code') code: string, @Body('secret') secret?: string) {
+  async mfaVerify(
+    @GetUser() user: any,
+    @Body('code') code: string,
+    @Body('secret') secret?: string,
+  ) {
     if (user.challenge === 'MFA_SETUP') {
-        if (!secret) throw new BadRequestException('Secret required for initial setup');
-        await this.mfaService.enableMfa(user.sub, secret, code);
+      if (!secret)
+        throw new BadRequestException('Secret required for initial setup');
+      await this.mfaService.enableMfa(user.sub, secret, code);
     }
     return this.authService.verifyMfa(user.sub, user.sid, code);
   }
 
   @Post('mfa/recovery-codes/generate')
   async generateRecoveryCodes(@GetUser() user: RequestUser) {
-    const codes = await this.mfaService.generateRecoveryCodes(user.userId!, user.tenantId);
+    const codes = await this.mfaService.generateRecoveryCodes(
+      user.userId!,
+      user.tenantId,
+    );
     return { recoveryCodes: codes };
   }
 
@@ -122,6 +140,11 @@ export class AuthController {
     if (!code) {
       throw new BadRequestException('Recovery code is required');
     }
-    return this.authService.verifyMfaWithRecoveryCode(user.sub, user.sid, code, user.tenantId);
+    return this.authService.verifyMfaWithRecoveryCode(
+      user.sub,
+      user.sid,
+      code,
+      user.tenantId,
+    );
   }
 }

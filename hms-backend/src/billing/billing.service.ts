@@ -316,6 +316,15 @@ export class BillingService {
             },
           });
 
+          await tx.cashierLedgerEntry.create({
+            data: {
+              cashierSessionId: dto.cashierSessionId,
+              type: 'PAYMENT',
+              amount: dto.amount,
+              referenceId: payment.id,
+            },
+          });
+
           // 11. Update Invoice Balance using Decimal Math
           const currentPaid = new Prisma.Decimal(invoice.paidAmount);
           const currentTotal = new Prisma.Decimal(invoice.totalAmount);
@@ -912,6 +921,24 @@ export class BillingService {
         );
       }
 
+      await tx.paymentVoid.create({
+        data: {
+          paymentId: payment.id,
+          approvalId: approvalRequest.id,
+          voidedBy: userId,
+          reason: reversal.reason,
+        },
+      });
+
+      await tx.cashierLedgerEntry.create({
+        data: {
+          cashierSessionId: payment.cashierSessionId,
+          type: 'VOID',
+          amount: payment.amount,
+          referenceId: payment.id,
+        },
+      });
+
       // Mark approval request as APPLIED (post-approval execution)
       const appliedApproval = await tx.approvalRequest.updateMany({
         where: {
@@ -1160,6 +1187,26 @@ export class BillingService {
         );
       }
 
+      const refundRecord = await tx.refund.create({
+        data: {
+          invoiceId: invoice.id,
+          paymentId: payment.id,
+          amount: refundAmount,
+          approvedBy: userId,
+          method: payment.paymentMethod,
+          reason: reversal.reason,
+        },
+      });
+
+      await tx.cashierLedgerEntry.create({
+        data: {
+          cashierSessionId: payment.cashierSessionId,
+          type: 'REFUND',
+          amount: refundAmount,
+          referenceId: refundRecord.id,
+        },
+      });
+
       const appliedApproval = await tx.approvalRequest.updateMany({
         where: {
           id: approvalRequest.id,
@@ -1356,7 +1403,26 @@ export class BillingService {
         branchId,
       );
 
-      return { session, variance, expectedCash };
+      const voids = await tx.paymentVoid.findMany({
+        where: {
+          payment: { cashierSessionId: sessionId },
+        },
+        include: { payment: true },
+      });
+
+      const refunds = await tx.refund.findMany({
+        where: {
+          payment: { cashierSessionId: sessionId },
+        },
+        include: { payment: true },
+      });
+
+      const ledgerEntries = await tx.cashierLedgerEntry.findMany({
+        where: { cashierSessionId: sessionId },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      return { session, variance, expectedCash, voids, refunds, ledgerEntries };
     });
   }
 
@@ -1370,6 +1436,108 @@ export class BillingService {
           },
         },
       },
+    });
+  }
+
+  async approveVoid(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    reversalId: string,
+    dto: { remarks?: string },
+  ) {
+    const reversal = await this.prisma.paymentReversal.findFirst({
+      where: { id: reversalId, tenantId, branchId, type: REVERSAL_TYPE.VOID },
+    });
+    if (!reversal) {
+      throw new NotFoundException('Payment reversal request not found');
+    }
+    await this.approvals.processRequest(
+      tenantId,
+      userId,
+      reversal.approvalRequestId,
+      'APPROVED',
+      { remarks: dto.remarks },
+      branchId,
+    );
+    return this.applyVoid(tenantId, userId, branchId, reversalId);
+  }
+
+  async rejectVoid(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    reversalId: string,
+    dto: { remarks?: string },
+  ) {
+    const reversal = await this.prisma.paymentReversal.findFirst({
+      where: { id: reversalId, tenantId, branchId, type: REVERSAL_TYPE.VOID },
+    });
+    if (!reversal) {
+      throw new NotFoundException('Payment reversal request not found');
+    }
+    await this.approvals.processRequest(
+      tenantId,
+      userId,
+      reversal.approvalRequestId,
+      'REJECTED',
+      { remarks: dto.remarks },
+      branchId,
+    );
+    return this.prisma.paymentReversal.update({
+      where: { id: reversalId },
+      data: { status: REVERSAL_STATUS.REJECTED },
+    });
+  }
+
+  async approveRefund(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    reversalId: string,
+    dto: { remarks?: string },
+  ) {
+    const reversal = await this.prisma.paymentReversal.findFirst({
+      where: { id: reversalId, tenantId, branchId, type: REVERSAL_TYPE.REFUND },
+    });
+    if (!reversal) {
+      throw new NotFoundException('Payment reversal request not found');
+    }
+    await this.approvals.processRequest(
+      tenantId,
+      userId,
+      reversal.approvalRequestId,
+      'APPROVED',
+      { remarks: dto.remarks },
+      branchId,
+    );
+    return this.applyRefund(tenantId, userId, branchId, reversalId);
+  }
+
+  async rejectRefund(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    reversalId: string,
+    dto: { remarks?: string },
+  ) {
+    const reversal = await this.prisma.paymentReversal.findFirst({
+      where: { id: reversalId, tenantId, branchId, type: REVERSAL_TYPE.REFUND },
+    });
+    if (!reversal) {
+      throw new NotFoundException('Payment reversal request not found');
+    }
+    await this.approvals.processRequest(
+      tenantId,
+      userId,
+      reversal.approvalRequestId,
+      'REJECTED',
+      { remarks: dto.remarks },
+      branchId,
+    );
+    return this.prisma.paymentReversal.update({
+      where: { id: reversalId },
+      data: { status: REVERSAL_STATUS.REJECTED },
     });
   }
 }

@@ -15,16 +15,19 @@ describe('Throttler: Auth Login (e2e)', () => {
   let uniqueTenantName: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleRef = await Test.createTestingModule({
       imports: [
         AuthTestModule,
-        ThrottlerModule.forRoot([{
-          name: 'auth',
-          ttl: 60000,
-          limit: 5,
-        }]),
+        ThrottlerModule.forRoot([
+          {
+            name: 'auth',
+            ttl: 60000,
+            limit: 5,
+          },
+        ]),
       ],
       providers: [
         {
@@ -32,9 +35,9 @@ describe('Throttler: Auth Login (e2e)', () => {
           useClass: ThrottlerGuard,
         },
         {
-            provide: APP_GUARD,
-            useClass: JwtAuthGuard,
-        }
+          provide: APP_GUARD,
+          useClass: JwtAuthGuard,
+        },
       ],
     }).compile();
 
@@ -45,7 +48,7 @@ describe('Throttler: Auth Login (e2e)', () => {
     prisma = app.get(PrismaService);
     uniqueTenantName = `Throttle-Tenant-${randomUUID()}`;
     const tenant = await prisma.tenant.create({
-      data: { name: uniqueTenantName }
+      data: { name: uniqueTenantName },
     });
     await seedUser(prisma, tenant.id, 'throttle@hms.local');
   });
@@ -69,7 +72,7 @@ describe('Throttler: Auth Login (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send(loginData);
-    
+
     expect(res.status).toBe(429);
   });
 

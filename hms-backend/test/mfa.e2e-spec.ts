@@ -18,16 +18,17 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 describe('MFA Lifecycle (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  
+
   let tenantId: string;
   let tenantName: string;
   let adminEmail: string;
   const adminPassword = 'AdminPassword123!';
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-mfa-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-mfa-e2e-tests-that-is-long-enough';
     process.env.MASTER_MFA_KEY = 'master-mfa-key-for-encryption-long-enough';
-    
+
     console.log('Guards:', { JwtAuthGuard, MfaGuard, ThrottlerGuard });
 
     const moduleRef = await Test.createTestingModule({
@@ -46,7 +47,7 @@ describe('MFA Lifecycle (e2e)', () => {
     const reflector = app.get(Reflector);
     app.useGlobalGuards(new JwtAuthGuard(reflector));
     app.useGlobalGuards(new MfaGuard(reflector));
-    
+
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -58,29 +59,29 @@ describe('MFA Lifecycle (e2e)', () => {
 
     adminEmail = `admin-${randomUUID()}@hms.local`;
     const passwordHash = await bcrypt.hash(adminPassword, 10);
-    
+
     const user = await prisma.user.create({
-        data: {
-            tenantId,
-            email: adminEmail,
-            passwordHash,
-            mfaEnabled: false,
-        }
+      data: {
+        tenantId,
+        email: adminEmail,
+        passwordHash,
+        mfaEnabled: false,
+      },
     });
 
     const role = await prisma.role.create({
-        data: {
-            tenantId,
-            name: 'Super Admin',
-            isSystem: true,
-        }
+      data: {
+        tenantId,
+        name: 'Super Admin',
+        isSystem: true,
+      },
     });
 
     await prisma.userRole.create({
-        data: {
-            userId: user.id,
-            roleId: role.id,
-        }
+      data: {
+        userId: user.id,
+        roleId: role.id,
+      },
     });
   });
 
@@ -106,10 +107,10 @@ describe('MFA Lifecycle (e2e)', () => {
     });
 
     it('should NOT access protected route with mfaToken', async () => {
-        await request(app.getHttpServer())
-          .get('/api/v1/auth/me')
-          .set('Authorization', `Bearer ${mfaToken}`)
-          .expect(403); // Blocked by MfaGuard
+      await request(app.getHttpServer())
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${mfaToken}`)
+        .expect(403); // Blocked by MfaGuard
     });
 
     it('should setup MFA and get secret', async () => {
@@ -125,8 +126,8 @@ describe('MFA Lifecycle (e2e)', () => {
 
     it('should verify MFA and return full tokens', async () => {
       const code = speakeasy.totp({
-          secret: mfaSecret,
-          encoding: 'base32'
+        secret: mfaSecret,
+        encoding: 'base32',
       });
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/mfa/verify')
@@ -139,34 +140,34 @@ describe('MFA Lifecycle (e2e)', () => {
     });
 
     it('should access protected route with fully verified AT', async () => {
-        await request(app.getHttpServer())
-          .get('/api/v1/auth/me')
-          .set('Authorization', `Bearer ${accessToken}`)
-          .expect(200);
+      await request(app.getHttpServer())
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
     });
 
     it('should return MFA_VERIFY on subsequent login', async () => {
-        const res = await request(app.getHttpServer())
-          .post('/api/v1/auth/login')
-          .send({
-            email: adminEmail,
-            password: adminPassword,
-            tenantCode: tenantName,
-          })
-          .expect(202);
-  
-        expect(res.body.challenge).toBe('MFA_VERIFY');
-        mfaToken = res.body.mfaToken;
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({
+          email: adminEmail,
+          password: adminPassword,
+          tenantCode: tenantName,
+        })
+        .expect(202);
 
-        const code = speakeasy.totp({
-            secret: mfaSecret,
-            encoding: 'base32'
-        });
-        await request(app.getHttpServer())
-          .post('/api/v1/auth/mfa/verify')
-          .set('Authorization', `Bearer ${mfaToken}`)
-          .send({ code })
-          .expect(200);
+      expect(res.body.challenge).toBe('MFA_VERIFY');
+      mfaToken = res.body.mfaToken;
+
+      const code = speakeasy.totp({
+        secret: mfaSecret,
+        encoding: 'base32',
+      });
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/mfa/verify')
+        .set('Authorization', `Bearer ${mfaToken}`)
+        .send({ code })
+        .expect(200);
     });
   });
 

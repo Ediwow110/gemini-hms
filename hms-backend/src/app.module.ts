@@ -32,9 +32,9 @@ import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
   imports: [
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
-        { name: 'default', ttl: 60000, limit: 100 },
-        { name: 'auth', ttl: 60000, limit: 5 },
-        { name: 'sensitive', ttl: 60000, limit: 20 },
+      { name: 'default', ttl: 60000, limit: 100 },
+      { name: 'auth', ttl: 60000, limit: 5 },
+      { name: 'sensitive', ttl: 60000, limit: 20 },
     ]),
     PrismaModule,
     AuthModule,

@@ -19,7 +19,9 @@ import { MfaService } from './mfa.service';
       useFactory: async (configService: ConfigService) => {
         const secret = configService.get<string>('JWT_SECRET');
         if (!secret || secret.length < 32) {
-          throw new Error('CRITICAL: Valid JWT_SECRET (min 32 chars) is required in environment variables.');
+          throw new Error(
+            'CRITICAL: Valid JWT_SECRET (min 32 chars) is required in environment variables.',
+          );
         }
         return {
           secret,

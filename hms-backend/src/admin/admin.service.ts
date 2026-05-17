@@ -3808,7 +3808,7 @@ export class AdminService {
 
       // Check Notification Dispatcher readiness
       const pendingNotifications = await this.prisma.notification.count({
-          where: { status: 'PENDING' }
+        where: { status: 'PENDING' },
       });
 
       if (schemaReady) {
@@ -3818,12 +3818,12 @@ export class AdminService {
           migrationStatus: 'ok',
           backupConfig,
           notifications: {
-              pending: pendingNotifications,
-              status: 'active'
+            pending: pendingNotifications,
+            status: 'active',
           },
           metrics: {
-              totalRequests: metrics.totalRequests,
-              totalErrors: metrics.totalErrors
+            totalRequests: metrics.totalRequests,
+            totalErrors: metrics.totalErrors,
           },
           timestamp,
         };

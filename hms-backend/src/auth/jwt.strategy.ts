@@ -49,23 +49,26 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // Stateful check: verify session exists and is active
     const session = await this.prisma.session.findUnique({
-        where: { id: payload.sid },
-        include: { user: true }
+      where: { id: payload.sid },
+      include: { user: true },
     });
 
     if (
-        !session ||
-        session.expiresAt < new Date() ||
-        session.user.status !== 'ACTIVE' ||
-        session.user.deactivatedAt !== null ||
-        payload.tokenVersion !== session.user.tokenVersion
+      !session ||
+      session.expiresAt < new Date() ||
+      session.user.status !== 'ACTIVE' ||
+      session.user.deactivatedAt !== null ||
+      payload.tokenVersion !== session.user.tokenVersion
     ) {
-        throw new UnauthorizedException('Session expired or revoked');
+      throw new UnauthorizedException('Session expired or revoked');
     }
 
     // Consistency check: ensure token sub matches session owner
-    if (session.userId !== payload.sub || session.tenantId !== payload.tenantId) {
-         throw new UnauthorizedException('Token/Session mismatch');
+    if (
+      session.userId !== payload.sub ||
+      session.tenantId !== payload.tenantId
+    ) {
+      throw new UnauthorizedException('Token/Session mismatch');
     }
 
     return {

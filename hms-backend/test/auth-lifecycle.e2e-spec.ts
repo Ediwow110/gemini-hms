@@ -18,23 +18,26 @@ describe('Auth E2E Lifecycle (e2e)', () => {
   let userEmail: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
-    
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+
     const moduleRef = await Test.createTestingModule({
       imports: [
         AuthTestModule,
-        ThrottlerModule.forRoot([{
-          name: 'default',
-          ttl: 60000,
-          limit: 100,
-        }]),
+        ThrottlerModule.forRoot([
+          {
+            name: 'default',
+            ttl: 60000,
+            limit: 100,
+          },
+        ]),
       ],
       providers: [
         {
           provide: APP_GUARD,
           useClass: JwtAuthGuard,
-        }
-      ]
+        },
+      ],
     }).compile();
 
     app = moduleRef.createNestApplication();
@@ -68,12 +71,14 @@ describe('Auth E2E Lifecycle (e2e)', () => {
 
       expect(res.body.accessToken).toBeDefined();
       expect(res.body.refreshToken).toBeDefined();
-      
+
       accessToken = res.body.accessToken;
       refreshToken = res.body.refreshToken;
-      
+
       // Decode JWT to get session ID (sid)
-      const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+      const payload = JSON.parse(
+        Buffer.from(accessToken.split('.')[1], 'base64').toString(),
+      );
       sessionId = payload.sid;
       expect(sessionId).toBeDefined();
     });
@@ -84,14 +89,15 @@ describe('Auth E2E Lifecycle (e2e)', () => {
         .send({
           refreshToken,
           sessionId,
-          userId: (await prisma.user.findFirst({ where: { email: userEmail } }))?.id,
+          userId: (await prisma.user.findFirst({ where: { email: userEmail } }))
+            ?.id,
         })
         .expect(200);
 
       expect(res.body.accessToken).toBeDefined();
       expect(res.body.refreshToken).toBeDefined();
       expect(res.body.refreshToken).not.toBe(refreshToken); // Rotated
-      
+
       accessToken = res.body.accessToken;
       refreshToken = res.body.refreshToken;
     });
@@ -110,7 +116,9 @@ describe('Auth E2E Lifecycle (e2e)', () => {
         .expect(204);
 
       // Verify session is gone from DB
-      const session = await prisma.session.findUnique({ where: { id: sessionId } });
+      const session = await prisma.session.findUnique({
+        where: { id: sessionId },
+      });
       expect(session).toBeNull();
 
       // Subsequent request with same AT should fail (stateful check)

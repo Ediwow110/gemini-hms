@@ -18,7 +18,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 describe('MFA Recovery (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  
+
   let tenantId: string;
   let tenantName: string;
   let adminEmail: string;
@@ -26,7 +26,8 @@ describe('MFA Recovery (e2e)', () => {
   const adminPassword = 'AdminPassword123!';
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-mfa-recovery-e2e-tests-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-mfa-recovery-e2e-tests-long-enough';
     process.env.MASTER_MFA_KEY = 'master-mfa-key-for-encryption-long-enough';
 
     const moduleRef = await Test.createTestingModule({
@@ -45,7 +46,7 @@ describe('MFA Recovery (e2e)', () => {
     const reflector = app.get(Reflector);
     app.useGlobalGuards(new JwtAuthGuard(reflector));
     app.useGlobalGuards(new MfaGuard(reflector));
-    
+
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -57,30 +58,30 @@ describe('MFA Recovery (e2e)', () => {
 
     adminEmail = `admin-rec-${randomUUID()}@hms.local`;
     const passwordHash = await bcrypt.hash(adminPassword, 10);
-    
+
     const user = await prisma.user.create({
-        data: {
-            tenantId,
-            email: adminEmail,
-            passwordHash,
-            mfaEnabled: false,
-        }
+      data: {
+        tenantId,
+        email: adminEmail,
+        passwordHash,
+        mfaEnabled: false,
+      },
     });
     adminUserId = user.id;
 
     const role = await prisma.role.create({
-        data: {
-            tenantId,
-            name: 'Super Admin',
-            isSystem: true,
-        }
+      data: {
+        tenantId,
+        name: 'Super Admin',
+        isSystem: true,
+      },
     });
 
     await prisma.userRole.create({
-        data: {
-            userId: user.id,
-            roleId: role.id,
-        }
+      data: {
+        userId: user.id,
+        roleId: role.id,
+      },
     });
   });
 
@@ -113,8 +114,8 @@ describe('MFA Recovery (e2e)', () => {
 
       // 3. Verify MFA
       const code = speakeasy.totp({
-          secret: mfaSecret,
-          encoding: 'base32'
+        secret: mfaSecret,
+        encoding: 'base32',
       });
       res = await request(app.getHttpServer())
         .post('/api/v1/auth/mfa/verify')
@@ -138,14 +139,17 @@ describe('MFA Recovery (e2e)', () => {
 
       // Check if audit log contains MFA_RECOVERY_CODES_GENERATED
       const logs = await prisma.auditLog.findMany({
-        where: { userId: adminUserId, eventKey: 'MFA_RECOVERY_CODES_GENERATED' }
+        where: {
+          userId: adminUserId,
+          eventKey: 'MFA_RECOVERY_CODES_GENERATED',
+        },
       });
       expect(logs.length).toBeGreaterThan(0);
     });
 
     it('should ensure no plaintext recovery code is stored in DB', async () => {
       const dbCodes = await prisma.userMfaRecoveryCode.findMany({
-        where: { userId: adminUserId }
+        where: { userId: adminUserId },
       });
       expect(dbCodes.length).toBe(8);
 
@@ -182,14 +186,14 @@ describe('MFA Recovery (e2e)', () => {
 
       // 3. Confirm that the used code is marked used/burned in the DB
       const dbCodes = await prisma.userMfaRecoveryCode.findMany({
-        where: { userId: adminUserId }
+        where: { userId: adminUserId },
       });
-      const usedCode = dbCodes.find(c => c.usedAt !== null);
+      const usedCode = dbCodes.find((c) => c.usedAt !== null);
       expect(usedCode).toBeDefined();
 
       // 4. Verify audit log has MFA_RECOVERY_CODE_USED
       const usedLogs = await prisma.auditLog.findMany({
-        where: { userId: adminUserId, eventKey: 'MFA_RECOVERY_CODE_USED' }
+        where: { userId: adminUserId, eventKey: 'MFA_RECOVERY_CODE_USED' },
       });
       expect(usedLogs.length).toBeGreaterThan(0);
     });
@@ -216,7 +220,7 @@ describe('MFA Recovery (e2e)', () => {
 
       // Verify audit log has MFA_RECOVERY_CODE_REJECTED
       const rejectedLogs = await prisma.auditLog.findMany({
-        where: { userId: adminUserId, eventKey: 'MFA_RECOVERY_CODE_REJECTED' }
+        where: { userId: adminUserId, eventKey: 'MFA_RECOVERY_CODE_REJECTED' },
       });
       expect(rejectedLogs.length).toBeGreaterThan(0);
     });

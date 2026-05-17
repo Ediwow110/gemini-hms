@@ -1,4 +1,9 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+} from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { MetricsService } from '../../admin/metrics.service';
@@ -14,15 +19,15 @@ export class MetricsInterceptor implements NestInterceptor {
     this.metricsService.incrementRequestCount(method, url);
 
     if (url.includes('/auth/login') && method === 'POST') {
-        // Track login attempts specifically
-        this.metricsService.incrementLoginCount();
+      // Track login attempts specifically
+      this.metricsService.incrementLoginCount();
     }
 
     return next.handle().pipe(
       catchError((error) => {
         this.metricsService.incrementErrorCount();
         if (url.includes('/auth/mfa/verify')) {
-            this.metricsService.incrementMfaFailure();
+          this.metricsService.incrementMfaFailure();
         }
         return throwError(() => error);
       }),

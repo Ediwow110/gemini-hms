@@ -20,11 +20,11 @@ describe('Auth Selection (e2e)', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AuthTestModule],
       providers: [
-          {
-              provide: APP_GUARD,
-              useClass: JwtAuthGuard,
-          }
-      ]
+        {
+          provide: APP_GUARD,
+          useClass: JwtAuthGuard,
+        },
+      ],
     }).compile();
 
     app = moduleRef.createNestApplication();
@@ -36,7 +36,7 @@ describe('Auth Selection (e2e)', () => {
 
     uniqueTenantName = `Auth-Tenant-${randomUUID()}`;
     const tenant = await prisma.tenant.create({
-        data: { name: uniqueTenantName }
+      data: { name: uniqueTenantName },
     });
     testUserEmail = `auth-${randomUUID()}@hms.local`;
     await seedUser(prisma, tenant.id, testUserEmail);
@@ -49,9 +49,9 @@ describe('Auth Selection (e2e)', () => {
         .send({
           email: testUserEmail,
           password: 'Test1234!',
-          tenantCode: uniqueTenantName, 
+          tenantCode: uniqueTenantName,
         });
-      
+
       expect(res.status).toBe(200);
       expect(res.body.accessToken).toBeDefined();
     });
@@ -77,14 +77,14 @@ describe('Auth Selection (e2e)', () => {
           password: 'Test1234!',
           tenantCode: uniqueTenantName,
         });
-      
+
       const token = loginRes.body.accessToken;
 
       const res = await request(app.getHttpServer())
         .get('/api/v1/auth/me')
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
-      
+
       expect(res.body.email).toBe(testUserEmail);
     });
   });

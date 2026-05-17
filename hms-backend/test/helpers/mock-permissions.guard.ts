@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../../src/auth/decorators/permissions.decorator';
 
@@ -20,9 +25,9 @@ export class MockPermissionsGuard implements CanActivate {
     const user = request.user;
 
     if (!user) return false;
-    
+
     const userPermissions = user.permissions || [];
-    
+
     if (userPermissions.includes('*')) return true;
 
     const hasPermission = requiredPermissions.some((perm) =>
