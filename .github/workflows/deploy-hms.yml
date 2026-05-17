@@ -1,0 +1,46 @@
+name: Deploy HMS Foundational Core
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Secure Dependencies
+        run: npm ci
+
+      - name: Execute Strict TypeScript Build Bounds Check
+        run: npx tsc --noEmit
+
+      - name: Prisma Schema Syntax Validation Sweep
+        run: npx prisma validate
+
+  provision-deployment:
+    needs: build-and-validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Remote Shell Provisioning Execution (Zero-Touch)
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.PROD_SERVER_IP }}
+          username: ${{ secrets.PROD_SERVER_USER }}
+          key: ${{ secrets.PROD_SERVER_SSH_KEY }}
+          script: |
+            cd /opt/hms-production
+            git pull origin main
+            chmod +x infra/scripts/remote-provision.sh
+            ./infra/scripts/remote-provision.sh

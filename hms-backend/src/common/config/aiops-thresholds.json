@@ -1,0 +1,28 @@
+{
+  "policyName": "AIOps-Autonomic-Self-Healing",
+  "enabled": true,
+  "smoothingFactorAlpha": 0.3,
+  "metrics": [
+    {
+      "metricName": "cpuSaturation",
+      "thresholdPercent": 90.0,
+      "evaluationSteps": 3,
+      "mitigationHook": "SCALE_CONTAINER_UP",
+      "scriptPath": "scripts/scale-cluster-nodes.sh"
+    },
+    {
+      "metricName": "heapMemoryExhaustionVelocity",
+      "thresholdDeltaMBPerMin": 15.0,
+      "evaluationSteps": 3,
+      "mitigationHook": "BILLING_READ_ONLY",
+      "scriptPath": "scripts/toggle-circuit-breaker.ts"
+    },
+    {
+      "metricName": "apiResponseLatency",
+      "thresholdMs": 800.0,
+      "evaluationSteps": 3,
+      "mitigationHook": "ACTIVATE_RATE_LIMITER",
+      "scriptPath": "scripts/shed-traffic-load.sh"
+    }
+  ]
+}

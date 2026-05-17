@@ -1,32 +1,34 @@
 services:
-  postgres:
+  postgres_prod:
     image: postgres:15-alpine
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-hms_db}
+      POSTGRES_USER: ${DB_USER:-hms_prod_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-hms_secure_pass}
+      POSTGRES_DB: ${DB_NAME:-gemini_hms_prod}
     volumes:
       - hms_postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d hms_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hms_prod_user} -d ${DB_NAME:-gemini_hms_prod}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  backend:
+  api:
     build:
       context: ./hms-backend
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-hms_db}?schema=public
+      DATABASE_URL: postgresql://${DB_USER:-hms_prod_user}:${DB_PASSWORD:-hms_secure_pass}@postgres_prod:5432/${DB_NAME:-gemini_hms_prod}?schema=public
       JWT_SECRET: ${JWT_SECRET}
       NODE_ENV: production
     depends_on:
-      postgres:
+      postgres_prod:
         condition: service_healthy
 
 volumes:

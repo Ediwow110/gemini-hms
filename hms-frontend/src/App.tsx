@@ -25,6 +25,14 @@ import { LabResultList } from './features/laboratory/LabResultList';
 import { LabApproval } from './features/laboratory/LabApproval';
 import { PrintPreview } from './features/laboratory/PrintPreview';
 
+// Specialized Operational & Compliance Panels
+import { EMRWorkspace } from './features/emr/EMRWorkspace';
+import { PharmacyHub } from './features/pharmacy/PharmacyHub';
+import { RadiologyCanvas } from './features/radiology/RadiologyCanvas';
+import { HRManagement } from './features/hr/HRManagement';
+import { ClaimsDashboard } from './features/claims/ClaimsDashboard';
+import { PatientMergeRequests } from './features/admin/PatientMergeRequests';
+
 import {
   SettingsDashboard,
   SettingsLayout,
@@ -41,7 +49,7 @@ import {
   NotificationTemplates,
   NotificationSettingsPage,
 } from './features/notifications';
-import { ComingSoon } from './components/ui/coming-soon';
+
 
 const router = createBrowserRouter([
   {
@@ -92,10 +100,12 @@ const router = createBrowserRouter([
           { path: 'lab/results/:id/encode', element: <LabEncode /> },
           { path: 'lab/results/:id/approval', element: <LabApproval /> },
           { path: 'lab/results/:id/print-preview', element: <PrintPreview /> },
-          { path: 'emr', element: <ComingSoon moduleName="EMR & Clinical Records" /> },
-          { path: 'radiology', element: <ComingSoon moduleName="Radiology Imaging" /> },
-          { path: 'pharmacy', element: <ComingSoon moduleName="Pharmacy Management" /> },
-          { path: 'hr', element: <ComingSoon moduleName="HR Management" /> },
+          { path: 'emr', element: <EMRWorkspace /> },
+          { path: 'radiology', element: <RadiologyCanvas /> },
+          { path: 'pharmacy', element: <PharmacyHub /> },
+          { path: 'hr', element: <HRManagement /> },
+          { path: 'claims', element: <ClaimsDashboard /> },
+          { path: 'admin/patient-merges', element: <PatientMergeRequests /> },
           { path: 'notifications', element: <NotificationCenter /> },
           { path: 'notifications/templates', element: <NotificationTemplates /> },
           { path: 'notifications/settings', element: <NotificationSettingsPage /> },

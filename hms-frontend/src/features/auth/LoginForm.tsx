@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormData } from "./login-schema";
-import { Eye, EyeOff, LogIn, Loader2, Building2 } from "lucide-react";
+import { Eye, EyeOff, LogIn, Loader2, Building2, ShieldCheck } from "lucide-react";
 import { apiClient } from "../../lib/api";
 
 interface Branch {
@@ -17,6 +17,11 @@ export const LoginForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [availableBranches, setAvailableBranches] = useState<Branch[] | null>(null);
   
+  // Phase 4 states
+  const [showMfaInput, setShowMfaInput] = useState(false);
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+
   const {
     register,
     handleSubmit,
@@ -35,9 +40,19 @@ export const LoginForm = () => {
     setError(null);
     try {
       const response = await apiClient.post("/v1/auth/login", data);
-      const { access_token, user } = response.data;
       
-      localStorage.setItem("token", access_token);
+      // Handle MFA step-up redirect
+      if (response.data.message === "MFA_REQUIRED" || response.status === 202) {
+        setMfaToken(response.data.mfaToken);
+        setShowMfaInput(true);
+        setIsLoading(false);
+        return;
+      }
+
+      const { accessToken, access_token, user } = response.data;
+      const token = accessToken || access_token;
+      
+      localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
 
       if (user.branchId) {
@@ -48,8 +63,50 @@ export const LoginForm = () => {
         setAvailableBranches(branchesRes.data);
       }
     } catch (err: unknown) {
-      const errorResponse = err as { response?: { data?: { message?: string } } };
+      const errorResponse = err as { response?: { status?: number; data?: { message?: string; mfaToken?: string } } };
+      if (errorResponse.response?.status === 202 || errorResponse.response?.data?.message === "MFA_REQUIRED") {
+        setMfaToken(errorResponse.response?.data?.mfaToken || null);
+        setShowMfaInput(true);
+        setIsLoading(false);
+        return;
+      }
       setError(errorResponse.response?.data?.message || "Login failed. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyMfa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mfaCode.length !== 6) {
+      setError("Verification code must be 6 digits.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.post(
+        "/v1/auth/mfa/verify", 
+        { code: mfaCode },
+        { headers: { Authorization: `Bearer ${mfaToken}` } }
+      );
+      
+      const { accessToken, access_token, user } = response.data;
+      const token = accessToken || access_token;
+      
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      if (user.branchId) {
+        window.location.assign("/");
+      } else {
+        const branchesRes = await apiClient.get("/v1/auth/branches");
+        setAvailableBranches(branchesRes.data);
+        setShowMfaInput(false);
+      }
+    } catch (err: unknown) {
+      const errorResponse = err as { response?: { data?: { message?: string } } };
+      setError(errorResponse.response?.data?.message || "MFA Code Verification failed.");
     } finally {
       setIsLoading(false);
     }
@@ -59,9 +116,10 @@ export const LoginForm = () => {
     setIsLoading(true);
     try {
       const response = await apiClient.post("/v1/auth/select-branch", { branchId });
-      const { access_token, user } = response.data;
+      const { accessToken, access_token, user } = response.data;
+      const token = accessToken || access_token;
       
-      localStorage.setItem("token", access_token);
+      localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
       window.location.assign("/");
     } catch {
@@ -70,6 +128,69 @@ export const LoginForm = () => {
       setIsLoading(false);
     }
   };
+
+  if (showMfaInput) {
+    return (
+      <form onSubmit={handleVerifyMfa} className="space-y-6 w-full animate-fade-in">
+        <div className="text-center space-y-2">
+          <div className="mx-auto w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-1 animate-pulse">
+            <ShieldCheck className="h-6 w-6 text-indigo-600" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900">Security Verification</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+            Multi-factor authentication is required for your role. Please enter the 6-digit TOTP code from your authenticator app.
+          </p>
+        </div>
+
+        {error && (
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-sm font-medium animate-shake">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Verification Code
+          </label>
+          <input
+            type="text"
+            maxLength={6}
+            value={mfaCode}
+            onChange={e => setMfaCode(e.target.value.replace(/\D/g, ''))}
+            placeholder="e.g. 123456"
+            className="input text-center text-lg font-extrabold tracking-widest font-mono py-3"
+            autoFocus
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading || mfaCode.length !== 6}
+          className="btn btn-primary w-full justify-center py-3 text-sm gap-2"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Verifying Code...
+            </>
+          ) : (
+            <>
+              <LogIn className="h-4 w-4" />
+              Verify & Authenticate
+            </>
+          )}
+        </button>
+
+        <button 
+          type="button"
+          onClick={() => { setShowMfaInput(false); localStorage.clear(); setMfaCode(""); }}
+          className="text-xs font-semibold text-slate-400 hover:text-slate-600 w-full text-center hover:underline cursor-pointer"
+        >
+          Back to Login
+        </button>
+      </form>
+    );
+  }
 
   if (availableBranches) {
     return (

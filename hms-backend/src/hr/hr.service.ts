@@ -443,4 +443,91 @@ export class HrService {
       orderBy: { name: 'asc' },
     });
   }
+
+  async assignEmployeeToBranch(
+    tenantId: string,
+    actorId: string,
+    employeeId: string,
+    branchId: string,
+    scheduleData: { isPrimary?: boolean } = {},
+  ) {
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. Validate employee and branch belong to the same isolated tenantId context
+      const employee = await tx.employee.findFirst({
+        where: { id: employeeId, tenantId },
+      });
+      if (!employee) {
+        throw new NotFoundException('Employee not found');
+      }
+
+      const branch = await tx.branch.findFirst({
+        where: { id: branchId, tenantId },
+      });
+      if (!branch) {
+        throw new NotFoundException('Branch not found');
+      }
+
+      // 2. Enforce database-level overlap check across multiple physical branches
+      const activeAssignments = await tx.employeeBranch.findMany({
+        where: { employeeId, isActive: true },
+      });
+
+      const hasOtherBranchActive = activeAssignments.some(
+        (a) => a.branchId !== branchId,
+      );
+
+      if (hasOtherBranchActive) {
+        throw new BadRequestException(
+          'Assignment introduces calendar timeline overlaps for the same employee asset across multiple physical branches.',
+        );
+      }
+
+      // 3. Upsert or create the EmployeeBranch record
+      const existing = await tx.employeeBranch.findUnique({
+        where: {
+          tenantId_employeeId_branchId: {
+            tenantId,
+            employeeId,
+            branchId,
+          },
+        },
+      });
+
+      let employeeBranch;
+      if (existing) {
+        employeeBranch = await tx.employeeBranch.update({
+          where: { id: existing.id },
+          data: {
+            isActive: true,
+            isPrimary: scheduleData.isPrimary ?? existing.isPrimary,
+          },
+        });
+      } else {
+        employeeBranch = await tx.employeeBranch.create({
+          data: {
+            tenantId,
+            employeeId,
+            branchId,
+            isActive: true,
+            isPrimary: scheduleData.isPrimary ?? false,
+          },
+        });
+      }
+
+      // 4. Log workforce audit log
+      await this.audit.log(
+        {
+          tenantId,
+          userId: actorId,
+          eventKey: 'WORKFORCE_BRANCH_ASSIGNED',
+          recordType: 'EmployeeBranch',
+          recordId: employeeBranch.id,
+          newValues: employeeBranch,
+        },
+        tx,
+      );
+
+      return employeeBranch;
+    });
+  }
 }

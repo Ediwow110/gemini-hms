@@ -1,0 +1,14 @@
+{
+  "policyName": "Silicon-Hardware-Secure-Enclave",
+  "hardwareAttestationRequired": true,
+  "encryptedPageCacheSizeMB": 64,
+  "enforcementRules": {
+    "requireAttestationSignature": true,
+    "restrictDecryptionToEnclaveOnly": true,
+    "failClosedOnMeasurementDivergence": true
+  },
+  "trustedMeasurementHashes": {
+    "MRENCLAVE": "a4f89d38c2ef4b98d28a3f89e2cfb49e29a3f89c2efb49e298df3a89e2cfb4a9",
+    "MRSIGNER": "e4f8d38c9b2ef4b98d28a3f89e2cfb49e29a3f89c2efb49e298df3a89e2cfb4a9"
+  }
+}

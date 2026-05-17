@@ -1,0 +1,7 @@
+# inventory_items template: pharmacy and supply onboarding layout
+# Note: Do not alter column headers. Fields marked with * are required.
+# category must be exactly DRUG or SUPPLY or EQUIPMENT.
+name*,sku*,category*,unit*,reorderLevel*,price*
+Paracetamol 500mg,PHAR-PARA500,DRUG,TABLET,100,1.50
+Amoxicillin 500mg,PHAR-AMOX500,DRUG,CAPSULE,50,4.50
+Surgical Gloves Size 7.5,SUPP-GLV75,SUPPLY,PAIR,200,15.00
