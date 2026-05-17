@@ -22,6 +22,29 @@ async function main() {
   });
   console.log('Tenant created:', tenant.name);
 
+  // 1a. Create Demo Tenants for Multi-Tenancy testing
+  const tenantAlpha = await prisma.tenant.upsert({
+    where: { id: '00000000-0000-0000-0000-00000000000a' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-00000000000a',
+      name: 'tenant-alpha',
+      status: 'ACTIVE',
+    },
+  });
+  console.log('Demo Tenant Alpha created:', tenantAlpha.name);
+
+  const tenantBeta = await prisma.tenant.upsert({
+    where: { id: '00000000-0000-0000-0000-00000000000b' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-00000000000b',
+      name: 'tenant-beta',
+      status: 'ACTIVE',
+    },
+  });
+  console.log('Demo Tenant Beta created:', tenantBeta.name);
+
   // 1b. Create a default Branch for the default Tenant
   const branch = await prisma.branch.upsert({
     where: { id: '00000000-0000-0000-0000-000000000010' },

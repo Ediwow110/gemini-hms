@@ -32,6 +32,7 @@ import { ProcurementModule } from './procurement/procurement.module';
 import { ReferralPartnersModule } from './referral-partners/referral-partners.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MfaGuard } from './auth/guards/mfa.guard';
+import { TenantGuard } from './auth/guards/tenant.guard';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 import { AuditContextMiddleware } from './audit/audit-context.middleware';
 
@@ -76,6 +77,7 @@ import { AuditContextMiddleware } from './audit/audit-context.middleware';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: MfaGuard },
+    { provide: APP_GUARD, useClass: TenantGuard },
     { provide: APP_INTERCEPTOR, useClass: PhiMaskingInterceptor },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
   ],
