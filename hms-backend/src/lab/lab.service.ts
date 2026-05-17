@@ -13,6 +13,7 @@ import {
 import { ApprovalsService } from '../approvals/approvals.service';
 import { AuditService } from '../audit/audit.service';
 import { Prisma } from '@prisma/client';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class LabService {
@@ -240,45 +241,72 @@ export class LabService {
     branchId: string,
     id: string,
   ) {
-    const result = await this.findOne(tenantId, branchId, id);
-
-    if (result.status !== 'APPROVED') {
-      throw new BadRequestException('Only approved results can be released');
-    }
-
-    // Atomic Release Transaction (Section 13)
     return this.prisma.$transaction(async (tx) => {
-      const updateResult = await tx.labResult.updateMany({
+      const result = await tx.labResult.findFirst({
         where: { id, order: { tenantId, branchId } },
+        include: { order: true },
+      });
+
+      if (!result) {
+        throw new NotFoundException('Lab result not found');
+      }
+
+      if (result.status === 'RELEASED') {
+        throw new ConflictException('Result already released');
+      }
+
+      if (result.status !== 'APPROVED') {
+        throw new BadRequestException('Result must be APPROVED before release');
+      }
+
+      const released = await tx.labResult.update({
+        where: { id },
         data: { status: 'RELEASED', lockedAt: new Date() },
       });
 
-      if (updateResult.count === 0) {
-        throw new NotFoundException('Lab result not found');
-      }
-
-      const updated = await tx.labResult.findFirst({
-        where: { id, order: { tenantId, branchId } },
+      await tx.labResultSignature.create({
+        data: {
+          labResultId: released.id,
+          signedById: userId,
+          signedAt: new Date(),
+          signatureHash: crypto
+            .createHash('sha256')
+            .update(`${released.id}-${userId}-${Date.now()}`)
+            .digest('hex'),
+        },
       });
 
-      if (!updated?.lockedAt) {
-        throw new NotFoundException('Lab result not found');
-      }
+      await tx.order.update({
+        where: { id: released.orderId },
+        data: { status: 'RELEASED' },
+      });
+
+      await tx.notificationOutbox.create({
+        data: {
+          recipientId: result.order.patientId,
+          type: 'LAB_RESULT_READY',
+          payload: JSON.stringify({
+            resultId: released.id,
+            orderId: result.orderId,
+          }),
+          scheduledAt: new Date(),
+        },
+      });
 
       await this.audit.log(
         {
           tenantId,
           userId,
-          eventKey: 'RESULT_RELEASED',
+          eventKey: 'LAB_RESULT_RELEASED',
           recordType: 'LabResult',
           recordId: id,
-          newValues: { releasedAt: updated.lockedAt },
+          newValues: { status: 'RELEASED', releasedAt: released.lockedAt },
         },
         tx,
         branchId,
       );
 
-      return updated;
+      return released;
     });
   }
 

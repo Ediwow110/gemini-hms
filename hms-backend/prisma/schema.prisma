@@ -608,6 +608,7 @@ model LabResult {
   tenant   Tenant             @relation(fields: [tenantId], references: [id])
   order    Order              @relation(fields: [orderId], references: [id])
   versions LabResultVersion[]
+  signature LabResultSignature?
 
   @@map("lab_results")
 }
@@ -626,6 +627,29 @@ model LabResultVersion {
   labResult LabResult @relation(fields: [labResultId], references: [id])
 
   @@map("lab_result_versions")
+}
+
+model LabResultSignature {
+  id            String   @id @default(uuid()) @db.Uuid
+  labResultId   String   @unique @map("lab_result_id") @db.Uuid
+  labResult     LabResult @relation(fields: [labResultId], references: [id])
+  signedById    String   @map("signed_by_id") @db.Uuid
+  signedAt      DateTime @map("signed_at")
+  signatureHash String   @map("signature_hash")
+
+  @@map("lab_result_signatures")
+}
+
+model NotificationOutbox {
+  id          String   @id @default(uuid()) @db.Uuid
+  recipientId String   @map("recipient_id") @db.Uuid
+  type        String
+  payload     String
+  scheduledAt DateTime @map("scheduled_at")
+  sentAt      DateTime? @map("sent_at")
+  status      String   @default("PENDING")
+
+  @@map("notification_outbox")
 }
 
 model AuditLog {
