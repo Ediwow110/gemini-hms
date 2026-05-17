@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { auditStorage } from './audit-context.middleware';
 
 export interface AuditLogData {
   tenantId: string;
@@ -14,6 +15,13 @@ export interface AuditLogData {
   recordId: string;
   oldValues?: any;
   newValues?: any;
+}
+
+export interface AuditContext {
+  ipAddress?: string;
+  userAgent?: string;
+  activeRole?: string;
+  sessionId?: string;
 }
 
 export interface AuditQueryDto {
@@ -36,8 +44,16 @@ export class AuditService {
     data: AuditLogData,
     tx?: Prisma.TransactionClient,
     branchId?: string,
+    context?: AuditContext,
   ) {
     const db = tx || this.prisma;
+    const req = auditStorage.getStore() as any;
+    
+    const ipAddress = context?.ipAddress ?? req?.headers?.['x-forwarded-for'] ?? req?.ip;
+    const userAgent = context?.userAgent ?? req?.headers?.['user-agent'];
+    const activeRole = context?.activeRole ?? req?.user?.role;
+    const sessionId = context?.sessionId ?? req?.user?.sessionId;
+
     return db.auditLog.create({
       data: {
         tenantId: data.tenantId,
@@ -48,6 +64,10 @@ export class AuditService {
         recordId: data.recordId,
         oldValues: data.oldValues,
         newValues: data.newValues,
+        ipAddress: ipAddress || null,
+        userAgent: userAgent || null,
+        activeRole: activeRole || null,
+        sessionId: sessionId || null,
       },
     });
   }
@@ -109,6 +129,10 @@ export class AuditService {
         recordType: true,
         recordId: true,
         createdAt: true,
+        ipAddress: true,
+        userAgent: true,
+        activeRole: true,
+        sessionId: true,
         oldValues: isSuperAdmin,
         newValues: isSuperAdmin,
       },
@@ -147,6 +171,10 @@ export class AuditService {
         recordType: true,
         recordId: true,
         createdAt: true,
+        ipAddress: true,
+        userAgent: true,
+        activeRole: true,
+        sessionId: true,
         oldValues: true,
         newValues: true,
       },

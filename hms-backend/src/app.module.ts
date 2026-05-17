@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -33,6 +33,7 @@ import { ReferralPartnersModule } from './referral-partners/referral-partners.mo
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MfaGuard } from './auth/guards/mfa.guard';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
+import { AuditContextMiddleware } from './audit/audit-context.middleware';
 
 @Module({
   imports: [
@@ -79,4 +80,8 @@ import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AuditContextMiddleware).forRoutes('*');
+  }
+}
