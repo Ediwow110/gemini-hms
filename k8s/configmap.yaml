@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hms-backend-config
+  namespace: default
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  DATABASE_HOST: "postgres-service.default.svc.cluster.local"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "hms_prod"
