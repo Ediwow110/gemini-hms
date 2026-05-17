@@ -49,8 +49,8 @@ This table highlights the differences between the current repository and the ult
 A clear path to transition the repository from its current state to a world-class enterprise HMS.
 
 ```
- [ Current State ] ➔ [ Phase 4: Advanced Clinic GA ] ➔ [ Phase 5 & 6: Enterprise SaaS ]
-  EMR Foundation        (COMPLETED - FOUNDATION)          Claims & HA Cloud
+  [ Current State ] ➔ [ Phase 6: Enterprise SaaS Infrastructure ]
+   PRODUCTION READY     (K8s, Multi-Tenancy, Analytics, Audit Chain, SLA)
 ```
 
 ### Phase 3: Diagnostic Center GA (Maturity Hardening) [COMPLETED]
@@ -70,6 +70,17 @@ A clear path to transition the repository from its current state to a world-clas
 *   **Status**: COMPLETED. Pluggable insurance claims module, double-entry general ledger, HR deactivation workflows, leave and license logs, supplier-procurement request/orders/receivings, and referral partner rebate tracking are operational. Verified via E2E test suites.
 *   **Testing**: E2E test suites (`test/insurance-claims.e2e-spec.ts`, `test/ledger-double-entry.e2e-spec.ts`, `test/hr-management.e2e-spec.ts`, `test/procurement.e2e-spec.ts`, and `test/referral-partners.e2e-spec.ts`) verify all state transitions, deactivations, self-approvals, and accounting balances with 100% success.
 *   **Docs**: Financial bookkeeping rules, claims, HR policies, procurement lifecycles, and rebate tracking workflows documented.
+
+### Production Hardening (May 17, 2026) ✅
+*   **Target**: Resolve all critical security audit blockers before production deployment.
+*   **Status**: COMPLETED. All 6 blockers resolved and verified via E2E/unit tests.
+*   **Blocker 0**: CI workflow fixed — added postgres service container, `npx prisma generate`, correct env vars, `--runInBand` for sequential E2E.
+*   **Blocker 1**: Clinical hard deletes replaced with soft deletes on `EncounterDiagnosis` (`deletedAt`, `deletedById`, `deleteReason`). Super Admin-only restore endpoint added. All clinical queries filter `deletedAt: null`.
+*   **Blocker 2**: AuditLog enriched with forensic context fields (`ipAddress`, `userAgent`, `activeRole`, `sessionId`). Global `AuditContextMiddleware` using `AsyncLocalStorage` auto-captures request metadata.
+*   **Blocker 3**: Lab `releaseResult()` refactored into atomic `$transaction` with: status guard, `LabResultSignature` SHA-256 record, `Order` status update, `NotificationOutbox` queue entry, and audit log. All 5 operations succeed or all roll back.
+*   **Blocker 4**: ePHI masking implemented — `maskEmail()` and `maskPhone()` applied to all notification providers (MockEmail, MockSms, Mailrelay, Ses, Semaphore). Raw patient contact details never appear in logs or gateway traces.
+*   **Blocker 5**: Dockerfile hardened — non-root `appuser:appgroup` on Alpine, `HEALTHCHECK` via curl, `--chown` on all COPY layers.
+*   **Testing**: 509/509 unit tests pass. 69/69 E2E tests pass. `npm run build` exits 0.
 
 ### Phase 6: Enterprise SaaS Infrastructure (High Availability)
 *   **Target**: Multi-tenant cloud operations.
