@@ -3792,7 +3792,7 @@ export class AdminService {
 
   async getHealth() {
     const timestamp = new Date().toISOString();
-    const metrics = this.metricsService.getMetrics();
+    const metrics = await this.metricsService.getMetrics();
 
     // Compute backup configuration independently from DB status (outside try/catch)
     const backupConfig = !!(
