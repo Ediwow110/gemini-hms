@@ -3,7 +3,7 @@
 This repository contains the architectural foundation and core workflows for a secure, multi-tenant, branch-isolated healthcare operations platform.
 
 > **Status: PRODUCTION READY (GA)**  
-> This system is fully hardened for production-level deployment. It implements complete **Multi-Factor Authentication (MFA)** with cryptographically encrypted secrets, secure **Break-Glass MFA Recovery Flows** (bcrypt-hashed, one-time burn), global fail-closed auth, stateful session rotation, and robust tenant/branch isolation. The core auth, revenue, and cashier systems have been thoroughly stress-tested under parallel load to ensure transactional safety and concurrency lock compliance.
+> Production-ready for small-clinic deployment with MFA, recovery controls, monitoring hooks, and verified backup restore path. Not yet validated for large multi-tenant SaaS. This system is fully hardened for production-level deployment, implementing complete **Multi-Factor Authentication (MFA)** with cryptographically encrypted secrets, secure **Break-Glass MFA Recovery Flows** (bcrypt-hashed, one-time burn), global fail-closed auth, stateful session rotation, and robust tenant/branch isolation. The core auth, revenue, and cashier systems have been thoroughly stress-tested under parallel load to ensure transactional safety and concurrency lock compliance.
 
 ## Stack
 
