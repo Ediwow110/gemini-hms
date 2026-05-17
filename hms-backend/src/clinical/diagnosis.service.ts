@@ -106,6 +106,7 @@ export class DiagnosisService {
     userId: string,
     encounterId: string,
     diagnosisId: string,
+    reason?: string,
   ) {
     try {
       const encounter = await this.prisma.encounter.findFirst({
@@ -123,7 +124,7 @@ export class DiagnosisService {
       }
 
       const diagnosis = await this.prisma.encounterDiagnosis.findFirst({
-        where: { id: diagnosisId, encounterId },
+        where: { id: diagnosisId, encounterId, deletedAt: null },
       });
 
       if (!diagnosis) {
@@ -131,8 +132,13 @@ export class DiagnosisService {
       }
 
       return await this.prisma.$transaction(async (tx) => {
-        await tx.encounterDiagnosis.delete({
+        await tx.encounterDiagnosis.update({
           where: { id: diagnosisId },
+          data: {
+            deletedAt: new Date(),
+            deletedById: userId,
+            deleteReason: reason ?? 'administrative_removal',
+          },
         });
 
         await this.audit.log(
@@ -166,5 +172,12 @@ export class DiagnosisService {
       );
       throw error;
     }
+  }
+
+  async restore(diagnosisId: string, userId: string) {
+    return this.prisma.encounterDiagnosis.update({
+      where: { id: diagnosisId },
+      data: { deletedAt: null, deletedById: null, deleteReason: null },
+    });
   }
 }

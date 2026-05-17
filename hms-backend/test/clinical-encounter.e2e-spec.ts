@@ -182,6 +182,41 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
 
     expect(diagRes.body.id).toBeDefined();
     expect(diagRes.body.icd10Code.code).toBe('A09');
+    const diagnosisId = diagRes.body.id;
+
+    // Remove diagnosis -> should soft-delete and return 200
+    await request(app.getHttpServer())
+      .delete(`/clinical/encounters/${encounterId}/diagnoses/${diagnosisId}`)
+      .expect(200);
+
+    // Get encounter -> diagnoses list should be empty (since it's filtered by deletedAt: null)
+    MockJwtAuthGuard.user.roles = ['Doctor'];
+    const encounterAfterDelete = await request(app.getHttpServer())
+      .get(`/clinical/encounters/${encounterId}`)
+      .expect(200);
+    expect(encounterAfterDelete.body.encounterDiagnoses.length).toBe(0);
+
+    // Verify DB record still exists but is marked as deleted
+    const rawDbRecord = await prisma.encounterDiagnosis.findUnique({
+      where: { id: diagnosisId },
+    });
+    expect(rawDbRecord).not.toBeNull();
+    expect(rawDbRecord.deletedAt).not.toBeNull();
+    expect(rawDbRecord.deleteReason).toBe('administrative_removal');
+
+    // Restore diagnosis (Super Admin only)
+    MockJwtAuthGuard.user.roles = ['Super Admin'];
+    await request(app.getHttpServer())
+      .delete(`/clinical/diagnoses/${diagnosisId}/restore`)
+      .expect(200);
+
+    // Get encounter again -> diagnosis should be present again!
+    MockJwtAuthGuard.user.roles = ['Doctor'];
+    const encounterAfterRestore = await request(app.getHttpServer())
+      .get(`/clinical/encounters/${encounterId}`)
+      .expect(200);
+    expect(encounterAfterRestore.body.encounterDiagnoses.length).toBe(1);
+    expect(encounterAfterRestore.body.encounterDiagnoses[0].id).toBe(diagnosisId);
 
     // 8. Close the encounter
     await request(app.getHttpServer())

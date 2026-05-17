@@ -114,6 +114,7 @@ export class EncounterService {
           orderBy: { createdAt: 'asc' },
         },
         encounterDiagnoses: {
+          where: { deletedAt: null },
           include: {
             icd10Code: true,
           },

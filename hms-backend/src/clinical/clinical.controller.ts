@@ -149,6 +149,15 @@ export class ClinicalController {
     );
   }
 
+  @Delete('diagnoses/:id/restore')
+  @Roles('Super Admin')
+  async restoreDiagnosis(
+    @Param('id') id: string,
+    @GetUser('userId') userId: string,
+  ) {
+    return this.diagnosisService.restore(id, userId);
+  }
+
   @Post('encounters/:id/prescriptions')
   @Roles('Doctor', 'Super Admin', 'Branch Admin')
   @RequireBranchContext()

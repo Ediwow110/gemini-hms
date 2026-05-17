@@ -368,6 +368,9 @@ model EncounterDiagnosis {
   isPrimary    Boolean  @default(false) @map("is_primary")
   notes        String?  @db.Text
   createdAt    DateTime @default(now()) @map("created_at")
+  deletedAt    DateTime? @map("deleted_at")
+  deletedById  String?   @map("deleted_by_id") @db.Uuid
+  deleteReason String?   @map("delete_reason")
 
   encounter    Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   icd10Code    Icd10Code @relation(fields: [icd10CodeId], references: [id], onDelete: Cascade)
