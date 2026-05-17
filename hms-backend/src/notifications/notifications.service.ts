@@ -215,4 +215,24 @@ export class NotificationsService {
       priority: 'NORMAL',
     });
   }
+
+  static maskEmail(email: string): string {
+    if (!email) return '';
+    const parts = email.split('@');
+    if (parts.length !== 2) return email;
+    const mailbox = parts[0];
+    const domain = parts[1];
+    if (mailbox.length <= 2) {
+      return `${mailbox}*****@${domain}`;
+    }
+    return `${mailbox.substring(0, 2)}*****@${domain}`;
+  }
+
+  static maskPhone(phone: string): string {
+    if (!phone) return '';
+    if (phone.length <= 5) return phone;
+    const prefix = phone.substring(0, 3);
+    const suffix = phone.substring(phone.length - 2);
+    return `${prefix}*****${suffix}`;
+  }
 }

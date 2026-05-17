@@ -23,6 +23,26 @@ export interface SmsProvider {
   ): Promise<{ success: boolean; messageId?: string; error?: string }>;
 }
 
+export function maskEmail(email: string): string {
+  if (!email) return '';
+  const parts = email.split('@');
+  if (parts.length !== 2) return email;
+  const mailbox = parts[0];
+  const domain = parts[1];
+  if (mailbox.length <= 2) {
+    return `${mailbox}*****@${domain}`;
+  }
+  return `${mailbox.substring(0, 2)}*****@${domain}`;
+}
+
+export function maskPhone(phone: string): string {
+  if (!phone) return '';
+  if (phone.length <= 5) return phone;
+  const prefix = phone.substring(0, 3);
+  const suffix = phone.substring(phone.length - 2);
+  return `${prefix}*****${suffix}`;
+}
+
 // ---------------------------------------------------------
 // Mock Providers
 // ---------------------------------------------------------
@@ -30,7 +50,7 @@ export interface SmsProvider {
 export class MockEmailProvider implements EmailProvider {
   async sendEmail(payload: EmailPayload) {
     console.log(
-      `[MockEmailProvider] Sending email to ${payload.to}: ${payload.subject}`,
+      `[MockEmailProvider] Sending email to ${maskEmail(payload.to)}: ${payload.subject}`,
     );
     return { success: true, messageId: `mock-email-${Date.now()}` };
   }
@@ -39,7 +59,7 @@ export class MockEmailProvider implements EmailProvider {
 export class MockSmsProvider implements SmsProvider {
   async sendSms(payload: SmsPayload) {
     console.log(
-      `[MockSmsProvider] Sending SMS to ${payload.to}: ${payload.body.substring(0, 50)}...`,
+      `[MockSmsProvider] Sending SMS to ${maskPhone(payload.to)}: ${payload.body.substring(0, 50)}...`,
     );
     return { success: true, messageId: `mock-sms-${Date.now()}` };
   }
@@ -76,7 +96,7 @@ export class MailrelayProvider implements EmailProvider {
   }
   async sendEmail(payload: EmailPayload) {
     // In future: Actual mailrelay integration logic
-    console.log(`[MailrelayProvider] Sending email to ${payload.to}`);
+    console.log(`[MailrelayProvider] Sending email to ${maskEmail(payload.to)}`);
     return { success: true, messageId: `mailrelay-${Date.now()}` };
   }
 }
@@ -93,7 +113,7 @@ export class SesProvider implements EmailProvider {
     }
   }
   async sendEmail(payload: EmailPayload) {
-    console.log(`[SesProvider] Sending email to ${payload.to}`);
+    console.log(`[SesProvider] Sending email to ${maskEmail(payload.to)}`);
     return { success: true, messageId: `ses-${Date.now()}` };
   }
 }
@@ -105,7 +125,7 @@ export class SemaphoreProvider implements SmsProvider {
     }
   }
   async sendSms(payload: SmsPayload) {
-    console.log(`[SemaphoreProvider] Sending SMS to ${payload.to}`);
+    console.log(`[SemaphoreProvider] Sending SMS to ${maskPhone(payload.to)}`);
     return { success: true, messageId: `semaphore-${Date.now()}` };
   }
 }

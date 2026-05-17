@@ -202,3 +202,19 @@ describe('Provider Validation', () => {
     }).toThrow('AWS_REGION is missing for SES provider');
   });
 });
+
+describe('NotificationsService ePHI Masking', () => {
+  it('should correctly mask email addresses', () => {
+    expect(NotificationsService.maskEmail('patient@gmail.com')).toBe('pa*****@gmail.com');
+    expect(NotificationsService.maskEmail('ab@domain.com')).toBe('ab*****@domain.com');
+    expect(NotificationsService.maskEmail('a@domain.com')).toBe('a*****@domain.com');
+    expect(NotificationsService.maskEmail('')).toBe('');
+  });
+
+  it('should correctly mask phone numbers', () => {
+    expect(NotificationsService.maskPhone('+639171234567')).toBe('+63*****67');
+    expect(NotificationsService.maskPhone('+1234567890')).toBe('+12*****90');
+    expect(NotificationsService.maskPhone('123')).toBe('123');
+    expect(NotificationsService.maskPhone('')).toBe('');
+  });
+});
