@@ -24,6 +24,7 @@ import { ReportsModule } from './reports/reports.module';
 import { AdminModule } from './admin/admin.module';
 import { EncountersModule } from './encounters/encounters.module';
 import { EmrModule } from './emr/emr.module';
+import { ClinicalModule } from './clinical/clinical.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MfaGuard } from './auth/guards/mfa.guard';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
@@ -55,6 +56,7 @@ import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
     AdminModule,
     EncountersModule,
     EmrModule,
+    ClinicalModule,
   ],
   controllers: [AppController],
   providers: [

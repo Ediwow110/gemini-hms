@@ -100,6 +100,9 @@ model User {
   mergeRequested     PatientMergeRequest[] @relation("MergeRequested")
   mergeApproved      PatientMergeRequest[] @relation("MergeApproved")
   encountersAttending Encounter[] @relation("EncounterAttending")
+  encountersAsDoctor  Encounter[]       @relation("EncounterDoctor")
+  clinicalNotesAuthor ClinicalNote[]    @relation("ClinicalNoteAuthor")
+  clinicalNotesLocker ClinicalNote[]    @relation("ClinicalNoteLocker")
   sessions           Session[]
   mfaRecoveryCodes   UserMfaRecoveryCode[]
 
@@ -191,11 +194,13 @@ model UserBranch {
 }
 
 enum EncounterStatus {
+  OPEN
+  CLOSED
+  CANCELLED
   PLANNED
   ARRIVED
   IN_PROGRESS
   FINISHED
-  CANCELLED
   ENTERED_IN_ERROR
   UNKNOWN
 }
@@ -208,13 +213,16 @@ enum NoteType {
 }
 
 model Encounter {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  branchId    String   @map("branch_id") @db.Uuid
-  patientId   String   @map("patient_id") @db.Uuid
-  attendingId String?  @map("attending_id") @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
+  patientId      String   @map("patient_id") @db.Uuid
+  attendingId    String?  @map("attending_id") @db.Uuid
+  doctorId       String?  @map("doctor_id") @db.Uuid
+  encounteredAt  DateTime @default(now()) @map("encountered_at")
+  chiefComplaint String   @default("") @map("chief_complaint") @db.Text
 
-  status      EncounterStatus @default(IN_PROGRESS)
+  status      EncounterStatus @default(OPEN)
   type        String?  // OUTPATIENT, INPATIENT, EMERGENCY, etc.
 
   startedAt   DateTime @default(now()) @map("started_at")
@@ -228,14 +236,16 @@ model Encounter {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  vitals        Vitals[]
-  diagnoses     Diagnosis[]
-  clinicalNotes ClinicalNote[]
+  vitals             Vitals[]
+  diagnoses          Diagnosis[]
+  encounterDiagnoses EncounterDiagnosis[]
+  clinicalNotes      ClinicalNote[]
 
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   attending User?    @relation("EncounterAttending", fields: [attendingId], references: [id])
+  doctor    User?    @relation("EncounterDoctor", fields: [doctorId], references: [id])
 
   @@index([tenantId, patientId])
   @@index([tenantId, status])
@@ -290,8 +300,16 @@ model ClinicalNote {
   tenantId    String   @map("tenant_id") @db.Uuid
   encounterId String   @map("encounter_id") @db.Uuid
 
-  noteType    NoteType @map("note_type")
-  content     String   @db.Text
+  noteType    NoteType @default(PROGRESS) @map("note_type")
+  content     String   @default("") @db.Text
+
+  authorId    String?  @map("author_id") @db.Uuid
+  subjective  String?  @db.Text
+  objective   String?  @db.Text
+  assessment  String?  @db.Text
+  plan        String?  @db.Text
+  lockedAt    DateTime? @map("locked_at")
+  lockedBy    String?  @map("locked_by") @db.Uuid
 
   createdBy String @map("created_by") @db.Uuid
   updatedBy String @map("updated_by") @db.Uuid
@@ -299,9 +317,36 @@ model ClinicalNote {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  author    User?     @relation("ClinicalNoteAuthor", fields: [authorId], references: [id])
+  locker    User?     @relation("ClinicalNoteLocker", fields: [lockedBy], references: [id])
 
   @@index([tenantId, encounterId])
   @@map("clinical_notes")
+}
+
+model Icd10Code {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  description String   @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  diagnoses   EncounterDiagnosis[]
+
+  @@map("icd_10_codes")
+}
+
+model EncounterDiagnosis {
+  id           String   @id @default(uuid()) @db.Uuid
+  encounterId  String   @map("encounter_id") @db.Uuid
+  icd10CodeId  String   @map("icd10_code_id") @db.Uuid
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  encounter    Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  icd10Code    Icd10Code @relation(fields: [icd10CodeId], references: [id], onDelete: Cascade)
+
+  @@map("encounter_diagnoses")
 }
 
 model Patient {
