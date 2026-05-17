@@ -8,6 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { RolesGuard } from '../src/auth/guards/roles.guard';
 import { ClinicalModule } from '../src/clinical/clinical.module';
+import { EncounterStatus, PrescriptionStatus } from '@prisma/client';
 
 describe('Advanced Clinical EMR Features (e2e)', () => {
   let app: INestApplication;
@@ -171,7 +172,7 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
         patientId,
         attendingId: doctorId,
         doctorId,
-        status: 'OPEN',
+        status: EncounterStatus.OPEN,
         createdBy: doctorId,
         updatedBy: doctorId,
       },
@@ -192,7 +193,7 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
         frequency: 'Three times daily',
         duration: '7 days',
         notes: 'Take with food.',
-        status: 'ACTIVE',
+        status: PrescriptionStatus.ACTIVE,
       },
     });
 
