@@ -3,25 +3,38 @@ import { LabService } from './lab.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { AuditService } from '../audit/audit.service';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 describe('LabService Branch Isolation', () => {
   let service: LabService;
   let prisma: any;
 
   beforeEach(async () => {
+    const prismaMock = {
+      labResult: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        updateMany: jest.fn(),
+        update: jest.fn(),
+      },
+      labResultSignature: {
+        create: jest.fn(),
+      },
+      order: {
+        update: jest.fn(),
+      },
+      notificationOutbox: {
+        create: jest.fn(),
+      },
+    };
+    prismaMock.$transaction = jest.fn().mockImplementation(async (cb) => await cb(prismaMock));
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LabService,
         {
           provide: PrismaService,
-          useValue: {
-            labResult: {
-              findFirst: jest.fn(),
-              findMany: jest.fn(),
-              updateMany: jest.fn(),
-            },
-          },
+          useValue: prismaMock,
         },
         {
           provide: AuditService,
@@ -151,6 +164,55 @@ describe('LabService Branch Isolation', () => {
       await expect(
         service.releaseResult(tenantId, 'user-1', otherBranchId, labResultId),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should release an approved result with signature and outbox', async () => {
+      const mockResult = {
+        id: labResultId,
+        status: 'APPROVED',
+        orderId: 'order-1',
+        order: { tenantId, branchId, patientId: 'patient-1' },
+        lockedAt: new Date(),
+      };
+      prisma.labResult.findFirst.mockResolvedValue(mockResult);
+      prisma.labResult.update.mockResolvedValue({
+        ...mockResult,
+        status: 'RELEASED',
+      });
+      prisma.labResultSignature.create.mockResolvedValue({ id: 'sig-1' });
+      prisma.order.update.mockResolvedValue({ id: 'order-1', status: 'RELEASED' });
+      prisma.notificationOutbox.create.mockResolvedValue({ id: 'notif-1' });
+
+      const result = await service.releaseResult(tenantId, 'user-1', branchId, labResultId);
+
+      expect(result.status).toBe('RELEASED');
+      expect(prisma.labResult.update).toHaveBeenCalled();
+      expect(prisma.labResultSignature.create).toHaveBeenCalled();
+      expect(prisma.notificationOutbox.create).toHaveBeenCalled();
+    });
+
+    it('should reject release if already RELEASED', async () => {
+      prisma.labResult.findFirst.mockResolvedValue({
+        id: labResultId,
+        status: 'RELEASED',
+        order: { tenantId, branchId },
+      });
+
+      await expect(
+        service.releaseResult(tenantId, 'user-1', branchId, labResultId),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should reject release if not APPROVED', async () => {
+      prisma.labResult.findFirst.mockResolvedValue({
+        id: labResultId,
+        status: 'PENDING',
+        order: { tenantId, branchId },
+      });
+
+      await expect(
+        service.releaseResult(tenantId, 'user-1', branchId, labResultId),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

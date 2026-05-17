@@ -20,10 +20,20 @@ describe('LabService Audit Coupling (Batch 8)', () => {
       labResult: {
         findFirst: jest.fn(),
         updateMany: jest.fn(),
+        update: jest.fn(),
         count: jest.fn(),
       },
       labResultVersion: {
         count: jest.fn(),
+        create: jest.fn(),
+      },
+      labResultSignature: {
+        create: jest.fn(),
+      },
+      order: {
+        update: jest.fn(),
+      },
+      notificationOutbox: {
         create: jest.fn(),
       },
       $transaction: jest
@@ -75,15 +85,23 @@ describe('LabService Audit Coupling (Batch 8)', () => {
     prisma.labResult.findFirst.mockResolvedValue({
       id: labResultId,
       status: 'APPROVED',
-      order: { tenantId, branchId },
+      orderId: 'order-1',
+      order: { tenantId, branchId, patientId: 'patient-1' },
       lockedAt: new Date(),
     });
-    prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+    prisma.labResult.update.mockResolvedValue({
+      id: labResultId,
+      status: 'RELEASED',
+      lockedAt: new Date(),
+    });
+    prisma.labResultSignature.create.mockResolvedValue({ id: 'sig-1' });
+    prisma.order.update.mockResolvedValue({ id: 'order-1' });
+    prisma.notificationOutbox.create.mockResolvedValue({ id: 'notif-1' });
 
     await service.releaseResult(tenantId, userId, branchId, labResultId);
 
     expect(audit.log).toHaveBeenCalledWith(
-      expect.objectContaining({ eventKey: 'RESULT_RELEASED' }),
+      expect.objectContaining({ eventKey: 'LAB_RESULT_RELEASED' }),
       expect.anything(), // tx
       branchId,
     );
