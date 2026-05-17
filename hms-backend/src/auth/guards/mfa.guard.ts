@@ -16,6 +16,8 @@ export class MfaGuard implements CanActivate {
     'Branch Admin',
     'Doctor',
     'Cashier',
+    'HR',
+    'Finance',
   ];
 
   constructor(private reflector: Reflector) {}

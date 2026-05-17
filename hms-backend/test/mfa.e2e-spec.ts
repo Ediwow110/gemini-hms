@@ -171,6 +171,120 @@ describe('MFA Lifecycle (e2e)', () => {
     });
   });
 
+  describe('HR and Finance MFA Enforcement', () => {
+    let hrAccessToken: string;
+    let financeAccessToken: string;
+
+    beforeAll(async () => {
+      // Create HR Role
+      const hrRole = await prisma.role.create({
+        data: { tenantId, name: 'HR', isSystem: true },
+      });
+      // Create Finance Role
+      const finRole = await prisma.role.create({
+        data: { tenantId, name: 'Finance', isSystem: true },
+      });
+
+      // Create HR User
+      const hrEmail = `hr-${randomUUID()}@hms.local`;
+      const hrHash = await bcrypt.hash(adminPassword, 10);
+      const hrUser = await prisma.user.create({
+        data: { tenantId, email: hrEmail, passwordHash: hrHash, mfaEnabled: false },
+      });
+      await prisma.userRole.create({ data: { userId: hrUser.id, roleId: hrRole.id } });
+
+      // Create Finance User
+      const finEmail = `fin-${randomUUID()}@hms.local`;
+      const finHash = await bcrypt.hash(adminPassword, 10);
+      const finUser = await prisma.user.create({
+        data: { tenantId, email: finEmail, passwordHash: finHash, mfaEnabled: false },
+      });
+      await prisma.userRole.create({ data: { userId: finUser.id, roleId: finRole.id } });
+
+      // Login both to get MFA tokens
+      const hrLoginRes = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: hrEmail, password: adminPassword, tenantCode: tenantName })
+        .expect(202);
+      const hrMfaToken = hrLoginRes.body.mfaToken;
+
+      const finLoginRes = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: finEmail, password: adminPassword, tenantCode: tenantName })
+        .expect(202);
+      const finMfaToken = finLoginRes.body.mfaToken;
+
+      // Setup and verify MFA for HR
+      const hrSetupRes = await request(app.getHttpServer())
+        .post('/api/v1/auth/mfa/setup')
+        .set('Authorization', `Bearer ${hrMfaToken}`)
+        .expect(200);
+      const hrSecret = hrSetupRes.body.secret;
+      const hrCode = speakeasy.totp({ secret: hrSecret, encoding: 'base32' });
+      const hrVerifyRes = await request(app.getHttpServer())
+        .post('/api/v1/auth/mfa/verify')
+        .set('Authorization', `Bearer ${hrMfaToken}`)
+        .send({ code: hrCode, secret: hrSecret })
+        .expect(200);
+      hrAccessToken = hrVerifyRes.body.accessToken;
+
+      // Setup and verify MFA for Finance
+      const finSetupRes = await request(app.getHttpServer())
+        .post('/api/v1/auth/mfa/setup')
+        .set('Authorization', `Bearer ${finMfaToken}`)
+        .expect(200);
+      const finSecret = finSetupRes.body.secret;
+      const finCode = speakeasy.totp({ secret: finSecret, encoding: 'base32' });
+      const finVerifyRes = await request(app.getHttpServer())
+        .post('/api/v1/auth/mfa/verify')
+        .set('Authorization', `Bearer ${finMfaToken}`)
+        .send({ code: finCode, secret: finSecret })
+        .expect(200);
+      financeAccessToken = finVerifyRes.body.accessToken;
+    });
+
+    it('should allow HR user with verified MFA to access protected route', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${hrAccessToken}`)
+        .expect(200);
+    });
+
+    it('should allow Finance user with verified MFA to access protected route', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${financeAccessToken}`)
+        .expect(200);
+    });
+
+    it('should block HR user without verified MFA', async () => {
+      // Login HR user again to get unverified token
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: `hr-${randomUUID()}@hms.local`, password: adminPassword, tenantCode: tenantName })
+        .expect(202);
+      const unverifiedToken = res.body.mfaToken;
+
+      await request(app.getHttpServer())
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${unverifiedToken}`)
+        .expect(403);
+    });
+
+    it('should block Finance user without verified MFA', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: `fin-${randomUUID()}@hms.local`, password: adminPassword, tenantCode: tenantName })
+        .expect(202);
+      const unverifiedToken = res.body.mfaToken;
+
+      await request(app.getHttpServer())
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${unverifiedToken}`)
+        .expect(403);
+    });
+  });
+
   afterAll(async () => {
     await app.close();
   });

@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { SessionService } from './session.service';
 import { MfaService } from './mfa.service';
+import { AuditService } from '../audit/audit.service';
 
 type UserWithRoles = Prisma.UserGetPayload<{
   include: {
@@ -40,6 +41,7 @@ export class AuthService {
     private jwtService: JwtService,
     private sessionService: SessionService,
     private mfaService: MfaService,
+    private audit: AuditService,
   ) {}
 
   private getActiveRoleNames(userRoles: UserRoleWithName[]): string[] {
@@ -71,16 +73,68 @@ export class AuthService {
       },
     });
 
-    if (
-      user &&
-      user.status === 'ACTIVE' &&
-      user.deactivatedAt === null &&
-      (await bcrypt.compare(pass, user.passwordHash))
-    ) {
-      const { passwordHash, ...result } = user;
-      return result;
+    if (!user) return null;
+
+    // Check account lockout
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Account locked due to too many failed attempts',
+        error: 'account_locked',
+        lockedUntil: user.lockedUntil,
+      });
     }
-    return null;
+
+    const passwordValid = await bcrypt.compare(pass, user.passwordHash);
+
+    if (user.status !== 'ACTIVE' || user.deactivatedAt !== null || !passwordValid) {
+      // Increment failed attempts
+      const newAttempts = user.failedLoginAttempts + 1;
+      const updates: any = { failedLoginAttempts: newAttempts };
+      
+      if (newAttempts >= 5) {
+        const lockUntil = new Date();
+        lockUntil.setMinutes(lockUntil.getMinutes() + 15);
+        updates.lockedUntil = lockUntil;
+        
+        // Log lockout audit event
+        await this.prisma.$transaction(async (tx) => {
+          await tx.user.update({ where: { id: user.id }, data: updates });
+          await this.audit.log(
+            {
+              tenantId: user.tenantId,
+              userId: user.id,
+              eventKey: 'LOGIN_LOCKOUT',
+              recordType: 'User',
+              recordId: user.id,
+              newValues: { email, attempts: newAttempts, lockedUntil: lockUntil },
+            },
+            tx,
+          );
+        });
+        
+        throw new UnauthorizedException({
+          statusCode: 401,
+          message: 'Account locked due to too many failed attempts',
+          error: 'account_locked',
+          lockedUntil: lockUntil,
+        });
+      }
+
+      await this.prisma.user.update({ where: { id: user.id }, data: updates });
+      return null;
+    }
+
+    // Successful login: reset attempts
+    if (user.failedLoginAttempts > 0 || user.lockedUntil !== null) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, lockedUntil: null },
+      });
+    }
+
+    const { passwordHash, ...result } = user;
+    return result;
   }
 
   async login(user: AuthenticatedUser, ua?: string, ip?: string) {

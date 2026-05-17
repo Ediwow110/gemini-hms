@@ -3811,12 +3811,33 @@ export class AdminService {
         where: { status: 'PENDING' },
       });
 
+      // Check last successful backup from audit log
+      const lastBackup = await this.prisma.auditLog.findFirst({
+        where: { eventKey: 'BACKUP_COMPLETED' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+
+      // Stub checks for external services (email/SMS, storage)
+      const emailSmsStatus = process.env.EMAIL_PROVIDER || process.env.SMS_PROVIDER ? 'configured' : 'stub';
+      const storageStatus = process.env.STORAGE_PROVIDER ? 'configured' : 'stub';
+      const jobQueueStatus = {
+        pending: pendingNotifications,
+        status: pendingNotifications > 100 ? 'backlogged' : 'healthy',
+      };
+
       if (schemaReady) {
         return {
           appStatus: 'ok',
           dbStatus: 'ok',
           migrationStatus: 'ok',
           backupConfig,
+          lastBackupAt: lastBackup?.createdAt || null,
+          externalServices: {
+            emailSms: emailSmsStatus,
+            storage: storageStatus,
+          },
+          jobQueue: jobQueueStatus,
           notifications: {
             pending: pendingNotifications,
             status: 'active',
@@ -3833,6 +3854,12 @@ export class AdminService {
           dbStatus: 'ok',
           migrationStatus: 'error',
           backupConfig,
+          lastBackupAt: lastBackup?.createdAt || null,
+          externalServices: {
+            emailSms: emailSmsStatus,
+            storage: storageStatus,
+          },
+          jobQueue: jobQueueStatus,
           timestamp,
         };
       }

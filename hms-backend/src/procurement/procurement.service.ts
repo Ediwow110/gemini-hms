@@ -55,7 +55,7 @@ export class ProcurementService {
         tenantId,
         branchId: dto.branchId,
         requestedById: userId,
-        items: JSON.parse(JSON.stringify(dto.items)),
+        items: dto.items as any,
         status: 'SUBMITTED',
         reason: dto.reason || null,
       },

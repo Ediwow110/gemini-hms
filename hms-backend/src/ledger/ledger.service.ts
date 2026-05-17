@@ -64,28 +64,28 @@ export class LedgerService {
     };
 
     if (from || to) {
-      where.entryDate = {};
+      where.createdAt = {};
       if (from) {
-        where.entryDate.gte = from;
+        where.createdAt.gte = from;
       }
       if (to) {
-        where.entryDate.lte = to;
+        where.createdAt.lte = to;
       }
     }
 
     const entries = await this.prisma.ledgerEntry.findMany({ where });
 
-    let balance = 0;
+    let balance = new Prisma.Decimal(0);
     for (const entry of entries) {
-      const amt = Number(entry.amount);
+      const amt = new Prisma.Decimal(entry.amount);
       if (entry.debitAccount === accountName) {
-        balance += amt;
+        balance = balance.plus(amt);
       }
       if (entry.creditAccount === accountName) {
-        balance -= amt;
+        balance = balance.minus(amt);
       }
     }
 
-    return balance;
+    return balance.toNumber();
   }
 }

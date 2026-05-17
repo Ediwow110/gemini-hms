@@ -109,14 +109,21 @@ export class InsuranceClaimService {
 
       // Post LedgerEntry if PAID
       if (data.status === 'PAID') {
-        const settledAmt = data.settledAmount || Number(claim.claimedAmount);
+        const claimed = claim.claimedAmount;
+        if (claimed === null || claimed === undefined) {
+          throw new Error('Cannot settle claim: claimedAmount is null');
+        }
+        const settledAmt = data.settledAmount ?? Number(claimed);
+        if (!Number.isFinite(settledAmt) || settledAmt <= 0) {
+          throw new Error('Invalid settled amount');
+        }
         await this.ledgerService.postEntry(
           {
             tenantId,
             branchId: claim.branchId,
             debitAccount: 'INSURANCE_RECEIVABLE',
             creditAccount: 'REVENUE',
-            amount: settledAmt,
+            amount: new Prisma.Decimal(settledAmt),
             referenceType: 'CLAIM_SETTLEMENT',
             referenceId: claim.id,
             description: `Insurance claim settled for ${claim.providerCode} (Claim #${claim.claimNumber})`,

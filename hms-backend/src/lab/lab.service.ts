@@ -24,7 +24,7 @@ export class LabService {
 
   async findOne(tenantId: string, branchId: string, id: string) {
     const result = await this.prisma.labResult.findFirst({
-      where: { id, order: { tenantId, branchId } },
+      where: { id, order: { tenantId, branchId }, deletedAt: null },
       include: { order: { include: { patient: true } } },
     });
 

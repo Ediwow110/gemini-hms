@@ -80,37 +80,39 @@ export class HrService {
       throw new ForbiddenException('Insufficient permissions');
     }
 
-    // 1. Generate employee number
-    const count = await this.prisma.employee.count({ where: { tenantId } });
-    const employeeNumber = `EMP-${(count + 1).toString().padStart(5, '0')}`;
+    // 1. Generate employee number atomically within transaction to prevent race condition
+    return await this.prisma.$transaction(async (tx) => {
+      const count = await tx.employee.count({ where: { tenantId } });
+      const employeeNumber = `EMP-${(count + 1).toString().padStart(5, '0')}`;
 
-    // 2. Create Employee
-    const employee = await this.prisma.employee.create({
-      data: {
+      // 2. Create Employee
+      const employee = await tx.employee.create({
+        data: {
+          tenantId,
+          branchId: targetBranchId,
+          userId: dto.userId || null,
+          employeeNumber,
+          department: dto.department,
+          position: dto.position,
+          hireDate: new Date(dto.hireDate),
+          status: 'ACTIVE',
+          firstName: dto.firstName || '',
+          lastName: dto.lastName || '',
+          salary: dto.salary ? new Prisma.Decimal(dto.salary) : null,
+        },
+      });
+
+      await this.audit.log({
         tenantId,
-        branchId: targetBranchId,
-        userId: dto.userId || null,
-        employeeNumber,
-        department: dto.department,
-        position: dto.position,
-        hireDate: new Date(dto.hireDate),
-        status: 'ACTIVE',
-        firstName: dto.firstName || '',
-        lastName: dto.lastName || '',
-        salary: dto.salary ? new Prisma.Decimal(dto.salary) : null,
-      },
-    });
+        userId,
+        eventKey: 'EMPLOYEE_CREATED',
+        recordType: 'Employee',
+        recordId: employee.id,
+        newValues: employee,
+      });
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'EMPLOYEE_CREATED',
-      recordType: 'Employee',
-      recordId: employee.id,
-      newValues: employee,
+      return employee;
     });
-
-    return employee;
   }
 
   async getEmployeeById(tenantId: string, employeeId: string) {

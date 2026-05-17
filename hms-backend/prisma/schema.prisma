@@ -103,6 +103,8 @@ model User {
   deactivatedAt     DateTime? @map("deactivated_at")
   deactivatedReason String?   @map("deactivated_reason")
   tokenVersion      Int       @default(0) @map("token_version")
+  failedLoginAttempts Int     @default(0) @map("failed_login_attempts")
+  lockedUntil       DateTime? @map("locked_until")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
@@ -333,10 +335,12 @@ model ClinicalNote {
   lockedAt    DateTime? @map("locked_at")
   lockedBy    String?  @map("locked_by") @db.Uuid
 
-  createdBy String @map("created_by") @db.Uuid
-  updatedBy String @map("updated_by") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy   String   @map("created_by") @db.Uuid
+  updatedBy   String   @map("updated_by") @db.Uuid
+  deletedAt   DateTime? @map("deleted_at")
+  version     Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   author    User?     @relation("ClinicalNoteAuthor", fields: [authorId], references: [id])
@@ -379,6 +383,10 @@ model Patient {
   lastName      String   @map("last_name")
   dob           DateTime @db.Date
   status        String   @default("ACTIVE")
+  createdById   String?  @map("created_by_id") @db.Uuid
+  updatedById   String?  @map("updated_by_id") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at")
+  version       Int      @default(0)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -401,6 +409,10 @@ model Order {
   patientId   String   @map("patient_id") @db.Uuid
   orderNumber String   @map("order_number")
   status      String   @default("DRAFT")
+  createdById String?  @map("created_by_id") @db.Uuid
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  deletedAt   DateTime? @map("deleted_at")
+  version     Int      @default(0)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -506,6 +518,10 @@ model Invoice {
   totalAmount   Decimal  @map("total_amount") @db.Decimal(12, 2)
   paidAmount    Decimal  @default(0) @map("paid_amount") @db.Decimal(12, 2)
   status        String   @default("UNPAID")
+  createdById   String?  @map("created_by_id") @db.Uuid
+  updatedById   String?  @map("updated_by_id") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at")
+  version       Int      @default(0)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -531,7 +547,12 @@ model Payment {
   paymentMethod    String   @map("payment_method")
   status           String   @default("POSTED")
   idempotencyKey   String   @map("idempotency_key")
+  createdById      String?  @map("created_by_id") @db.Uuid
+  updatedById      String?  @map("updated_by_id") @db.Uuid
+  deletedAt        DateTime? @map("deleted_at")
+  version          Int      @default(0)
   createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   tenant         Tenant            @relation(fields: [tenantId], references: [id])
   invoice        Invoice           @relation(fields: [invoiceId], references: [id])
@@ -574,6 +595,10 @@ model LabResult {
   remarks      String? // Clinical remarks
   approvedById String?   @map("approved_by_id") @db.Uuid
   lockedAt     DateTime? @map("locked_at")
+  createdById  String?   @map("created_by_id") @db.Uuid
+  updatedById  String?   @map("updated_by_id") @db.Uuid
+  deletedAt    DateTime? @map("deleted_at")
+  version      Int       @default(0)
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -1147,6 +1172,10 @@ model Prescription {
   duration       String
   notes          String?            @db.Text
   status         PrescriptionStatus @default(ACTIVE)
+  createdById    String?            @map("created_by_id") @db.Uuid
+  updatedById    String?            @map("updated_by_id") @db.Uuid
+  deletedAt      DateTime?          @map("deleted_at")
+  version        Int                @default(0)
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
 
@@ -1173,6 +1202,10 @@ model Referral {
   reason         String         @db.Text
   urgency        ReferralUrgency @default(ROUTINE)
   status         ReferralStatus @default(PENDING)
+  createdById    String?        @map("created_by_id") @db.Uuid
+  updatedById    String?        @map("updated_by_id") @db.Uuid
+  deletedAt      DateTime?      @map("deleted_at")
+  version        Int            @default(0)
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
