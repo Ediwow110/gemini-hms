@@ -32,6 +32,7 @@ import { ProcurementModule } from './procurement/procurement.module';
 import { ReferralPartnersModule } from './referral-partners/referral-partners.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SlaAlertsModule } from './sla-alerts/sla-alerts.module';
+import { ComplianceModule } from './compliance/compliance.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MfaGuard } from './auth/guards/mfa.guard';
 import { TenantGuard } from './auth/guards/tenant.guard';
@@ -73,6 +74,7 @@ import { AuditContextMiddleware } from './audit/audit-context.middleware';
     ReferralPartnersModule,
     AnalyticsModule,
     SlaAlertsModule,
+    ComplianceModule,
   ],
   controllers: [AppController],
   providers: [

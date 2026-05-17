@@ -258,6 +258,8 @@ model Encounter {
   updatedBy   String   @map("updated_by") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+  archivedAt    DateTime? @map("archived_at")
+  archiveReason String?   @map("archive_reason")
 
   vitals             Vitals[]
   diagnoses          Diagnosis[]
@@ -393,6 +395,8 @@ model Patient {
   version       Int      @default(0)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+  archivedAt    DateTime? @map("archived_at")
+  archiveReason String?   @map("archive_reason")
 
   tenant     Tenant      @relation(fields: [tenantId], references: [id])
   orders     Order[]
@@ -528,6 +532,8 @@ model Invoice {
   version       Int      @default(0)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+  archivedAt    DateTime? @map("archived_at")
+  archiveReason String?   @map("archive_reason")
 
   tenant    Tenant            @relation(fields: [tenantId], references: [id])
   order     Order             @relation(fields: [orderId], references: [id])
@@ -557,6 +563,8 @@ model Payment {
   version          Int      @default(0)
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
+  archivedAt       DateTime? @map("archived_at")
+  archiveReason    String?   @map("archive_reason")
 
   tenant         Tenant            @relation(fields: [tenantId], references: [id])
   invoice        Invoice           @relation(fields: [invoiceId], references: [id])
@@ -605,6 +613,8 @@ model LabResult {
   version      Int       @default(0)
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
+  archivedAt   DateTime? @map("archived_at")
+  archiveReason String?   @map("archive_reason")
 
   tenant   Tenant             @relation(fields: [tenantId], references: [id])
   order    Order              @relation(fields: [orderId], references: [id])
