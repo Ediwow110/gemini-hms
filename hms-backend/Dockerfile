@@ -22,16 +22,27 @@ RUN npm run build
 # Stage 2: Production
 FROM node:20-alpine
 
-RUN apk add --no-cache openssl
+# Install openssl and curl for healthcheck
+RUN apk add --no-cache openssl curl
 
 WORKDIR /app
 
-# Copy only necessary files from builder
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./
+# Create system user and group
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Copy only necessary files from builder and set correct ownership
+COPY --from=builder --chown=appuser:appgroup /app/package*.json ./
+COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /app/dist ./dist
+COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
+COPY --from=builder --chown=appuser:appgroup /app/prisma.config.ts ./
+
+# Drop root privileges and switch to appuser
+USER appuser
+
+# Configure healthcheck using curl
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/ || exit 1
 
 # Expose port
 EXPOSE 3000
