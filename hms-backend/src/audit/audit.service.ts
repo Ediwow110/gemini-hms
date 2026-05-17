@@ -81,10 +81,12 @@ export class AuditService {
     const sessionId = context?.sessionId ?? req?.user?.sessionId;
 
     // Fetch the latest head in the tenant chain
-    const lastLog = await db.auditLog.findFirst({
-      where: { tenantId: data.tenantId },
-      orderBy: { createdAt: 'desc' },
-    });
+    const lastLog = typeof db.auditLog?.findFirst === 'function'
+      ? await db.auditLog.findFirst({
+          where: { tenantId: data.tenantId },
+          orderBy: { createdAt: 'desc' },
+        })
+      : null;
 
     const previousHash = lastLog ? lastLog.hash : null;
     const createdAt = new Date();

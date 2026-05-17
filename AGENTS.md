@@ -21,10 +21,17 @@
   4. *Lab Atomic Release*: $transaction with signature, outbox, order update, audit.
   5. *ePHI Masking*: maskEmail/maskPhone on all notification providers and logs.
   6. *Docker Hardening*: Non-root appuser, HEALTHCHECK, Alpine base.
-- Test suite: 509/509 unit tests pass. 69/69 E2E tests pass. Build clean.
+- Test suite: 509/509 unit tests pass. 81/81 E2E tests pass. Build clean.
 - Skills `senior-engineering-reviewer` and `silent-bug-hunter` installed.
+- **Phase 6 (Enterprise SaaS)** — Completed:
+  1. *Multi-Tenancy*: Row-level tenant isolation via header verification guard with cross-tenant blockage.
+  2. *Kubernetes Manifests*: 2-10 replicas deployment, resource limits, readiness/liveness, ClusterIP service, SSL TLS NGINX ingress, HPA.
+  3. *Advanced Analytics*: Daily revenue, top 10 diagnoses (soft-delete safe), bed occupancy, patient wait times, claim rates.
+  4. *Audit Chain*: Cryptographic SHA-256 block hash chaining and HMAC signature with verifyChain endpoint.
+  5. *SLA Alerts*: Automated wait-time breach triggers and high-priority SMS notifications with acknowledgment flows.
+  6. *Documentation*: Full design rationale, deployment guides, and flowcharts in `docs/enterprise-features.md`.
 ### In Progress
-- Phase 6 documentation finalization.
+- (none)
 ### Blocked
 - (none)
 ## Key Decisions
@@ -35,13 +42,14 @@
 - General ledger executed atomically inside Prisma transactional scopes.
 - Audit context captured via `AsyncLocalStorage` — zero method signature changes required.
 ## Next Steps
-- Execute Phase 6: Multi-Tenancy → K8s Manifests → Analytics → Audit Chain → SLA Alerts → Docs.
+- READY FOR FINAL REVIEW.
 ## Critical Context
-- Current main commit: `5fb5c77`.
+- Current main commit: `40d72c4`.
 - Audit log service supports transaction clients (`tx`).
 - Patient merge is metadata-only; no actual patient data mutation occurs.
 - All clinical queries must filter `deletedAt: null`.
 - AuditLog has forensic fields: `ipAddress`, `userAgent`, `activeRole`, `sessionId`.
+- Cryptographic hash chaining ensures complete immutable data audit integrity.
 ## Relevant Files
 - `hms-backend/src/clinical/`: Clinical EMR module (encounters, SOAP, diagnoses, prescriptions, referrals).
 - `hms-backend/src/patient-portal/`: Decoupled Patient Portal auth.
