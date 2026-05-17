@@ -25,6 +25,9 @@ import { AdminModule } from './admin/admin.module';
 import { EncountersModule } from './encounters/encounters.module';
 import { EmrModule } from './emr/emr.module';
 import { ClinicalModule } from './clinical/clinical.module';
+import { PatientPortalModule } from './patient-portal/patient-portal.module';
+import { LedgerModule } from './ledger/ledger.module';
+import { InsuranceModule } from './insurance/insurance.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MfaGuard } from './auth/guards/mfa.guard';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
@@ -57,6 +60,9 @@ import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
     EncountersModule,
     EmrModule,
     ClinicalModule,
+    PatientPortalModule,
+    LedgerModule,
+    InsuranceModule,
   ],
   controllers: [AppController],
   providers: [

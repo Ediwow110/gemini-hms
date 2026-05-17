@@ -47,7 +47,12 @@ export class ClinicalController {
     @GetUser('branchId') branchId: string,
     @Body() dto: CreateEncounterDto,
   ) {
-    return this.encounterService.createEncounter(tenantId, userId, branchId, dto);
+    return this.encounterService.createEncounter(
+      tenantId,
+      userId,
+      branchId,
+      dto,
+    );
   }
 
   @Get('encounters/:id')
@@ -79,7 +84,13 @@ export class ClinicalController {
     @Param('id') encounterId: string,
     @Body() dto: CreateClinicalNoteDto,
   ) {
-    return this.noteService.createNote(tenantId, userId, branchId, encounterId, dto);
+    return this.noteService.createNote(
+      tenantId,
+      userId,
+      branchId,
+      encounterId,
+      dto,
+    );
   }
 
   @Patch('notes/:id')
@@ -113,7 +124,13 @@ export class ClinicalController {
     @Param('id') encounterId: string,
     @Body() dto: AttachDiagnosisDto,
   ) {
-    return this.diagnosisService.attachDiagnosis(tenantId, userId, branchId, encounterId, dto);
+    return this.diagnosisService.attachDiagnosis(
+      tenantId,
+      userId,
+      branchId,
+      encounterId,
+      dto,
+    );
   }
 
   @Delete('encounters/:encounterId/diagnoses/:diagnosisId')
@@ -124,7 +141,12 @@ export class ClinicalController {
     @Param('encounterId') encounterId: string,
     @Param('diagnosisId') diagnosisId: string,
   ) {
-    return this.diagnosisService.removeDiagnosis(tenantId, userId, encounterId, diagnosisId);
+    return this.diagnosisService.removeDiagnosis(
+      tenantId,
+      userId,
+      encounterId,
+      diagnosisId,
+    );
   }
 
   @Post('encounters/:id/prescriptions')

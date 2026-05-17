@@ -1,4 +1,10 @@
-import { IsString, IsUUID, IsOptional, IsBoolean, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsUUID,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
+} from 'class-validator';
 import { ReferralUrgency, ReferralStatus } from '@prisma/client';
 
 export class CreateEncounterDto {
@@ -95,4 +101,3 @@ export class UpdateReferralStatusDto {
   @IsEnum(ReferralStatus)
   status: ReferralStatus;
 }
-

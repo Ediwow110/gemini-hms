@@ -52,6 +52,9 @@ model Tenant {
   encounters         Encounter[]
   prescriptions      Prescription[]
   referrals          Referral[]
+  patientUsers       PatientUser[]
+  insuranceClaims    InsuranceClaim[]
+  ledgerEntries      LedgerEntry[]
 
   @@map("tenants")
 }
@@ -75,6 +78,8 @@ model Branch {
   prescriptions    Prescription[]
   referrals        Referral[]
   servicePrices    ServicePrice[]
+  insuranceClaims  InsuranceClaim[]
+  ledgerEntries    LedgerEntry[]
 
   @@map("branches")
 }
@@ -373,6 +378,8 @@ model Patient {
   encounters Encounter[]
   prescriptions Prescription[]
   referrals     Referral[]
+  portalUser    PatientUser?
+  insuranceClaims InsuranceClaim[]
 
   @@unique([tenantId, patientNumber])
   @@map("patients")
@@ -499,6 +506,7 @@ model Invoice {
   reversals PaymentReversal[]
   claims    Claim[]
   refunds   Refund[]
+  insuranceClaims InsuranceClaim[]
 
   @@unique([tenantId, invoiceNumber])
   @@map("invoices")
@@ -1157,4 +1165,71 @@ model Referral {
   @@index([patientId])
   @@map("referrals")
 }
+
+model PatientUser {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  patientId    String   @unique @map("patient_id") @db.Uuid
+  email        String
+  passwordHash String   @map("password_hash")
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+  @@map("patient_users")
+}
+
+model InsuranceClaim {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  branchId        String    @map("branch_id") @db.Uuid
+  invoiceId       String    @map("invoice_id") @db.Uuid
+  patientId       String    @map("patient_id") @db.Uuid
+  providerCode    String    @map("provider_code")
+  claimNumber     String?   @map("claim_number")
+  status          String    @default("DRAFT") // DRAFT, SUBMITTED, ACCEPTED, REJECTED, PAID
+  submittedAt     DateTime? @map("submitted_at")
+  settledAt       DateTime? @map("settled_at")
+  claimedAmount   Decimal   @map("claimed_amount") @db.Decimal(12, 2)
+  settledAmount   Decimal?  @map("settled_amount") @db.Decimal(12, 2)
+  rejectionReason String?   @map("rejection_reason")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, branchId])
+  @@index([patientId])
+  @@index([invoiceId])
+  @@map("insurance_claims")
+}
+
+model LedgerEntry {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  branchId      String   @map("branch_id") @db.Uuid
+  entryDate     DateTime @default(now()) @map("entry_date")
+  debitAccount  String   @map("debit_account")
+  creditAccount String   @map("credit_account")
+  amount        Decimal  @db.Decimal(12, 2)
+  referenceType String   @map("reference_type") // PAYMENT, VOID, REFUND, CLAIM_SETTLEMENT
+  referenceId   String   @map("reference_id") @db.Uuid
+  description   String
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, branchId])
+  @@index([referenceType, referenceId])
+  @@map("ledger_entries")
+}
+
 

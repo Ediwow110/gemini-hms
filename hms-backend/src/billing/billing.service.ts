@@ -18,6 +18,7 @@ import { ApprovalsService } from '../approvals/approvals.service';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
 import { computePaymentFingerprint } from './utils/idempotency';
+import { LedgerService } from '../ledger/ledger.service';
 
 export const REVERSAL_TYPE = {
   REFUND: 'REFUND',
@@ -38,6 +39,7 @@ export class BillingService {
     private audit: AuditService,
     private numbering: NumberingService,
     private approvals: ApprovalsService,
+    private ledgerService: LedgerService,
   ) {}
 
   async postPayment(
@@ -324,6 +326,21 @@ export class BillingService {
               referenceId: payment.id,
             },
           });
+
+          // Post double-entry ledger entry: postPayment (DEBIT CASH / CREDIT REVENUE)
+          await this.ledgerService.postEntry(
+            {
+              tenantId,
+              branchId,
+              debitAccount: 'CASH',
+              creditAccount: 'REVENUE',
+              amount: payment.amount,
+              referenceType: 'PAYMENT',
+              referenceId: payment.id,
+              description: `Payment posted for Invoice #${invoice.invoiceNumber || invoice.id}`,
+            },
+            tx,
+          );
 
           // 11. Update Invoice Balance using Decimal Math
           const currentPaid = new Prisma.Decimal(invoice.paidAmount);
@@ -939,6 +956,21 @@ export class BillingService {
         },
       });
 
+      // Post double-entry ledger entry: applyVoid (DEBIT REVENUE / CREDIT CASH)
+      await this.ledgerService.postEntry(
+        {
+          tenantId,
+          branchId,
+          debitAccount: 'REVENUE',
+          creditAccount: 'CASH',
+          amount: payment.amount,
+          referenceType: 'VOID',
+          referenceId: reversal.id,
+          description: `Void applied for Payment #${payment.receiptNumber} (Invoice #${invoice.invoiceNumber})`,
+        },
+        tx,
+      );
+
       // Mark approval request as APPLIED (post-approval execution)
       const appliedApproval = await tx.approvalRequest.updateMany({
         where: {
@@ -1206,6 +1238,21 @@ export class BillingService {
           referenceId: refundRecord.id,
         },
       });
+
+      // Post double-entry ledger entry: applyRefund (DEBIT REVENUE / CREDIT CASH)
+      await this.ledgerService.postEntry(
+        {
+          tenantId,
+          branchId,
+          debitAccount: 'REVENUE',
+          creditAccount: 'CASH',
+          amount: refundAmount,
+          referenceType: 'REFUND',
+          referenceId: reversal.id,
+          description: `Refund applied for Payment #${payment.receiptNumber} (Invoice #${invoice.invoiceNumber})`,
+        },
+        tx,
+      );
 
       const appliedApproval = await tx.approvalRequest.updateMany({
         where: {

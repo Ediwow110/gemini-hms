@@ -24,9 +24,11 @@
 - Local validation (lint, test, build, prisma) passed on main.
 - **P2 Audit: Approve/Reject Transactional Coupling** — Audited `approveMergeRequest` and `rejectMergeRequest` in `patient-merge-request.service.ts`. Both methods already use `this.prisma.$transaction(async (tx) => { ... })` and pass `tx` to `this.audit.log()`. Audit is already transactionally coupled. Tests verify rollback on audit failure. Updated `docs/admin-governance-technical-spec.md` line 924 to reflect current state (was incorrectly marked as backlog).
 - **Phase 4 EMR Clinical Foundation & Expansion**: Implemented EMR Clinical Encounter, SOAP notes with irreversible locking, ICD-10 diagnosis linkage, Prescriptions (ACTIVE/CANCELLED/DISPENSED), and Specialist Referrals (Urgency and Status transitions). Built comprehensive role gating (only Doctor/Admin can mutate clinical records, Nurse read-only, Cashier blocked) and verified via two robust E2E test files (`test/clinical-encounter.e2e-spec.ts` and `test/prescription-referral.e2e-spec.ts`). All 44/44 tests pass sequentially.
+- **Phase 4 Exit-Gate Closure: Patient Portal Authorization & ePHI Protection**: Implemented custom patient authentication (JWT-based login) completely decoupled from legacy User/Session staff authorization. Formulated read-only, patient-scoped REST endpoints for profiles, invoices (with calculated outstanding balance), prescriptions (only ACTIVE/DISPENSED), and lab results (strict release gate allowing only status === 'RELEASED'). Enforced bulletproof scoping, multi-tenant isolation, and ePHI leakage prevention via a comprehensive `test/patient-portal.e2e-spec.ts` E2E test suite. All tests are 100% green.
+- **Phase 5 Enterprise Foundation: Insurance Claims & Double-Entry General Ledger**: Implemented pluggable `InsuranceClaim` model, `LedgerEntry` double-entry model, ledger and claims service and controller endpoints. Created mock Stub national clearing system provider. Added E2E tests (`test/insurance-claims.e2e-spec.ts` and `test/ledger-double-entry.e2e-spec.ts`) asserting 100% correct claims tracking, automated DEBIT/CREDIT ledger updates, and balance checks under payments, voids, refunds, and claim settlements. All sequential tests run cleanly.
 
 ### In Progress
-- (none)
+- Ready for final review of Phase 5 Enterprise Foundation.
 
 ### Blocked
 - (none)
@@ -37,9 +39,13 @@
 - Reverse-direction duplicate blocking implemented via `OR` query on pending check to preserve directionality semantics.
 - Clinical modules are modularized in `src/clinical` to isolate outpatient EMR workflows from legacy scheduling and billing modules.
 - Prescriptions and Referrals are fully transactionally audited upon creation and status modification.
+- Patient portal auth is decoupled and stateless, keeping staff session tables clean. All patient-accessed resources are strictly scoped by the token's `patientId` and `tenantId` to protect ePHI.
+- Pluggable `InsuranceProvider` interface enables drop-in government clearing APIs in the future while keeping the current release modular with a secure `StubInsuranceProvider` default.
+- General ledger transactions are executed atomically inside database transactional scopes (`Prisma.TransactionClient`) ensuring ledger balancing invariants always hold even on cashier failures.
 
 ## Next Steps
-- Await user direction on next outpatient EMR workflows or Phase 5 (PhilHealth claims & double-entry ledger).
+- Merge Phase 4 & Phase 5 branches after user sign-off.
+- Plan for Phase 6 (Multi-node Cloud High Availability & Telemetry Loki/Grafana).
 
 ## Critical Context
 - Current main commit: `64e3e10d50f51ed4f73cc3c7919a66d38dcbc684`.
@@ -51,7 +57,13 @@
 
 ## Relevant Files
 - `hms-backend/src/clinical/`: New clinical EMR module files.
+- `hms-backend/src/patient-portal/`: Decoupled Patient Portal auth, controller, service, guard, and decorators.
+- `hms-backend/test/patient-portal.e2e-spec.ts`: Dedicated E2E tests proving portal security and data isolation.
 - `hms-backend/test/clinical-encounter.e2e-spec.ts`: Dedicated E2E tests for clinical encounters.
-- `hms-backend/prisma/schema.prisma`: Extended with Encounter, SOAP, ICD-10, and Diagnosis relations.
-- `docs/gap-analysis.md`: Updated to Advanced Outpatient Clinic status.
-- `README.md`: Updated to Phase 4 complete status.
+- `hms-backend/prisma/schema.prisma`: Extended with Encounter, SOAP, ICD-10, PatientUser, InsuranceClaim, and LedgerEntry.
+- `docs/gap-analysis.md`: Updated to Enterprise Foundation status.
+- `README.md`: Updated to Phase 5 complete status.
+- `hms-backend/src/insurance/`: New Insurance Claim tracking and stub provider module files.
+- `hms-backend/src/ledger/`: New General Ledger double-entry module files.
+- `hms-backend/test/insurance-claims.e2e-spec.ts`: Dedicated E2E tests for insurance claim tracking.
+- `hms-backend/test/ledger-double-entry.e2e-spec.ts`: Dedicated E2E tests for double-entry bookkeeping validation.

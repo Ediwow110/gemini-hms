@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { CreateClinicalNoteDto, UpdateClinicalNoteDto } from './dto/clinical.dto';
+import {
+  CreateClinicalNoteDto,
+  UpdateClinicalNoteDto,
+} from './dto/clinical.dto';
 import { EncounterStatus } from '@prisma/client';
 
 @Injectable()
@@ -35,7 +38,9 @@ export class ClinicalNoteService {
       }
 
       if (encounter.status !== EncounterStatus.OPEN) {
-        throw new ConflictException('clinical_encounter_not_open: Cannot add clinical notes to a closed or cancelled encounter');
+        throw new ConflictException(
+          'clinical_encounter_not_open: Cannot add clinical notes to a closed or cancelled encounter',
+        );
       }
 
       return await this.prisma.$transaction(async (tx) => {
@@ -72,7 +77,10 @@ export class ClinicalNoteService {
         return note;
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
       this.logger.error(`Error in createNote: ${error.message}`, error.stack);
@@ -96,7 +104,9 @@ export class ClinicalNoteService {
       }
 
       if (note.lockedAt !== null) {
-        throw new ConflictException('clinical_note_locked: Cannot edit a locked clinical note');
+        throw new ConflictException(
+          'clinical_note_locked: Cannot edit a locked clinical note',
+        );
       }
 
       // Check if associated encounter is still open
@@ -105,16 +115,21 @@ export class ClinicalNoteService {
       });
 
       if (encounter && encounter.status !== EncounterStatus.OPEN) {
-        throw new ConflictException('clinical_encounter_not_open: Cannot edit clinical notes of a closed or cancelled encounter');
+        throw new ConflictException(
+          'clinical_encounter_not_open: Cannot edit clinical notes of a closed or cancelled encounter',
+        );
       }
 
       return await this.prisma.$transaction(async (tx) => {
         const updated = await tx.clinicalNote.update({
           where: { id: noteId },
           data: {
-            subjective: dto.subjective !== undefined ? dto.subjective : note.subjective,
-            objective: dto.objective !== undefined ? dto.objective : note.objective,
-            assessment: dto.assessment !== undefined ? dto.assessment : note.assessment,
+            subjective:
+              dto.subjective !== undefined ? dto.subjective : note.subjective,
+            objective:
+              dto.objective !== undefined ? dto.objective : note.objective,
+            assessment:
+              dto.assessment !== undefined ? dto.assessment : note.assessment,
             plan: dto.plan !== undefined ? dto.plan : note.plan,
             updatedBy: userId,
           },
@@ -147,7 +162,10 @@ export class ClinicalNoteService {
         return updated;
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
       this.logger.error(`Error in updateNote: ${error.message}`, error.stack);
@@ -166,7 +184,9 @@ export class ClinicalNoteService {
       }
 
       if (note.lockedAt !== null) {
-        throw new ConflictException('clinical_note_already_locked: Clinical note is already locked');
+        throw new ConflictException(
+          'clinical_note_already_locked: Clinical note is already locked',
+        );
       }
 
       const encounter = await this.prisma.encounter.findFirst({
@@ -202,7 +222,10 @@ export class ClinicalNoteService {
         return locked;
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
       this.logger.error(`Error in lockNote: ${error.message}`, error.stack);

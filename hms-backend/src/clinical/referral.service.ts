@@ -76,10 +76,16 @@ export class ReferralService {
         return referral;
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
-      this.logger.error(`Error in createReferral: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in createReferral: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -145,7 +151,10 @@ export class ReferralService {
         );
       }
 
-      if (referral.status === ReferralStatus.ACCEPTED && dto.status === ReferralStatus.PENDING) {
+      if (
+        referral.status === ReferralStatus.ACCEPTED &&
+        dto.status === ReferralStatus.PENDING
+      ) {
         throw new ConflictException(
           'clinical_referral_invalid_transition: Cannot transition from ACCEPTED back to PENDING',
         );
@@ -176,10 +185,16 @@ export class ReferralService {
         return updated;
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
-      this.logger.error(`Error in updateReferralStatus: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in updateReferralStatus: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

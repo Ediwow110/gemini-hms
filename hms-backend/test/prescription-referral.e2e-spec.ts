@@ -10,7 +10,12 @@ import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
 import { BranchGuard } from '../src/auth/guards/branch.guard';
 import { AuditModule } from '../src/audit/audit.module';
 import { randomUUID } from 'crypto';
-import { EncounterStatus, PrescriptionStatus, ReferralStatus, ReferralUrgency } from '@prisma/client';
+import {
+  EncounterStatus,
+  PrescriptionStatus,
+  ReferralStatus,
+  ReferralUrgency,
+} from '@prisma/client';
 
 describe('Prescription & Referral E2E', () => {
   let app: INestApplication;
@@ -21,7 +26,8 @@ describe('Prescription & Referral E2E', () => {
   let doctorId: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -176,7 +182,9 @@ describe('Prescription & Referral E2E', () => {
       .get(`/clinical/referrals/${referralId}`)
       .expect(200);
 
-    expect(getReferralRes.body.referredToName).toBe('Dr. Jane Smith (Neurology)');
+    expect(getReferralRes.body.referredToName).toBe(
+      'Dr. Jane Smith (Neurology)',
+    );
 
     // 7. Doctor cancels prescription -> status is CANCELLED (200)
     MockJwtAuthGuard.user.roles = ['Doctor'];

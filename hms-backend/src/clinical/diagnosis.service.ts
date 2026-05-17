@@ -35,7 +35,9 @@ export class DiagnosisService {
       }
 
       if (encounter.status !== EncounterStatus.OPEN) {
-        throw new ConflictException('clinical_encounter_not_open: Cannot attach diagnosis to a closed or cancelled encounter');
+        throw new ConflictException(
+          'clinical_encounter_not_open: Cannot attach diagnosis to a closed or cancelled encounter',
+        );
       }
 
       return await this.prisma.$transaction(async (tx) => {
@@ -85,10 +87,16 @@ export class DiagnosisService {
         return diagnosis;
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
-      this.logger.error(`Error in attachDiagnosis: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in attachDiagnosis: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -109,7 +117,9 @@ export class DiagnosisService {
       }
 
       if (encounter.status !== EncounterStatus.OPEN) {
-        throw new ConflictException('clinical_encounter_not_open: Cannot remove diagnosis from a closed or cancelled encounter');
+        throw new ConflictException(
+          'clinical_encounter_not_open: Cannot remove diagnosis from a closed or cancelled encounter',
+        );
       }
 
       const diagnosis = await this.prisma.encounterDiagnosis.findFirst({
@@ -144,10 +154,16 @@ export class DiagnosisService {
         return { success: true };
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
-      this.logger.error(`Error in removeDiagnosis: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in removeDiagnosis: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

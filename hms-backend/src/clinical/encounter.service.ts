@@ -35,7 +35,9 @@ export class EncounterService {
       }
 
       if (patient.status !== 'ACTIVE') {
-        throw new BadRequestException('Cannot create encounter for inactive patient');
+        throw new BadRequestException(
+          'Cannot create encounter for inactive patient',
+        );
       }
 
       // Enforce that doctorId is optional but must exist as active User in tenant if provided
@@ -83,10 +85,16 @@ export class EncounterService {
         return encounter;
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
-      this.logger.error(`Error in createEncounter: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in createEncounter: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -178,10 +186,16 @@ export class EncounterService {
         return updated;
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
-      this.logger.error(`Error in closeEncounter: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in closeEncounter: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

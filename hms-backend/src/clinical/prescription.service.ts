@@ -77,10 +77,16 @@ export class PrescriptionService {
         return prescription;
       });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
-      this.logger.error(`Error in createPrescription: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in createPrescription: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -156,7 +162,10 @@ export class PrescriptionService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      this.logger.error(`Error in cancelPrescription: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in cancelPrescription: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
