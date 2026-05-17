@@ -62,7 +62,7 @@ This repository contains the architectural foundation and core workflows for a s
 | Module | Isolation Level | Status |
 |---|---|---|
 | **Foundation / Auth** | Tenant / Branch / Session | **Verified E2E (MFA & Recovery)** |
-| **Clinical EMR** | Tenant / Branch | **Verified E2E (Encounters, SOAP, locking, ICD-10)** |
+| **Clinical EMR** | Tenant / Branch | **Verified E2E (Encounters, SOAP, locking, ICD-10, Prescriptions, Referrals)** |
 | **Patients** | Tenant | **Verified E2E** |
 | **Orders** | Branch | **Verified E2E** |
 | **Queueing** | Branch | **Verified E2E** |
@@ -75,7 +75,7 @@ This repository contains the architectural foundation and core workflows for a s
 
 Core authentication, branch context, branch-isolation, and MFA recovery paths are verified with unit and E2E tests.
 - **Unit Tests**: `npm run test`
-- **E2E Tests**: `npm run test:e2e` (43/43 tests passing sequentially)
+- **E2E Tests**: `npm run test:e2e` (44/44 tests passing sequentially)
 - **Stress & Concurrency Tests**: Run scripts validating parallel execution:
   - `npx ts-node scripts/stress-refresh-tokens.ts` (Validates 30s leeway)
   - `npx ts-node scripts/stress-payment-idempotency.ts` (Validates DB unique constraint locking)

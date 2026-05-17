@@ -1,4 +1,5 @@
-import { IsString, IsUUID, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsUUID, IsOptional, IsBoolean, IsEnum } from 'class-validator';
+import { ReferralUrgency, ReferralStatus } from '@prisma/client';
 
 export class CreateEncounterDto {
   @IsUUID()
@@ -56,3 +57,42 @@ export class AttachDiagnosisDto {
   @IsString()
   notes?: string;
 }
+
+export class CreatePrescriptionDto {
+  @IsString()
+  medicationName: string;
+
+  @IsString()
+  dosage: string;
+
+  @IsString()
+  frequency: string;
+
+  @IsString()
+  duration: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class CreateReferralDto {
+  @IsString()
+  referredToName: string;
+
+  @IsString()
+  specialty: string;
+
+  @IsString()
+  reason: string;
+
+  @IsOptional()
+  @IsEnum(ReferralUrgency)
+  urgency?: ReferralUrgency;
+}
+
+export class UpdateReferralStatusDto {
+  @IsEnum(ReferralStatus)
+  status: ReferralStatus;
+}
+

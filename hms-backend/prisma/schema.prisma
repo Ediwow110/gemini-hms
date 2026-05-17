@@ -50,6 +50,8 @@ model Tenant {
   patientMergeRequests PatientMergeRequest[]
   idempotencyRecords IdempotencyRecord[]
   encounters         Encounter[]
+  prescriptions      Prescription[]
+  referrals          Referral[]
 
   @@map("tenants")
 }
@@ -70,6 +72,8 @@ model Branch {
   employeeBranches EmployeeBranch[]
   payslips         Payslip[]
   encounters       Encounter[]
+  prescriptions    Prescription[]
+  referrals        Referral[]
   servicePrices    ServicePrice[]
 
   @@map("branches")
@@ -103,6 +107,8 @@ model User {
   encountersAsDoctor  Encounter[]       @relation("EncounterDoctor")
   clinicalNotesAuthor ClinicalNote[]    @relation("ClinicalNoteAuthor")
   clinicalNotesLocker ClinicalNote[]    @relation("ClinicalNoteLocker")
+  prescriptionsPrescribed Prescription[] @relation("PrescribedBy")
+  referralsReferred       Referral[]     @relation("ReferredBy")
   sessions           Session[]
   mfaRecoveryCodes   UserMfaRecoveryCode[]
 
@@ -240,6 +246,8 @@ model Encounter {
   diagnoses          Diagnosis[]
   encounterDiagnoses EncounterDiagnosis[]
   clinicalNotes      ClinicalNote[]
+  prescriptions      Prescription[]
+  referrals          Referral[]
 
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
@@ -363,6 +371,8 @@ model Patient {
   tenant     Tenant      @relation(fields: [tenantId], references: [id])
   orders     Order[]
   encounters Encounter[]
+  prescriptions Prescription[]
+  referrals     Referral[]
 
   @@unique([tenantId, patientNumber])
   @@map("patients")
@@ -1075,3 +1085,76 @@ model CashierLedgerEntry {
 
   @@map("cashier_ledger_entries")
 }
+
+enum PrescriptionStatus {
+  ACTIVE
+  CANCELLED
+  DISPENSED
+}
+
+enum ReferralUrgency {
+  ROUTINE
+  URGENT
+  EMERGENCY
+}
+
+enum ReferralStatus {
+  PENDING
+  ACCEPTED
+  COMPLETED
+  CANCELLED
+}
+
+model Prescription {
+  id             String             @id @default(uuid()) @db.Uuid
+  tenantId       String             @map("tenant_id") @db.Uuid
+  branchId       String             @map("branch_id") @db.Uuid
+  encounterId    String             @map("encounter_id") @db.Uuid
+  prescribedById String             @map("prescribed_by_id") @db.Uuid
+  patientId      String             @map("patient_id") @db.Uuid
+  medicationName String             @map("medication_name")
+  dosage         String
+  frequency      String
+  duration       String
+  notes          String?            @db.Text
+  status         PrescriptionStatus @default(ACTIVE)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  encounter    Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  prescribedBy User      @relation("PrescribedBy", fields: [prescribedById], references: [id])
+  patient      Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, encounterId])
+  @@index([patientId])
+  @@map("prescriptions")
+}
+
+model Referral {
+  id             String         @id @default(uuid()) @db.Uuid
+  tenantId       String         @map("tenant_id") @db.Uuid
+  branchId       String         @map("branch_id") @db.Uuid
+  encounterId    String         @map("encounter_id") @db.Uuid
+  referredById   String         @map("referred_by_id") @db.Uuid
+  patientId      String         @map("patient_id") @db.Uuid
+  referredToName String         @map("referred_to_name")
+  specialty      String
+  reason         String         @db.Text
+  urgency        ReferralUrgency @default(ROUTINE)
+  status         ReferralStatus @default(PENDING)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  encounter  Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  referredBy User      @relation("ReferredBy", fields: [referredById], references: [id])
+  patient    Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, encounterId])
+  @@index([patientId])
+  @@map("referrals")
+}
+

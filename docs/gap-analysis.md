@@ -56,11 +56,11 @@ A clear path to transition the repository from its current state to a world-clas
 *   **Testing**: E2E test suites (`test/cashier-voids.e2e-spec.ts` and `test/refund-ledger.e2e-spec.ts`) pass cleanly with 100% assertions.
 *   **Docs**: Phase 3 administrative governance policies updated.
 
-### Phase 4: Advanced Clinic (Clinical EMR Integration) [COMPLETED - FOUNDATION]
+### Phase 4: Advanced Clinic (Clinical EMR Integration) [COMPLETED - FULLY OPERATIONAL]
 *   **Target**: Support active clinical practices.
-*   **Status**: COMPLETED. Encounter model, structured SOAP Clinical Notes with irreversible locking, and standard ICD-10 diagnosis code linkage are fully implemented and verified under the `/clinical/...` route space. Gated by roles to ensure only Doctors and Admins can create/edit clinical records, while Receptionists/Nurses are restricted to read-only access.
-*   **Testing**: E2E test suite (`test/clinical-encounter.e2e-spec.ts`) verifies the entire clinical lifecycle and access control parameters with 100% success.
-*   **Docs**: Core EMR clinical schema and controller layers documented.
+*   **Status**: COMPLETED. Encounter model, structured SOAP Clinical Notes with irreversible locking, standard ICD-10 diagnosis code linkage, Prescriptions, and Specialist Referrals are fully implemented and verified under the `/clinical/...` route space. Gated by roles to ensure only Doctors and Admins can create/edit clinical records, while Receptionists/Nurses are restricted to read-only access.
+*   **Testing**: E2E test suites (`test/clinical-encounter.e2e-spec.ts` and `test/prescription-referral.e2e-spec.ts`) verify the entire clinical lifecycle and access control parameters with 100% success.
+*   **Docs**: Core EMR clinical, prescription, and referral schema and controller layers documented.
 
 ### Phase 5: Enterprise (National Insurance & Accounting)
 *   **Target**: Large-scale multi-tenant hospital operations.
@@ -80,7 +80,7 @@ A clear path to transition the repository from its current state to a world-clas
 
 ### What We Can Honestly Claim
 *   **Production-Ready for Advanced Outpatient Clinics**: The platform is fully operational, hardened, and clinical-ready for multi-branch clinic operations.
-*   **Fully Integrated EMR Foundation**: Doctors can record active clinical consultations, document SOAP notes with irreversible locking, and link ICD-10 diagnosis codes.
+*   **Fully Integrated EMR Foundation**: Doctors can record active clinical consultations, document SOAP notes with irreversible locking, link ICD-10 diagnosis codes, issue prescriptions, and make specialist/external referrals.
 *   **Concurrency Guarded**: The billing, token refresh, and session closing pipelines are formally stress-tested and proven immune to race-condition errors under high parallel load.
 *   **Enterprise-Grade Security**: Stateful session rotation, 30s concurrent leeway, TOTP MFA, and bcrypt-hashed break-glass recovery are fully implemented and verified via automated E2E tests.
 *   **Immutable Auditing**: Every key database action is audited via unchangeable triggers at the database layer.
