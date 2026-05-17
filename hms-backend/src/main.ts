@@ -19,6 +19,15 @@ async function bootstrap() {
     next();
   });
 
+  // Global Security Headers Middleware
+  app.use((req: any, res: any, next: () => void) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+    res.setHeader('Content-Security-Policy', "default-src 'self'");
+    next();
+  });
+
   // Enable global validation (Section 12.1 Requirement)
   app.useGlobalPipes(
     new ValidationPipe({
