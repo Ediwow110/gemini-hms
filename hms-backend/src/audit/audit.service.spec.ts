@@ -83,6 +83,32 @@ describe('AuditService', () => {
         }),
       );
     });
+
+    it('should filter by query parameters including dates and search keywords', async () => {
+      prisma.auditLog.count.mockResolvedValue(1);
+      prisma.auditLog.findMany.mockResolvedValue([]);
+
+      await service.findAll(mockTenantId, mockBranchId, ['Super Admin'], {
+        eventKey: 'patient.create',
+        userId: mockUserId,
+        recordType: 'Patient',
+        recordId: 'rec-uuid',
+        startDate: '2026-05-17T00:00:00.000Z',
+        endDate: '2026-05-17T23:59:59.000Z',
+      });
+
+      expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            eventKey: 'patient.create',
+            userId: mockUserId,
+            recordType: 'Patient',
+            recordId: 'rec-uuid',
+            createdAt: expect.any(Object),
+          }),
+        }),
+      );
+    });
   });
 
   describe('findOne', () => {
@@ -131,6 +157,7 @@ describe('AuditService', () => {
   describe('log', () => {
     it('should include branchId when provided', async () => {
       prisma.auditLog.create.mockResolvedValue({});
+      prisma.auditLog.findFirst.mockResolvedValue(null);
       const data = {
         tenantId: mockTenantId,
         userId: mockUserId,
@@ -146,6 +173,83 @@ describe('AuditService', () => {
           data: expect.objectContaining({ branchId: mockBranchId }),
         }),
       );
+    });
+
+    it('should correctly fetch preceding log and chain previousHash', async () => {
+      prisma.auditLog.create.mockResolvedValue({});
+      prisma.auditLog.findFirst.mockResolvedValue({
+        hash: 'preceding-hash',
+      });
+
+      const data = {
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        eventKey: 'TEST_EVENT',
+        recordType: 'Payment',
+        recordId: 'rec-uuid',
+      };
+
+      await service.log(data);
+
+      expect(prisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            previousHash: 'preceding-hash',
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('verifyChain', () => {
+    it('should return isValid true for a cryptographically valid chain', async () => {
+      const logs = [
+        {
+          id: 'log-1',
+          tenantId: mockTenantId,
+          userId: mockUserId,
+          eventKey: 'patient.create',
+          recordType: 'Patient',
+          recordId: 'rec-1',
+          oldValues: null,
+          newValues: { name: 'Alice' },
+          createdAt: new Date('2026-05-17T12:00:00Z'),
+          hash: 'cb13b63bf0287e07663d1a84f3c7e73549704e6bd8b5774a3f1b34ea6cf763b6',
+          previousHash: null,
+        },
+      ];
+      prisma.auditLog.findMany.mockResolvedValue(logs);
+
+      jest.spyOn(service as any, 'computeHash').mockReturnValue(logs[0].hash);
+
+      const result = await service.verifyChain(mockTenantId);
+      expect(result.isValid).toBe(true);
+      expect(result.corruptedLogIds).toHaveLength(0);
+    });
+
+    it('should return isValid false and identify corrupted blocks when hash mismatch occurs', async () => {
+      const logs = [
+        {
+          id: 'log-1',
+          tenantId: mockTenantId,
+          userId: mockUserId,
+          eventKey: 'patient.create',
+          recordType: 'Patient',
+          recordId: 'rec-1',
+          oldValues: null,
+          newValues: { name: 'Alice' },
+          createdAt: new Date('2026-05-17T12:00:00Z'),
+          hash: 'invalid-hash',
+          previousHash: null,
+        },
+      ];
+      prisma.auditLog.findMany.mockResolvedValue(logs);
+
+      jest.spyOn(service as any, 'computeHash').mockReturnValue('computed-hash');
+
+      const result = await service.verifyChain(mockTenantId);
+      expect(result.isValid).toBe(false);
+      expect(result.corruptedLogIds).toContain('log-1');
     });
   });
 });

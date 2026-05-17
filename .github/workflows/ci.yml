@@ -43,6 +43,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './hms-frontend/package-lock.json'
       - run: npm ci
+      - name: Run Dependency Vulnerability Audit
+        run: npm audit --audit-level=critical
       - run: npm run lint
       - run: npm run build
 
@@ -77,11 +79,16 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './hms-backend/package-lock.json'
       - run: npm ci
+      - name: Run Dependency Vulnerability Audit
+        run: npm audit --audit-level=critical
+      - name: Validate Prisma Schema
+        run: npx prisma validate
       - run: npx prisma generate
       - run: npm run lint
       - run: npm run build
       - run: npx prisma migrate deploy
-      - run: npm run test
+      - name: Run Unit Tests with Coverage Threshold
+        run: npm run test -- --coverage
       - run: npm run test:e2e -- --runInBand
 
 
