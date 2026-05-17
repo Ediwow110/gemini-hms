@@ -5,13 +5,13 @@
 
 ## Constraints & Preferences
 - Project: `gemini-hms` (Repo: `https://github.com/Ediwow110/gemini-hms`).
-- Current main: `4a070e456de3d4a85934438756a8ee722a3c7360`.
+- Current main: `64e3e10d50f51ed4f73cc3c7919a66d38dcbc684`.
 - Use `senior-engineering-reviewer` and `silent-bug-hunter` skills.
 - Audit first; implement only if approve/reject audit coupling is confirmed non-transactional.
 - Do not add EMR redesign, frontend, reports, CSV/PDF/XLSX, signed URLs, or raw rows.
 - Do not broaden scope or apply old local P2 patches wholesale.
 - Phase 3 authorization: financial reversals (voids, refunds, cashier ledger) permitted as of 2026-05-17.
-- Phase 4 authorization: EMR Clinical Encounter SOAP notes and ICD-10 Diagnosis foundation completed as of 2026-05-17.
+- Phase 4 authorization: EMR Clinical Encounter SOAP notes, ICD-10 Diagnosis, Prescriptions, and Referrals completed as of 2026-05-17.
 - Stop at READY FOR FINAL REVIEW; do not merge.
 
 ## Progress
@@ -23,7 +23,7 @@
 - Skills `senior-engineering-reviewer` and `silent-bug-hunter` installed in `.opencode/skills`.
 - Local validation (lint, test, build, prisma) passed on main.
 - **P2 Audit: Approve/Reject Transactional Coupling** — Audited `approveMergeRequest` and `rejectMergeRequest` in `patient-merge-request.service.ts`. Both methods already use `this.prisma.$transaction(async (tx) => { ... })` and pass `tx` to `this.audit.log()`. Audit is already transactionally coupled. Tests verify rollback on audit failure. Updated `docs/admin-governance-technical-spec.md` line 924 to reflect current state (was incorrectly marked as backlog).
-- **Phase 4 EMR Clinical Foundation**: Extended `schema.prisma` with `Encounter` fields, `ClinicalNote` SOAP fields, `Icd10Code` model, and `EncounterDiagnosis` model. Implemented clean service and controller layers under `/clinical/...`, role-gated via NestJS `RolesGuard`. Verified with a dedicated E2E test suite in `test/clinical-encounter.e2e-spec.ts`. All 43/43 tests pass successfully sequentially.
+- **Phase 4 EMR Clinical Foundation & Expansion**: Implemented EMR Clinical Encounter, SOAP notes with irreversible locking, ICD-10 diagnosis linkage, Prescriptions (ACTIVE/CANCELLED/DISPENSED), and Specialist Referrals (Urgency and Status transitions). Built comprehensive role gating (only Doctor/Admin can mutate clinical records, Nurse read-only, Cashier blocked) and verified via two robust E2E test files (`test/clinical-encounter.e2e-spec.ts` and `test/prescription-referral.e2e-spec.ts`). All 44/44 tests pass sequentially.
 
 ### In Progress
 - (none)
@@ -35,13 +35,14 @@
 - P2 backlog items are addressed in isolated slices (PR #20, #21, #22) rather than broad refactors.
 - Docs corrected to reflect that approve/reject audit transactional coupling is already implemented.
 - Reverse-direction duplicate blocking implemented via `OR` query on pending check to preserve directionality semantics.
-- Clinical Encounter and SOAP notes implementation is perfectly modularized in a separate `src/clinical` module to prevent regressions in legacy `src/emr` or `src/encounters` folders.
+- Clinical modules are modularized in `src/clinical` to isolate outpatient EMR workflows from legacy scheduling and billing modules.
+- Prescriptions and Referrals are fully transactionally audited upon creation and status modification.
 
 ## Next Steps
-- Await user direction on the next outpatient clinical workflows or billing integrations.
+- Await user direction on next outpatient EMR workflows or Phase 5 (PhilHealth claims & double-entry ledger).
 
 ## Critical Context
-- Current main commit: `4a070e456de3d4a85934438756a8ee722a3c7360`.
+- Current main commit: `64e3e10d50f51ed4f73cc3c7919a66d38dcbc684`.
 - PR #20 head: `17cba3660573fa3b09de2f8141b734b1ce08543d`.
 - PR #21 head: `86d2b51fb31faa96ebe55585031d850d7d51a6fc`.
 - PR #22 head: `4190e113f546975de0a63127c0d17e07243a804a`.
