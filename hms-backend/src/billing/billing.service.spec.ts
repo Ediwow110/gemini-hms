@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { NumberingService } from '../numbering/numbering.service';
+import { LedgerService } from '../ledger/ledger.service';
 import { computePaymentFingerprint } from './utils/idempotency';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -116,6 +117,9 @@ describe('BillingService Reversals', () => {
     const numbering = {
       generateNumber: jest.fn().mockResolvedValue('RCP-000001'),
     };
+    const ledgerService = {
+      postEntry: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -124,6 +128,7 @@ describe('BillingService Reversals', () => {
         { provide: AuditService, useValue: audit },
         { provide: ApprovalsService, useValue: approvals },
         { provide: NumberingService, useValue: numbering },
+        { provide: LedgerService, useValue: ledgerService },
       ],
     }).compile();
 

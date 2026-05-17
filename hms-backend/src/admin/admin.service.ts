@@ -3819,8 +3819,13 @@ export class AdminService {
       });
 
       // Stub checks for external services (email/SMS, storage)
-      const emailSmsStatus = process.env.EMAIL_PROVIDER || process.env.SMS_PROVIDER ? 'configured' : 'stub';
-      const storageStatus = process.env.STORAGE_PROVIDER ? 'configured' : 'stub';
+      const emailSmsStatus =
+        process.env.EMAIL_PROVIDER || process.env.SMS_PROVIDER
+          ? 'configured'
+          : 'stub';
+      const storageStatus = process.env.STORAGE_PROVIDER
+        ? 'configured'
+        : 'stub';
       const jobQueueStatus = {
         pending: pendingNotifications,
         status: pendingNotifications > 100 ? 'backlogged' : 'healthy',

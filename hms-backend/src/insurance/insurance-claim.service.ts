@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, NotFoundException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  Inject,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
 import { InsuranceClaim, Prisma } from '@prisma/client';
@@ -40,7 +45,9 @@ export class InsuranceClaimService {
       },
     });
     if (activeClaim) {
-      throw new ConflictException('Active claim already exists for this invoice');
+      throw new ConflictException(
+        'Active claim already exists for this invoice',
+      );
     }
 
     // 3. Find patientId from order/patient
@@ -101,9 +108,11 @@ export class InsuranceClaimService {
         where: { id },
         data: {
           status: data.status,
-          settledAmount: data.status === 'PAID' ? data.settledAmount : undefined,
+          settledAmount:
+            data.status === 'PAID' ? data.settledAmount : undefined,
           settledAt: data.status === 'PAID' ? new Date() : null,
-          rejectionReason: data.status === 'REJECTED' ? data.rejectionReason : null,
+          rejectionReason:
+            data.status === 'REJECTED' ? data.rejectionReason : null,
         },
       });
 

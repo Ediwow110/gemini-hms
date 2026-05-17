@@ -51,7 +51,11 @@ export class ReferralPartnersController {
     @GetUser('userId') userId: string,
     @Body() dto: CreateReferralRecordDto,
   ) {
-    return this.referralPartnersService.createReferralRecord(tenantId, userId, dto);
+    return this.referralPartnersService.createReferralRecord(
+      tenantId,
+      userId,
+      dto,
+    );
   }
 
   @Get('records')

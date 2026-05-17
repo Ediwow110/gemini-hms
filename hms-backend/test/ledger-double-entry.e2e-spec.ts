@@ -25,7 +25,8 @@ describe('Ledger Double-Entry E2E', () => {
   let sessionId: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -151,7 +152,7 @@ describe('Ledger Double-Entry E2E', () => {
         tenantId,
         orderId: orderIdA,
         invoiceNumber: `INV-LED-A-${randomUUID()}`,
-        totalAmount: 1000.00,
+        totalAmount: 1000.0,
         paidAmount: 0.0,
         status: 'UNPAID',
       },
@@ -163,7 +164,7 @@ describe('Ledger Double-Entry E2E', () => {
       .send({
         invoiceId: invoiceIdA,
         cashierSessionId: sessionId,
-        amount: 1000.00,
+        amount: 1000.0,
         paymentMethod: 'CASH',
       })
       .expect(201);
@@ -259,7 +260,7 @@ describe('Ledger Double-Entry E2E', () => {
         tenantId,
         orderId: orderIdB,
         invoiceNumber: `INV-LED-B-${randomUUID()}`,
-        totalAmount: 1500.00,
+        totalAmount: 1500.0,
         paidAmount: 0.0,
         status: 'UNPAID',
       },
@@ -271,7 +272,7 @@ describe('Ledger Double-Entry E2E', () => {
       .send({
         invoiceId: invoiceIdB,
         cashierSessionId: sessionId,
-        amount: 1500.00,
+        amount: 1500.0,
         paymentMethod: 'CASH',
       })
       .expect(201);
@@ -284,7 +285,7 @@ describe('Ledger Double-Entry E2E', () => {
       .post(`/api/v1/billing/invoices/${invoiceIdB}/refund`)
       .send({
         paymentId: paymentIdB,
-        amount: 400.00,
+        amount: 400.0,
         reason: 'Partial discount refund',
       })
       .expect(201);
@@ -312,7 +313,9 @@ describe('Ledger Double-Entry E2E', () => {
 
     // Verify double-entry for REFUND: DEBIT REVENUE / CREDIT CASH
     const refundLedgerEntries = await request(app.getHttpServer())
-      .get(`/ledger/entries?referenceType=REFUND&referenceId=${refundReversalId}`)
+      .get(
+        `/ledger/entries?referenceType=REFUND&referenceId=${refundReversalId}`,
+      )
       .expect(200);
 
     expect(refundLedgerEntries.body.length).toBe(1);

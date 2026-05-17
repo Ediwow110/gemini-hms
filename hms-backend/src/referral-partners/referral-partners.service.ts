@@ -14,7 +14,11 @@ export class ReferralPartnersService {
     private audit: AuditService,
   ) {}
 
-  async createReferrer(tenantId: string, userId: string, dto: CreateReferrerDto) {
+  async createReferrer(
+    tenantId: string,
+    userId: string,
+    dto: CreateReferrerDto,
+  ) {
     const referrer = await this.prisma.referrer.create({
       data: {
         tenantId,

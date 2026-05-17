@@ -57,6 +57,7 @@ describe('LabService Branch Isolation', () => {
         where: {
           id: labResultId,
           order: { tenantId, branchId },
+          deletedAt: null,
         },
         include: expect.anything(),
       });

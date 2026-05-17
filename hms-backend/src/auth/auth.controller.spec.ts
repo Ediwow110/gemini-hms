@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { MfaService } from './mfa.service';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { SelectBranchDto } from './dto/select-branch.dto';
 import { RequestUser } from '../common/types/authenticated-request.type';
@@ -16,6 +18,18 @@ describe('AuthController', () => {
       selectBranch: jest.fn(),
       getUserBranches: jest.fn(),
       getMe: jest.fn(),
+      logout: jest.fn(),
+      refreshTokens: jest.fn(),
+      verifyMfa: jest.fn(),
+      verifyMfaWithRecoveryCode: jest.fn(),
+    };
+
+    const mockMfaService = {
+      generateSecret: jest.fn(),
+      enableMfa: jest.fn(),
+      verifyCode: jest.fn(),
+      generateRecoveryCodes: jest.fn(),
+      verifyRecoveryCode: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -24,6 +38,17 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: mockAuthService,
+        },
+        {
+          provide: MfaService,
+          useValue: mockMfaService,
+        },
+        {
+          provide: JwtService,
+          useValue: {
+            sign: jest.fn().mockReturnValue('mocked-mfa-token'),
+            verify: jest.fn().mockReturnValue({ sub: 'user-id' }),
+          },
         },
       ],
     }).compile();

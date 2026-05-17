@@ -53,6 +53,25 @@ describe('HrService', () => {
             department: {
               create: jest.fn(),
             },
+            $transaction: jest.fn(async (cb) =>
+              cb({
+                employee: {
+                  count: jest.fn(),
+                  create: jest.fn(),
+                  findFirst: jest.fn(),
+                  findMany: jest.fn(),
+                },
+                employeeBranch: {
+                  create: jest.fn(),
+                },
+                payslip: {
+                  create: jest.fn(),
+                },
+                department: {
+                  create: jest.fn(),
+                },
+              }),
+            ),
           },
         },
         {

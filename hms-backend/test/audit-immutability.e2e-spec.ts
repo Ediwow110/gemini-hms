@@ -15,7 +15,7 @@ describe('Audit Log Immutability (e2e)', () => {
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-secret-for-audit-immutability-long-enough';
-    
+
     const moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
@@ -30,9 +30,11 @@ describe('Audit Log Immutability (e2e)', () => {
     prisma = app.get(PrismaService);
     await cleanupDatabase(prisma);
 
-    const tenant = await prisma.tenant.create({ data: { name: 'Audit-Tenant' } });
+    const tenant = await prisma.tenant.create({
+      data: { name: 'Audit-Tenant' },
+    });
     tenantId = tenant.id;
-    
+
     const user = await prisma.user.create({
       data: { tenantId, email: 'audit-test@hms.local', passwordHash: 'hash' },
     });

@@ -16,7 +16,11 @@ export class LedgerController {
     @Query('referenceType') referenceType: string,
     @Query('referenceId') referenceId: string,
   ) {
-    return this.ledgerService.getEntriesByReference(tenantId, referenceType, referenceId);
+    return this.ledgerService.getEntriesByReference(
+      tenantId,
+      referenceType,
+      referenceId,
+    );
   }
 
   @Get('balance')
@@ -28,7 +32,12 @@ export class LedgerController {
   ) {
     const from = fromStr ? new Date(fromStr) : undefined;
     const to = toStr ? new Date(toStr) : undefined;
-    const balance = await this.ledgerService.getAccountBalance(tenantId, account, from, to);
+    const balance = await this.ledgerService.getAccountBalance(
+      tenantId,
+      account,
+      from,
+      to,
+    );
     return { balance };
   }
 }

@@ -29,7 +29,8 @@ describe('Procurement E2E', () => {
   }
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -128,7 +129,9 @@ describe('Procurement E2E', () => {
 
     // 3. Self-approval guard: Inventory staff attempts to approve own PR -> 403
     await request(app.getHttpServer())
-      .patch(`/api/v1/procurement/purchase-requests/${purchaseRequestId}/approve`)
+      .patch(
+        `/api/v1/procurement/purchase-requests/${purchaseRequestId}/approve`,
+      )
       .expect(403);
 
     // 4. Branch Manager approves purchase request -> status APPROVED -> 200
@@ -142,7 +145,9 @@ describe('Procurement E2E', () => {
     };
 
     const approveRes = await request(app.getHttpServer())
-      .patch(`/api/v1/procurement/purchase-requests/${purchaseRequestId}/approve`)
+      .patch(
+        `/api/v1/procurement/purchase-requests/${purchaseRequestId}/approve`,
+      )
       .expect(200);
 
     expect(approveRes.body.status).toBe('APPROVED');

@@ -87,16 +87,20 @@ export class AuthService {
 
     const passwordValid = await bcrypt.compare(pass, user.passwordHash);
 
-    if (user.status !== 'ACTIVE' || user.deactivatedAt !== null || !passwordValid) {
+    if (
+      user.status !== 'ACTIVE' ||
+      user.deactivatedAt !== null ||
+      !passwordValid
+    ) {
       // Increment failed attempts
       const newAttempts = user.failedLoginAttempts + 1;
       const updates: any = { failedLoginAttempts: newAttempts };
-      
+
       if (newAttempts >= 5) {
         const lockUntil = new Date();
         lockUntil.setMinutes(lockUntil.getMinutes() + 15);
         updates.lockedUntil = lockUntil;
-        
+
         // Log lockout audit event
         await this.prisma.$transaction(async (tx) => {
           await tx.user.update({ where: { id: user.id }, data: updates });
@@ -107,12 +111,16 @@ export class AuthService {
               eventKey: 'LOGIN_LOCKOUT',
               recordType: 'User',
               recordId: user.id,
-              newValues: { email, attempts: newAttempts, lockedUntil: lockUntil },
+              newValues: {
+                email,
+                attempts: newAttempts,
+                lockedUntil: lockUntil,
+              },
             },
             tx,
           );
         });
-        
+
         throw new UnauthorizedException({
           statusCode: 401,
           message: 'Account locked due to too many failed attempts',

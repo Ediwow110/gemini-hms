@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 import { AdminService } from './admin.service';
+import { MetricsService } from './metrics.service';
 
 process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-characters-long';
 
@@ -53,6 +54,7 @@ describe('AdminService', () => {
     };
   };
   let audit: { log: jest.Mock };
+  let metrics: { getMetrics: jest.Mock };
 
   const superAdminActor: RequestUser = {
     userId: 'actor-id',
@@ -118,12 +120,18 @@ describe('AdminService', () => {
       },
     };
     audit = { log: jest.fn() };
+    metrics = {
+      getMetrics: jest
+        .fn()
+        .mockReturnValue({ totalRequests: 0, totalErrors: 0 }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminService,
         { provide: PrismaService, useValue: prisma },
         { provide: AuditService, useValue: audit },
+        { provide: MetricsService, useValue: metrics },
       ],
     }).compile();
 
@@ -3988,26 +3996,31 @@ describe('AdminService', () => {
       // First call: SELECT 1 for connectivity check
       // Subsequent calls: schema readiness checks for each table
       prisma.$queryRaw.mockResolvedValue([{ table_exists: true }]);
+      prisma.notification = { count: jest.fn().mockResolvedValue(0) };
+      prisma.auditLog = { findFirst: jest.fn().mockResolvedValue(null) };
       process.env.BACKUP_S3_BUCKET = 'test-bucket';
 
       const result = await service.getHealth();
 
-      expect(result).toEqual({
-        appStatus: 'ok',
-        dbStatus: 'ok',
-        migrationStatus: 'ok',
-        backupConfig: true,
-        timestamp: expect.any(String),
-      });
+      expect(result.appStatus).toBe('ok');
+      expect(result.dbStatus).toBe('ok');
+      expect(result.migrationStatus).toBe('ok');
+      expect(result.backupConfig).toBe(true);
+      expect(result.lastBackupAt).toBeNull();
+      expect(result.externalServices).toBeDefined();
+      expect(result.jobQueue).toBeDefined();
+      expect(result.timestamp).toBeDefined();
       expect(prisma.user.count).not.toHaveBeenCalled();
     });
 
     it('returns degraded status when db connected but schema not ready', async () => {
       // First call: SELECT 1 succeeds (connectivity ok)
-      // Second call: schema readiness check fails (table not found)
+      // Subsequent calls: schema readiness check fails (table not found)
       prisma.$queryRaw
         .mockResolvedValueOnce([]) // SELECT 1 passes
         .mockResolvedValueOnce([{ table_exists: false }]); // Schema check fails
+      prisma.notification = { count: jest.fn().mockResolvedValue(0) };
+      prisma.auditLog = { findFirst: jest.fn().mockResolvedValue(null) };
       process.env.BACKUP_S3_BUCKET = 'test-bucket';
 
       const result = await service.getHealth();
@@ -4016,7 +4029,6 @@ describe('AdminService', () => {
       expect(result.dbStatus).toBe('ok');
       expect(result.migrationStatus).toBe('error');
       expect(result.backupConfig).toBe(true);
-      expect(result).not.toHaveProperty('database.error');
     });
 
     it('returns degraded status on database failure', async () => {
@@ -4034,6 +4046,8 @@ describe('AdminService', () => {
 
     it('returns backup not configured when no env vars', async () => {
       prisma.$queryRaw.mockResolvedValue([{ table_exists: true }]);
+      prisma.notification = { count: jest.fn().mockResolvedValue(0) };
+      prisma.auditLog = { findFirst: jest.fn().mockResolvedValue(null) };
       delete process.env.BACKUP_S3_BUCKET;
       delete process.env.BACKUP_AZURE_CONTAINER;
 
@@ -4067,6 +4081,8 @@ describe('AdminService', () => {
 
     it('includes timestamp in response', async () => {
       prisma.$queryRaw.mockResolvedValue([{ table_exists: true }]);
+      prisma.notification = { count: jest.fn().mockResolvedValue(0) };
+      prisma.auditLog = { findFirst: jest.fn().mockResolvedValue(null) };
       process.env.BACKUP_S3_BUCKET = '';
 
       const result = await service.getHealth();
@@ -4078,6 +4094,8 @@ describe('AdminService', () => {
 
     it('does not include global user count in response', async () => {
       prisma.$queryRaw.mockResolvedValue([{ table_exists: true }]);
+      prisma.notification = { count: jest.fn().mockResolvedValue(0) };
+      prisma.auditLog = { findFirst: jest.fn().mockResolvedValue(null) };
       process.env.BACKUP_S3_BUCKET = '';
 
       const result = await service.getHealth();
@@ -4093,6 +4111,8 @@ describe('AdminService', () => {
       prisma.$queryRaw
         .mockResolvedValueOnce([]) // SELECT 1 passes
         .mockResolvedValueOnce([{ table_exists: false }]); // First table check fails
+      prisma.notification = { count: jest.fn().mockResolvedValue(0) };
+      prisma.auditLog = { findFirst: jest.fn().mockResolvedValue(null) };
 
       const result = await service.getHealth();
 

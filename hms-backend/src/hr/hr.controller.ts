@@ -98,11 +98,24 @@ export class HrController {
     @Param('id') id: string,
     @Body() dto: UpdateEmployeeStatusDto,
   ) {
-    return this.hrService.updateEmployeeStatus(tenantId, userId, id, dto.status, user);
+    return this.hrService.updateEmployeeStatus(
+      tenantId,
+      userId,
+      id,
+      dto.status,
+      user,
+    );
   }
 
   @Post('leave-requests')
-  @Roles('Super Admin', 'HR Manager', 'HR Staff', 'Branch Admin', 'Doctor', 'Nurse')
+  @Roles(
+    'Super Admin',
+    'HR Manager',
+    'HR Staff',
+    'Branch Admin',
+    'Doctor',
+    'Nurse',
+  )
   createLeaveRequest(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,

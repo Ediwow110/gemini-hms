@@ -189,28 +189,50 @@ describe('MFA Lifecycle (e2e)', () => {
       const hrEmail = `hr-${randomUUID()}@hms.local`;
       const hrHash = await bcrypt.hash(adminPassword, 10);
       const hrUser = await prisma.user.create({
-        data: { tenantId, email: hrEmail, passwordHash: hrHash, mfaEnabled: false },
+        data: {
+          tenantId,
+          email: hrEmail,
+          passwordHash: hrHash,
+          mfaEnabled: false,
+        },
       });
-      await prisma.userRole.create({ data: { userId: hrUser.id, roleId: hrRole.id } });
+      await prisma.userRole.create({
+        data: { userId: hrUser.id, roleId: hrRole.id },
+      });
 
       // Create Finance User
       const finEmail = `fin-${randomUUID()}@hms.local`;
       const finHash = await bcrypt.hash(adminPassword, 10);
       const finUser = await prisma.user.create({
-        data: { tenantId, email: finEmail, passwordHash: finHash, mfaEnabled: false },
+        data: {
+          tenantId,
+          email: finEmail,
+          passwordHash: finHash,
+          mfaEnabled: false,
+        },
       });
-      await prisma.userRole.create({ data: { userId: finUser.id, roleId: finRole.id } });
+      await prisma.userRole.create({
+        data: { userId: finUser.id, roleId: finRole.id },
+      });
 
       // Login both to get MFA tokens
       const hrLoginRes = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ email: hrEmail, password: adminPassword, tenantCode: tenantName })
+        .send({
+          email: hrEmail,
+          password: adminPassword,
+          tenantCode: tenantName,
+        })
         .expect(202);
       const hrMfaToken = hrLoginRes.body.mfaToken;
 
       const finLoginRes = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ email: finEmail, password: adminPassword, tenantCode: tenantName })
+        .send({
+          email: finEmail,
+          password: adminPassword,
+          tenantCode: tenantName,
+        })
         .expect(202);
       const finMfaToken = finLoginRes.body.mfaToken;
 
@@ -261,7 +283,11 @@ describe('MFA Lifecycle (e2e)', () => {
       // Login HR user again to get unverified token
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ email: `hr-${randomUUID()}@hms.local`, password: adminPassword, tenantCode: tenantName })
+        .send({
+          email: `hr-${randomUUID()}@hms.local`,
+          password: adminPassword,
+          tenantCode: tenantName,
+        })
         .expect(202);
       const unverifiedToken = res.body.mfaToken;
 
@@ -274,7 +300,11 @@ describe('MFA Lifecycle (e2e)', () => {
     it('should block Finance user without verified MFA', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ email: `fin-${randomUUID()}@hms.local`, password: adminPassword, tenantCode: tenantName })
+        .send({
+          email: `fin-${randomUUID()}@hms.local`,
+          password: adminPassword,
+          tenantCode: tenantName,
+        })
         .expect(202);
       const unverifiedToken = res.body.mfaToken;
 

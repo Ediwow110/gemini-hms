@@ -86,7 +86,10 @@ describe('Auth Lifecycle & Lockout (e2e)', () => {
         tenantCode: tenantName,
       };
       for (let i = 0; i < 5; i++) {
-        await request(app.getHttpServer()).post('/api/v1/auth/login').send(wrongLogin).expect(401);
+        await request(app.getHttpServer())
+          .post('/api/v1/auth/login')
+          .send(wrongLogin)
+          .expect(401);
       }
 
       // Try correct password while locked
@@ -110,8 +113,12 @@ describe('Auth Lifecycle & Lockout (e2e)', () => {
         password: 'WrongPassword123',
         tenantCode: tenantName,
       };
-      await request(app.getHttpServer()).post('/api/v1/auth/login').send(wrongLogin);
-      await request(app.getHttpServer()).post('/api/v1/auth/login').send(wrongLogin);
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send(wrongLogin);
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send(wrongLogin);
 
       // Successful login
       const correctLogin = {

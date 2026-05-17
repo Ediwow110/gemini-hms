@@ -23,7 +23,15 @@ export class ProcurementController {
   constructor(private readonly procurementService: ProcurementService) {}
 
   @Post('suppliers')
-  @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff', 'Branch Manager', 'Inventory Staff', 'Staff')
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'HR Manager',
+    'HR Staff',
+    'Branch Manager',
+    'Inventory Staff',
+    'Staff',
+  )
   createSupplier(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -33,7 +41,15 @@ export class ProcurementController {
   }
 
   @Post('purchase-requests')
-  @Roles('Super Admin', 'Branch Admin', 'Inventory Staff', 'Staff', 'Doctor', 'Nurse', 'HR Staff')
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'Inventory Staff',
+    'Staff',
+    'Doctor',
+    'Nurse',
+    'HR Staff',
+  )
   createPurchaseRequest(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -70,6 +86,11 @@ export class ProcurementController {
     @Param('id') id: string,
     @Body() dto: ReceivePurchaseOrderDto,
   ) {
-    return this.procurementService.receivePurchaseOrder(tenantId, userId, id, dto);
+    return this.procurementService.receivePurchaseOrder(
+      tenantId,
+      userId,
+      id,
+      dto,
+    );
   }
 }

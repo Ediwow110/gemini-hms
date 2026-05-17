@@ -6,6 +6,7 @@ import type { RequestUser } from '../common/types/authenticated-request.type';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { MetricsService } from './metrics.service';
 import {
   AssignUserRoleDto,
   CreateUserDto,
@@ -84,6 +85,13 @@ describe('AdminController', () => {
         {
           provide: PrismaService,
           useValue: { userRole: { findMany: jest.fn() } },
+        },
+        {
+          provide: MetricsService,
+          useValue: {
+            getMetrics: jest.fn().mockReturnValue({}),
+            getPrometheusFormat: jest.fn().mockReturnValue(''),
+          },
         },
       ],
     }).compile();

@@ -20,7 +20,11 @@ export class ProcurementService {
     private audit: AuditService,
   ) {}
 
-  async createSupplier(tenantId: string, userId: string, dto: CreateSupplierDto) {
+  async createSupplier(
+    tenantId: string,
+    userId: string,
+    dto: CreateSupplierDto,
+  ) {
     const supplier = await this.prisma.supplier.create({
       data: {
         tenantId,
@@ -129,7 +133,9 @@ export class ProcurementService {
       );
     }
 
-    const count = await this.prisma.purchaseOrder.count({ where: { tenantId } });
+    const count = await this.prisma.purchaseOrder.count({
+      where: { tenantId },
+    });
     const orderNumber = `PO-${(count + 1).toString().padStart(6, '0')}`;
 
     return await this.prisma.$transaction(async (tx) => {

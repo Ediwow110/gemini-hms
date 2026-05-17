@@ -57,10 +57,7 @@ export class LedgerService {
   ): Promise<number> {
     const where: Prisma.LedgerEntryWhereInput = {
       tenantId,
-      OR: [
-        { debitAccount: accountName },
-        { creditAccount: accountName },
-      ],
+      OR: [{ debitAccount: accountName }, { creditAccount: accountName }],
     };
 
     if (from || to) {

@@ -19,7 +19,8 @@ describe('Insurance Claims E2E', () => {
   let invoiceId: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -189,7 +190,9 @@ describe('Insurance Claims E2E', () => {
 
     // Verify double-entry ledger entry was posted
     const ledgerEntriesRes = await request(app.getHttpServer())
-      .get(`/ledger/entries?referenceType=CLAIM_SETTLEMENT&referenceId=${claimId}`)
+      .get(
+        `/ledger/entries?referenceType=CLAIM_SETTLEMENT&referenceId=${claimId}`,
+      )
       .expect(200);
 
     expect(ledgerEntriesRes.body.length).toBe(1);
