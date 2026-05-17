@@ -27,9 +27,16 @@
 - **Phase 4 Exit-Gate Closure: Patient Portal Authorization & ePHI Protection**: Implemented custom patient authentication (JWT-based login) completely decoupled from legacy User/Session staff authorization. Formulated read-only, patient-scoped REST endpoints for profiles, invoices (with calculated outstanding balance), prescriptions (only ACTIVE/DISPENSED), and lab results (strict release gate allowing only status === 'RELEASED'). Enforced bulletproof scoping, multi-tenant isolation, and ePHI leakage prevention via a comprehensive `test/patient-portal.e2e-spec.ts` E2E test suite. All tests are 100% green.
 - **Phase 5 Enterprise Foundation: Insurance Claims & Double-Entry General Ledger**: Implemented pluggable `InsuranceClaim` model, `LedgerEntry` double-entry model, ledger and claims service and controller endpoints. Created mock Stub national clearing system provider. Added E2E tests (`test/insurance-claims.e2e-spec.ts` and `test/ledger-double-entry.e2e-spec.ts`) asserting 100% correct claims tracking, automated DEBIT/CREDIT ledger updates, and balance checks under payments, voids, refunds, and claim settlements. All sequential tests run cleanly.
 - **TypeScript & IDE Static Analysis Hardening**: Audited and fixed all static TypeScript compilation errors across all unit and E2E spec files, ensuring that `npm run build` succeeds perfectly with 0 compilation errors and all 504 tests across all 31 suites pass sequentially.
+- **Production Hardening (5 Critical Security Blockers)** — Resolved 100% of security audit vulnerabilities:
+  1. *Clinical Soft Deletes (HIPAA)*: Replaced hard deletes with soft deletes (`deletedAt`, `deletedById`, `deleteReason`) on clinical diagnoses, added filters to hide deleted items, and added Super Admin-only restore handler.
+  2. *Forensic Audit Context*: Added `ipAddress`, `userAgent`, `activeRole`, and `sessionId` to `AuditLog`. Built `AuditContextMiddleware` with Node's `AsyncLocalStorage` to automatically propagate context downstream.
+  3. *Lab Release Transaction*: Enforced atomic status constraints, generated secure SHA-256 digital signatures, created patient alerts via notification outbox, and updated order statuses inside a single Prisma Transaction block.
+  4. *ePHI Exposure Prevention*: Implemented robust masking utilities for email and phone numbers, preventing raw ePHI leakage in third-party dispatcher services and stdout logs.
+  5. *Docker Container Hardening*: Hardened backend `Dockerfile` to drop root privileges (`appuser:appgroup`), expose port 3000, and configured unprivileged health checks.
+  - Verification: Created new comprehensive E2E/unit test files; all 69 sequential tests pass cleanly!
 
 ### In Progress
-- Ready for final review of Phase 5 Enterprise Foundation.
+- Final validation and sign-off of security hardening.
 
 ### Blocked
 - (none)
