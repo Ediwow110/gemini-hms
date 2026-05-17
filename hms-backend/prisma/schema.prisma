@@ -56,6 +56,13 @@ model Tenant {
   insuranceClaims    InsuranceClaim[]
   ledgerEntries      LedgerEntry[]
 
+  suppliers          Supplier[]
+  purchaseRequests   PurchaseRequest[]
+  purchaseOrders     PurchaseOrder[]
+  receivingRecords   ReceivingRecord[]
+  referrers          Referrer[]
+  referralRecords    ReferralRecord[]
+
   @@map("tenants")
 }
 
@@ -80,6 +87,7 @@ model Branch {
   servicePrices    ServicePrice[]
   insuranceClaims  InsuranceClaim[]
   ledgerEntries    LedgerEntry[]
+  employees        Employee[]
 
   @@map("branches")
 }
@@ -116,6 +124,7 @@ model User {
   referralsReferred       Referral[]     @relation("ReferredBy")
   sessions           Session[]
   mfaRecoveryCodes   UserMfaRecoveryCode[]
+  employees          Employee[]
 
   @@unique([tenantId, email])
   @@map("users")
@@ -698,22 +707,34 @@ model Department {
 
 model Employee {
   id             String   @id @default(uuid()) @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
   tenantId       String   @map("tenant_id") @db.Uuid
-  departmentId   String?  @map("department_id") @db.Uuid
+  branchId       String   @map("branch_id") @db.Uuid
   employeeNumber String   @map("employee_number")
-  firstName      String   @map("first_name")
-  lastName       String   @map("last_name")
-  jobTitle       String   @map("job_title")
-  status         String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
-  joiningDate    DateTime @map("joining_date") @db.Date
-  salary         Decimal  @db.Decimal(12, 2)
+  department     String   @default("")
+  position       String   @default("")
+  hireDate       DateTime @default(now()) @map("hire_date")
+  status         String   @default("ACTIVE") // ACTIVE/ON_LEAVE/SUSPENDED/RESIGNED/TERMINATED
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  tenant           Tenant           @relation(fields: [tenantId], references: [id])
-  department       Department?      @relation(fields: [departmentId], references: [id])
+  // Existing/Legacy fields (kept for schema / existing service compatibility)
+  firstName      String?      @map("first_name")
+  lastName       String?      @map("last_name")
+  jobTitle       String?      @map("job_title")
+  joiningDate    DateTime?    @map("joining_date") @db.Date
+  salary         Decimal?     @db.Decimal(12, 2)
+  departmentId   String?      @map("department_id") @db.Uuid
+  departmentRef  Department?  @relation(fields: [departmentId], references: [id])
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch           Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  user             User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   employeeBranches EmployeeBranch[]
   payslips         Payslip[]
+  attendanceLogs   AttendanceLog[]
+  leaveRequests    LeaveRequest[]
+  licenses         LicenseRecord[]
 
   @@unique([tenantId, employeeNumber])
   @@map("employees")
@@ -1230,6 +1251,161 @@ model LedgerEntry {
   @@index([tenantId, branchId])
   @@index([referenceType, referenceId])
   @@map("ledger_entries")
+}
+
+model AttendanceLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  employeeId String   @map("employee_id") @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  branchId   String   @map("branch_id") @db.Uuid
+  date       DateTime @db.Date
+  checkIn    DateTime @map("check_in")
+  checkOut   DateTime? @map("check_out")
+  source     String   @default("WEB") // WEB, MOBILE, BIOMETRIC
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_logs")
+}
+
+model LeaveRequest {
+  id           String   @id @default(uuid()) @db.Uuid
+  employeeId   String   @map("employee_id") @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  type         String   // VACATION, SICK, EMERGENCY, etc.
+  startDate    DateTime @map("start_date")
+  endDate      DateTime @map("end_date")
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
+  reason       String
+  approvedById String?  @map("approved_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("leave_requests")
+}
+
+model LicenseRecord {
+  id            String   @id @default(uuid()) @db.Uuid
+  employeeId    String   @map("employee_id") @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  licenseType   String   @map("license_type")
+  licenseNumber String   @map("license_number")
+  issuedAt      DateTime @map("issued_at")
+  expiresAt     DateTime @map("expires_at")
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("license_records")
+}
+
+model Supplier {
+  id           String          @id @default(uuid()) @db.Uuid
+  tenantId     String          @map("tenant_id") @db.Uuid
+  name         String
+  contactName  String?         @map("contact_name")
+  contactEmail String?         @map("contact_email")
+  contactPhone String?         @map("contact_phone")
+  address      String?
+  status       String          @default("ACTIVE")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  purchaseOrders PurchaseOrder[]
+
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("suppliers")
+}
+
+model PurchaseRequest {
+  id             String          @id @default(uuid()) @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
+  branchId       String          @map("branch_id") @db.Uuid
+  requestedById  String          @map("requested_by_id") @db.Uuid
+  items          Json            @map("items") // Array of items: [{sku, quantity, unitPrice}]
+  status         String          @default("DRAFT") // DRAFT, SUBMITTED, APPROVED, REJECTED, ORDERED
+  reason         String?
+  approvedById   String?         @map("approved_by_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  purchaseOrders PurchaseOrder[]
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_requests")
+}
+
+model PurchaseOrder {
+  id                String            @id @default(uuid()) @db.Uuid
+  tenantId          String            @map("tenant_id") @db.Uuid
+  branchId          String            @map("branch_id") @db.Uuid
+  supplierId        String            @map("supplier_id") @db.Uuid
+  purchaseRequestId String            @map("purchase_request_id") @db.Uuid
+  orderNumber       String            @map("order_number")
+  status            String            @default("DRAFT") // DRAFT, SENT, PARTIALLY_RECEIVED, RECEIVED, CANCELLED
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  supplier          Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  purchaseRequest   PurchaseRequest   @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+  receivingRecords  ReceivingRecord[]
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, orderNumber])
+  @@map("purchase_orders")
+}
+
+model ReceivingRecord {
+  id              String        @id @default(uuid()) @db.Uuid
+  purchaseOrderId String        @map("purchase_order_id") @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  branchId        String        @map("branch_id") @db.Uuid
+  receivedById    String        @map("received_by_id") @db.Uuid
+  receivedAt      DateTime      @default(now()) @map("received_at")
+  notes           String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("receiving_records")
+}
+
+model Referrer {
+  id              String           @id @default(uuid()) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  name            String
+  type            String           @default("DOCTOR") // DOCTOR, CLINIC, FACILITY
+  contactInfo     String?          @map("contact_info")
+  rebateRate      Decimal          @map("rebate_rate") @db.Decimal(5, 2)
+  status          String           @default("ACTIVE")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  referralRecords ReferralRecord[]
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("referrers")
+}
+
+model ReferralRecord {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  patientId    String   @map("patient_id") @db.Uuid
+  orderId      String   @map("order_id") @db.Uuid
+  referrerId   String   @map("referrer_id") @db.Uuid
+  referralDate DateTime @default(now()) @map("referral_date")
+  rebateAmount Decimal  @map("rebate_amount") @db.Decimal(12, 2)
+  status       String   @default("PENDING") // PENDING, CONFIRMED, PAID, CANCELLED
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  referrer Referrer @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("referral_records")
 }
 
 

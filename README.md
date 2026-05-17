@@ -2,8 +2,8 @@
 
 This repository contains the architectural foundation and core workflows for a secure, multi-tenant, branch-isolated healthcare operations platform.
 
-> **Status: PRODUCTION READY (GA) — Phase 5 Exit-Gate Satisfied — Enterprise Foundation Edition**  
-> Production-ready for outpatient clinic and enterprise operations with TOTP MFA, break-glass recovery controls, supervisor-approved cashier voids/refund ledgers, clinical encounters, locked SOAP consults, ICD-10 diagnoses, a secure ePHI-protected Patient Portal, pluggable national insurance claims, and a double-entry Accounting General Ledger. Optimized for single-tenant small-clinic or multi-branch environments; not yet validated for large multi-tenant SaaS. The system is hardened for secure clinical operations, implementing **Multi-Factor Authentication (MFA)** with database-layer encrypted secrets, secure **Break-Glass MFA Recovery Flows** (bcrypt-hashed, one-time burn), global fail-closed authentication guards, stateful session rotation for staff, and custom stateless JWT auth for patient portal access. All key data access operations are thoroughly stress-tested and guarded by multi-tenant database-level isolation.
+> **Status: PRODUCTION READY (GA) — Phase 5 Exit-Gate Satisfied — Enterprise Business Expansion Edition**  
+> Production-ready for outpatient clinic and enterprise operations with TOTP MFA, break-glass recovery controls, supervisor-approved cashier voids/refund ledgers, clinical encounters, locked SOAP consults, ICD-10 diagnoses, a secure ePHI-protected Patient Portal, national insurance claims, a double-entry Accounting General Ledger, employee profile deactivation workflows, leave approvals, license record tracking, procurement (suppliers, purchase requests, purchase orders, receiving logs), and referral partners rebate tracking. Optimized for single-tenant small-clinic or multi-branch environments; not yet validated for large multi-tenant SaaS. The system is hardened for secure clinical operations, implementing **Multi-Factor Authentication (MFA)** with database-layer encrypted secrets, secure **Break-Glass MFA Recovery Flows** (bcrypt-hashed, one-time burn), global fail-closed authentication guards, stateful session rotation for staff, and custom stateless JWT auth for patient portal access. All key data access operations are thoroughly stress-tested and guarded by multi-tenant database-level isolation.
 
 ## Stack
 
@@ -33,6 +33,9 @@ This repository contains the architectural foundation and core workflows for a s
   - **Billing**: Branch-specific invoicing, payments, cashier session reconciliation, and supervisor-approved voids & refund ledger journal.
   - **Laboratory**: Branch-isolated result encoding and validation.
   - **Inventory**: Catalog-Stock split. Global catalog (`InventoryItem`) with branch-specific stock (`BranchStock`).
+  - **HR Management**: Employee profile tracking, leave management, professional license monitoring, and employee termination account deactivation triggers.
+  - **Procurement**: Pluggable supplier registry, purchase request manager approval validations, PO generation, and receiving logs.
+  - **Referral Partners**: Referral agency/doctor registry and rebate tracking.
 - **Audit Engine**: Immutable, DB-enforced activity logging via PostgreSQL triggers.
 - **Background Jobs**: CRON-based notification dispatcher for PHI-safe Email/SMS alerts.
 
@@ -68,19 +71,21 @@ This repository contains the architectural foundation and core workflows for a s
 | **Patient Portal** | Tenant / Patient | **Verified E2E (Custom stateless JWT, ePHI Release Filters, Outstanding Balance)** |
 | **Insurance Claims** | Tenant / Branch | **Verified E2E (Draft/Submit/Paid Settlement tracking, Stub cleared)** |
 | **Accounting Ledger** | Tenant / Branch | **Verified E2E (Double-entry bookkeeping, cash/revenue/insurance receivables)** |
+| **Procurement** | Tenant / Branch | **Verified E2E (Suppliers, PR approvals, PO tracking, Receiving)** |
+| **Referral Partners** | Tenant | **Verified E2E (Dr Registry, Rebate logs, Status confirmations)** |
+| **HR Management** | Tenant / Branch | **Verified E2E (Employee profiles, Status deactivations, Leaves, Licenses)** |
 | **Patients** | Tenant | **Verified E2E** |
 | **Orders** | Branch | **Verified E2E** |
 | **Queueing** | Branch | **Verified E2E** |
 | **Billing** | Branch | **Verified E2E (Idempotency, Reconcile, Voids & Refund Ledger)** |
 | **Laboratory** | Branch | **Verified E2E (Status-based Release gates)** |
 | **Inventory** | Hybrid | **Verified E2E** |
-| **HR** | Role-Aware | **Implemented** |
 
 ## Testing
 
 Core authentication, branch context, branch-isolation, and MFA recovery paths are verified with unit and E2E tests.
 - **Unit Tests**: `npm run test`
-- **E2E Tests**: `npm run test:e2e` (56/56 tests passing sequentially)
+- **E2E Tests**: `npm run test:e2e` (62/62 tests passing sequentially)
 - **Stress & Concurrency Tests**: Run scripts validating parallel execution:
   - `npx ts-node scripts/stress-refresh-tokens.ts` (Validates 30s leeway)
   - `npx ts-node scripts/stress-payment-idempotency.ts` (Validates DB unique constraint locking)

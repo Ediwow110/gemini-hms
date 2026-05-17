@@ -1,9 +1,20 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { HrService } from './hr.service';
 import {
   CreateEmployeeDto,
   CreateDepartmentDto,
   CreatePayslipDto,
+  UpdateEmployeeStatusDto,
+  CreateLeaveRequestDto,
+  CreateLicenseRecordDto,
 } from './dto/hr.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -61,6 +72,90 @@ export class HrController {
     @Body() dto: CreateEmployeeDto,
   ) {
     return this.hrService.createEmployee(tenantId, userId, dto, user);
+  }
+
+  @Get('employees/:id')
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'HR Manager',
+    'HR Staff',
+    'Branch Manager',
+  )
+  getEmployeeById(
+    @GetUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+  ) {
+    return this.hrService.getEmployeeById(tenantId, id);
+  }
+
+  @Patch('employees/:id/status')
+  @Roles('Super Admin', 'HR Manager', 'HR Staff')
+  updateEmployeeStatus(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser() user: AuthTypes.RequestUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateEmployeeStatusDto,
+  ) {
+    return this.hrService.updateEmployeeStatus(tenantId, userId, id, dto.status, user);
+  }
+
+  @Post('leave-requests')
+  @Roles('Super Admin', 'HR Manager', 'HR Staff', 'Branch Admin', 'Doctor', 'Nurse')
+  createLeaveRequest(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @Body() dto: CreateLeaveRequestDto,
+  ) {
+    return this.hrService.createLeaveRequest(tenantId, userId, dto);
+  }
+
+  @Patch('leave-requests/:id/approve')
+  @Roles('Super Admin', 'HR Manager', 'HR Staff', 'Branch Admin')
+  approveLeaveRequest(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser() user: AuthTypes.RequestUser,
+    @Param('id') id: string,
+  ) {
+    return this.hrService.approveLeaveRequest(tenantId, userId, id, user);
+  }
+
+  @Patch('leave-requests/:id/reject')
+  @Roles('Super Admin', 'HR Manager', 'HR Staff', 'Branch Admin')
+  rejectLeaveRequest(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser() user: AuthTypes.RequestUser,
+    @Param('id') id: string,
+  ) {
+    return this.hrService.rejectLeaveRequest(tenantId, userId, id, user);
+  }
+
+  @Post('licenses')
+  @Roles('Super Admin', 'HR Manager', 'HR Staff')
+  createLicenseRecord(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @Body() dto: CreateLicenseRecordDto,
+  ) {
+    return this.hrService.createLicenseRecord(tenantId, userId, dto);
+  }
+
+  @Get('licenses/:employeeId')
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'HR Manager',
+    'HR Staff',
+    'Branch Manager',
+  )
+  getLicensesByEmployee(
+    @GetUser('tenantId') tenantId: string,
+    @Param('employeeId') employeeId: string,
+  ) {
+    return this.hrService.getLicensesByEmployee(tenantId, employeeId);
   }
 
   @Post('payroll/generate')

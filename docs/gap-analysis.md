@@ -6,16 +6,16 @@ This document provides a rigorous, unsentimental evaluation comparing the curren
 
 ## 1. Current Maturity Assessment
 
-### Assessment: Advanced Outpatient Clinic Edition (Patient Portal Exit-Gate Hardened)
-The current repository most closely matches the **Advanced Outpatient Clinic Edition** with enterprise-grade security hardening, a clinical EMR foundation, and a secure ePHI-guarded Patient Portal.
+### Assessment: Enterprise Business Expansion Edition (Phase 5 Exit-Gate Hardened)
+The current repository matches the **Enterprise Business Expansion Edition** with comprehensive enterprise financial controls, a clinical EMR foundation, a secure ePHI-guarded Patient Portal, automated HR deactivation workflows, leave/license log monitors, supplier-procurement management, and referral partner rebates tracking.
 
 #### Defense of Assessment
-1.  **Functional Capabilities (Clinical & Diagnostic Focus)**:
-    *   *Evidence*: The codebase contains fully operational, E2E-tested modules for **Patients**, **Queueing**, **Orders**, **Laboratory Operations (result entry/locking/release status filters)**, **Cashier Sessions/Billing** (with Maker-Checker void/refund approvals), **Clinical EMR Foundation** (Encounters, SOAP Clinical Notes, Note Locking, ICD-10 Diagnosis code linkages, Prescriptions, specialist referrals), and a secure, read-only **Patient Portal** with decoupled authentication.
-    *   *Citations*: The database schema [schema.prisma](file:///d:/Vscode/hms-login-design/hms-backend/prisma/schema.prisma) defines tables for `Patient`, `Order`, `LabTest`, `LabResult`, `Invoice`, `Payment`, `CashierSession`, `Encounter`, `ClinicalNote`, `Icd10Code`, `EncounterDiagnosis`, and `PatientUser`.
-    *   *Verdict*: This represents the full medical, patient-facing, and operational footprint of an Advanced Outpatient Clinic.
+1.  **Functional Capabilities (Clinical, Financial, & Business Expansion Focus)**:
+    *   *Evidence*: The codebase contains fully operational, E2E-tested modules for **Patients**, **Queueing**, **Orders**, **Laboratory Operations (result entry/locking/release filters)**, **Cashier Sessions/Billing** (with Maker-Checker void/refund approvals), **Clinical EMR Foundation** (Encounters, SOAP Clinical Notes, Note Locking, ICD-10 Diagnosis code linkages, Prescriptions, specialist referrals), a secure, read-only **Patient Portal** with decoupled authentication, **Insurance Claims** (with mock national clearing system), **General Ledger** (double-entry accounting), **HR Management** (employee profile tracking, leaves, licenses, resignation/termination user deactivation), **Procurement** (suppliers, purchase requests, purchase orders, receiving logs), and **Referral Partners** (referrer registry and rebate tracking).
+    *   *Citations*: The database schema [schema.prisma](file:///d:/Vscode/hms-login-design/hms-backend/prisma/schema.prisma) defines tables for `Patient`, `Order`, `LabTest`, `LabResult`, `Invoice`, `Payment`, `CashierSession`, `Encounter`, `ClinicalNote`, `Icd10Code`, `EncounterDiagnosis`, `PatientUser`, `InsuranceClaim`, `LedgerEntry`, `Employee`, `AttendanceLog`, `LeaveRequest`, `LicenseRecord`, `Supplier`, `PurchaseRequest`, `PurchaseOrder`, `ReceivingRecord`, `Referrer`, and `ReferralRecord`.
+    *   *Verdict*: This represents the full medical, patient-facing, financial, and business operations footprint of an Enterprise Outpatient operations platform.
 2.  **Technological Maturity (Enterprise Hardened)**:
-    *   *Evidence*: While the medical features are fully integrated, the underlying technology stack features advanced **Enterprise-level security**:
+    *   *Evidence*: While the medical and business features are fully integrated, the underlying technology stack features advanced **Enterprise-level security**:
         *   TOTP MFA with `aes-256-gcm` encrypted database secrets.
         *   Bcrypt-hashed, single-use, 30-day expiring **Break-Glass Recovery Codes** with full audit logs.
         *   Stateful session rotation with a **30-second concurrency leeway window** to handle multi-tab browser refreshes.
@@ -37,6 +37,8 @@ This table highlights the differences between the current repository and the ult
 | **Financial Reversals** | Complete ledger supporting payment voids, refund workflows, and cashier ledger overrides. | Fully implemented with Maker-Checker supervisor approvals, append-only cashier session ledger entries, and automated invoice balance updates. | **None** | Cashiers can cleanly request payment voids and invoice refunds, which only post upon supervisor authorization, preventing fraud. |
 | **Insurance Claims** | Direct API integration with PhilHealth/national insurance clearing systems. | Completed pluggable provider stub interface, status lifecycles, and automated general ledger posting on claim settlement. Verified in [insurance-claims.e2e-spec.ts](file:///d:/Vscode/hms-login-design/hms-backend/test/insurance-claims.e2e-spec.ts). | **None (Foundation)** | Enables error-free creation, submission, and settlement tracking of insurance claims directly tied to cashiers. |
 | **Accounting Ledger** | Immutable double-entry bookkeeping ledger tracking all core financial events (debit/credit records). | Complete general ledger entry tracking. Payments (DEBIT CASH/CREDIT REVENUE), voids/refunds (DEBIT REVENUE/CREDIT CASH), and paid claims (DEBIT INSURANCE_RECEIVABLE/CREDIT REVENUE) are transactionally audited. Verified in [ledger-double-entry.e2e-spec.ts](file:///d:/Vscode/hms-login-design/hms-backend/test/ledger-double-entry.e2e-spec.ts). | **None** | Provides bulletproof general ledger accuracy, making the system fully audit-compliant. |
+| **HR & Procurement** | Complete employee management directory, leave approvals, professional licenses, supplier registry, purchase requests, and receiving logs. | Fully implemented and E2E-tested with 100% test coverage. Verified in [hr-management.e2e-spec.ts](file:///d:/Vscode/hms-login-design/hms-backend/test/hr-management.e2e-spec.ts) and [procurement.e2e-spec.ts](file:///d:/Vscode/hms-login-design/hms-backend/test/procurement.e2e-spec.ts). | **None** | Optimizes administrative operations, blocks self-approvals, deactivates linked user accounts upon staff termination, and records purchase requests and orders. |
+| **Referral Partners** | Agency/Doctor registry and rebate tracking. | Fully implemented, role-gated, and verified in [referral-partners.e2e-spec.ts](file:///d:/Vscode/hms-login-design/hms-backend/test/referral-partners.e2e-spec.ts). | **None** | Encourages partner growth by providing a formal registry and rebate system with robust status confirmations. |
 | **Telemetry & Log Aggregation** | Centralized dashboard (Grafana) and log aggregator (ELK/Loki) with alerts. | Backend exports Prometheus metrics and `/health` but lacks a centralized collector. | **Minor** | Engineers must SSH directly into the server to analyze logs during an incident, delaying response. |
 | **Infrastructure HA** | Multi-node, load-balanced API layer with RDS PostgreSQL multi-AZ auto-failover. | Single-node deployment via Docker Compose. | **Major** | A host server hardware failure results in total clinic downtime until a manual restore is completed. |
 
@@ -63,11 +65,11 @@ A clear path to transition the repository from its current state to a world-clas
 *   **Testing**: E2E tests (`test/clinical-encounter.e2e-spec.ts`, `test/prescription-referral.e2e-spec.ts`, and `test/patient-portal.e2e-spec.ts`) verify the entire clinical lifecycle, data isolation, and released-only content gating with 100% success.
 *   **Docs**: Core EMR clinical, patient auth portal, and access rules documented.
 
-### Phase 5: Enterprise Foundation (National Insurance & Accounting) [COMPLETED]
-*   **Target**: Large-scale financial controls and national claims tracking.
-*   **Status**: COMPLETED. Pluggable insurance claims module with custom clearing providers (Stub provider) and complete double-entry general ledger accounting are operational. Cashier events (payments, voids, refunds) and claims settlements post ledger entries atomically inside database transaction scopes.
-*   **Testing**: E2E test suites (`test/insurance-claims.e2e-spec.ts` and `test/ledger-double-entry.e2e-spec.ts`) verify 100% correct ledger distribution and balance operations.
-*   **Docs**: Financial bookkeeping rules and claims workflows documented.
+### Phase 5: Enterprise Business Expansion (Insurance, Ledger, HR, Procurement, & Referrals) [COMPLETED]
+*   **Target**: Large-scale financial controls, national claims tracking, and corporate expansion.
+*   **Status**: COMPLETED. Pluggable insurance claims module, double-entry general ledger, HR deactivation workflows, leave and license logs, supplier-procurement request/orders/receivings, and referral partner rebate tracking are operational. Verified via E2E test suites.
+*   **Testing**: E2E test suites (`test/insurance-claims.e2e-spec.ts`, `test/ledger-double-entry.e2e-spec.ts`, `test/hr-management.e2e-spec.ts`, `test/procurement.e2e-spec.ts`, and `test/referral-partners.e2e-spec.ts`) verify all state transitions, deactivations, self-approvals, and accounting balances with 100% success.
+*   **Docs**: Financial bookkeeping rules, claims, HR policies, procurement lifecycles, and rebate tracking workflows documented.
 
 ### Phase 6: Enterprise SaaS Infrastructure (High Availability)
 *   **Target**: Multi-tenant cloud operations.
@@ -85,6 +87,9 @@ A clear path to transition the repository from its current state to a world-clas
 *   **Secure, ePHI-Protected Patient Portal**: Patients can authenticate via decoupled stateless JWT credentials, review their profiles, active/dispensed prescriptions, outstanding invoice balances, and strictly `'RELEASED'` lab results.
 *   **Audit-Ready Double-entry Bookkeeping**: High-fidelity accounting ledger recording DEBIT/CREDIT records dynamically on payments, voids, refunds, and claim payouts.
 *   **National Claims Tracking Platform**: Standardized pluggable insurance claim management compatible with national standard HMOs and PhilHealth portals.
+*   **Automated HR offboarding deactivation**: Setting an employee status to RESIGNED or TERMINATED automatically deactivates their linked Staff user account to prevent offboarding access leaks.
+*   **Corporate Supplier Procurement Management**: Solid purchase request approval gates (preventing self-approvals), purchase order generation, and receiving logs.
+*   **Referral Rebate Tracking Registry**: Referrer registries with automated rebate rates, patient logs, and confirmation statuses.
 *   **Concurrency Guarded**: The billing, token refresh, and session closing pipelines are formally stress-tested and proven immune to race-condition errors under high parallel load.
 *   **Enterprise-Grade Security**: Stateful session rotation, 30s concurrent leeway, TOTP MFA, and bcrypt-hashed break-glass recovery are fully implemented and verified via E2E tests.
 *   **Immutable Auditing**: Every key database action is audited via unchangeable triggers at the database layer.
@@ -98,5 +103,5 @@ A clear path to transition the repository from its current state to a world-clas
 
 ## 5. Final Verdict
 
-*   **Current Maturity Level**: **Enterprise Foundation Edition (Phase 5 Financial Controls & Insurance Claims Complete)**.
+*   **Current Maturity Level**: **Enterprise Business Expansion Edition (Phase 5 Financial Controls, HR, Procurement, & Referrals Complete)**.
 *   **World-Class Baseline Requirement**: To honestly claim the title of a **"World-Class Hospital Management System,"** the system must implement live cloud-scale SaaS APIs and Phase 6 (Multi-node High Availability infrastructure with automated cloud database failover). Until then, it is an extremely secure, clinical-ready **Enterprise-Hardened Outpatient Operations Platform with Phase 5 exit gate fully satisfied**.

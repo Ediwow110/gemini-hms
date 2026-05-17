@@ -5,10 +5,13 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import {
   CreateEmployeeDto,
   CreateDepartmentDto,
   CreatePayslipDto,
+  CreateLeaveRequestDto,
+  CreateLicenseRecordDto,
 } from './dto/hr.dto';
 import { AuditService } from '../audit/audit.service';
 import { RequestUser } from '../common/types/authenticated-request.type';
@@ -62,16 +65,18 @@ export class HrService {
   ) {
     const roles = user.roles || [];
 
+    const targetBranchId = dto.branchId;
+
     if (this.isBranchScopedHr(roles)) {
       if (!user.branchId) {
         throw new BadRequestException('Branch context required');
       }
-      if (dto.primaryBranchId !== user.branchId) {
+      if (targetBranchId !== user.branchId) {
         throw new ForbiddenException(
           'Branch Admin can only create employees for their own branch',
         );
       }
-    } else if (!this.isTenantWideHr(roles)) {
+    } else if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin')) {
       throw new ForbiddenException('Insufficient permissions');
     }
 
@@ -79,29 +84,20 @@ export class HrService {
     const count = await this.prisma.employee.count({ where: { tenantId } });
     const employeeNumber = `EMP-${(count + 1).toString().padStart(5, '0')}`;
 
-    // 2. Create Employee with primary branch assignment
+    // 2. Create Employee
     const employee = await this.prisma.employee.create({
       data: {
         tenantId,
+        branchId: targetBranchId,
+        userId: dto.userId || null,
         employeeNumber,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        jobTitle: dto.jobTitle,
-        departmentId: dto.departmentId,
-        joiningDate: new Date(dto.joiningDate),
-        salary: dto.salary,
+        department: dto.department,
+        position: dto.position,
+        hireDate: new Date(dto.hireDate),
         status: 'ACTIVE',
-        employeeBranches: {
-          create: {
-            tenantId,
-            branchId: dto.primaryBranchId,
-            isPrimary: true,
-            isActive: true,
-          },
-        },
-      },
-      include: {
-        employeeBranches: true,
+        firstName: dto.firstName || '',
+        lastName: dto.lastName || '',
+        salary: dto.salary ? new Prisma.Decimal(dto.salary) : null,
       },
     });
 
@@ -117,6 +113,237 @@ export class HrService {
     return employee;
   }
 
+  async getEmployeeById(tenantId: string, employeeId: string) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: employeeId, tenantId },
+      include: {
+        attendanceLogs: true,
+        leaveRequests: true,
+        licenses: true,
+      },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    return employee;
+  }
+
+  async updateEmployeeStatus(
+    tenantId: string,
+    actorId: string,
+    employeeId: string,
+    status: string,
+    user: RequestUser,
+  ) {
+    const roles = user.roles || [];
+    if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin')) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: employeeId, tenantId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      const updatedEmployee = await tx.employee.update({
+        where: { id: employeeId },
+        data: { status },
+      });
+
+      if (['RESIGNED', 'TERMINATED'].includes(status) && employee.userId) {
+        // Automatically deactivate the linked user
+        await tx.user.update({
+          where: { id: employee.userId },
+          data: {
+            status: 'INACTIVE',
+            deactivatedAt: new Date(),
+            deactivatedReason: `Employee set to status: ${status}`,
+            tokenVersion: { increment: 1 },
+          },
+        });
+      }
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId: actorId,
+          eventKey: 'EMPLOYEE_STATUS_UPDATED',
+          recordType: 'Employee',
+          recordId: employeeId,
+          oldValues: { status: employee.status },
+          newValues: { status },
+        },
+        tx,
+      );
+
+      return updatedEmployee;
+    });
+  }
+
+  async createLeaveRequest(
+    tenantId: string,
+    actorId: string,
+    dto: CreateLeaveRequestDto,
+  ) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: dto.employeeId, tenantId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    const leave = await this.prisma.leaveRequest.create({
+      data: {
+        tenantId,
+        employeeId: dto.employeeId,
+        type: dto.type,
+        startDate: new Date(dto.startDate),
+        endDate: new Date(dto.endDate),
+        status: 'PENDING',
+        reason: dto.reason,
+      },
+    });
+
+    await this.audit.log({
+      tenantId,
+      userId: actorId,
+      eventKey: 'LEAVE_REQUEST_CREATED',
+      recordType: 'LeaveRequest',
+      recordId: leave.id,
+      newValues: leave,
+    });
+
+    return leave;
+  }
+
+  async approveLeaveRequest(
+    tenantId: string,
+    actorId: string,
+    leaveId: string,
+    user: RequestUser,
+  ) {
+    const leave = await this.prisma.leaveRequest.findFirst({
+      where: { id: leaveId, tenantId },
+      include: { employee: true },
+    });
+
+    if (!leave) {
+      throw new NotFoundException('Leave request not found');
+    }
+
+    if (leave.employee.userId === actorId) {
+      throw new ForbiddenException('Cannot self-approve leave request');
+    }
+
+    const updated = await this.prisma.leaveRequest.update({
+      where: { id: leaveId },
+      data: {
+        status: 'APPROVED',
+        approvedById: actorId,
+      },
+    });
+
+    await this.audit.log({
+      tenantId,
+      userId: actorId,
+      eventKey: 'LEAVE_REQUEST_APPROVED',
+      recordType: 'LeaveRequest',
+      recordId: leaveId,
+      newValues: updated,
+    });
+
+    return updated;
+  }
+
+  async rejectLeaveRequest(
+    tenantId: string,
+    actorId: string,
+    leaveId: string,
+    user: RequestUser,
+  ) {
+    const leave = await this.prisma.leaveRequest.findFirst({
+      where: { id: leaveId, tenantId },
+      include: { employee: true },
+    });
+
+    if (!leave) {
+      throw new NotFoundException('Leave request not found');
+    }
+
+    if (leave.employee.userId === actorId) {
+      throw new ForbiddenException('Cannot self-reject leave request');
+    }
+
+    const updated = await this.prisma.leaveRequest.update({
+      where: { id: leaveId },
+      data: {
+        status: 'REJECTED',
+        approvedById: actorId,
+      },
+    });
+
+    await this.audit.log({
+      tenantId,
+      userId: actorId,
+      eventKey: 'LEAVE_REQUEST_REJECTED',
+      recordType: 'LeaveRequest',
+      recordId: leaveId,
+      newValues: updated,
+    });
+
+    return updated;
+  }
+
+  async createLicenseRecord(
+    tenantId: string,
+    actorId: string,
+    dto: CreateLicenseRecordDto,
+  ) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: dto.employeeId, tenantId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    const license = await this.prisma.licenseRecord.create({
+      data: {
+        tenantId,
+        employeeId: dto.employeeId,
+        licenseType: dto.licenseType,
+        licenseNumber: dto.licenseNumber,
+        issuedAt: new Date(dto.issuedAt),
+        expiresAt: new Date(dto.expiresAt),
+        status: 'ACTIVE',
+      },
+    });
+
+    await this.audit.log({
+      tenantId,
+      userId: actorId,
+      eventKey: 'LICENSE_RECORD_CREATED',
+      recordType: 'LicenseRecord',
+      recordId: license.id,
+      newValues: license,
+    });
+
+    return license;
+  }
+
+  async getLicensesByEmployee(tenantId: string, employeeId: string) {
+    return this.prisma.licenseRecord.findMany({
+      where: { employeeId, tenantId },
+    });
+  }
+
   async generatePayslip(
     tenantId: string,
     userId: string,
@@ -127,11 +354,6 @@ export class HrService {
 
     const employee = await this.prisma.employee.findFirst({
       where: { id: dto.employeeId, tenantId },
-      include: {
-        employeeBranches: {
-          where: { isActive: true },
-        },
-      },
     });
 
     if (!employee) {
@@ -144,30 +366,19 @@ export class HrService {
       if (!user.branchId) {
         throw new BadRequestException('Branch context required');
       }
-      const branchAssignment = employee.employeeBranches.find(
-        (eb) => eb.branchId === user.branchId,
-      );
-      if (!branchAssignment) {
+      if (employee.branchId !== user.branchId) {
         throw new ForbiddenException(
           'Branch Admin can only generate payslips for employees in their branch',
         );
       }
       targetBranchId = user.branchId;
-    } else if (this.isTenantWideHr(roles)) {
-      const primaryBranch = employee.employeeBranches.find(
-        (eb) => eb.isPrimary,
-      );
-      if (!primaryBranch) {
-        throw new BadRequestException(
-          'Employee has no active primary branch assignment',
-        );
-      }
-      targetBranchId = primaryBranch.branchId;
+    } else if (this.isTenantWideHr(roles) || roles.includes('Super Admin')) {
+      targetBranchId = employee.branchId;
     } else {
       throw new ForbiddenException('Insufficient permissions');
     }
 
-    const basicSalary = Number(employee.salary);
+    const basicSalary = employee.salary ? Number(employee.salary) : 0;
     const netSalary = basicSalary + dto.totalAllowances - dto.totalDeductions;
 
     const payslip = await this.prisma.payslip.create({
@@ -200,11 +411,10 @@ export class HrService {
   async getEmployees(tenantId: string, user: RequestUser) {
     const roles = user.roles || [];
 
-    if (this.isTenantWideHr(roles)) {
+    if (this.isTenantWideHr(roles) || roles.includes('Super Admin')) {
       return this.prisma.employee.findMany({
         where: { tenantId },
-        include: { department: true, employeeBranches: true },
-        orderBy: { lastName: 'asc' },
+        orderBy: { employeeNumber: 'asc' },
       });
     }
 
@@ -215,15 +425,9 @@ export class HrService {
       return this.prisma.employee.findMany({
         where: {
           tenantId,
-          employeeBranches: {
-            some: {
-              branchId: user.branchId,
-              isActive: true,
-            },
-          },
+          branchId: user.branchId,
         },
-        include: { department: true, employeeBranches: true },
-        orderBy: { lastName: 'asc' },
+        orderBy: { employeeNumber: 'asc' },
       });
     }
 
