@@ -7,16 +7,21 @@ import { ReferralService } from './referral.service';
 import { ClinicalController } from './clinical.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuditModule } from '../audit/audit.module';
+import { ErxService } from './erx.service';
+import { BedManagementService } from './bed-management.service';
+import { AdvancedClinicalController } from './advanced-clinical.controller';
 
 @Module({
   imports: [PrismaModule, AuditModule],
-  controllers: [ClinicalController],
+  controllers: [ClinicalController, AdvancedClinicalController],
   providers: [
     EncounterService,
     ClinicalNoteService,
     DiagnosisService,
     PrescriptionService,
     ReferralService,
+    ErxService,
+    BedManagementService,
   ],
   exports: [
     EncounterService,
@@ -24,6 +29,8 @@ import { AuditModule } from '../audit/audit.module';
     DiagnosisService,
     PrescriptionService,
     ReferralService,
+    ErxService,
+    BedManagementService,
   ],
 })
 export class ClinicalModule {}

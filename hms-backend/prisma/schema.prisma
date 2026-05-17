@@ -63,6 +63,7 @@ model Tenant {
   referrers          Referrer[]
   referralRecords    ReferralRecord[]
   slaAlerts          SlaAlert[]
+  cptCodes           CptCode[]
 
   @@map("tenants")
 }
@@ -1505,5 +1506,22 @@ model SlaAlert {
 
   @@index([tenantId])
   @@map("sla_alerts")
+}
+
+model CptCode {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  code           String
+  description    String
+  category       String
+  fees           Decimal  @db.Decimal(10, 2)
+  status         String   @default("ACTIVE")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@map("cpt_codes")
 }
 
