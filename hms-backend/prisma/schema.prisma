@@ -98,6 +98,7 @@ model User {
   approvedApprovals  ApprovalRequest[] @relation("ApprovedApprovals")
   mergeRequested     PatientMergeRequest[] @relation("MergeRequested")
   mergeApproved      PatientMergeRequest[] @relation("MergeApproved")
+  encountersAttending Encounter[] @relation("EncounterAttending")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -165,33 +166,108 @@ enum EncounterStatus {
   UNKNOWN
 }
 
+enum NoteType {
+  CHIEF_COMPLAINT
+  PROGRESS
+  NURSING
+  DISCHARGE
+}
+
 model Encounter {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  branchId  String   @map("branch_id") @db.Uuid
-  patientId String   @map("patient_id") @db.Uuid
-  
-  status    EncounterStatus @default(IN_PROGRESS)
-  type      String?  // OUTPATIENT, INPATIENT, EMERGENCY, etc.
-  
-  startedAt DateTime @default(now()) @map("started_at")
-  endedAt   DateTime? @map("ended_at")
-  
-  reason    String?
-  notes     String?
-  
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  branchId    String   @map("branch_id") @db.Uuid
+  patientId   String   @map("patient_id") @db.Uuid
+  attendingId String?  @map("attending_id") @db.Uuid
+
+  status      EncounterStatus @default(IN_PROGRESS)
+  type        String?  // OUTPATIENT, INPATIENT, EMERGENCY, etc.
+
+  startedAt   DateTime @default(now()) @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+
+  reason      String?
+  notes       String?
+
+  createdBy   String   @map("created_by") @default("") @db.Uuid
+  updatedBy   String   @map("updated_by") @default("") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  vitals        Vitals[]
+  diagnoses     Diagnosis[]
+  clinicalNotes ClinicalNote[]
 
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  attending User?    @relation("EncounterAttending", fields: [attendingId], references: [id])
 
+  @@index([tenantId, patientId])
+  @@index([tenantId, status])
   @@index([tenantId])
   @@index([branchId])
   @@index([patientId])
   @@index([status])
   @@map("encounters")
+}
+
+model Vitals {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  encounterId String   @map("encounter_id") @db.Uuid
+
+  temperature Decimal? @db.Decimal(5, 2)
+  systolicBp  Int?     @map("systolic_bp")
+  diastolicBp Int?     @map("diastolic_bp")
+  heartRate   Int?     @map("heart_rate")
+  respiratory Int?     @map("respiratory_rate")
+  weightKg    Decimal? @map("weight_kg") @db.Decimal(6, 2)
+
+  createdBy String @map("created_by") @default("") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, encounterId])
+  @@map("vitals")
+}
+
+model Diagnosis {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  encounterId String   @map("encounter_id") @db.Uuid
+
+  icd10Code   String   @map("icd_10_code")
+  description String   @db.Text
+  isPrimary   Boolean  @default(false) @map("is_primary")
+
+  createdBy String @map("created_by") @default("") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, encounterId])
+  @@map("diagnoses")
+}
+
+model ClinicalNote {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  encounterId String   @map("encounter_id") @db.Uuid
+
+  noteType    NoteType @map("note_type")
+  content     String   @db.Text
+
+  createdBy String @map("created_by") @default("") @db.Uuid
+  updatedBy String @map("updated_by") @default("") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, encounterId])
+  @@map("clinical_notes")
 }
 
 model Patient {
