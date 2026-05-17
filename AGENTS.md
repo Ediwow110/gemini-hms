@@ -8,9 +8,9 @@
 - Current main: `a17d9f2c8660cdfb50f8497771d846e0587306b2`.
 - Use `senior-engineering-reviewer` and `silent-bug-hunter` skills.
 - Audit first; implement only if approve/reject audit coupling is confirmed non-transactional.
-- Do not modify docs unless directly required by implementation accuracy.
-- Do not add Encounter foundation, ClinicalNote/Diagnosis/Procedure models, EMR redesign, frontend, refunds, voids, cashier features, ledger, reports, CSV/PDF/XLSX, signed URLs, or raw rows.
+- Do not add Encounter foundation, ClinicalNote/Diagnosis/Procedure models, EMR redesign, frontend, reports, CSV/PDF/XLSX, signed URLs, or raw rows.
 - Do not broaden scope or apply old local P2 patches wholesale.
+- Phase 3 authorization: financial reversals (voids, refunds, cashier ledger) permitted as of 2026-05-17.
 - Stop at READY FOR FINAL REVIEW; do not merge.
 
 ## Progress
