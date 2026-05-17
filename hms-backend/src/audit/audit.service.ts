@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { auditStorage } from './audit-context.middleware';
+import { createHash, createHmac } from 'crypto';
 
 export interface AuditLogData {
   tenantId: string;
@@ -40,6 +41,31 @@ export interface AuditQueryDto {
 export class AuditService {
   constructor(private prisma: PrismaService) {}
 
+  private computeHash(entry: {
+    tenantId: string;
+    userId: string;
+    eventKey: string;
+    recordType: string;
+    recordId: string;
+    oldValues: any;
+    newValues: any;
+    createdAt: Date;
+    previousHash: string | null;
+  }): string {
+    const payload = JSON.stringify({
+      tenantId: entry.tenantId,
+      userId: entry.userId,
+      eventKey: entry.eventKey,
+      recordType: entry.recordType,
+      recordId: entry.recordId,
+      oldValues: entry.oldValues || null,
+      newValues: entry.newValues || null,
+      createdAt: entry.createdAt.toISOString(),
+      previousHash: entry.previousHash || '',
+    });
+    return createHash('sha256').update(payload).digest('hex');
+  }
+
   async log(
     data: AuditLogData,
     tx?: Prisma.TransactionClient,
@@ -53,6 +79,31 @@ export class AuditService {
     const userAgent = context?.userAgent ?? req?.headers?.['user-agent'];
     const activeRole = context?.activeRole ?? req?.user?.role;
     const sessionId = context?.sessionId ?? req?.user?.sessionId;
+
+    // Fetch the latest head in the tenant chain
+    const lastLog = await db.auditLog.findFirst({
+      where: { tenantId: data.tenantId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const previousHash = lastLog ? lastLog.hash : null;
+    const createdAt = new Date();
+
+    const hash = this.computeHash({
+      tenantId: data.tenantId,
+      userId: data.userId,
+      eventKey: data.eventKey,
+      recordType: data.recordType,
+      recordId: data.recordId,
+      oldValues: data.oldValues,
+      newValues: data.newValues,
+      createdAt,
+      previousHash,
+    });
+
+    const signature = createHmac('sha256', process.env.JWT_SECRET || 'fallback-secret-key-for-audit-chaining')
+      .update(hash)
+      .digest('hex');
 
     return db.auditLog.create({
       data: {
@@ -68,8 +119,47 @@ export class AuditService {
         userAgent: userAgent || null,
         activeRole: activeRole || null,
         sessionId: sessionId || null,
+        createdAt,
+        previousHash,
+        hash,
+        signature,
       },
     });
+  }
+
+  async verifyChain(tenantId: string) {
+    const logs = await this.prisma.auditLog.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const corruptedLogIds: string[] = [];
+    let expectedPreviousHash: string | null = null;
+
+    for (const log of logs) {
+      const computed = this.computeHash({
+        tenantId: log.tenantId,
+        userId: log.userId,
+        eventKey: log.eventKey,
+        recordType: log.recordType,
+        recordId: log.recordId,
+        oldValues: log.oldValues,
+        newValues: log.newValues,
+        createdAt: log.createdAt,
+        previousHash: expectedPreviousHash,
+      });
+
+      if (log.hash !== computed || log.previousHash !== expectedPreviousHash) {
+        corruptedLogIds.push(log.id);
+      }
+
+      expectedPreviousHash = log.hash;
+    }
+
+    return {
+      isValid: corruptedLogIds.length === 0,
+      corruptedLogIds,
+    };
   }
 
   async findAll(
@@ -133,12 +223,14 @@ export class AuditService {
         userAgent: true,
         activeRole: true,
         sessionId: true,
+        hash: true,
+        previousHash: true,
+        signature: true,
         oldValues: isSuperAdmin,
         newValues: isSuperAdmin,
       },
     });
 
-    // Explicitly strip if select did not fetch them (Prisma select might return nulls or undefined)
     const sanitizedData = data.map((item) => {
       const sanitized = { ...item };
       if (!isSuperAdmin) {
@@ -175,6 +267,9 @@ export class AuditService {
         userAgent: true,
         activeRole: true,
         sessionId: true,
+        hash: true,
+        previousHash: true,
+        signature: true,
         oldValues: true,
         newValues: true,
       },

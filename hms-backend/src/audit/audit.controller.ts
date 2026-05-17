@@ -20,6 +20,12 @@ export class AuditController {
     return this.auditService.findAll(tenantId, branchId, userRoles, query);
   }
 
+  @Get('verify')
+  @RequirePermissions('audit.view')
+  async verifyChain(@GetUser('tenantId') tenantId: string) {
+    return this.auditService.verifyChain(tenantId);
+  }
+
   @Get('events/:id')
   @RequirePermissions('audit.view')
   async findOne(
