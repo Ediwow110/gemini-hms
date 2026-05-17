@@ -4106,8 +4106,9 @@ describe('AdminService', () => {
       // Verify that migrationStatus is not hardcoded to ok when SELECT 1 passes
       // by checking that it actually calls the schema readiness check
       prisma.$queryRaw
-        .mockResolvedValueOnce([]) // SELECT 1 passes
-        .mockResolvedValueOnce([{ table_exists: false }]); // First table check fails
+        .mockResolvedValueOnce([]) // MetricsService.getMetrics() SELECT 1
+        .mockResolvedValueOnce([]) // AdminService.getHealth() SELECT 1
+        .mockResolvedValueOnce([{ table_exists: false }]); // checkSchemaReadiness()
       prisma.notification = { count: jest.fn().mockResolvedValue(0) };
       prisma.auditLog = { findFirst: jest.fn().mockResolvedValue(null) };
 
@@ -4116,7 +4117,7 @@ describe('AdminService', () => {
       // If migrationStatus was hardcoded to ok, this would fail
       expect(result.migrationStatus).toBe('error');
       // Verify queryRaw was called more than once (connectivity + schema check)
-      expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(3);
     });
   });
 });
