@@ -174,6 +174,8 @@ describe('MFA Lifecycle (e2e)', () => {
   describe('HR and Finance MFA Enforcement', () => {
     let hrAccessToken: string;
     let financeAccessToken: string;
+    let hrEmail: string;
+    let finEmail: string;
 
     beforeAll(async () => {
       // Create HR Role
@@ -186,7 +188,7 @@ describe('MFA Lifecycle (e2e)', () => {
       });
 
       // Create HR User
-      const hrEmail = `hr-${randomUUID()}@hms.local`;
+      hrEmail = `hr-${randomUUID()}@hms.local`;
       const hrHash = await bcrypt.hash(adminPassword, 10);
       const hrUser = await prisma.user.create({
         data: {
@@ -201,7 +203,7 @@ describe('MFA Lifecycle (e2e)', () => {
       });
 
       // Create Finance User
-      const finEmail = `fin-${randomUUID()}@hms.local`;
+      finEmail = `fin-${randomUUID()}@hms.local`;
       const finHash = await bcrypt.hash(adminPassword, 10);
       const finUser = await prisma.user.create({
         data: {
@@ -284,7 +286,7 @@ describe('MFA Lifecycle (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({
-          email: `hr-${randomUUID()}@hms.local`,
+          email: hrEmail,
           password: adminPassword,
           tenantCode: tenantName,
         })
@@ -301,7 +303,7 @@ describe('MFA Lifecycle (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({
-          email: `fin-${randomUUID()}@hms.local`,
+          email: finEmail,
           password: adminPassword,
           tenantCode: tenantName,
         })

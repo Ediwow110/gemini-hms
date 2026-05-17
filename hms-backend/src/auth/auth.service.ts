@@ -34,6 +34,8 @@ export class AuthService {
     'Branch Admin',
     'Doctor',
     'Cashier',
+    'HR',
+    'Finance',
   ];
 
   constructor(
