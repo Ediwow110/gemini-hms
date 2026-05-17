@@ -20,10 +20,14 @@ export class StorageService {
     tenantId: string,
     expiresInSeconds: number = 3600,
   ): Promise<string> {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET is not configured');
+    }
     const expiry = Math.floor(Date.now() / 1000) + expiresInSeconds;
     const signature = crypto
       .createHash('sha256')
-      .update(`${fileKey}:${userId}:${expiry}:${process.env.JWT_SECRET || 'stub'}`)
+      .update(`${fileKey}:${userId}:${expiry}:${jwtSecret}`)
       .digest('hex')
       .substring(0, 16);
 
