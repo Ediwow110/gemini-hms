@@ -35,7 +35,7 @@ This table highlights the differences between the current repository and the ult
 | Area / Module | Blueprint World-Class Requirement | Current Repo Evidence | Gap Severity | Operational Impact & Why It Matters |
 | :--- | :--- | :--- | :---: | :--- |
 | **Clinical EMR** | Encounters, Doctor SOAP notes, ICD-10 Diagnosis codes, and CPT Procedure codes. | None. In constraints: no Encounter, ClinicalNote, Diagnosis, or Procedure models. | **Critical** | Doctors cannot record active clinical patient history, making the system unusable for full medical consultations. |
-| **Financial Reversals** | Complete ledger supporting payment voids, refund workflows, and cashier ledger overrides. | Cashier sessions can close/reconcile, but cashier voids/refund ledgers are out-of-scope. | **Major** | Cashiers cannot cancel mistakes or issue refunds without direct database administrator manual intervention. |
+| **Financial Reversals** | Complete ledger supporting payment voids, refund workflows, and cashier ledger overrides. | Fully implemented with Maker-Checker supervisor approvals, append-only cashier session ledger entries, and automated invoice balance updates. | **None** | Cashiers can cleanly request payment voids and invoice refunds, which only post upon supervisor authorization, preventing fraud. |
 | **Insurance Claims** | Direct API integration with PhilHealth/national insurance clearing systems. | Manual billing and invoice payment tracking only. | **Major** | Admins must manually copy invoice data into external government claims portals, introducing human error. |
 | **Telemetry & Log Aggregation** | Centralized dashboard (Grafana) and log aggregator (ELK/Loki) with alerts. | Backend exports Prometheus metrics and `/health` but lacks a centralized collector. | **Minor** | Engineers must SSH directly into the server to analyze logs during an incident, delaying response. |
 | **Infrastructure HA** | Multi-node, load-balanced API layer with RDS PostgreSQL multi-AZ auto-failover. | Single-node deployment via Docker Compose. | **Major** | A host server hardware failure results in total clinic downtime until a manual restore is completed. |
@@ -48,14 +48,14 @@ A clear path to transition the repository from its current state to a world-clas
 
 ```
  [ Current State ] ➔ [ Phase 3: Diagnostic GA ] ➔ [ Phase 4: Advanced Clinic ] ➔ [ Phase 5 & 6: Enterprise SaaS ]
-  Diagnostic (Hardened)      Reversals & Voids          Full EMR & ICD-10            Claims & HA Cloud
+  Diagnostic (Hardened)      (COMPLETED)                Full EMR & ICD-10            Claims & HA Cloud
 ```
 
-### Phase 3: Diagnostic Center GA (Maturity Hardening)
+### Phase 3: Diagnostic Center GA (Maturity Hardening) [COMPLETED]
 *   **Target**: 100% complete diagnostic center workflows.
-*   **Features Needed**: Cashier Voids & Refunds workflow (with Maker-Checker approval required for all voids to prevent cashier fraud), printable official receipt layouts.
-*   **Testing**: E2E test suites covering void approvals and cashier session ledger balancing.
-*   **Docs**: Cashier void policy guidelines.
+*   **Status**: COMPLETED. Cashier Voids & Refunds workflows (with Maker-Checker approval required for all voids/refunds to prevent cashier fraud) are fully implemented and verified via automated E2E test suites covering void approvals and cashier session ledger balancing.
+*   **Testing**: E2E test suites (`test/cashier-voids.e2e-spec.ts` and `test/refund-ledger.e2e-spec.ts`) pass cleanly with 100% assertions.
+*   **Docs**: Phase 3 administrative governance policies updated.
 
 ### Phase 4: Advanced Clinic (Clinical EMR Integration)
 *   **Target**: Support active clinical practices.

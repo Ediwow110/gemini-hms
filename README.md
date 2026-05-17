@@ -2,8 +2,8 @@
 
 This repository contains the architectural foundation and core workflows for a secure, multi-tenant, branch-isolated healthcare operations platform.
 
-> **Status: PRODUCTION READY (GA)**  
-> Production-ready for small-clinic deployment with MFA, recovery controls, monitoring hooks, and verified backup restore path. Not yet validated for large multi-tenant SaaS. This system is fully hardened for production-level deployment, implementing complete **Multi-Factor Authentication (MFA)** with cryptographically encrypted secrets, secure **Break-Glass MFA Recovery Flows** (bcrypt-hashed, one-time burn), global fail-closed auth, stateful session rotation, and robust tenant/branch isolation. The core auth, revenue, and cashier systems have been thoroughly stress-tested under parallel load to ensure transactional safety and concurrency lock compliance.
+> **Status: PRODUCTION READY (GA) — Phase 3 complete — Diagnostic Center GA**  
+> Production-ready for small-clinic deployment with MFA, recovery controls, monitoring hooks, cashier voids/refund ledgers, and verified backup restore path. Not yet validated for large multi-tenant SaaS. This system is fully hardened for production-level deployment, implementing complete **Multi-Factor Authentication (MFA)** with cryptographically encrypted secrets, secure **Break-Glass MFA Recovery Flows** (bcrypt-hashed, one-time burn), global fail-closed auth, stateful session rotation, and robust tenant/branch isolation. The core auth, revenue, and cashier systems have been thoroughly stress-tested under parallel load to ensure transactional safety and concurrency lock compliance.
 
 ## Stack
 
@@ -27,7 +27,7 @@ This repository contains the architectural foundation and core workflows for a s
 - **Global Fail-Closed Security**: All routes are protected by default; public access requires explicit `@Public()` opt-out.
 - **Branch-Scoped Modules**:
   - **Orders & Queue**: Isolated patient flow and order management.
-  - **Billing**: Branch-specific invoicing, payments, and cashier session reconciliation.
+  - **Billing**: Branch-specific invoicing, payments, cashier session reconciliation, and supervisor-approved voids & refund ledger journal.
   - **Laboratory**: Branch-isolated result encoding and validation.
   - **Inventory**: Catalog-Stock split. Global catalog (`InventoryItem`) with branch-specific stock (`BranchStock`).
 - **Audit Engine**: Immutable, DB-enforced activity logging via PostgreSQL triggers.
@@ -64,7 +64,7 @@ This repository contains the architectural foundation and core workflows for a s
 | **Patients** | Tenant | **Verified E2E** |
 | **Orders** | Branch | **Verified E2E** |
 | **Queueing** | Branch | **Verified E2E** |
-| **Billing** | Branch | **Verified E2E (Idempotency & Reconcile)** |
+| **Billing** | Branch | **Verified E2E (Idempotency, Reconcile, Voids & Refund Ledger)** |
 | **Laboratory** | Branch | **Verified E2E** |
 | **Inventory** | Hybrid | **Verified E2E** |
 | **HR** | Role-Aware | **Implemented** |
@@ -73,7 +73,7 @@ This repository contains the architectural foundation and core workflows for a s
 
 Core authentication, branch context, branch-isolation, and MFA recovery paths are verified with unit and E2E tests.
 - **Unit Tests**: `npm run test`
-- **E2E Tests**: `npm run test:e2e` (40/40 tests passing sequentially)
+- **E2E Tests**: `npm run test:e2e` (42/42 tests passing sequentially)
 - **Stress & Concurrency Tests**: Run scripts validating parallel execution:
   - `npx ts-node scripts/stress-refresh-tokens.ts` (Validates 30s leeway)
   - `npx ts-node scripts/stress-payment-idempotency.ts` (Validates DB unique constraint locking)
