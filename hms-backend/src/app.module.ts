@@ -30,6 +30,7 @@ import { LedgerModule } from './ledger/ledger.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { ProcurementModule } from './procurement/procurement.module';
 import { ReferralPartnersModule } from './referral-partners/referral-partners.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MfaGuard } from './auth/guards/mfa.guard';
 import { TenantGuard } from './auth/guards/tenant.guard';
@@ -69,6 +70,7 @@ import { AuditContextMiddleware } from './audit/audit-context.middleware';
     InsuranceModule,
     ProcurementModule,
     ReferralPartnersModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [

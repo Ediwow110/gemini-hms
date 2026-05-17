@@ -1472,4 +1472,7 @@ model ReferralRecord {
   @@map("referral_records")
 }
 
-
+enum UserRoleEnum {
+  ADMIN
+  ANALYST
+}
