@@ -51,6 +51,8 @@ export class EncountersService {
             reason: dto.reason,
             notes: dto.notes,
             startedAt: new Date(),
+            createdBy: userId,
+            updatedBy: userId,
           },
         });
 
@@ -138,6 +140,7 @@ export class EncountersService {
           where: { id },
           data: {
             ...dto,
+            updatedBy: userId,
             endedAt:
               dto.status === EncounterStatus.FINISHED ? new Date() : undefined,
           },

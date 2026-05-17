@@ -1,9 +1,23 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const logger = new Logger('Bootstrap');
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+  });
+
+  // Global Request Logger Middleware
+  app.use((req: any, res: any, next: () => void) => {
+    const { method, url } = req;
+    const start = Date.now();
+    res.on('finish', () => {
+      const delay = Date.now() - start;
+      Logger.log(`${method} ${url} ${res.statusCode} - ${delay}ms`, 'HTTP');
+    });
+    next();
+  });
 
   // Enable global validation (Section 12.1 Requirement)
   app.useGlobalPipes(
@@ -17,6 +31,8 @@ async function bootstrap() {
   // Enable CORS for the frontend
   app.enableCors();
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  logger.log(`Hospital Management System Backend running on port ${port}`);
 }
 void bootstrap();

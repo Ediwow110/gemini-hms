@@ -186,7 +186,7 @@ export class OrdersService {
   }
 
   async findOne(tenantId: string, branchId: string, id: string) {
-    return this.prisma.order.findFirst({
+    const order = await this.prisma.order.findFirst({
       where: { id, tenantId, branchId },
       include: {
         patient: true,
@@ -198,5 +198,10 @@ export class OrdersService {
         },
       },
     });
+    
+    if (!order) {
+      throw new BadRequestException('Order not found or access denied');
+    }
+    return order;
   }
 }

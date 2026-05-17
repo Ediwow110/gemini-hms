@@ -86,13 +86,13 @@ type PrivilegedUserChangeDetails = Prisma.InputJsonObject & {
   targetUserSnapshot: {
     status: string;
     email: string;
-    isMfaEnabled: boolean;
+    mfaEnabled: boolean;
     tokenVersion: number;
     activeRoles: Array<{ id: string; name: string }>;
   };
   requestedChanges: {
     email?: string;
-    isMfaEnabled?: boolean;
+    mfaEnabled?: boolean;
     deactivationReason?: string;
   };
 };
@@ -262,11 +262,14 @@ export interface CreateUserResponse {
   roleIds: string[];
 }
 
+import { MetricsService } from './metrics.service';
+
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   async createUser(
@@ -274,7 +277,7 @@ export class AdminService {
     dto: {
       email: string;
       password: string;
-      isMfaEnabled?: boolean;
+      mfaEnabled?: boolean;
       branchIds: string[];
       roleIds?: string[];
       reason: string;
@@ -378,7 +381,7 @@ export class AdminService {
           tenantId: actor.tenantId,
           email,
           passwordHash,
-          isMfaEnabled: dto.isMfaEnabled ?? false,
+          mfaEnabled: dto.mfaEnabled ?? false,
           status: USER_STATUS_ACTIVE,
           tokenVersion: 0,
         },
@@ -419,7 +422,7 @@ export class AdminService {
             email: user.email,
             branchIds: dto.branchIds,
             roleIds: roleIds,
-            isMfaEnabled: user.isMfaEnabled,
+            mfaEnabled: user.mfaEnabled,
             reason: trimmedReason,
           },
         },
@@ -442,10 +445,10 @@ export class AdminService {
     targetUserId: string,
     dto: {
       email?: string;
-      isMfaEnabled?: boolean;
+      mfaEnabled?: boolean;
       reason: string;
     },
-  ): Promise<{ userId: string; email: string; isMfaEnabled: boolean }> {
+  ): Promise<{ userId: string; email: string; mfaEnabled: boolean }> {
     const trimmedReason = this.validateReason(dto.reason);
 
     if (actor.userId === targetUserId) {
@@ -454,7 +457,7 @@ export class AdminService {
       );
     }
 
-    if (dto.email === undefined && dto.isMfaEnabled === undefined) {
+    if (dto.email === undefined && dto.mfaEnabled === undefined) {
       throw new BadRequestException('No update fields provided');
     }
 
@@ -486,7 +489,7 @@ export class AdminService {
         where: { id: targetUserId },
         data: {
           email: dto.email ?? target.email,
-          isMfaEnabled: dto.isMfaEnabled ?? target.isMfaEnabled,
+          mfaEnabled: dto.mfaEnabled ?? target.mfaEnabled,
         },
       });
 
@@ -500,17 +503,17 @@ export class AdminService {
           recordId: updated.id,
           oldValues: {
             email: target.email,
-            isMfaEnabled: target.isMfaEnabled,
+            mfaEnabled: target.mfaEnabled,
           },
           newValues: {
             actorId: actor.userId,
             targetUserId: updated.id,
             email: updated.email,
-            isMfaEnabled: updated.isMfaEnabled,
+            mfaEnabled: updated.mfaEnabled,
             reason: trimmedReason,
             changedFields: [
               ...(dto.email !== undefined ? ['email'] : []),
-              ...(dto.isMfaEnabled !== undefined ? ['isMfaEnabled'] : []),
+              ...(dto.mfaEnabled !== undefined ? ['mfaEnabled'] : []),
             ],
           },
         },
@@ -521,7 +524,7 @@ export class AdminService {
       return {
         userId: updated.id,
         email: updated.email,
-        isMfaEnabled: updated.isMfaEnabled,
+        mfaEnabled: updated.mfaEnabled,
       };
     });
   }
@@ -2743,7 +2746,7 @@ export class AdminService {
     this.assertNonSelfMutation(actor, targetUserId);
     this.assertPrivilegedRoleRequestActor(actor);
 
-    if (dto.email === undefined && dto.isMfaEnabled === undefined) {
+    if (dto.email === undefined && dto.mfaEnabled === undefined) {
       throw new BadRequestException('No update fields provided');
     }
 
@@ -2764,7 +2767,7 @@ export class AdminService {
         target,
         PRIVILEGED_USER_PROFILE_UPDATE,
         trimmedReason,
-        { email: dto.email, isMfaEnabled: dto.isMfaEnabled },
+        { email: dto.email, mfaEnabled: dto.mfaEnabled },
       );
 
       return this.toPrivilegedUserChangeRequestResponse(request);
@@ -2821,7 +2824,7 @@ export class AdminService {
     reason: string,
     changes: {
       email?: string;
-      isMfaEnabled?: boolean;
+      mfaEnabled?: boolean;
       deactivationReason?: string;
     },
   ) {
@@ -2837,7 +2840,7 @@ export class AdminService {
       targetUserSnapshot: {
         status: target.status,
         email: target.email,
-        isMfaEnabled: target.isMfaEnabled,
+        mfaEnabled: target.mfaEnabled,
         tokenVersion: target.tokenVersion,
         activeRoles: this.getRoleSummaries(target).map((r) => ({
           id: r.id,
@@ -2957,7 +2960,7 @@ export class AdminService {
           },
         });
       } else if (details.action === PRIVILEGED_USER_PROFILE_UPDATE) {
-        const { email, isMfaEnabled } = details.requestedChanges;
+        const { email, mfaEnabled } = details.requestedChanges;
         if (email && email !== target.email) {
           const existing = await tx.user.findFirst({
             where: {
@@ -2974,7 +2977,7 @@ export class AdminService {
           where: { id: target.id },
           data: {
             email: email ?? target.email,
-            isMfaEnabled: isMfaEnabled ?? target.isMfaEnabled,
+            mfaEnabled: mfaEnabled ?? target.mfaEnabled,
             tokenVersion: { increment: 1 },
           },
         });
@@ -3789,6 +3792,7 @@ export class AdminService {
 
   async getHealth() {
     const timestamp = new Date().toISOString();
+    const metrics = this.metricsService.getMetrics();
 
     // Compute backup configuration independently from DB status (outside try/catch)
     const backupConfig = !!(
@@ -3802,12 +3806,25 @@ export class AdminService {
       // Check schema/migration readiness independently
       const schemaReady = await this.checkSchemaReadiness();
 
+      // Check Notification Dispatcher readiness
+      const pendingNotifications = await this.prisma.notification.count({
+          where: { status: 'PENDING' }
+      });
+
       if (schemaReady) {
         return {
           appStatus: 'ok',
           dbStatus: 'ok',
           migrationStatus: 'ok',
           backupConfig,
+          notifications: {
+              pending: pendingNotifications,
+              status: 'active'
+          },
+          metrics: {
+              totalRequests: metrics.totalRequests,
+              totalErrors: metrics.totalErrors
+          },
           timestamp,
         };
       } else {
@@ -3819,10 +3836,11 @@ export class AdminService {
           timestamp,
         };
       }
-    } catch {
+    } catch (e) {
       return {
         appStatus: 'degraded',
         dbStatus: 'error',
+        error: e instanceof Error ? e.message : 'Unknown error',
         migrationStatus: 'unknown',
         backupConfig,
         timestamp,

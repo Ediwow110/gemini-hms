@@ -23,6 +23,11 @@ export const LoginForm = () => {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      tenantCode: "Central Hospital (Main Branch)",
+      email: "admin@hospital.com",
+      password: "Admin@123",
+    },
   });
 
   const handleLogin = async (data: LoginFormData) => {

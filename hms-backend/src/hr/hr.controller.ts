@@ -5,13 +5,12 @@ import {
   CreateDepartmentDto,
   CreatePayslipDto,
 } from './dto/hr.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import * as AuthTypes from '../common/types/authenticated-request.type';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Controller('api/v1/hr')
 export class HrController {
   constructor(private readonly hrService: HrService) {}

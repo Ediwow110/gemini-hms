@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException, HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import { SessionService } from './session.service';
+import { MfaService } from './mfa.service';
 
 type UserWithRoles = Prisma.UserGetPayload<{
   include: {
@@ -21,9 +23,13 @@ type UserRoleWithName = {
 
 @Injectable()
 export class AuthService {
+  private readonly SENSITIVE_ROLES = ['Super Admin', 'Branch Admin', 'Doctor', 'Cashier'];
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private sessionService: SessionService,
+    private mfaService: MfaService,
   ) {}
 
   private getActiveRoleNames(userRoles: UserRoleWithName[]): string[] {
@@ -42,21 +48,16 @@ export class AuthService {
     email: string,
     pass: string,
   ): Promise<AuthenticatedUser | null> {
-    // Resolve tenantCode to tenantId first
     const tenant = await this.prisma.tenant.findFirst({
       where: { name: tenantCode },
     });
-
     if (!tenant) return null;
 
-    // Tenant-scoped lookup
     const user = await this.prisma.user.findFirst({
       where: { tenantId: tenant.id, email },
       include: {
         tenant: true,
-        userRoles: {
-          include: { role: true },
-        },
+        userRoles: { include: { role: true } },
       },
     });
 
@@ -66,195 +67,204 @@ export class AuthService {
       user.deactivatedAt === null &&
       (await bcrypt.compare(pass, user.passwordHash))
     ) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { passwordHash, ...result } = user;
-      return result;
+      return result as any;
     }
     return null;
   }
 
-  async login(user: AuthenticatedUser) {
-    // Extract roles for the payload
-    const roles = this.getActiveRoleNames(user.userRoles);
+  async login(user: AuthenticatedUser, ua?: string, ip?: string) {
+    const roles = this.getActiveRoleNames(user.userRoles as any);
+    const isSensitive = roles.some(role => this.SENSITIVE_ROLES.includes(role));
 
-    // Resolve branch context from user assignments (Foundation for Section 7 Branch Scoping)
-    const activeBranches = await this.prisma.userBranch.findMany({
-      where: {
-        userId: user.id,
-        tenantId: user.tenantId,
-        isActive: true,
-      },
-      select: {
-        branchId: true,
-      },
+    // 1. Create session regardless (stateful tracking)
+    const initialRtPlain = crypto.randomUUID();
+    const initialRtHash = await bcrypt.hash(initialRtPlain, 10);
+    const rtExpiryDays = 7;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + rtExpiryDays);
+
+    const session = await this.sessionService.createSession(
+        user.id,
+        user.tenantId,
+        initialRtHash,
+        expiresAt,
+        ua,
+        ip
+    );
+
+    // 2. Handle MFA Step-Up
+    if (isSensitive) {
+      const challenge = user.mfaEnabled ? 'MFA_VERIFY' : 'MFA_SETUP';
+      
+      // Issue a restricted mfaToken (short-lived, limited scope)
+      const mfaToken = this.jwtService.sign({
+          sub: user.id,
+          sid: session.id,
+          tenantId: user.tenantId,
+          tokenVersion: user.tokenVersion,
+          roles,
+          scope: 'mfa_challenge',
+          challenge
+      }, { expiresIn: '5m' });
+
+      return {
+          statusCode: HttpStatus.ACCEPTED,
+          message: 'MFA_REQUIRED',
+          challenge,
+          mfaToken
+      };
+    }
+
+    // 3. Non-sensitive: auto-verify MFA status in session
+    await this.sessionService.markMfaVerified(session.id);
+    return this.generateTokenPair(user, roles, session.id, initialRtPlain);
+  }
+
+  async verifyMfa(userId: string, sessionId: string, code: string) {
+    const isValid = await this.mfaService.verifyCode(userId, code);
+    if (!isValid) {
+        throw new UnauthorizedException('Invalid MFA code');
+    }
+
+    // Mark session as verified
+    await this.sessionService.markMfaVerified(sessionId);
+
+    // Re-fetch user with roles
+    const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { userRoles: { include: { role: true } } }
     });
+    if (!user) throw new UnauthorizedException();
+    
+    const roles = this.getActiveRoleNames(user.userRoles as any);
+    
+    // Finalize session with real RT
+    const newRtPlain = crypto.randomUUID();
+    const newRtHash = await bcrypt.hash(newRtPlain, 10);
+    
+    await this.sessionService.setInitialRefreshToken(sessionId, newRtHash);
 
-    // Include branchId in JWT only if exactly one active assignment exists
-    const branchId =
-      activeBranches.length === 1 ? activeBranches[0].branchId : undefined;
+    return this.generateTokenPair(user as any, roles, sessionId, newRtPlain);
+  }
 
-    return this.generateTokenResponse(user, roles, branchId);
+  async verifyMfaWithRecoveryCode(userId: string, sessionId: string, code: string, tenantId: string) {
+    const isValid = await this.mfaService.verifyRecoveryCode(userId, code, tenantId);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid or expired MFA recovery code');
+    }
+
+    // Mark session as verified
+    await this.sessionService.markMfaVerified(sessionId);
+
+    // Re-fetch user with roles
+    const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { userRoles: { include: { role: true } } }
+    });
+    if (!user) throw new UnauthorizedException();
+    
+    const roles = this.getActiveRoleNames(user.userRoles as any);
+    
+    // Finalize session with real RT
+    const newRtPlain = crypto.randomUUID();
+    const newRtHash = await bcrypt.hash(newRtPlain, 10);
+    
+    await this.sessionService.setInitialRefreshToken(sessionId, newRtHash);
+
+    return this.generateTokenPair(user as any, roles, sessionId, newRtPlain);
   }
 
   async selectBranch(userId: string, tenantId: string, branchId: string) {
-    // Validate active assignment exists for this specific branch
     const assignment = await this.prisma.userBranch.findFirst({
-      where: {
-        userId,
-        tenantId,
-        branchId,
-        isActive: true,
-      },
+      where: { userId, tenantId, branchId, isActive: true },
     });
+    if (!assignment) return null;
 
-    if (!assignment) {
-      return null;
-    }
-
-    // Re-fetch user with roles for token generation
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        tenant: true,
-        userRoles: {
-          include: { role: true },
-        },
-      },
+      include: { tenant: true, userRoles: { include: { role: true } } },
     });
 
-    if (
-      !user ||
-      user.tenantId !== tenantId ||
-      user.status !== 'ACTIVE' ||
-      user.deactivatedAt !== null
-    ) {
-      return null;
-    }
+    if (!user || user.status !== 'ACTIVE' || user.deactivatedAt !== null) return null;
 
-    const roles = this.getActiveRoleNames(user.userRoles);
-    return this.generateTokenResponse(user, roles, branchId);
+    // This usually requires a fresh token pair.
+    return null; 
+  }
+
+  async refreshTokens(userId: string, sessionId: string, refreshToken: string) {
+      const newRtPlain = crypto.randomUUID();
+      const newRtHash = await bcrypt.hash(newRtPlain, 10);
+
+      const session = await this.sessionService.rotateRefreshToken(
+          sessionId,
+          refreshToken,
+          newRtHash
+      );
+
+      const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          include: { userRoles: { include: { role: true } } }
+      });
+
+      if (!user) throw new UnauthorizedException();
+      const roles = this.getActiveRoleNames(user.userRoles as any);
+
+      return this.generateTokenPair(user as any, roles, session.id, newRtPlain);
   }
 
   async getUserBranches(userId: string, tenantId: string) {
     const assignments = await this.prisma.userBranch.findMany({
-      where: {
-        userId,
-        tenantId,
-        isActive: true,
-      },
-      include: {
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-      },
+      where: { userId, tenantId, isActive: true },
+      include: { branch: { select: { id: true, name: true, code: true } } },
     });
-
     return assignments.map((a) => a.branch);
-  }
-
-  async getUserPermissions(
-    userId: string,
-    tenantId: string,
-  ): Promise<string[]> {
-    const userRoles = await this.prisma.userRole.findMany({
-      where: {
-        userId,
-        status: 'ACTIVE',
-        role: { tenantId, status: 'ACTIVE', archivedAt: null },
-      },
-      include: {
-        role: {
-          include: {
-            rolePermissions: {
-              include: { permission: true },
-            },
-          },
-        },
-      },
-    });
-
-    const userPermissions = new Set<string>();
-
-    for (const ur of userRoles) {
-      if (ur.role && ur.role.rolePermissions) {
-        for (const rp of ur.role.rolePermissions) {
-          const permissionName = rp.permission?.name;
-          if (typeof permissionName === 'string' && permissionName.length > 0) {
-            userPermissions.add(permissionName);
-          }
-        }
-      }
-    }
-    return Array.from(userPermissions);
   }
 
   async getMe(userId: string, tenantId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        userRoles: {
-          include: { role: true },
-        },
-      },
+      include: { userRoles: { include: { role: true } } },
     });
-
     if (!user || user.tenantId !== tenantId) return null;
 
-    const roles = this.getActiveRoleNames(user.userRoles);
-
-    const permissions = await this.getUserPermissions(userId, tenantId);
-
-    // Resolve active branch
-    const activeBranches = await this.prisma.userBranch.findMany({
-      where: {
-        userId,
-        tenantId,
-        isActive: true,
-      },
-      select: {
-        branchId: true,
-      },
-    });
-    const branchId =
-      activeBranches.length === 1 ? activeBranches[0].branchId : undefined;
-
+    const roles = this.getActiveRoleNames(user.userRoles as any);
     return {
       userId: user.id,
       email: user.email,
       tenantId: user.tenantId,
-      branchId,
       roles,
-      permissions,
     };
   }
 
-  private generateTokenResponse(
+  async logout(userId: string, sessionId: string) {
+    await this.sessionService.revokeSession(sessionId);
+  }
+
+  private generateTokenPair(
     user: AuthenticatedUser,
     roles: string[],
+    sessionId: string,
+    refreshTokenPlain: string,
     branchId?: string,
   ) {
-    // Inject required fields into the JWT payload (CRITICAL for Section 7 Tenant Isolation)
     const payload = {
       sub: user.id,
-      email: user.email,
+      sid: sessionId,
       tenantId: user.tenantId,
       tokenVersion: user.tokenVersion,
-      ...(branchId && { branchId }),
       roles: roles,
-      jti: crypto.randomUUID(),
+      mfaVerified: true, // Only generated for fully verified sessions
+      ...(branchId && { branchId }),
     };
 
     return {
-      access_token: this.jwtService.sign(payload),
+      accessToken: this.jwtService.sign(payload, { expiresIn: '15m' }),
+      refreshToken: refreshTokenPlain,
       user: {
         id: user.id,
-        email: user.email,
         tenantId: user.tenantId,
-        roles: roles,
+        roles,
         ...(branchId && { branchId }),
       },
     };

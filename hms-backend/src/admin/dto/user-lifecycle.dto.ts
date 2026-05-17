@@ -77,7 +77,7 @@ export class CreateUserDto extends UserLifecycleReasonDto {
   password: string;
 
   @IsOptional()
-  isMfaEnabled?: boolean;
+  mfaEnabled?: boolean;
 
   @IsArray()
   @IsString({ each: true })
@@ -103,7 +103,7 @@ export class UpdateUserDto extends UserLifecycleReasonDto {
   email?: string;
 
   @IsOptional()
-  isMfaEnabled?: boolean;
+  mfaEnabled?: boolean;
 }
 
 export class PrivilegedUserProfileUpdateDto extends UserLifecycleReasonDto {
@@ -116,5 +116,5 @@ export class PrivilegedUserProfileUpdateDto extends UserLifecycleReasonDto {
   email?: string;
 
   @IsOptional()
-  isMfaEnabled?: boolean;
+  mfaEnabled?: boolean;
 }

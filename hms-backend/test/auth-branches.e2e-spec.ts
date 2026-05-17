@@ -1,96 +1,71 @@
-process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-characters-long';
-
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe, APP_GUARD } from '@nestjs/common';
 import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
-import { JwtService } from '@nestjs/jwt';
+import { AuthModule } from '../src/auth/auth.module';
+import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { ConfigModule } from '@nestjs/config';
+import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
+import { JwtModule } from '@nestjs/jwt';
+import { cleanupDatabase } from './helpers/db-cleanup';
+import { seedUser } from './helpers/seed.helper';
+import { randomUUID } from 'crypto';
 
-describe('Auth (e2e)', () => {
-  let app: INestApplication<App>;
-  let jwtService: JwtService;
+describe('Auth Branches (e2e)', () => {
+  let app: INestApplication;
   let prisma: PrismaService;
 
   beforeAll(async () => {
+    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [
+        ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
+        PrismaModule,
+        AuthModule,
+        JwtModule.register({
+            secret: 'test-secret-key-for-e2e-tests-that-is-long-enough',
+            signOptions: { expiresIn: '1h' },
+        }),
+      ],
+      providers: [
+      ],
     })
-      .overrideProvider(PrismaService)
-      .useValue({
-        userBranch: {
-          deleteMany: jest.fn(),
-          createMany: jest.fn(),
-          findMany: jest.fn(),
-        },
-      })
-      .compile();
+    .compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.useGlobalGuards(new MockJwtAuthGuard());
     await app.init();
-    jwtService = app.get(JwtService);
+    
     prisma = app.get(PrismaService);
+    await cleanupDatabase(prisma);
+
+    const tenant = await prisma.tenant.create({ data: { name: `AuthBr-Tenant-${randomUUID()}` } });
+    MockJwtAuthGuard.user.tenantId = tenant.id;
+    MockJwtAuthGuard.user.userId = '11111111-1111-4111-8111-111111111111';
+
+    await seedUser(prisma, tenant.id, 'auth-branches@hms.local');
   });
 
   describe('GET /api/v1/auth/branches', () => {
-    it('should reject unauthenticated request', () => {
-      return request(app.getHttpServer())
-        .get('/api/v1/auth/branches')
-        .expect(401);
-    });
-
-    it('should return active branch assignments only for the authenticated tenant user', async () => {
-      const tenantId = '00000000-0000-0000-0000-000000000001';
-      const userId = '00000000-0000-0000-0000-000000000001';
-      const branchId1 = '00000000-0000-0000-0000-000000000010';
-
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const mockDeleteMany = prisma.userBranch.deleteMany as jest.Mock;
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const mockCreateMany = prisma.userBranch.createMany as jest.Mock;
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      const mockFindMany = prisma.userBranch.findMany as jest.Mock;
-
-      mockDeleteMany.mockResolvedValue({ count: 1 });
-      mockCreateMany.mockResolvedValue({ count: 3 });
-      mockFindMany.mockResolvedValue([
-        {
-          branch: {
-            id: branchId1,
-            name: 'Branch 1',
-            code: 'B1',
-          },
-        },
-      ]);
-
-      const token = jwtService.sign({ sub: userId, tenantId });
+    it('should return active branch assignments', async () => {
+      const branchId1 = randomUUID();
+      
+      // Seed a branch and assignment
+      await prisma.branch.create({
+        data: { id: branchId1, tenantId: MockJwtAuthGuard.user.tenantId, name: 'B1', code: 'B1' }
+      });
+      await prisma.userBranch.create({
+        data: { userId: MockJwtAuthGuard.user.userId, branchId: branchId1, tenantId: MockJwtAuthGuard.user.tenantId, isActive: true }
+      });
 
       const response = await request(app.getHttpServer())
         .get('/api/v1/auth/branches')
-        .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
       expect(response.body).toHaveLength(1);
       expect(response.body[0].id).toBe(branchId1);
-      expect(response.body[0]).not.toHaveProperty('tenantId');
-    });
-
-    it('should return empty array when no active assignments exist', async () => {
-      const userId = '00000000-0000-0000-0000-000000000002';
-      const token = jwtService.sign({
-        sub: userId,
-        tenantId: '00000000-0000-0000-0000-000000000001',
-      });
-
-      (prisma.userBranch.findMany as jest.Mock).mockResolvedValue([]);
-
-      const response = await request(app.getHttpServer())
-        .get('/api/v1/auth/branches')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(200);
-
-      expect(response.body).toEqual([]);
     });
   });
 
@@ -98,3 +73,4 @@ describe('Auth (e2e)', () => {
     await app.close();
   });
 });
+

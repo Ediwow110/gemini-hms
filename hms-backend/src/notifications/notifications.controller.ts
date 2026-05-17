@@ -15,7 +15,7 @@ import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
 @Controller('api/v1/notifications')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class NotificationsController {
   constructor(
     private notificationsService: NotificationsService,

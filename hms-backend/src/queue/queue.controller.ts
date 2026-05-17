@@ -17,7 +17,7 @@ import { BranchGuard } from '../auth/guards/branch.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 
-@UseGuards(JwtAuthGuard, PermissionsGuard, BranchGuard)
+@UseGuards(PermissionsGuard, BranchGuard)
 @Controller('api/v1/queue')
 export class QueueController {
   constructor(private readonly queueService: QueueService) {}

@@ -28,7 +28,9 @@ export class BranchGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    if (!user.branchId) {
+    const isSuperAdmin = user.roles?.includes('Super Admin');
+
+    if (!user.branchId && !isSuperAdmin) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -54,8 +56,15 @@ export class BranchGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    if (distinct.length === 1 && distinct[0] !== user.branchId) {
-      throw new ForbiddenException('Access denied');
+    if (distinct.length === 1) {
+        if (!isSuperAdmin && distinct[0] !== user.branchId) {
+            throw new ForbiddenException('Access denied');
+        }
+        // If Super Admin, they can target any branch as long as they are consistent 
+        // across params/body/query. Tenant scoping is handled at service layer.
+    } else if (isRequired && !user.branchId && !isSuperAdmin) {
+        // No branchId provided in request and none in token
+        throw new ForbiddenException('Branch context is required');
     }
 
     return true;

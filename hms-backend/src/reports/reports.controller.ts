@@ -8,8 +8,8 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
-@UseGuards(JwtAuthGuard, PermissionsGuard)
-@Controller('reports')
+@UseGuards(PermissionsGuard)
+@Controller('api/v1/reports')
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 

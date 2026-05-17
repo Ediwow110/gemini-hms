@@ -9,12 +9,11 @@ import {
 } from '@nestjs/common';
 import { ClaimsService } from './claims.service';
 import { CreateClaimDto, UpdateClaimStatusDto } from './dto/claims.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 @Controller('api/v1/claims')
 export class ClaimsController {
   constructor(private readonly claimsService: ClaimsService) {}

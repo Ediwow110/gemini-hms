@@ -1,0 +1,157 @@
+{
+  "testName": "Payment Idempotency Concurrency Stress Test",
+  "timestamp": "2026-05-17T05:16:23.834Z",
+  "totalRequests": 20,
+  "newPaymentCount": 1,
+  "replayedCount": 0,
+  "conflictCount": 19,
+  "otherFailCount": 0,
+  "invariants": {
+    "exactOnePaymentRow": true,
+    "invoiceCorrectBalance": true,
+    "invoiceCorrectStatus": true
+  },
+  "pass": true,
+  "details": [
+    {
+      "requestIndex": 0,
+      "success": true,
+      "replayed": false,
+      "status": 201,
+      "error": null
+    },
+    {
+      "requestIndex": 1,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 2,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 3,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 4,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 5,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 6,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 7,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 8,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 9,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 10,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 11,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 12,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 13,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 14,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 15,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 16,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 17,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 18,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    },
+    {
+      "requestIndex": 19,
+      "success": false,
+      "replayed": false,
+      "status": 409,
+      "error": "Payment creation with this idempotency key is already in progress"
+    }
+  ]
+}

@@ -19,7 +19,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 @Controller('api/v1/patients/merge-requests')
 export class PatientMergeRequestController {
   constructor(

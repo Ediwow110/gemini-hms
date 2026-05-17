@@ -6,13 +6,15 @@ import {
   Patch,
   Post,
   UseGuards,
+  HttpStatus,
+  HttpCode,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { RequestUser } from '../common/types/authenticated-request.type';
+import { MetricsService } from './metrics.service';
 import {
   AssignUserRoleDto,
   CreateCustomRoleDto,
@@ -25,10 +27,31 @@ import {
   UserLifecycleReasonDto,
 } from './dto/user-lifecycle.dto';
 
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 @Controller('api/v1/admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly metricsService: MetricsService,
+  ) {}
+
+  @Get('health')
+  @RequirePermissions('admin.health.view')
+  async getHealth() {
+    return this.adminService.getHealth();
+  }
+
+  @Get('metrics')
+  @RequirePermissions('admin.metrics.view')
+  getMetrics() {
+    return this.metricsService.getMetrics();
+  }
+
+  @Get('metrics/prometheus')
+  @RequirePermissions('admin.metrics.view')
+  getPrometheusMetrics() {
+    return this.metricsService.getPrometheusFormat();
+  }
 
   @Post('users')
   @RequirePermissions('admin.role.change')
@@ -354,11 +377,5 @@ export class AdminController {
       requestId,
       dto.reason,
     );
-  }
-
-  @Get('health')
-  @RequirePermissions('admin.role.change')
-  async getHealth() {
-    return this.adminService.getHealth();
   }
 }

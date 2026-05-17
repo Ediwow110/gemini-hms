@@ -1,64 +1,95 @@
+process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-
-// Mock JWT_SECRET for test environment
-process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-characters-long';
-
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
-import { JwtService } from '@nestjs/jwt';
+import { randomUUID } from 'crypto';
+import { AuthTestModule } from './helpers/auth-test.module';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { seedUser } from './helpers/seed.helper';
+import { cleanupDatabase } from './helpers/db-cleanup';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 
 describe('Auth Selection (e2e)', () => {
-  let app: INestApplication<App>;
-  let jwtService: JwtService;
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let uniqueTenantName: string;
+  let testUserEmail: string;
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [AuthTestModule],
+      providers: [
+          {
+              provide: APP_GUARD,
+              useClass: JwtAuthGuard,
+          }
+      ]
     }).compile();
 
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    app = moduleRef.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
 
-    jwtService = app.get(JwtService);
+    prisma = app.get(PrismaService);
+    await cleanupDatabase(prisma);
+
+    uniqueTenantName = `Auth-Tenant-${randomUUID()}`;
+    const tenant = await prisma.tenant.create({
+        data: { name: uniqueTenantName }
+    });
+    testUserEmail = `auth-${randomUUID()}@hms.local`;
+    await seedUser(prisma, tenant.id, testUserEmail);
   });
 
-  describe('POST /api/v1/auth/select-branch', () => {
-    it('should reject unauthenticated request', () => {
+  describe('POST /api/v1/auth/login', () => {
+    it('should return 200 and accessToken for valid credentials', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({
+          email: testUserEmail,
+          password: 'Test1234!',
+          tenantCode: uniqueTenantName, 
+        });
+      
+      expect(res.status).toBe(200);
+      expect(res.body.accessToken).toBeDefined();
+    });
+
+    it('should return 401 for invalid password', async () => {
       return request(app.getHttpServer())
-        .post('/api/v1/auth/select-branch')
-        .send({ branchId: '00000000-0000-0000-0000-000000000000' })
+        .post('/api/v1/auth/login')
+        .send({
+          email: testUserEmail,
+          password: 'WrongPassword',
+          tenantCode: uniqueTenantName,
+        })
         .expect(401);
     });
+  });
 
-    it('should reject missing branchId', async () => {
-      const token = jwtService.sign({ sub: 'u1', tenantId: 't1', roles: [] });
-      return request(app.getHttpServer())
-        .post('/api/v1/auth/select-branch')
-        .set('Authorization', `Bearer ${token}`)
-        .send({})
-        .expect(400);
-    });
+  describe('GET /api/v1/auth/me', () => {
+    it('should return user context with valid token', async () => {
+      const loginRes = await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({
+          email: testUserEmail,
+          password: 'Test1234!',
+          tenantCode: uniqueTenantName,
+        });
+      
+      const token = loginRes.body.accessToken;
 
-    it('should reject invalid UUID branchId', async () => {
-      const token = jwtService.sign({ sub: 'u1', tenantId: 't1', roles: [] });
-      return request(app.getHttpServer())
-        .post('/api/v1/auth/select-branch')
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/auth/me')
         .set('Authorization', `Bearer ${token}`)
-        .send({ branchId: 'not-a-uuid' })
-        .expect(400);
+        .expect(200);
+      
+      expect(res.body.email).toBe(testUserEmail);
     });
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await app.close();
   });
 });

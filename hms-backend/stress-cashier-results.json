@@ -1,0 +1,24 @@
+{
+  "testName": "Cashier Session Close Concurrency Stress Test",
+  "timestamp": "2026-05-17T05:16:38.194Z",
+  "totalRequests": 2,
+  "successCount": 1,
+  "failureCount": 1,
+  "invariants": {
+    "sessionIsClosed": true,
+    "exactOneAuditLog": true
+  },
+  "pass": true,
+  "details": [
+    {
+      "requestIndex": 0,
+      "success": true,
+      "error": null
+    },
+    {
+      "requestIndex": 1,
+      "success": false,
+      "error": "Active session not found or already closed in this branch"
+    }
+  ]
+}

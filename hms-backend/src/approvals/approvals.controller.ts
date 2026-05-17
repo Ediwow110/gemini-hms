@@ -12,12 +12,12 @@ import {
   CreateApprovalRequestDto,
   ProcessApprovalRequestDto,
 } from './dto/approval.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
+import { SelfApprovalGuard } from '../common/guards/self-approval.guard';
 
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 @Controller('api/v1/approvals')
 export class ApprovalsController {
   constructor(private readonly approvalsService: ApprovalsService) {}
@@ -40,6 +40,7 @@ export class ApprovalsController {
 
   @Patch(':id/approve')
   @RequirePermissions('approval.request.process')
+  @UseGuards(SelfApprovalGuard)
   approve(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,

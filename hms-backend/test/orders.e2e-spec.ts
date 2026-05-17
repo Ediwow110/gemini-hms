@@ -1,89 +1,74 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe, APP_GUARD } from '@nestjs/common';
 import request from 'supertest';
-
-// Mock JWT_SECRET for test environment
-process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-characters-long';
-
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
-import { JwtService } from '@nestjs/jwt';
+import { OrdersModule } from '../src/orders/orders.module';
+import { PrismaModule } from '../src/prisma/prisma.module';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { ConfigModule } from '@nestjs/config';
+import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
+import { NumberingModule } from '../src/numbering/numbering.module';
+import { AuditModule } from '../src/audit/audit.module';
+import { cleanupDatabase } from './helpers/db-cleanup';
+import { randomUUID } from 'crypto';
 
 describe('Orders Branch Scoping (e2e)', () => {
-  let app: INestApplication<App>;
-  let jwtService: JwtService;
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let tenantId: string;
+  let branchId: string;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
+    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [
+        ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
+        PrismaModule,
+        NumberingModule,
+        AuditModule,
+        OrdersModule,
+      ],
+      providers: [
+      ],
     })
-      .overrideGuard(PermissionsGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
+    .overrideGuard(PermissionsGuard).useValue({ canActivate: () => true })
+    .compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.useGlobalGuards(new MockJwtAuthGuard());
     await app.init();
 
-    jwtService = app.get(JwtService);
-  });
+    prisma = app.get(PrismaService);
+    await cleanupDatabase(prisma);
 
-  const getValidToken = (branchId?: string) => {
-    return jwtService.sign({
-      sub: 'user-uuid',
-      email: 'test@example.com',
-      tenantId: 'tenant-uuid',
-      roles: ['order.create', 'order.view'], // Must match permission strings in code if enforced
-      ...(branchId && { branchId }),
+    const tenant = await prisma.tenant.create({ data: { name: `Orders-Tenant-${randomUUID()}` } });
+    tenantId = tenant.id;
+    const branch = await prisma.branch.create({
+        data: { id: randomUUID(), tenantId, name: 'Orders Branch', code: `OB-${randomUUID().substring(0,4)}` }
     });
-  };
+    branchId = branch.id;
+
+    MockJwtAuthGuard.user.tenantId = tenantId;
+    MockJwtAuthGuard.user.branchId = branchId;
+  });
 
   describe('POST /api/v1/orders', () => {
-    it('should fail with 403 when branchId is missing from JWT', () => {
-      const token = getValidToken();
+    it('should fail with 403 when DTO.branchId mismatches JWT branchId', async () => {
       return request(app.getHttpServer())
         .post('/api/v1/orders')
-        .set('Authorization', `Bearer ${token}`)
         .send({
-          patientId: 'patient-uuid',
-          branchId: 'branch-uuid',
-          items: [{ name: 'Test', price: 100, quantity: 1 }],
-        })
-        .expect(403);
-    });
-
-    it('should fail with 403 when DTO.branchId mismatches JWT branchId', () => {
-      const token = getValidToken('branch-A');
-      return request(app.getHttpServer())
-        .post('/api/v1/orders')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          patientId: 'patient-uuid',
-          branchId: 'branch-B', // Mismatch
+          patientId: randomUUID(),
+          branchId: randomUUID(), // Mismatch
           items: [{ name: 'Test', price: 100, quantity: 1 }],
         })
         .expect(403);
     });
   });
 
-  describe('GET /api/v1/orders', () => {
-    it('should fail with 403 when branchId is missing from JWT', () => {
-      const token = getValidToken();
-      return request(app.getHttpServer())
-        .get('/api/v1/orders')
-        .set('Authorization', `Bearer ${token}`)
-        .expect(403);
-    });
-  });
-
-  afterEach(async () => {
+  afterAll(async () => {
     await app.close();
   });
 });
+

@@ -8,7 +8,7 @@ import { BranchGuard } from '../auth/guards/branch.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 
-@UseGuards(JwtAuthGuard, PermissionsGuard, BranchGuard)
+@UseGuards(PermissionsGuard, BranchGuard)
 @Controller('api/v1/orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}

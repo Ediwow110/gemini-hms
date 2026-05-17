@@ -6,39 +6,45 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Res,
   UnauthorizedException,
+  BadRequestException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SelectBranchDto } from './dto/select-branch.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GetUser } from './decorators/get-user.decorator';
 import type { RequestUser } from '../common/types/authenticated-request.type';
+import { Public } from '../common/decorators/public.decorator';
+import { MfaChallengeGuard } from './guards/mfa-challenge.guard';
+import { MfaService } from './mfa.service';
+import { SkipMfa } from './decorators/skip-mfa.decorator';
 
 @Controller('api/v1/auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly mfaService: MfaService,
+  ) {}
 
-  @HttpCode(HttpStatus.OK)
+  @Public()
   @Post('login')
-  async login(@Body() loginDto: LoginDto) {
+  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: any) {
     const user = await this.authService.validateUser(
       loginDto.tenantCode,
       loginDto.email,
       loginDto.password,
     );
     if (!user) {
-      // Per blueprint: "Do not reveal account existence" and return 401
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Create Audit Log (LOGIN_SUCCESS) via a dedicated service in a real app
-    // For now, return the JWT
-    return this.authService.login(user);
+    const result: any = await this.authService.login(user);
+    res.status(result.statusCode || HttpStatus.OK);
+    return result;
   }
 
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('select-branch')
   async selectBranch(
@@ -59,15 +65,63 @@ export class AuthController {
     return result;
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@GetUser() user: RequestUser) {
     return this.authService.getMe(user.userId!, user.tenantId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('branches')
   async getMyBranches(@GetUser() user: RequestUser) {
     return this.authService.getUserBranches(user.userId!, user.tenantId);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('refresh')
+  async refresh(@Body('refreshToken') refreshToken: string, @Body('sessionId') sessionId: string, @Body('userId') userId: string) {
+    return this.authService.refreshTokens(userId, sessionId, refreshToken);
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('logout')
+  async logout(@GetUser() user: RequestUser) {
+    return this.authService.logout(user.userId!, user.sessionId!);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @SkipMfa()
+  @UseGuards(MfaChallengeGuard)
+  @Post('mfa/setup')
+  async mfaSetup(@GetUser() user: any) {
+    return this.mfaService.generateSecret(user.sub, user.email || 'user@hms.local');
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @SkipMfa()
+  @UseGuards(MfaChallengeGuard)
+  @Post('mfa/verify')
+  async mfaVerify(@GetUser() user: any, @Body('code') code: string, @Body('secret') secret?: string) {
+    if (user.challenge === 'MFA_SETUP') {
+        if (!secret) throw new BadRequestException('Secret required for initial setup');
+        await this.mfaService.enableMfa(user.sub, secret, code);
+    }
+    return this.authService.verifyMfa(user.sub, user.sid, code);
+  }
+
+  @Post('mfa/recovery-codes/generate')
+  async generateRecoveryCodes(@GetUser() user: RequestUser) {
+    const codes = await this.mfaService.generateRecoveryCodes(user.userId!, user.tenantId);
+    return { recoveryCodes: codes };
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @SkipMfa()
+  @UseGuards(MfaChallengeGuard)
+  @Post('mfa/recovery-codes/verify')
+  async verifyRecoveryCode(@GetUser() user: any, @Body('code') code: string) {
+    if (!code) {
+      throw new BadRequestException('Recovery code is required');
+    }
+    return this.authService.verifyMfaWithRecoveryCode(user.sub, user.sid, code, user.tenantId);
   }
 }

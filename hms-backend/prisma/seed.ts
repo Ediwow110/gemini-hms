@@ -147,7 +147,7 @@ async function main() {
       tenantId: tenant.id,
       email: 'admin@hospital.com',
       passwordHash: passwordHash,
-      isMfaEnabled: false,
+      mfaEnabled: false,
     },
   });
   console.log('User created:', user.email);

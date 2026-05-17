@@ -18,9 +18,10 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { BranchGuard } from '../auth/guards/branch.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
-import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
+import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';      
+import { SelfApprovalGuard } from '../common/guards/self-approval.guard';
 
-@UseGuards(JwtAuthGuard, PermissionsGuard, BranchGuard)
+@UseGuards(PermissionsGuard, BranchGuard)
 @Controller('api/v1/lab')
 export class LabController {
   constructor(private readonly labService: LabService) {}
@@ -62,6 +63,7 @@ export class LabController {
   @Patch('results/:id/approve')
   @RequirePermissions('lab.result.approve')
   @RequireBranchContext()
+  @UseGuards(SelfApprovalGuard)
   approve(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -75,6 +77,7 @@ export class LabController {
   @Post('results/:id/release')
   @RequirePermissions('lab.result.release')
   @RequireBranchContext()
+  @UseGuards(SelfApprovalGuard)
   release(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,

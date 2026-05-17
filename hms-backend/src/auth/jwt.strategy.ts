@@ -3,77 +3,81 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 import { PrismaService } from '../prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
 
 interface JwtPayload {
   sub?: string;
+  sid?: string; // Session ID
   email?: string;
   tenantId?: string;
   branchId?: string;
   roles?: string[];
   tokenVersion?: number;
+  mfaVerified?: boolean;
+  scope?: string;
+  challenge?: string;
 }
-
-const getJwtSecret = () => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error(
-      'CRITICAL: Valid JWT_SECRET (min 32 chars) is required in environment variables.',
-    );
-  }
-  return secret;
-};
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {
+    const secret = configService.get<string>('JWT_SECRET');
+    if (!secret || secret.length < 32) {
+      throw new Error(
+        'CRITICAL: Valid JWT_SECRET (min 32 chars) is required in environment variables.',
+      );
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: getJwtSecret(),
+      secretOrKey: secret,
     });
   }
 
   async validate(payload: JwtPayload): Promise<RequestUser> {
     if (
       !payload.sub ||
+      !payload.sid ||
       !payload.tenantId ||
       typeof payload.tokenVersion !== 'number'
     ) {
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException('Invalid token structure');
     }
 
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id: payload.sub,
-        tenantId: payload.tenantId,
-      },
-      select: {
-        id: true,
-        email: true,
-        tenantId: true,
-        status: true,
-        deactivatedAt: true,
-        tokenVersion: true,
-      },
+    // Stateful check: verify session exists and is active
+    const session = await this.prisma.session.findUnique({
+        where: { id: payload.sid },
+        include: { user: true }
     });
 
     if (
-      !user ||
-      user.status !== 'ACTIVE' ||
-      user.deactivatedAt !== null ||
-      payload.tokenVersion !== user.tokenVersion
+        !session ||
+        session.expiresAt < new Date() ||
+        session.user.status !== 'ACTIVE' ||
+        session.user.deactivatedAt !== null ||
+        payload.tokenVersion !== session.user.tokenVersion
     ) {
-      throw new UnauthorizedException('Invalid token');
+        throw new UnauthorizedException('Session expired or revoked');
     }
 
-    // This return value is injected into Request as 'user'
-    // All fields use camelCase consistently
+    // Consistency check: ensure token sub matches session owner
+    if (session.userId !== payload.sub || session.tenantId !== payload.tenantId) {
+         throw new UnauthorizedException('Token/Session mismatch');
+    }
+
     return {
-      userId: user.id,
-      email: user.email,
-      tenantId: user.tenantId,
+      userId: session.user.id,
+      sessionId: session.id,
+      email: session.user.email,
+      tenantId: session.tenantId,
       roles: payload.roles ?? [],
-      tokenVersion: user.tokenVersion,
+      tokenVersion: session.user.tokenVersion,
+      mfaVerified: !!payload.mfaVerified,
+      scope: payload.scope,
+      challenge: payload.challenge,
       ...(payload.branchId ? { branchId: payload.branchId } : {}),
     };
   }

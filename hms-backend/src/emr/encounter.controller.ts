@@ -15,14 +15,13 @@ import {
   CreateDiagnosisDto,
   CreateClinicalNoteDto,
 } from './dto/encounter.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 
 @Controller('emr/encounters')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class EncounterController {
   constructor(private readonly encounterService: EncounterService) {}
 

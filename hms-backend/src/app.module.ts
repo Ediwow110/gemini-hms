@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { PhiMaskingInterceptor } from './common/interceptors/phi-masking.interceptor';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -21,10 +24,18 @@ import { ReportsModule } from './reports/reports.module';
 import { AdminModule } from './admin/admin.module';
 import { EncountersModule } from './encounters/encounters.module';
 import { EmrModule } from './emr/emr.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { MfaGuard } from './auth/guards/mfa.guard';
+import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([
+        { name: 'default', ttl: 60000, limit: 100 },
+        { name: 'auth', ttl: 60000, limit: 5 },
+        { name: 'sensitive', ttl: 60000, limit: 20 },
+    ]),
     PrismaModule,
     AuthModule,
     AuditModule,
@@ -46,6 +57,14 @@ import { EmrModule } from './emr/emr.module';
     EmrModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // FAIL-CLOSED: Authentication and Throttling are global by default
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: MfaGuard },
+    { provide: APP_INTERCEPTOR, useClass: PhiMaskingInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
+  ],
 })
 export class AppModule {}

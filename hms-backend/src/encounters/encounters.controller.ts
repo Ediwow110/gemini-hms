@@ -10,14 +10,13 @@ import {
 } from '@nestjs/common';
 import { EncountersService } from './encounters.service';
 import { CreateEncounterDto, UpdateEncounterDto } from './dto/encounter.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 
 @Controller('encounters')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class EncountersController {
   constructor(private readonly encountersService: EncountersService) {}
 

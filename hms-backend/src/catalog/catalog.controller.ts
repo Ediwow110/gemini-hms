@@ -15,12 +15,11 @@ import {
   SetPriceDto,
   GetItemsQueryDto,
 } from './dto/catalog.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 
 @Controller('catalog')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(PermissionsGuard)
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 

@@ -79,9 +79,10 @@ model User {
   id                String    @id @default(uuid()) @db.Uuid
   tenantId          String    @map("tenant_id") @db.Uuid
   email             String
-  passwordHash      String    @map("password_hash")
-  isMfaEnabled      Boolean   @default(false) @map("is_mfa_enabled")
-  status            String    @default("ACTIVE")
+  passwordHash       String   @map("password_hash")
+  mfaEnabled         Boolean  @default(false) @map("is_mfa_enabled")
+  mfaSecret          String?  @map("mfa_secret")
+  status             String   @default("ACTIVE")
   deactivatedAt     DateTime? @map("deactivated_at")
   deactivatedReason String?   @map("deactivated_reason")
   tokenVersion      Int       @default(0) @map("token_version")
@@ -99,9 +100,42 @@ model User {
   mergeRequested     PatientMergeRequest[] @relation("MergeRequested")
   mergeApproved      PatientMergeRequest[] @relation("MergeApproved")
   encountersAttending Encounter[] @relation("EncounterAttending")
+  sessions           Session[]
+  mfaRecoveryCodes   UserMfaRecoveryCode[]
 
   @@unique([tenantId, email])
   @@map("users")
+}
+
+model UserMfaRecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_mfa_recovery_codes")
+}
+
+model Session {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  refreshTokenHash String   @unique @map("refresh_token_hash")
+  isMfaVerified    Boolean  @default(false) @map("is_mfa_verified")
+  expiresAt        DateTime @map("expires_at")
+  lastRotatedAt    DateTime @default(now()) @map("last_rotated_at")
+  userAgent        String?  @map("user_agent")
+  ipAddress        String?  @map("ip_address")
+  
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+  @@map("sessions")
 }
 
 model Role {
@@ -189,8 +223,8 @@ model Encounter {
   reason      String?
   notes       String?
 
-  createdBy   String   @map("created_by") @default("") @db.Uuid
-  updatedBy   String   @map("updated_by") @default("") @db.Uuid
+  createdBy   String   @map("created_by") @db.Uuid
+  updatedBy   String   @map("updated_by") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -224,7 +258,7 @@ model Vitals {
   respiratory Int?     @map("respiratory_rate")
   weightKg    Decimal? @map("weight_kg") @db.Decimal(6, 2)
 
-  createdBy String @map("created_by") @default("") @db.Uuid
+  createdBy String @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
@@ -242,7 +276,7 @@ model Diagnosis {
   description String   @db.Text
   isPrimary   Boolean  @default(false) @map("is_primary")
 
-  createdBy String @map("created_by") @default("") @db.Uuid
+  createdBy String @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
@@ -259,8 +293,8 @@ model ClinicalNote {
   noteType    NoteType @map("note_type")
   content     String   @db.Text
 
-  createdBy String @map("created_by") @default("") @db.Uuid
-  updatedBy String @map("updated_by") @default("") @db.Uuid
+  createdBy String @map("created_by") @db.Uuid
+  updatedBy String @map("updated_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
