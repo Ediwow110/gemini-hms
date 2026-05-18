@@ -68,9 +68,9 @@ jobs:
       run:
         working-directory: ./hms-backend
     env:
-      DATABASE_URL: postgresql://test:test@localhost:5432/gemini_test?schema=public
-      JWT_SECRET: test-secret-key-for-e2e-tests-that-is-long-enough
-      JWT_REFRESH_SECRET: test-refresh-secret-for-e2e-tests
+      DATABASE_URL:\ \$\{\{\ secrets\.CI_DATABASE_URL\ }}
+      JWT_SECRET:\ \$\{\{\ secrets\.CI_JWT_SECRET\ }}
+      JWT_REFRESH_SECRET:\ \$\{\{\ secrets\.CI_JWT_REFRESH_SECRET\ }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -90,5 +90,6 @@ jobs:
       - name: Run Unit Tests with Coverage Threshold
         run: npm run test -- --coverage
       - run: npm run test:e2e -- --runInBand
+
 
 
