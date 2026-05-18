@@ -103,7 +103,11 @@ export class AuditService {
       previousHash,
     });
 
-    const signature = createHmac('sha256', process.env.JWT_SECRET || 'fallback-secret-key-for-audit-chaining')
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET must be defined for audit signing');
+    }
+
+    const signature = createHmac('sha256', process.env.JWT_SECRET)
       .update(hash)
       .digest('hex');
 

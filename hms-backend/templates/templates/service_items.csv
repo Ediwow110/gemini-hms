@@ -1,0 +1,7 @@
+# service_items template: catalog services onboarding layout
+# Note: Do not alter column headers. Fields marked with * are required.
+# categoryName must correspond to a valid system category (e.g., CONSULTATION, LABORATORY, RADIOLOGY).
+code*,name*,description,amount*,categoryName*
+CONS-001,General Consultation,Standard outpatient physician consultation fee,500.00,CONSULTATION
+LAB-CBC,Complete Blood Count,Standard hematology CBC profile test,350.00,LABORATORY
+RAD-CXRAY,Chest X-Ray PA View,Standard single view diagnostic radiologic exam,650.00,RADIOLOGY

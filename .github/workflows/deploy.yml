@@ -1,0 +1,139 @@
+name: Production CD Ingress Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci-verification:
+    name: CI Verification (Lint, Typecheck & Test)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: gemini_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/gemini_test?schema=public
+      JWT_SECRET: test-secret-key-for-e2e-tests-that-is-long-enough
+      JWT_REFRESH_SECRET: test-refresh-secret-for-e2e-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # A. Frontend CI
+      - name: Install Frontend Dependencies
+        working-directory: ./hms-frontend
+        run: npm ci
+
+      - name: Lint Frontend
+        working-directory: ./hms-frontend
+        run: npm run lint
+
+      - name: Build Frontend
+        working-directory: ./hms-frontend
+        run: npm run build
+
+      # B. Backend CI
+      - name: Install Backend Dependencies
+        working-directory: ./hms-backend
+        run: npm ci
+
+      - name: Validate Prisma Schema
+        working-directory: ./hms-backend
+        run: npx prisma validate
+
+      - name: Generate Prisma Client
+        working-directory: ./hms-backend
+        run: npx prisma generate
+
+      - name: Lint Backend
+        working-directory: ./hms-backend
+        run: npm run lint
+
+      - name: Build Backend
+        working-directory: ./hms-backend
+        run: npm run build
+
+      - name: Deploy Prisma Migrations on Test DB
+        working-directory: ./hms-backend
+        run: npx prisma migrate deploy
+
+      - name: Run Backend Unit Tests
+        working-directory: ./hms-backend
+        run: npm run test
+
+      - name: Run Backend E2E Tests
+        working-directory: ./hms-backend
+        run: npm run test:e2e -- --runInBand
+
+  docker-compile:
+    name: Multi-stage Production Docker Image Compilation
+    runs-on: ubuntu-latest
+    needs: ci-verification
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Production Backend Container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./hms-backend
+          file: ./hms-backend/Dockerfile
+          push: false
+          tags: hms-login-design-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Production Frontend Container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./hms-frontend
+          file: ./hms-frontend/Dockerfile
+          push: false
+          tags: hms-login-design-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  cd-deploy:
+    name: SSH Production Cloud Ingress Delivery
+    runs-on: ubuntu-latest
+    needs: docker-compile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Execute SSH Delivery & Target Orchestrator
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MASTER_MFA_KEY: ${{ secrets.MASTER_MFA_KEY }}
+        run: |
+          # Setup SSH keys agent
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+          # Transfer workspace configuration and compose manifests
+          scp -i ~/.ssh/id_rsa -r docker-compose.prod.yml hms-backend/scripts/remote-deploy.sh $SSH_USER@$SSH_HOST:/tmp/
+
+          # Execute Remote Deploy Orchestrator cleanly
+          ssh -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST "export DATABASE_URL='$DATABASE_URL'; export JWT_SECRET='$JWT_SECRET'; export MASTER_MFA_KEY='$MASTER_MFA_KEY'; bash /tmp/remote-deploy.sh"

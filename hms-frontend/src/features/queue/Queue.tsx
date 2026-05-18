@@ -18,12 +18,20 @@ export const Queue = () => {
   ]);
 
   const handleCallNext = () => {
-    // In real app, calls POST /api/v1/queue/:id/status { status: 'CALLING' }
     const updated = [...queue];
-    const nextIdx = updated.findIndex(q => q.status === "Waiting");
+    const nextIdx = updated.findIndex(q => q.status.toUpperCase() === "WAITING");
     if (nextIdx !== -1) {
-      updated[nextIdx].status = "Calling";
+      const p = updated[nextIdx];
+      p.status = "Calling";
       setQueue(updated);
+      // In-app alert notification
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'fixed bottom-5 right-5 z-50 bg-indigo-600 text-white px-6 py-3.5 rounded-xl shadow-xl font-semibold text-sm animate-fade-in border border-indigo-500/30 flex items-center gap-2';
+      alertDiv.innerHTML = `<span>Now Calling Queue Number: <strong class="underline">${p.num}</strong> - ${p.name}</span>`;
+      document.body.appendChild(alertDiv);
+      setTimeout(() => alertDiv.remove(), 4000);
+    } else {
+      alert("No patients waiting in queue.");
     }
   };
 

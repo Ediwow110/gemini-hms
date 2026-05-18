@@ -18,10 +18,13 @@ import {
   X,
   LogOut,
   Settings as SettingsIcon,
+  Clock,
+  User,
+  GitMerge,
   CheckSquare,
   Pill
 } from 'lucide-react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
 interface NavItem {
@@ -47,11 +50,13 @@ function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick
     { label: 'Radiology', to: '/radiology', icon: CheckSquare, permission: 'lab.result.view' },
     { label: 'Pharmacy', to: '/pharmacy', icon: Pill, permission: 'inventory.stock.dispense' },
     { label: 'Billing & Cashier', to: '/billing', icon: CreditCard, permission: 'billing.invoice.view' },
+    { label: 'HMO Claims', to: '/claims', icon: ShieldCheck, permission: 'billing.invoice.view' },
     { label: 'Inventory & Procurement', to: '/inventory', icon: Package, permission: 'inventory.item.view' },
     { label: 'Products & Services', to: '/orders/new', icon: PlusCircle, permission: 'order.create' },
     { label: 'Approvals', to: '/approvals', icon: ClipboardCheck, permission: 'approval.request.view' },
     { label: 'Users & Roles', to: '/admin/users', icon: Users, permission: 'admin.role.change' },
-    { label: 'HR Management', to: '/hr', icon: Briefcase }, // Deferred
+    { label: 'Chart Reconciliation', to: '/admin/patient-merges', icon: GitMerge, permission: 'admin.role.change' },
+    { label: 'HR Management', to: '/hr', icon: Briefcase },
     { label: 'Reports & Analytics', to: '/reports', icon: BarChart3, permission: 'report.export' },
     { label: 'Notifications', to: '/notifications', icon: Bell },
     { label: 'Security & Audit Logs', to: '/audit-logs', icon: ShieldCheck, permission: 'audit.view' },
@@ -137,9 +142,11 @@ function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick
 }
 
 export const AppShell = () => {
+  const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
   const user = useUser();
 
   return (
@@ -207,10 +214,13 @@ export const AppShell = () => {
 
           <div className="flex items-center gap-2 lg:gap-3">
             {/* Quick Create */}
-            <Link to="/orders/new" className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200">
+            <button 
+              onClick={() => setShowQuickCreate(true)} 
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200 cursor-pointer"
+            >
               <PlusCircle className="h-4 w-4" />
               <span>Quick Create</span>
-            </Link>
+            </button>
 
             {/* Branch selector */}
             <button className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
@@ -248,6 +258,75 @@ export const AppShell = () => {
             <Outlet />
           </div>
         </main>
+
+        {/* Quick Create Dialog Modal */}
+        {showQuickCreate && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-slide-up relative">
+              <button 
+                onClick={() => setShowQuickCreate(false)} 
+                className="absolute top-4 right-4 p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 border-b pb-3 border-slate-100 uppercase tracking-wider">
+                <PlusCircle className="h-4.5 w-4.5 text-indigo-600" />
+                Quick Action Panel
+              </h3>
+
+              <div className="mt-4 space-y-2.5">
+                <button
+                  onClick={() => {
+                    setShowQuickCreate(false);
+                    navigate("/patients/new");
+                  }}
+                  className="w-full text-left p-3.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 rounded-2xl transition-all duration-200 flex items-center gap-3 cursor-pointer group"
+                >
+                  <div className="h-8 w-8 bg-indigo-100 text-indigo-700 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Register Patient</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Enroll new record in master index</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowQuickCreate(false);
+                    navigate("/queue");
+                  }}
+                  className="w-full text-left p-3.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 rounded-2xl transition-all duration-200 flex items-center gap-3 cursor-pointer group"
+                >
+                  <div className="h-8 w-8 bg-indigo-100 text-indigo-700 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                    <Clock className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Admit Queue Ticket</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Issue active patient queue slot</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowQuickCreate(false);
+                    navigate("/orders/new");
+                  }}
+                  className="w-full text-left p-3.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 rounded-2xl transition-all duration-200 flex items-center gap-3 cursor-pointer group"
+                >
+                  <div className="h-8 w-8 bg-indigo-100 text-indigo-700 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                    <Briefcase className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Create Medical Order</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Order imaging, labs or rx</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

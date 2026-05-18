@@ -1,0 +1,24 @@
+{
+  "routingPolicyName": "Global-Active-Active-Ingress",
+  "dnsFailoverEnabled": true,
+  "regions": [
+    {
+      "regionName": "Asia-Pacific",
+      "regionCode": "ap-southeast-1",
+      "primaryEndpoint": "cluster-prod-asia.hms.global",
+      "countries": ["PH", "SG", "JP", "MY", "ID", "TH"],
+      "failoverEndpoint": "cluster-prod-americas.hms.global",
+      "healthCheckUrl": "http://cluster-prod-asia.hms.global/health",
+      "healthCheckIntervalSeconds": 5
+    },
+    {
+      "regionName": "Western-Hemisphere",
+      "regionCode": "us-east-1",
+      "primaryEndpoint": "cluster-prod-americas.hms.global",
+      "countries": ["US", "CA", "EU", "GB", "DE", "FR"],
+      "failoverEndpoint": "cluster-prod-asia.hms.global",
+      "healthCheckUrl": "http://cluster-prod-americas.hms.global/health",
+      "healthCheckIntervalSeconds": 5
+    }
+  ]
+}
