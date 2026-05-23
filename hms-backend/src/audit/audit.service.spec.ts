@@ -156,6 +156,26 @@ describe('AuditService', () => {
       expect(result).not.toHaveProperty('oldValues');
       expect(result).not.toHaveProperty('newValues');
     });
+
+    it('should return full data for Super Admin', async () => {
+      prisma.auditLog.findUnique.mockResolvedValue({
+        id: 'log-id',
+        tenantId: mockTenantId,
+        branchId: mockBranchId,
+        oldValues: { foo: 'bar' },
+        newValues: { foo: 'baz' },
+      });
+
+      const result = await service.findOne(
+        mockTenantId,
+        mockBranchId,
+        ['Super Admin'],
+        'log-id',
+      );
+
+      expect(result).toHaveProperty('oldValues');
+      expect(result).toHaveProperty('newValues');
+    });
   });
 
   describe('log', () => {
@@ -229,6 +249,34 @@ describe('AuditService', () => {
       const hash2 = (service as any).computeHash(entry2);
 
       expect(hash1).toEqual(hash2);
+    });
+
+    it('should canonicalize nested arrays and complex objects', () => {
+      const complex = {
+        z: [3, 2, 1],
+        a: {
+          y: 'test',
+          x: [
+            { b: 2, a: 1 },
+            { d: 4, c: 3 },
+          ],
+        },
+      };
+
+      const result = (service as any).canonicalize(complex);
+
+      expect(JSON.stringify(result)).toEqual(
+        JSON.stringify({
+          a: {
+            x: [
+              { a: 1, b: 2 },
+              { c: 3, d: 4 },
+            ],
+            y: 'test',
+          },
+          z: [3, 2, 1],
+        }),
+      );
     });
 
     it('should preserve exact millisecond precision to detect sub-second tampering', () => {
