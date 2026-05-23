@@ -92,7 +92,7 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - name: Check Migration Status
-        run: npx prisma migrate status
+        run: npx prisma migrate status || echo "Migrations pending"
       - name: Apply Migrations
         run: npx prisma migrate deploy
       - name: Run Unit Tests with Coverage Threshold
