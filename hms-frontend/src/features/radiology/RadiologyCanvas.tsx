@@ -76,6 +76,7 @@ export const RadiologyCanvas = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Pre-existing mock data pattern; loads initial state via async fetch
     void fetchRadiologyOrders();
   }, []);
 

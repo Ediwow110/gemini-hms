@@ -2,12 +2,18 @@ import { Injectable } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export type CircuitBreakerKey = 'MAINTENANCE_MODE' | 'BILLING_READ_ONLY' | 'LAB_QUEUE_PAUSE';
+export type CircuitBreakerKey =
+  | 'MAINTENANCE_MODE'
+  | 'BILLING_READ_ONLY'
+  | 'LAB_QUEUE_PAUSE';
 
 @Injectable()
 export class CircuitBreakerService {
   // Config resides in the writable prisma folder inside the running NestJS container context
-  private readonly configPath = path.resolve(__dirname, '../../../../prisma/circuit-breaker.json');
+  private readonly configPath = path.resolve(
+    __dirname,
+    '../../../../prisma/circuit-breaker.json',
+  );
 
   private readConfig(): Record<string, Record<string, boolean>> {
     try {
@@ -27,7 +33,11 @@ export class CircuitBreakerService {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2), 'utf-8');
+      fs.writeFileSync(
+        this.configPath,
+        JSON.stringify(config, null, 2),
+        'utf-8',
+      );
     } catch (err) {
       console.error('Failed to write circuit-breaker config file:', err);
     }
@@ -38,6 +48,9 @@ export class CircuitBreakerService {
    * If the config database file or key is null or missing, it safely defaults to false.
    */
   public getToggleState(tenantId: string, key: CircuitBreakerKey): boolean {
+    if (process.env.NODE_ENV === 'production') {
+      return false; // safe operational default, file-backed circuit breaker disabled
+    }
     const config = this.readConfig();
     const tenantConfig = config[tenantId];
     if (!tenantConfig || tenantConfig[key] === undefined) {
@@ -49,7 +62,16 @@ export class CircuitBreakerService {
   /**
    * Sets the toggle state for a given key under the specific tenant.
    */
-  public setToggleState(tenantId: string, key: CircuitBreakerKey, value: boolean): void {
+  public setToggleState(
+    tenantId: string,
+    key: CircuitBreakerKey,
+    value: boolean,
+  ): void {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'Circuit breaker filesystem state is disabled in production.',
+      );
+    }
     const config = this.readConfig();
     if (!config[tenantId]) {
       config[tenantId] = {};

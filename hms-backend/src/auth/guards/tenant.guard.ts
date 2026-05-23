@@ -35,7 +35,9 @@ export class TenantGuard implements CanActivate {
       throw new BadRequestException('X-Tenant-ID header is missing');
     }
 
-    const tenantId = Array.isArray(tenantIdHeader) ? tenantIdHeader[0] : tenantIdHeader;
+    const tenantId = Array.isArray(tenantIdHeader)
+      ? tenantIdHeader[0]
+      : tenantIdHeader;
 
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -45,7 +47,11 @@ export class TenantGuard implements CanActivate {
       throw new NotFoundException('Tenant not found');
     }
 
-    if (request.user && request.user.tenantId && request.user.tenantId !== tenantId) {
+    if (
+      request.user &&
+      request.user.tenantId &&
+      request.user.tenantId !== tenantId
+    ) {
       throw new ForbiddenException('Cross-tenant access forbidden');
     }
 

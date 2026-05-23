@@ -32,6 +32,15 @@ export const REVERSAL_STATUS = {
   CANCELLED: 'CANCELLED',
 } as const;
 
+/**
+ * Billing Transaction Lock Order:
+ * To prevent deadlocks, all billing transactions MUST acquire row-level locks in this specific order:
+ * 1. Invoice
+ * 2. Payment
+ * 3. CashierSession
+ * 4. PaymentReversal
+ * 5. AuditLog
+ */
 @Injectable()
 export class BillingService {
   constructor(
@@ -825,7 +834,29 @@ export class BillingService {
 
     // 4. Transactional Mutation
     return this.prisma.$transaction(async (tx) => {
-      // Lock reversal and verify status again (Race condition protection)
+      // 4.1 Lock parent Payment row to serialize concurrent operations on this payment
+      const lockResult = await tx.payment.updateMany({
+        where: { id: payment.id, status: 'POSTED' },
+        data: { updatedAt: new Date() },
+      });
+
+      if (lockResult.count === 0) {
+        throw new ConflictException(
+          'Payment status changed concurrently; cannot process void',
+        );
+      }
+
+      // 4.2 Re-read Invoice inside the transaction (fresh paidAmount after any concurrent modifications)
+      const currentInvoice = await tx.invoice.findFirst({
+        where: { id: invoice.id, order: { tenantId, branchId } },
+      });
+      if (!currentInvoice) {
+        throw new ConflictException(
+          'Invoice not found or was deleted concurrently',
+        );
+      }
+
+      // 4.3 Atomically claim the reversal (status guard prevents double-processing)
       const updateResult = await tx.paymentReversal.updateMany({
         where: {
           id: reversalId,
@@ -878,7 +909,7 @@ export class BillingService {
       }
 
       const voidAmount = reversal.amount;
-      const beforePaidAmount = invoice.paidAmount;
+      const beforePaidAmount = currentInvoice.paidAmount;
       const afterPaidAmount = beforePaidAmount.sub(voidAmount);
 
       if (afterPaidAmount.lt(0)) {
@@ -891,11 +922,11 @@ export class BillingService {
       let newStatus = 'PARTIALLY_PAID';
       if (afterPaidAmount.lte(0)) {
         newStatus = 'UNPAID';
-      } else if (afterPaidAmount.gte(invoice.totalAmount)) {
+      } else if (afterPaidAmount.gte(currentInvoice.totalAmount)) {
         newStatus = 'PAID';
       }
 
-      const beforeInvoiceStatus = invoice.status;
+      const beforeInvoiceStatus = currentInvoice.status;
 
       // Update Invoice
       const invoiceUpdate = await tx.invoice.updateMany({
@@ -1116,8 +1147,31 @@ export class BillingService {
 
     // 4. Transactional Mutation
     return this.prisma.$transaction(async (tx) => {
-      // Lock reversal and verify status again (Race condition protection)
-      // Use updateMany for atomic status check and update (Conditional Update)
+      // 4.1 Lock parent Payment row to serialize concurrent refunds on the same payment
+      // Using tx.payment.updateMany so that Prisma routes through the transaction connection
+      // and PostgreSQL acquires a row-level lock that blocks concurrent transactions.
+      const lockResult = await tx.payment.updateMany({
+        where: { id: payment.id, status: 'POSTED' },
+        data: { updatedAt: new Date() },
+      });
+
+      if (lockResult.count === 0) {
+        throw new ConflictException(
+          'Payment status changed concurrently; cannot process refund',
+        );
+      }
+
+      // 4.2 Re-read Invoice inside the transaction (fresh paidAmount after any concurrent modifications)
+      const currentInvoice = await tx.invoice.findFirst({
+        where: { id: invoice.id, order: { tenantId, branchId } },
+      });
+      if (!currentInvoice) {
+        throw new ConflictException(
+          'Invoice not found or was deleted concurrently',
+        );
+      }
+
+      // 4.3 Atomically claim the reversal (status guard prevents double-processing)
       const updateResult = await tx.paymentReversal.updateMany({
         where: {
           id: reversalId,
@@ -1168,14 +1222,20 @@ export class BillingService {
       );
 
       const refundAmount = reversal.amount;
-      if (totalApplied.add(refundAmount).gt(payment.amount)) {
-        const remaining = payment.amount.sub(totalApplied).toString();
+      // totalApplied already includes this reversal (set to APPLIED above).
+      // The correct check is: total applied refunds > payment amount.
+      // The remaining refundable balance BEFORE this reversal is:
+      //   payment.amount - (totalApplied - refundAmount)
+      if (totalApplied.gt(payment.amount)) {
+        const refundableBefore = payment.amount.sub(
+          totalApplied.sub(refundAmount),
+        );
         throw new BadRequestException(
-          `Refund amount ₱${refundAmount.toString()} exceeds remaining refundable balance ₱${remaining}`,
+          `Refund amount ₱${refundAmount.toString()} exceeds remaining refundable balance ₱${refundableBefore.toString()}`,
         );
       }
 
-      const beforePaidAmount = invoice.paidAmount;
+      const beforePaidAmount = currentInvoice.paidAmount;
       const afterPaidAmount = beforePaidAmount.sub(refundAmount);
 
       if (afterPaidAmount.lt(0)) {
@@ -1188,11 +1248,11 @@ export class BillingService {
       let newStatus = 'PARTIALLY_PAID';
       if (afterPaidAmount.lte(0)) {
         newStatus = 'UNPAID';
-      } else if (afterPaidAmount.gte(invoice.totalAmount)) {
+      } else if (afterPaidAmount.gte(currentInvoice.totalAmount)) {
         newStatus = 'PAID';
       }
 
-      const beforeInvoiceStatus = invoice.status;
+      const beforeInvoiceStatus = currentInvoice.status;
 
       // Update Invoice
       const invoiceUpdate = await tx.invoice.updateMany({

@@ -18,22 +18,27 @@ export class PatientJwtGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const authHeader = request.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException(
-        'Missing or invalid authorization header',
-      );
+    // Try cookie first (browser auth), fallback to Bearer header (programmatic clients)
+    let token: string | undefined = request.cookies?.patient_token;
+
+    if (!token) {
+      const authHeader = request.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
     }
 
-    const token = authHeader.split(' ')[1];
+    if (!token) {
+      throw new UnauthorizedException('Missing or invalid authentication');
+    }
 
     try {
       const secret = this.configService.get<string>('JWT_SECRET');
       if (!secret) {
         throw new Error('JWT_SECRET is not configured');
       }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
       const payload = await this.jwtService.verifyAsync(token, { secret });
 
       if (payload.isPatientPortal !== true) {

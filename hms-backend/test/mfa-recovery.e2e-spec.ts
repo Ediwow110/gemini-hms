@@ -15,6 +15,16 @@ import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { MfaGuard } from '../src/auth/guards/mfa.guard';
 import { ThrottlerModule } from '@nestjs/throttler';
 
+function extractAccessToken(res: request.Response): string {
+  const cookies = res.headers['set-cookie'];
+  if (!cookies) throw new Error('No set-cookie header');
+  const accessCookie = Array.isArray(cookies)
+    ? cookies.find((c: string) => c.startsWith('access_token='))
+    : cookies;
+  if (!accessCookie) throw new Error('No access_token cookie');
+  return accessCookie.split(';')[0].replace('access_token=', '');
+}
+
 describe('MFA Recovery (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -123,7 +133,7 @@ describe('MFA Recovery (e2e)', () => {
         .send({ code, secret: mfaSecret })
         .expect(200);
 
-      accessToken = res.body.accessToken;
+      accessToken = extractAccessToken(res);
       expect(accessToken).toBeDefined();
     });
 
@@ -182,7 +192,7 @@ describe('MFA Recovery (e2e)', () => {
         .send({ code: recoveryCodes[0] })
         .expect(200);
 
-      expect(verifyRes.body.accessToken).toBeDefined();
+      expect(verifyRes.headers['set-cookie']).toBeDefined();
 
       // 3. Confirm that the used code is marked used/burned in the DB
       const dbCodes = await prisma.userMfaRecoveryCode.findMany({

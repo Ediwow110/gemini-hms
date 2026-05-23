@@ -1,0 +1,116 @@
+export const PERMISSIONS = {
+  PATIENT_VIEW: 'patient.view',
+  QUEUE_VIEW: 'queue.view',
+  LAB_RESULT_VIEW: 'lab.result.view',
+  INVENTORY_DISPENSE: 'inventory.stock.dispense',
+  BILLING_VIEW: 'billing.invoice.view',
+  INVENTORY_VIEW: 'inventory.item.view',
+  ORDER_CREATE: 'order.create',
+  APPROVAL_VIEW: 'approval.request.view',
+  ADMIN_ROLE_CHANGE: 'admin.role.change',
+  REPORT_EXPORT: 'report.export',
+  AUDIT_VIEW: 'audit.view',
+  HR_MANAGE: 'hr.manage',
+  PROCUREMENT_VIEW: 'procurement.view',
+  PROCUREMENT_MANAGE: 'procurement.manage',
+  PATIENT_SELF_SERVICE: 'patient.self_service',
+  MARKETPLACE_BUYER: 'marketplace.buyer',
+  MARKETPLACE_SUPPLIER: 'marketplace.supplier',
+  MARKETPLACE_ADMIN: 'marketplace.admin',
+  FIELD_SERVICE_MANAGE: 'field_service.manage',
+  INTEGRATION_VIEW: 'integration.view',
+} as const;
+
+export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
+
+export const ROLE_DEFAULT_PERMISSIONS: Record<string, Permission[]> = {
+  'Super Admin': Object.values(PERMISSIONS),
+  'Patient': [
+    PERMISSIONS.PATIENT_SELF_SERVICE,
+  ],
+  'Marketplace Buyer': [
+    PERMISSIONS.MARKETPLACE_BUYER,
+  ],
+  'Customer': [
+    PERMISSIONS.MARKETPLACE_BUYER,
+  ],
+  'Supplier': [
+    PERMISSIONS.MARKETPLACE_SUPPLIER,
+  ],
+  'Supplier Admin': [
+    PERMISSIONS.MARKETPLACE_SUPPLIER,
+  ],
+  'Marketplace Supplier': [
+    PERMISSIONS.MARKETPLACE_SUPPLIER,
+  ],
+  'Marketplace Admin': [
+    PERMISSIONS.MARKETPLACE_ADMIN,
+    PERMISSIONS.INTEGRATION_VIEW,
+  ],
+  'Field Technician': [
+    PERMISSIONS.FIELD_SERVICE_MANAGE,
+  ],
+  'Logistics Staff': [
+    PERMISSIONS.FIELD_SERVICE_MANAGE,
+  ],
+  'Service Manager': [
+    PERMISSIONS.FIELD_SERVICE_MANAGE,
+    PERMISSIONS.REPORT_EXPORT,
+    PERMISSIONS.INTEGRATION_VIEW,
+  ],
+  'Branch Admin': [
+    PERMISSIONS.PATIENT_VIEW,
+    PERMISSIONS.QUEUE_VIEW,
+    PERMISSIONS.LAB_RESULT_VIEW,
+    PERMISSIONS.INVENTORY_DISPENSE,
+    PERMISSIONS.BILLING_VIEW,
+    PERMISSIONS.INVENTORY_VIEW,
+    PERMISSIONS.ORDER_CREATE,
+    PERMISSIONS.APPROVAL_VIEW,
+    PERMISSIONS.REPORT_EXPORT,
+    PERMISSIONS.HR_MANAGE,
+    PERMISSIONS.PROCUREMENT_VIEW,
+    PERMISSIONS.PROCUREMENT_MANAGE,
+    PERMISSIONS.MARKETPLACE_BUYER,
+    PERMISSIONS.MARKETPLACE_SUPPLIER,
+    PERMISSIONS.FIELD_SERVICE_MANAGE,
+    PERMISSIONS.INTEGRATION_VIEW,
+  ],
+  'HR Manager': [
+    PERMISSIONS.HR_MANAGE,
+    PERMISSIONS.REPORT_EXPORT,
+  ],
+  'Procurement Manager': [
+    PERMISSIONS.PROCUREMENT_VIEW,
+    PERMISSIONS.PROCUREMENT_MANAGE,
+    PERMISSIONS.REPORT_EXPORT,
+  ],
+  'Procurement Agent': [
+    PERMISSIONS.PROCUREMENT_VIEW,
+    PERMISSIONS.REPORT_EXPORT,
+  ],
+  'Doctor': [
+    PERMISSIONS.PATIENT_VIEW,
+    PERMISSIONS.QUEUE_VIEW,
+    PERMISSIONS.LAB_RESULT_VIEW,
+    PERMISSIONS.ORDER_CREATE,
+  ],
+  'Nurse': [
+    PERMISSIONS.PATIENT_VIEW,
+    PERMISSIONS.QUEUE_VIEW,
+    PERMISSIONS.ORDER_CREATE,
+  ],
+  'Lab Technician': [
+    PERMISSIONS.LAB_RESULT_VIEW,
+  ],
+  'Cashier': [
+    PERMISSIONS.BILLING_VIEW,
+    PERMISSIONS.ORDER_CREATE,
+  ],
+  'Pharmacist': [
+    PERMISSIONS.PATIENT_VIEW,
+    PERMISSIONS.QUEUE_VIEW,
+    PERMISSIONS.INVENTORY_VIEW,
+    PERMISSIONS.INVENTORY_DISPENSE,
+  ],
+};

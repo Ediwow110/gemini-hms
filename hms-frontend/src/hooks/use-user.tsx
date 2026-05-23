@@ -41,27 +41,24 @@ export const usePermissions = () => {
   const hasRole = (role: string) => user?.roles.includes(role) || false;
   const isSuperAdmin = hasRole('Super Admin');
   const isBranchAdmin = hasRole('Branch Admin');
+  const isStaff = () => !!(user && !user.roles.includes('Patient') && !user.roles.includes('Customer'));
 
-  return { hasRole, hasPermission, isSuperAdmin, isBranchAdmin };
+  const canAccess = (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
+    if (opts.permission && hasPermission(opts.permission)) return true;
+    if (opts.allowedRoles && opts.allowedRoles.some(r => hasRole(r))) return true;
+    if (!opts.allowedRoles && !opts.permission) return true;
+    return false;
+  };
+
+  return { hasRole, hasPermission, isSuperAdmin, isBranchAdmin, isStaff, canAccess };
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<UserState | null>(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        return JSON.parse(storedUser);
-      }
-    } catch {
-      console.error('Failed to parse user from localStorage');
-    }
-    return null;
-  });
+  const [user, setUser] = useState<UserState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    apiClient.post('/v1/auth/logout').catch(() => {});
     setUser(null);
     window.location.assign('/login');
   }, []);
@@ -70,41 +67,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const response = await apiClient.get('/v1/auth/me');
       setUser(response.data);
-      localStorage.setItem('user', JSON.stringify(response.data));
-    } catch (error) {
-      console.error('Failed to fetch user', error);
-      logout();
+    } catch {
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
-  }, [logout]);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
 
     const bootstrapAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const response = await apiClient.get('/v1/auth/me');
-          if (mounted) {
-            setUser(response.data);
-            localStorage.setItem('user', JSON.stringify(response.data));
-          }
-        } catch (error) {
-          console.error('Failed to fetch user', error);
-          if (mounted) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            setUser(null);
-            window.location.assign('/login');
-          }
-        } finally {
-          if (mounted) {
-            setIsLoading(false);
-          }
+      try {
+        const response = await apiClient.get('/v1/auth/me');
+        if (mounted) {
+          setUser(response.data);
         }
-      } else {
+      } catch {
+        if (mounted) {
+          setUser(null);
+        }
+      } finally {
         if (mounted) {
           setIsLoading(false);
         }
@@ -118,7 +101,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          logout();
+          if (mounted) {
+            setUser(null);
+          }
         }
         return Promise.reject(error);
       }
@@ -128,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       mounted = false;
       apiClient.interceptors.response.eject(interceptor);
     };
-  }, [logout]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, isLoading, logout, refetchUser: fetchUser }}>

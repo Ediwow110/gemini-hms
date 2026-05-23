@@ -24,9 +24,9 @@ jobs:
       run:
         working-directory: ./hms-backend
     env:
-      DATABASE_URL:\ \$\{\{\ secrets\.CI_DATABASE_URL\ }}
-      JWT_SECRET:\ \$\{\{\ secrets\.CI_JWT_SECRET\ }}
-      JWT_REFRESH_SECRET:\ \$\{\{\ secrets\.CI_JWT_REFRESH_SECRET\ }}
+      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.CI_JWT_REFRESH_SECRET }}
     steps:
       - uses: actions/checkout@v4
       

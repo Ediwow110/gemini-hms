@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException, Logger } from '@nestjs/common';
 import { EncounterService } from './encounter.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -14,6 +14,7 @@ describe('EncounterService', () => {
   let service: EncounterService;
   let prisma: any;
   let auditService: any;
+  let loggerSpy: jest.SpyInstance;
 
   const tenantId = 'tenant-a';
   const otherTenantId = 'tenant-b';
@@ -72,6 +73,15 @@ describe('EncounterService', () => {
     }).compile();
 
     service = module.get<EncounterService>(EncounterService);
+
+    // Suppress expected error logs
+    loggerSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    loggerSpy.mockRestore();
   });
 
   describe('create', () => {

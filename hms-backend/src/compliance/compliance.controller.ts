@@ -58,10 +58,7 @@ export class ComplianceController {
   }
 
   @Get('soc2/change-log')
-  async getChangeLog(
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-  ) {
+  async getChangeLog(@Query('from') from?: string, @Query('to') to?: string) {
     return this.changeService.generateChangeLog(from, to);
   }
 }

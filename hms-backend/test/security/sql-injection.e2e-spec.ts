@@ -25,7 +25,7 @@ describe('OWASP SQL Injection Penetration Tests (e2e)', () => {
     "' OR '1'='1",
     "' OR 1=1 --",
     "'; DROP TABLE tenants; --",
-    "UNION SELECT null, null, null --",
+    'UNION SELECT null, null, null --',
     "admin'--",
   ];
 

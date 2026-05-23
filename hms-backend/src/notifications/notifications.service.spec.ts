@@ -205,9 +205,15 @@ describe('Provider Validation', () => {
 
 describe('NotificationsService ePHI Masking', () => {
   it('should correctly mask email addresses', () => {
-    expect(NotificationsService.maskEmail('patient@gmail.com')).toBe('pa*****@gmail.com');
-    expect(NotificationsService.maskEmail('ab@domain.com')).toBe('ab*****@domain.com');
-    expect(NotificationsService.maskEmail('a@domain.com')).toBe('a*****@domain.com');
+    expect(NotificationsService.maskEmail('patient@gmail.com')).toBe(
+      'pa*****@gmail.com',
+    );
+    expect(NotificationsService.maskEmail('ab@domain.com')).toBe(
+      'ab*****@domain.com',
+    );
+    expect(NotificationsService.maskEmail('a@domain.com')).toBe(
+      'a*****@domain.com',
+    );
     expect(NotificationsService.maskEmail('')).toBe('');
   });
 

@@ -11,6 +11,10 @@ describe('AuditService', () => {
   const mockBranchId = 'branch-uuid';
   const mockUserId = 'user-uuid';
 
+  beforeAll(() => {
+    process.env.JWT_SECRET = 'test-secret-key-for-audit-tests';
+  });
+
   beforeEach(async () => {
     prisma = {
       auditLog: {
@@ -152,6 +156,26 @@ describe('AuditService', () => {
       expect(result).not.toHaveProperty('oldValues');
       expect(result).not.toHaveProperty('newValues');
     });
+
+    it('should return full data for Super Admin', async () => {
+      prisma.auditLog.findUnique.mockResolvedValue({
+        id: 'log-id',
+        tenantId: mockTenantId,
+        branchId: mockBranchId,
+        oldValues: { foo: 'bar' },
+        newValues: { foo: 'baz' },
+      });
+
+      const result = await service.findOne(
+        mockTenantId,
+        mockBranchId,
+        ['Super Admin'],
+        'log-id',
+      );
+
+      expect(result).toHaveProperty('oldValues');
+      expect(result).toHaveProperty('newValues');
+    });
   });
 
   describe('log', () => {
@@ -201,6 +225,109 @@ describe('AuditService', () => {
     });
   });
 
+  describe('canonicalize and computeHash', () => {
+    it('should generate identical hashes regardless of object key order', () => {
+      const entry1 = {
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        eventKey: 'test',
+        recordType: 'test',
+        recordId: '123',
+        oldValues: { a: 1, b: 2 },
+        newValues: { b: 2, a: 1 },
+        createdAt: new Date('2026-05-17T12:00:00Z'),
+        previousHash: null,
+      };
+
+      const entry2 = {
+        ...entry1,
+        oldValues: { b: 2, a: 1 },
+        newValues: { a: 1, b: 2 },
+      };
+
+      const hash1 = (service as any).computeHash(entry1);
+      const hash2 = (service as any).computeHash(entry2);
+
+      expect(hash1).toEqual(hash2);
+    });
+
+    it('should canonicalize nested arrays and complex objects', () => {
+      const complex = {
+        z: [3, 2, 1],
+        a: {
+          y: 'test',
+          x: [
+            { b: 2, a: 1 },
+            { d: 4, c: 3 },
+          ],
+        },
+      };
+
+      const result = (service as any).canonicalize(complex);
+
+      expect(JSON.stringify(result)).toEqual(
+        JSON.stringify({
+          a: {
+            x: [
+              { a: 1, b: 2 },
+              { c: 3, d: 4 },
+            ],
+            y: 'test',
+          },
+          z: [3, 2, 1],
+        }),
+      );
+    });
+
+    it('should preserve exact millisecond precision to detect sub-second tampering', () => {
+      const entry1 = {
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        eventKey: 'test',
+        recordType: 'test',
+        recordId: '123',
+        oldValues: null,
+        newValues: null,
+        createdAt: new Date('2026-05-17T12:00:00.123Z'),
+        previousHash: null,
+      };
+
+      const entry2 = {
+        ...entry1,
+        createdAt: new Date('2026-05-17T12:00:00.456Z'),
+      };
+
+      const hash1 = (service as any).computeHash(entry1);
+      const hash2 = (service as any).computeHash(entry2);
+
+      expect(hash1).not.toEqual(hash2);
+    });
+
+    it('should break hash if action/eventKey changes', () => {
+      const entry1 = {
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        eventKey: 'test.create',
+        recordType: 'test',
+        recordId: '123',
+        oldValues: null,
+        newValues: null,
+        createdAt: new Date('2026-05-17T12:00:00Z'),
+        previousHash: null,
+      };
+
+      const entry2 = {
+        ...entry1,
+        eventKey: 'test.update',
+      };
+
+      const hash1 = (service as any).computeHash(entry1);
+      const hash2 = (service as any).computeHash(entry2);
+
+      expect(hash1).not.toEqual(hash2);
+    });
+  });
+
   describe('verifyChain', () => {
     it('should return isValid true for a cryptographically valid chain', async () => {
       const logs = [
@@ -245,7 +372,9 @@ describe('AuditService', () => {
       ];
       prisma.auditLog.findMany.mockResolvedValue(logs);
 
-      jest.spyOn(service as any, 'computeHash').mockReturnValue('computed-hash');
+      jest
+        .spyOn(service as any, 'computeHash')
+        .mockReturnValue('computed-hash');
 
       const result = await service.verifyChain(mockTenantId);
       expect(result.isValid).toBe(false);

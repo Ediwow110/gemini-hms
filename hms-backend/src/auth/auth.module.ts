@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { SessionService } from './session.service';
 import { MfaService } from './mfa.service';
+import { CsrfGuard } from './guards/csrf.guard';
 
 @Module({
   imports: [
@@ -32,7 +33,7 @@ import { MfaService } from './mfa.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, SessionService, MfaService],
-  exports: [AuthService, SessionService, MfaService],
+  providers: [AuthService, JwtStrategy, SessionService, MfaService, CsrfGuard],
+  exports: [AuthService, SessionService, MfaService, CsrfGuard],
 })
 export class AuthModule {}

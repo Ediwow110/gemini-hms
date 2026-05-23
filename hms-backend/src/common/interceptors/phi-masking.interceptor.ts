@@ -51,26 +51,55 @@ export class PhiMaskingInterceptor implements NestInterceptor {
       for (const key of Object.keys(val)) {
         const lowerKey = key.toLowerCase();
 
+        // 0. Exempt technical metadata, codes, and identifiers
+        if (
+          lowerKey === 'id' ||
+          lowerKey.endsWith('id') ||
+          lowerKey.endsWith('code') ||
+          lowerKey === 'status' ||
+          lowerKey === 'version' ||
+          lowerKey === 'type' ||
+          lowerKey === 'createdat' ||
+          lowerKey === 'updatedat'
+        ) {
+          maskedObj[key] = val[key];
+          continue;
+        }
+
         // 1. Mask Phone Strings
         if (
-          (lowerKey.includes('phone') || lowerKey.includes('mobile') || lowerKey.includes('contact')) &&
+          (lowerKey === 'phone' ||
+            lowerKey === 'phonenumber' ||
+            lowerKey === 'mobile' ||
+            lowerKey === 'mobilenumber' ||
+            lowerKey === 'contact' ||
+            lowerKey === 'contactnumber') &&
           typeof val[key] === 'string'
         ) {
           const str = val[key];
-          maskedObj[key] = str.length >= 7
-            ? str.substring(0, 4) + '****' + str.substring(str.length - 3)
-            : '****';
+          maskedObj[key] =
+            str.length >= 7
+              ? str.substring(0, 4) + '****' + str.substring(str.length - 3)
+              : '****';
         }
-        // 2. Mask Address Strings
+        // 2. Mask Address and Identity Strings
         else if (
-          (lowerKey.includes('address') || lowerKey.includes('street')) &&
+          (lowerKey === 'address' ||
+            lowerKey === 'street' ||
+            lowerKey === 'email' ||
+            lowerKey === 'patientname' ||
+            lowerKey === 'fullname' ||
+            lowerKey === 'firstname' ||
+            lowerKey === 'lastname') &&
           typeof val[key] === 'string'
         ) {
           maskedObj[key] = 'CONFIDENTIAL - RESTRICTED ACCESS';
         }
         // 3. Mask Dates of Birth (expose year only, reset month/day to Jan 1st)
         else if (
-          (lowerKey === 'dob' || lowerKey.includes('birthdate') || lowerKey.includes('dateofbirth')) &&
+          (lowerKey === 'dob' ||
+            lowerKey === 'birthdate' ||
+            lowerKey === 'dateofbirth') &&
           val[key]
         ) {
           const d = new Date(val[key]);
@@ -82,7 +111,19 @@ export class PhiMaskingInterceptor implements NestInterceptor {
         }
         // 4. Mask Diagnoses or Clinical Notes in administrative payloads
         else if (
-          (lowerKey === 'notes' || lowerKey === 'chiefcomplaint' || lowerKey === 'description' || lowerKey.includes('diagnosis')) &&
+          new Set([
+            'notes',
+            'clinicalnotes',
+            'chiefcomplaint',
+            'historyofpresentillness',
+            'assessment',
+            'plan',
+            'remarks',
+            'resultvalues',
+            'diagnosis',
+            'diagnoses',
+            'description',
+          ]).has(lowerKey) &&
           typeof val[key] === 'string'
         ) {
           maskedObj[key] = 'RESTRICTED PHI';

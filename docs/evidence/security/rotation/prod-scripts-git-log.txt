@@ -1,0 +1,11 @@
+[remediation/add-prod-rotation-scripts-20260518-140216 9f8954d] chore(docs): add production k8s apply scripts for rotation
+ 2 files changed, 75 insertions(+)
+ create mode 100644 docs/evidence/security/rotation/apply-production-k8s.ps1
+ create mode 100644 docs/evidence/security/rotation/apply-production-k8s.sh
+remote: 
+remote: Create a pull request for 'remediation/add-prod-rotation-scripts-20260518-140216' on GitHub by visiting:        
+remote:      https://github.com/Ediwow110/gemini-hms/pull/new/remediation/add-prod-rotation-scripts-20260518-140216        
+remote: 
+To https://github.com/Ediwow110/gemini-hms.git
+ * [new branch]      remediation/add-prod-rotation-scripts-20260518-140216 -> remediation/add-prod-rotation-scripts-20260518-140216
+branch 'remediation/add-prod-rotation-scripts-20260518-140216' set up to track 'origin/remediation/add-prod-rotation-scripts-20260518-140216'.

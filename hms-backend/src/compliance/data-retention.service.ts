@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -83,11 +87,16 @@ export class DataRetentionService {
 
   async getRetentionStatus() {
     const [
-      activePatients, archivedPatients,
-      activeEncounters, archivedEncounters,
-      activeLabResults, archivedLabResults,
-      activeInvoices, archivedInvoices,
-      activePayments, archivedPayments
+      activePatients,
+      archivedPatients,
+      activeEncounters,
+      archivedEncounters,
+      activeLabResults,
+      archivedLabResults,
+      activeInvoices,
+      archivedInvoices,
+      activePayments,
+      archivedPayments,
     ] = await Promise.all([
       this.prisma.patient.count({ where: { archivedAt: null } }),
       this.prisma.patient.count({ where: { NOT: { archivedAt: null } } }),
@@ -116,7 +125,9 @@ export class DataRetentionService {
 
     switch (entityType.toLowerCase()) {
       case 'patient': {
-        const item = await this.prisma.patient.findUnique({ where: { id: recordId } });
+        const item = await this.prisma.patient.findUnique({
+          where: { id: recordId },
+        });
         if (!item) throw new NotFoundException('Patient record not found');
         return this.prisma.patient.update({
           where: { id: recordId },
@@ -124,7 +135,9 @@ export class DataRetentionService {
         });
       }
       case 'encounter': {
-        const item = await this.prisma.encounter.findUnique({ where: { id: recordId } });
+        const item = await this.prisma.encounter.findUnique({
+          where: { id: recordId },
+        });
         if (!item) throw new NotFoundException('Encounter record not found');
         return this.prisma.encounter.update({
           where: { id: recordId },
@@ -132,7 +145,9 @@ export class DataRetentionService {
         });
       }
       case 'labresult': {
-        const item = await this.prisma.labResult.findUnique({ where: { id: recordId } });
+        const item = await this.prisma.labResult.findUnique({
+          where: { id: recordId },
+        });
         if (!item) throw new NotFoundException('LabResult record not found');
         return this.prisma.labResult.update({
           where: { id: recordId },
@@ -140,7 +155,9 @@ export class DataRetentionService {
         });
       }
       case 'invoice': {
-        const item = await this.prisma.invoice.findUnique({ where: { id: recordId } });
+        const item = await this.prisma.invoice.findUnique({
+          where: { id: recordId },
+        });
         if (!item) throw new NotFoundException('Invoice record not found');
         return this.prisma.invoice.update({
           where: { id: recordId },
@@ -148,7 +165,9 @@ export class DataRetentionService {
         });
       }
       case 'payment': {
-        const item = await this.prisma.payment.findUnique({ where: { id: recordId } });
+        const item = await this.prisma.payment.findUnique({
+          where: { id: recordId },
+        });
         if (!item) throw new NotFoundException('Payment record not found');
         return this.prisma.payment.update({
           where: { id: recordId },
@@ -156,7 +175,9 @@ export class DataRetentionService {
         });
       }
       default:
-        throw new BadRequestException(`Archiving for entity type '${entityType}' is not supported`);
+        throw new BadRequestException(
+          `Archiving for entity type '${entityType}' is not supported`,
+        );
     }
   }
 }

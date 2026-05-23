@@ -42,9 +42,11 @@ describe('Audit Log Forensic Context (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     app.useGlobalGuards(new MockJwtAuthGuard());
-    
+
     // Bind AuditContextMiddleware manually to global express routes for E2E
-    app.use(new AuditContextMiddleware().use);
+    app.use((req, res, next) =>
+      new AuditContextMiddleware().use(req, res, next),
+    );
 
     await app.init();
 

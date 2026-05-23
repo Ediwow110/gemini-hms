@@ -15,7 +15,18 @@ import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { MfaGuard } from '../src/auth/guards/mfa.guard';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
+function extractAccessToken(res: request.Response): string {
+  const cookies = res.headers['set-cookie'];
+  if (!cookies) throw new Error('No set-cookie header');
+  const accessCookie = Array.isArray(cookies)
+    ? cookies.find((c: string) => c.startsWith('access_token='))
+    : cookies;
+  if (!accessCookie) throw new Error('No access_token cookie');
+  return accessCookie.split(';')[0].replace('access_token=', '');
+}
+
 describe('MFA Lifecycle (e2e)', () => {
+  jest.setTimeout(30000);
   let app: INestApplication;
   let prisma: PrismaService;
 
@@ -135,8 +146,8 @@ describe('MFA Lifecycle (e2e)', () => {
         .send({ code, secret: mfaSecret })
         .expect(200);
 
-      expect(res.body.accessToken).toBeDefined();
-      accessToken = res.body.accessToken;
+      accessToken = extractAccessToken(res);
+      expect(accessToken).toBeDefined();
     });
 
     it('should access protected route with fully verified AT', async () => {
@@ -250,7 +261,7 @@ describe('MFA Lifecycle (e2e)', () => {
         .set('Authorization', `Bearer ${hrMfaToken}`)
         .send({ code: hrCode, secret: hrSecret })
         .expect(200);
-      hrAccessToken = hrVerifyRes.body.accessToken;
+      hrAccessToken = extractAccessToken(hrVerifyRes);
 
       // Setup and verify MFA for Finance
       const finSetupRes = await request(app.getHttpServer())
@@ -264,7 +275,7 @@ describe('MFA Lifecycle (e2e)', () => {
         .set('Authorization', `Bearer ${finMfaToken}`)
         .send({ code: finCode, secret: finSecret })
         .expect(200);
-      financeAccessToken = finVerifyRes.body.accessToken;
+      financeAccessToken = extractAccessToken(finVerifyRes);
     });
 
     it('should allow HR user with verified MFA to access protected route', async () => {

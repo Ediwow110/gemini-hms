@@ -58,7 +58,7 @@ describe('OWASP Broken Authentication & Access Control Bypass Tests (e2e)', () =
         tenantId: tenantA,
         roles: ['Super Admin'],
       },
-      { expiresIn: '-1s' }
+      { expiresIn: '-1s' },
     );
 
     const res = await request(app.getHttpServer())
@@ -77,7 +77,8 @@ describe('OWASP Broken Authentication & Access Control Bypass Tests (e2e)', () =
     });
 
     const parts = validToken.split('.');
-    const tamperedSignature = parts[2].substring(0, parts[2].length - 4) + 'AAAA';
+    const tamperedSignature =
+      parts[2].substring(0, parts[2].length - 4) + 'AAAA';
     const tamperedToken = `${parts[0]}.${parts[1]}.${tamperedSignature}`;
 
     const res = await request(app.getHttpServer())

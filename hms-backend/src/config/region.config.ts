@@ -7,7 +7,9 @@ export class RegionConfig {
   }
 
   getDatabaseUrlForRegion(region: string): string {
-    const defaultUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/hms_db';
+    const defaultUrl =
+      process.env.DATABASE_URL ||
+      'postgresql://postgres:postgres@localhost:5432/hms_db';
     switch (region) {
       case 'us-east-1':
         return process.env.DATABASE_URL_US_EAST_1 || defaultUrl;

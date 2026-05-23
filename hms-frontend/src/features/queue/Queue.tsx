@@ -11,11 +11,30 @@ const QUEUE_STATS = [
   { label: "Skipped", val: "2", icon: SkipForward, color: "from-slate-400 to-slate-500 shadow-slate-200/50" },
 ];
 
+interface QueueEntry {
+  num: string;
+  name: string;
+  service: string;
+  status: string;
+  time: string;
+}
+
+interface ToastNotification {
+  message: string;
+  id: number;
+}
+
 export const Queue = () => {
-  const [queue, setQueue] = useState([
+  const [queue, setQueue] = useState<QueueEntry[]>([
     { num: "Q001", name: "John Doe", service: "CBC", status: "Waiting", time: "10 mins" },
     { num: "Q002", name: "Jane Smith", service: "X-Ray", status: "Calling", time: "2 mins" },
   ]);
+  const [toast, setToast] = useState<ToastNotification | null>(null);
+
+  const showToast = (message: string) => {
+    setToast({ message, id: Date.now() });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const handleCallNext = () => {
     const updated = [...queue];
@@ -24,12 +43,7 @@ export const Queue = () => {
       const p = updated[nextIdx];
       p.status = "Calling";
       setQueue(updated);
-      // In-app alert notification
-      const alertDiv = document.createElement('div');
-      alertDiv.className = 'fixed bottom-5 right-5 z-50 bg-indigo-600 text-white px-6 py-3.5 rounded-xl shadow-xl font-semibold text-sm animate-fade-in border border-indigo-500/30 flex items-center gap-2';
-      alertDiv.innerHTML = `<span>Now Calling Queue Number: <strong class="underline">${p.num}</strong> - ${p.name}</span>`;
-      document.body.appendChild(alertDiv);
-      setTimeout(() => alertDiv.remove(), 4000);
+      showToast(`Now calling: ${p.num} - ${p.name}`);
     } else {
       alert("No patients waiting in queue.");
     }
@@ -48,6 +62,14 @@ export const Queue = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 bg-indigo-600 text-white px-6 py-3.5 rounded-xl shadow-xl font-semibold text-sm animate-fade-in border border-indigo-500/30 flex items-center gap-2">
+          <Megaphone className="h-4 w-4 shrink-0" />
+          <span>{toast.message}</span>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center">
         <PageHeader title="Queue Monitor" description="Real-time patient queue status and progress." />
         <div className="flex gap-3">

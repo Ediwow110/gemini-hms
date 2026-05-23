@@ -96,7 +96,9 @@ export class MailrelayProvider implements EmailProvider {
   }
   async sendEmail(payload: EmailPayload) {
     // In future: Actual mailrelay integration logic
-    console.log(`[MailrelayProvider] Sending email to ${maskEmail(payload.to)}`);
+    console.log(
+      `[MailrelayProvider] Sending email to ${maskEmail(payload.to)}`,
+    );
     return { success: true, messageId: `mailrelay-${Date.now()}` };
   }
 }

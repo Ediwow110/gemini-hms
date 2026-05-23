@@ -24,7 +24,8 @@ describe('Multi-Tenancy Row-Level Isolation (e2e)', () => {
   let patientAlphaId: string;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [

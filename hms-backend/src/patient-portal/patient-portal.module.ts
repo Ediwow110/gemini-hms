@@ -5,6 +5,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { PatientPortalService } from './patient-portal.service';
 import { PatientPortalController } from './patient-portal.controller';
 import { PatientJwtGuard } from './guards/patient-jwt.guard';
+import { PatientCsrfGuard } from './guards/patient-csrf.guard';
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ import { PatientJwtGuard } from './guards/patient-jwt.guard';
     }),
   ],
   controllers: [PatientPortalController],
-  providers: [PatientPortalService, PatientJwtGuard],
+  providers: [PatientPortalService, PatientJwtGuard, PatientCsrfGuard],
   exports: [PatientPortalService],
 })
 export class PatientPortalModule {}

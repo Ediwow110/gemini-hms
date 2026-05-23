@@ -7,6 +7,14 @@ import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { SelectBranchDto } from './dto/select-branch.dto';
 import { RequestUser } from '../common/types/authenticated-request.type';
 
+function createMockRes() {
+  return {
+    status: jest.fn().mockReturnThis(),
+    cookie: jest.fn().mockReturnThis(),
+    clearCookie: jest.fn().mockReturnThis(),
+  };
+}
+
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: jest.Mocked<AuthService>;
@@ -61,25 +69,47 @@ describe('AuthController', () => {
     it('should throw UnauthorizedException if validation fails', async () => {
       authService.validateUser.mockResolvedValue(null);
       const loginDto = { tenantCode: 't1', email: 'e', password: 'p' };
-      const mockRes = { status: jest.fn() };
+      const mockRes = createMockRes();
 
       await expect(controller.login(loginDto, mockRes as any)).rejects.toThrow(
         UnauthorizedException,
       );
     });
 
-    it('should return token if validation succeeds', async () => {
+    it('should return Authenticated message if validation succeeds', async () => {
       const mockUser = { id: 'u1' };
       authService.validateUser.mockResolvedValue(mockUser as any);
-      authService.login.mockResolvedValue({ access_token: 'token' } as any);
+      authService.login.mockResolvedValue({
+        accessToken: 'token',
+        refreshToken: 'rt',
+        user: { id: 'u1', tenantId: 't1', roles: ['Admin'] },
+      } as any);
       const loginDto = { tenantCode: 't1', email: 'e', password: 'p' };
-      const mockRes = { status: jest.fn() };
+      const mockRes = createMockRes();
 
       const result = await controller.login(loginDto, mockRes as any);
-      expect(result).toEqual({ access_token: 'token' });
+      expect(result.message).toBe('Authenticated');
+      expect(result.user).toBeDefined();
       expect(mockRes.status).toHaveBeenCalledWith(200);
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockRes.cookie).toHaveBeenCalled();
       expect(authService.login).toHaveBeenCalledWith(mockUser);
+    });
+
+    it('should return MFA_REQUIRED for sensitive roles', async () => {
+      const mockUser = { id: 'u1' };
+      authService.validateUser.mockResolvedValue(mockUser as any);
+      authService.login.mockResolvedValue({
+        message: 'MFA_REQUIRED',
+        challenge: 'MFA_VERIFY',
+        mfaToken: 'mfa-token',
+      } as any);
+      const loginDto = { tenantCode: 't1', email: 'e', password: 'p' };
+      const mockRes = createMockRes();
+
+      const result = await controller.login(loginDto, mockRes as any);
+      expect(result.message).toBe('MFA_REQUIRED');
+      expect(result.mfaToken).toBeDefined();
+      expect(mockRes.cookie).not.toHaveBeenCalled();
     });
   });
 
@@ -95,15 +125,20 @@ describe('AuthController', () => {
 
     it('should return refreshed token for valid active assignment', async () => {
       const mockResult = {
-        access_token: 'new-token',
+        accessToken: 'new-token',
         user: { id: 'user-123', branchId: 'branch-789' },
       };
       authService.selectBranch.mockResolvedValue(mockResult as any);
+      const mockRes = createMockRes();
 
-      const result = await controller.selectBranch(mockUser, selectBranchDto);
+      const result = await controller.selectBranch(
+        mockUser,
+        selectBranchDto,
+        mockRes as any,
+      );
 
-      expect(result).toBe(mockResult);
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(result).toBeDefined();
+      expect(mockRes.cookie).toHaveBeenCalled();
       expect(authService.selectBranch).toHaveBeenCalledWith(
         mockUser.userId,
         mockUser.tenantId,
@@ -113,9 +148,10 @@ describe('AuthController', () => {
 
     it('should throw ForbiddenException for unauthorized branch assignment', async () => {
       authService.selectBranch.mockResolvedValue(null);
+      const mockRes = createMockRes();
 
       await expect(
-        controller.selectBranch(mockUser, selectBranchDto),
+        controller.selectBranch(mockUser, selectBranchDto, mockRes as any),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -134,7 +170,6 @@ describe('AuthController', () => {
 
       expect(result).toBe(mockBranches);
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(authService.getUserBranches).toHaveBeenCalledWith(
         mockUser.userId,
         mockUser.tenantId,
@@ -162,11 +197,29 @@ describe('AuthController', () => {
       const result = await controller.getMe(mockUser);
 
       expect(result).toBe(mockProfile);
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(authService.getMe).toHaveBeenCalledWith(
         mockUser.userId,
         mockUser.tenantId,
       );
+    });
+  });
+
+  describe('logout', () => {
+    it('should clear cookies on logout', async () => {
+      const mockUser: RequestUser = {
+        userId: 'user-123',
+        tenantId: 'tenant-456',
+        roles: ['Admin'],
+      };
+      const mockRes = createMockRes();
+
+      await controller.logout(mockUser, mockRes as any);
+
+      expect(authService.logout).toHaveBeenCalledWith(
+        mockUser.userId,
+        undefined,
+      );
+      expect(mockRes.clearCookie).toHaveBeenCalled();
     });
   });
 });

@@ -9,15 +9,7 @@ import { ReplicationController } from './replication.controller';
 @Module({
   imports: [PrismaModule, AuditModule],
   controllers: [ReplicationController],
-  providers: [
-    ConflictResolverService,
-    RegionHealthService,
-    RegionConfig,
-  ],
-  exports: [
-    ConflictResolverService,
-    RegionHealthService,
-    RegionConfig,
-  ],
+  providers: [ConflictResolverService, RegionHealthService, RegionConfig],
+  exports: [ConflictResolverService, RegionHealthService, RegionConfig],
 })
 export class ReplicationModule {}

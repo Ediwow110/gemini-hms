@@ -1,0 +1,12 @@
+Creating branch: remediation/remove-env-production-20260518-131458
+Switched to a new branch 'remediation/remove-env-production-20260518-131458'
+rm '.env.production'
+warning: in the working copy of 'docs/evidence/security/gitleaks-report.json', LF will be replaced by CRLF the next time Git touches it
+[remediation/remove-env-production-20260518-131458 aaf07b4] chore(security): remove tracked .env.production; add .gitignore entry; attach gitleaks report
+ 6 files changed, 2229 insertions(+), 7 deletions(-)
+ delete mode 100644 .env.production
+ create mode 100644 docs/evidence/security/gitleaks-paths.txt
+ create mode 100644 docs/evidence/security/gitleaks-report.json
+ create mode 100644 docs/evidence/security/gitleaks-run.log
+ create mode 100644 docs/evidence/security/selectstring-secrets.txt
+Completed remediation branch script

@@ -35,7 +35,7 @@ describe('BillingService Reversals', () => {
           .fn()
           .mockResolvedValue({ id: 'pay-temp', amount: new Prisma.Decimal(0) }),
         update: jest.fn(),
-        updateMany: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       invoice: {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -373,8 +373,10 @@ describe('BillingService Reversals', () => {
       prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.invoice.findFirst
-        .mockResolvedValueOnce(mockInvoice)
+        .mockResolvedValueOnce(mockInvoice) // 1st: outside tx
+        .mockResolvedValueOnce(mockInvoice) // 2nd: inside tx re-read (fresh paidAmount)
         .mockResolvedValueOnce({
+          // 3rd: after invoice update
           ...mockInvoice,
           paidAmount: new Prisma.Decimal(100),
           status: 'PARTIALLY_PAID',
@@ -499,8 +501,10 @@ describe('BillingService Reversals', () => {
       prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.invoice.findFirst.mockResolvedValue(mockInvoice);
+      // findMany includes both existing and the just-applied reversal (amount=100)
       prisma.paymentReversal.findMany.mockResolvedValue([
         { amount: new Prisma.Decimal(150), status: 'APPLIED' },
+        { amount: new Prisma.Decimal(100), status: 'APPLIED' },
       ]);
       prisma.paymentReversal.updateMany.mockResolvedValue({ count: 1 });
 
@@ -550,8 +554,10 @@ describe('BillingService Reversals', () => {
       prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.invoice.findFirst
-        .mockResolvedValueOnce(lowPaidInvoice)
+        .mockResolvedValueOnce(lowPaidInvoice) // 1st: outside tx
+        .mockResolvedValueOnce(lowPaidInvoice) // 2nd: inside tx re-read (fresh paidAmount)
         .mockResolvedValueOnce({
+          // 3rd: after invoice update
           ...lowPaidInvoice,
           paidAmount: new Prisma.Decimal(0),
           status: 'UNPAID',
@@ -724,8 +730,10 @@ describe('BillingService Reversals', () => {
       prisma.approvalRequest.findFirst.mockResolvedValue(mockApproval);
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.invoice.findFirst
-        .mockResolvedValueOnce(mockInvoice)
+        .mockResolvedValueOnce(mockInvoice) // 1. pre-tx fetch
+        .mockResolvedValueOnce(mockInvoice) // 2. inside-tx re-read after lock
         .mockResolvedValueOnce({
+          // 3. post-update refreshed
           ...mockInvoice,
           paidAmount: new Prisma.Decimal(0),
           status: 'UNPAID',
@@ -756,7 +764,12 @@ describe('BillingService Reversals', () => {
         data: expect.any(Object),
       });
       expect(prisma.invoice.updateMany).toHaveBeenCalled();
-      expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+      // First payment.updateMany call is the lock (updatedAt); second is status→VOIDED
+      expect(prisma.payment.updateMany).toHaveBeenNthCalledWith(1, {
+        where: { id: mockPaymentId, status: 'POSTED' },
+        data: { updatedAt: expect.any(Date) },
+      });
+      expect(prisma.payment.updateMany).toHaveBeenNthCalledWith(2, {
         where: {
           id: mockPaymentId,
           status: 'POSTED',

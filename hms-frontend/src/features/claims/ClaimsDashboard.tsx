@@ -105,6 +105,7 @@ export const ClaimsDashboard = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Pre-existing mock data pattern; loads initial state via async fetch
     void fetchClaimsData();
   }, []);
 
@@ -130,7 +131,7 @@ export const ClaimsDashboard = () => {
 
     const updated = claims.map(c => 
       c.id === selectedClaim.id 
-        ? { ...c, approvedValue: approvedAmount, remarks, status: (approvedAmount > 0 ? "APPROVED" : "DENIED") as any } 
+        ? { ...c, approvedValue: approvedAmount, remarks, status: (approvedAmount > 0 ? "APPROVED" : "DENIED") as "APPROVED" | "DENIED" } 
         : c
     );
     setClaims(updated);

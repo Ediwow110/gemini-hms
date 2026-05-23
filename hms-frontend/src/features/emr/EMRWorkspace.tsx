@@ -74,7 +74,7 @@ export const EMRWorkspace = () => {
     handleSubmit,
     formState: { errors },
     reset
-  } = useForm<any>({
+  } = useForm({
     resolver: zodResolver(vitalsSchema),
     defaultValues: {
       temperature: 36.8,

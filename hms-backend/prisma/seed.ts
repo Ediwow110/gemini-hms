@@ -1,12 +1,19 @@
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import type { Permission, Role } from '@prisma/client';  
+import type { Permission, Role, LabTestDefinition, LabTestParameterDefinition } from '@prisma/client';  
 import * as bcrypt from 'bcrypt';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
+
+if (process.env.NODE_ENV === 'production') {
+  console.warn('WARNING: Running seed against a production database! This script is intended for development/demo use only.');
+  console.warn('Set NODE_ENV to anything other than "production" to proceed, or remove this guard after review.');
+  process.exit(1);
+}
+
 async function main() {
   console.log('Seed started...');
 
@@ -22,7 +29,7 @@ async function main() {
   });
   console.log('Tenant created:', tenant.name);
 
-  // 1a. Create Demo Tenants for Multi-Tenancy testing
+  // 1a. Create Demo Tenants for Multi-Tenancy testing (demo/sandbox only — not for production use)
   const tenantAlpha = await prisma.tenant.upsert({
     where: { id: '00000000-0000-0000-0000-00000000000a' },
     update: {},
@@ -154,7 +161,7 @@ async function main() {
     });
   }
 
-  // 4. Create Default Admin User
+  // 4. Create Default Admin User (dev-only — replace password before production)
   const passwordHash = await bcrypt.hash('Admin@123', 10);
   const user = await prisma.user.upsert({
     where: { 
@@ -245,6 +252,9 @@ async function main() {
       'patient.view', 'lab.result.view', 'lab.result.approve', 'lab.result.release',
       'inventory.item.view',
       'encounter.create', 'encounter.view', 'encounter.update'
+    ],
+    'Pharmacist': [
+      'patient.view', 'inventory.item.view', 'inventory.stock.dispense', 'queue.view'
     ]
   };
 
@@ -274,6 +284,142 @@ async function main() {
     }
   }
 
+  // 7. Seed Lab Test Catalog (demo/reference definitions — NOT certified clinical reference data)
+  console.warn('WARNING: Lab test catalog entries contain demo/reference ranges only.');
+  console.warn('These values are NOT certified, validated, or authoritative for clinical use.');
+  console.log('Seeding Lab Test Catalog...');
+
+  const cbcTest = await prisma.labTestDefinition.upsert({
+    where: {
+      tenantId_code: {
+        tenantId: tenant.id,
+        code: 'CBC',
+      },
+    },
+    update: { isActive: true },
+    create: {
+      tenantId: tenant.id,
+      code: 'CBC',
+      name: 'Complete Blood Count (CBC)', // name must match ClinicalOrderItem.itemName for catalog lookup — do not change
+      description: '[DEMO] A complete blood count panel measuring cellular components of blood. Reference ranges are demo samples — NOT certified for clinical diagnosis.',
+      isActive: true,
+    },
+  });
+
+  const cbcParameters = [
+    { code: 'WBC', parameterName: 'White Blood Cells (WBC)', unit: 'x10^9/L', referenceRangeText: '4.5 - 11.0', minNormal: 4.5, maxNormal: 11.0, minCritical: 2.0, maxCritical: 25.0, displayOrder: 1 },
+    { code: 'RBC', parameterName: 'Red Blood Cells (RBC)', unit: 'x10^12/L', referenceRangeText: '4.00 - 5.50', minNormal: 4.0, maxNormal: 5.5, displayOrder: 2 },
+    { code: 'Hgb', parameterName: 'Hemoglobin (Hgb)', unit: 'g/L', referenceRangeText: '120 - 160', minNormal: 120, maxNormal: 160, minCritical: 70, maxCritical: 200, displayOrder: 3 },
+    { code: 'PLT', parameterName: 'Platelets (PLT)', unit: 'x10^9/L', referenceRangeText: '150 - 450', minNormal: 150, maxNormal: 450, minCritical: 50, maxCritical: 1000, displayOrder: 4 },
+    { code: 'HCT', parameterName: 'Hematocrit (HCT)', unit: '%', referenceRangeText: '36 - 46', minNormal: 36, maxNormal: 46, displayOrder: 5 },
+    { code: 'MCV', parameterName: 'Mean Corpuscular Volume (MCV)', unit: 'fL', referenceRangeText: '80 - 100', minNormal: 80, maxNormal: 100, displayOrder: 6 },
+  ];
+
+  for (const param of cbcParameters) {
+    await prisma.labTestParameterDefinition.upsert({
+      where: {
+        tenantId_testDefinitionId_code: {
+          tenantId: tenant.id,
+          testDefinitionId: cbcTest.id,
+          code: param.code,
+        },
+      },
+      update: {
+        parameterName: param.parameterName,
+        unit: param.unit,
+        referenceRangeText: param.referenceRangeText,
+        minNormal: param.minNormal,
+        maxNormal: param.maxNormal,
+        minCritical: param.minCritical ?? null,
+        maxCritical: param.maxCritical ?? null,
+        displayOrder: param.displayOrder,
+        isActive: true,
+      },
+      create: {
+        tenantId: tenant.id,
+        testDefinitionId: cbcTest.id,
+        code: param.code,
+        parameterName: param.parameterName,
+        unit: param.unit,
+        referenceRangeText: param.referenceRangeText,
+        minNormal: param.minNormal,
+        maxNormal: param.maxNormal,
+        minCritical: param.minCritical ?? null,
+        maxCritical: param.maxCritical ?? null,
+        displayOrder: param.displayOrder,
+        isActive: true,
+      },
+    });
+  }
+
+  const bmpTest = await prisma.labTestDefinition.upsert({
+    where: {
+      tenantId_code: {
+        tenantId: tenant.id,
+        code: 'BMP',
+      },
+    },
+    update: { isActive: true },
+    create: {
+      tenantId: tenant.id,
+      code: 'BMP',
+      name: 'Basic Metabolic Panel (BMP)', // name must match ClinicalOrderItem.itemName for catalog lookup — do not change
+      description: '[DEMO] A basic metabolic panel measuring glucose, electrolytes, and kidney function. Reference ranges are demo samples — NOT certified for clinical diagnosis.',
+      isActive: true,
+    },
+  });
+
+  const bmpParameters = [
+    { code: 'GLU', parameterName: 'Glucose', unit: 'mg/dL', referenceRangeText: '70 - 110', minNormal: 70, maxNormal: 110, displayOrder: 1 },
+    { code: 'NA', parameterName: 'Sodium (Na)', unit: 'mEq/L', referenceRangeText: '135 - 145', minNormal: 135, maxNormal: 145, displayOrder: 2 },
+    { code: 'K', parameterName: 'Potassium (K)', unit: 'mEq/L', referenceRangeText: '3.5 - 5.1', minNormal: 3.5, maxNormal: 5.1, displayOrder: 3 },
+    { code: 'CL', parameterName: 'Chloride (Cl)', unit: 'mEq/L', referenceRangeText: '96 - 106', minNormal: 96, maxNormal: 106, displayOrder: 4 },
+    { code: 'CO2', parameterName: 'Carbon Dioxide (CO2)', unit: 'mEq/L', referenceRangeText: '23 - 29', minNormal: 23, maxNormal: 29, displayOrder: 5 },
+    { code: 'BUN', parameterName: 'Blood Urea Nitrogen', unit: 'mg/dL', referenceRangeText: '7 - 20', minNormal: 7, maxNormal: 20, displayOrder: 6 },
+    { code: 'CRE', parameterName: 'Creatinine', unit: 'mg/dL', referenceRangeText: '0.6 - 1.2', minNormal: 0.6, maxNormal: 1.2, displayOrder: 7 },
+  ];
+
+  for (const param of bmpParameters) {
+    await prisma.labTestParameterDefinition.upsert({
+      where: {
+        tenantId_testDefinitionId_code: {
+          tenantId: tenant.id,
+          testDefinitionId: bmpTest.id,
+          code: param.code,
+        },
+      },
+      update: {
+        parameterName: param.parameterName,
+        unit: param.unit,
+        referenceRangeText: param.referenceRangeText,
+        minNormal: param.minNormal,
+        maxNormal: param.maxNormal,
+        displayOrder: param.displayOrder,
+        isActive: true,
+      },
+      create: {
+        tenantId: tenant.id,
+        testDefinitionId: bmpTest.id,
+        code: param.code,
+        parameterName: param.parameterName,
+        unit: param.unit,
+        referenceRangeText: param.referenceRangeText,
+        minNormal: param.minNormal,
+        maxNormal: param.maxNormal,
+        displayOrder: param.displayOrder,
+        isActive: true,
+      },
+    });
+  }
+
+  console.log('Lab Test Catalog seeded: CBC (6 parameters), BMP (7 parameters).');
+  console.log('*'.repeat(60));
+  console.log('WARNING: This seed creates DEMO data only.');
+  console.log('- Reference ranges are sample values — NOT certified for clinical diagnosis.');
+  console.log('- Admin account credentials (admin@hospital.com / Admin@123) are for development only.');
+  console.log('- Demo tenants (tenant-alpha, tenant-beta) are for multi-tenancy testing only.');
+  console.log('Replace or override these values before any production deployment.');
+  console.log('*'.repeat(60));
   console.log('Seed completed successfully!');
 }
 
