@@ -1,0 +1,5 @@
+chore(security): replace inline workflow secrets with GitHub Secrets references
+
+Replaced plaintext CI/test secrets in workflow YAMLs with GitHub Secrets placeholders. 
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>

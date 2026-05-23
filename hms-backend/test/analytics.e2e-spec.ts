@@ -17,7 +17,8 @@ describe('Advanced Analytics Module (e2e)', () => {
   const tenantId = '00000000-0000-0000-0000-00000000000c';
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [

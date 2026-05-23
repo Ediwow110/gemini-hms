@@ -2,10 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 export interface VitalsInput {
-  bps: number;   // Systolic BP
-  bpd: number;   // Diastolic BP
-  hr: number;    // Heart Rate
-  temp: number;  // Temperature (Celsius)
+  bps: number; // Systolic BP
+  bpd: number; // Diastolic BP
+  hr: number; // Heart Rate
+  temp: number; // Temperature (Celsius)
 }
 
 export interface TriageResult {
@@ -22,12 +22,16 @@ export class SovereignInferenceService {
   private readonly logger = new Logger(SovereignInferenceService.name);
 
   // System Safety prompt rail context
-  private readonly medicalSafetyRail = "SYSTEM CONTEXT: You are an offline sovereign medical decision support assistant. You MUST strictly adhere to patient data privacy constraints. All output must be objective, clinically reasoned, and highlight potential adverse drug interactions.";
+  private readonly medicalSafetyRail =
+    'SYSTEM CONTEXT: You are an offline sovereign medical decision support assistant. You MUST strictly adhere to patient data privacy constraints. All output must be objective, clinically reasoned, and highlight potential adverse drug interactions.';
 
   /**
    * Performs sovereign clinical analysis, symptom weighting score calculations, and LLM triage
    */
-  async analyzeClinicalTriage(soapNotes: string, vitals: VitalsInput): Promise<TriageResult> {
+  async analyzeClinicalTriage(
+    soapNotes: string,
+    vitals: VitalsInput,
+  ): Promise<TriageResult> {
     this.logger.log('Received sovereign triage analysis request');
 
     // 1. Anonymize SOAP notes to strip potential PHI (names, SSNs, phone numbers)
@@ -52,7 +56,11 @@ export class SovereignInferenceService {
     }
     // Symptom 4: Chest pain or difficulty breathing in notes
     const lowerNotes = anonymizedSoap.toLowerCase();
-    if (lowerNotes.includes('chest pain') || lowerNotes.includes('breathing difficulty') || lowerNotes.includes('dyspnea')) {
+    if (
+      lowerNotes.includes('chest pain') ||
+      lowerNotes.includes('breathing difficulty') ||
+      lowerNotes.includes('dyspnea')
+    ) {
       symptomWeightSum += 0.95 * 1.0;
     }
 
@@ -63,7 +71,8 @@ export class SovereignInferenceService {
     let suggestedAction = 'Routine clinic follow-up.';
     if (urgencyScore >= 0.65) {
       acuityTier = 'HIGH';
-      suggestedAction = 'IMMEDIATE emergency department referral. Arm cardiac alarms.';
+      suggestedAction =
+        'IMMEDIATE emergency department referral. Arm cardiac alarms.';
     } else if (urgencyScore >= 0.3) {
       acuityTier = 'MEDIUM';
       suggestedAction = 'Prioritized clinical appointment within 24 hours.';
@@ -72,13 +81,19 @@ export class SovereignInferenceService {
     // 4. Drug-Interaction Warnings
     const flaggedWarnings: string[] = [];
     if (lowerNotes.includes('aspirin') && lowerNotes.includes('warfarin')) {
-      flaggedWarnings.push('CRITICAL INTERACTION WARNING: Combined Aspirin & Warfarin increases severe hemorrhage risk.');
+      flaggedWarnings.push(
+        'CRITICAL INTERACTION WARNING: Combined Aspirin & Warfarin increases severe hemorrhage risk.',
+      );
     }
     if (lowerNotes.includes('ibuprofen') && lowerNotes.includes('lisinopril')) {
-      flaggedWarnings.push('INTERACTION WARNING: NSAIDs may reduce therapeutic efficacy of ACE inhibitors.');
+      flaggedWarnings.push(
+        'INTERACTION WARNING: NSAIDs may reduce therapeutic efficacy of ACE inhibitors.',
+      );
     }
 
-    this.logger.log(`Triage calculation complete: Score: ${urgencyScore.toFixed(3)} | Tier: ${acuityTier}`);
+    this.logger.log(
+      `Triage calculation complete: Score: ${urgencyScore.toFixed(3)} | Tier: ${acuityTier}`,
+    );
 
     return {
       acuityTier,
@@ -86,7 +101,7 @@ export class SovereignInferenceService {
       anonymizedSoapNotes: anonymizedSoap,
       flaggedWarnings,
       suggestedAction,
-      inferredAt: new Date().toISOString()
+      inferredAt: new Date().toISOString(),
     };
   }
 

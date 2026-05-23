@@ -1,0 +1,36 @@
+Start merge run at 2026-05-18T13:29:20.0961282+08:00
+
+Attempting gh pr merge for PR #43
+PR #43 merge command accepted (auto-merge enabled or merged).
+
+Attempting gh pr merge for PR #44
+GraphQL: Auto merge is not allowed for this repository (enablePullRequestAutoMerge)
+PR #44 merge command failed with exit 1
+
+Attempting gh pr merge for PR #45
+GraphQL: Auto merge is not allowed for this repository (enablePullRequestAutoMerge)
+PR #45 merge command failed with exit 1
+Finished at 2026-05-18T13:29:27.9049394+08:00
+Attempting direct merges for remaining PRs at 2026-05-18T13:31:34.5191380+08:00
+
+Checking PR #44
+PR info for #44:
+{"mergeable":"MERGEABLE","number":44,"state":"OPEN","statusCheckRollup":[{"__typename":"CheckRun","completedAt":"2026-05-18T05:20:47Z","conclusion":"SUCCESS","detailsUrl":"https://github.com/Ediwow110/gemini-hms/actions/runs/26015002781/job/76463124463","name":"build","startedAt":"2026-05-18T05:19:05Z","status":"COMPLETED","workflowName":"Production Docker Build"}]}
+Attempting immediate merge for PR #44
+PR #44 merged successfully.
+
+Checking PR #45
+PR info for #45:
+{"mergeable":"UNKNOWN","number":45,"state":"OPEN","statusCheckRollup":[{"__typename":"CheckRun","completedAt":"2026-05-18T05:23:49Z","conclusion":"SUCCESS","detailsUrl":"https://github.com/Ediwow110/gemini-hms/actions/runs/26015098558/job/76463405543","name":"build","startedAt":"2026-05-18T05:22:06Z","status":"COMPLETED","workflowName":"Production Docker Build"}]}
+Attempting immediate merge for PR #45
+failed to run git: error: Your local changes to the following files would be overwritten by checkout:
+	hms-frontend/src/App.tsx
+	hms-frontend/src/app/AppShell.tsx
+Please commit your changes or stash them before you switch branches.
+Aborting
+
+Done merging attempts at 2026-05-18T13:31:43.7065880+08:00
+Attempting API merge for PR #45 at 2026-05-18T13:32:31.5279425+08:00
+{"sha":"373bd978756792ed97a46713dc4f1eb684f4d39d","merged":true,"message":"Pull Request successfully merged"}
+PR #45 merged via API successfully.
+Done API merge attempt at 2026-05-18T13:32:32.1099954+08:00

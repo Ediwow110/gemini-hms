@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import cookieParser from 'cookie-parser';
 import { PatientPortalModule } from '../src/patient-portal/patient-portal.module';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -8,6 +9,16 @@ import { ConfigModule } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { PrescriptionStatus } from '@prisma/client';
+
+function extractPatientToken(res: request.Response): string {
+  const cookies = res.headers['set-cookie'];
+  if (!cookies) throw new Error('No set-cookie header');
+  const tokenCookie = Array.isArray(cookies)
+    ? cookies.find((c: string) => c.startsWith('patient_token='))
+    : cookies;
+  if (!tokenCookie) throw new Error('No patient_token cookie');
+  return tokenCookie.split(';')[0].replace('patient_token=', '');
+}
 
 describe('Patient Portal E2E', () => {
   let app: INestApplication;
@@ -56,6 +67,7 @@ describe('Patient Portal E2E', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.use(cookieParser());
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -301,7 +313,7 @@ describe('Patient Portal E2E', () => {
   });
 
   describe('Patient Login & Authentication', () => {
-    it('should successfully login and return a patient JWT token', async () => {
+    it('should successfully login and return only safe patient info + set httpOnly + CSRF cookies', async () => {
       const res = await request(app.getHttpServer())
         .post('/patient-portal/auth/login')
         .send({
@@ -311,9 +323,46 @@ describe('Patient Portal E2E', () => {
         })
         .expect(200);
 
-      expect(res.body.accessToken).toBeDefined();
+      // Default response must NOT expose accessToken to browser JS
+      expect(res.body.accessToken).toBeUndefined();
       expect(res.body.patientId).toBe(patientA.id);
       expect(res.body.email).toBe('alice@portal.local');
+
+      // Browser clients get httpOnly auth cookie (dual-mode auth)
+      const cookies = res.headers['set-cookie'];
+      expect(cookies).toBeDefined();
+      const patientCookie = Array.isArray(cookies)
+        ? cookies.find((c: string) => c.startsWith('patient_token='))
+        : cookies;
+      expect(patientCookie).toBeDefined();
+      expect(patientCookie).toContain('HttpOnly');
+
+      // Browser clients get non-httpOnly CSRF cookie for double-submit pattern
+      const csrfCookie = Array.isArray(cookies)
+        ? cookies.find((c: string) => c.startsWith('patient_csrf='))
+        : cookies;
+      expect(csrfCookie).toBeDefined();
+
+      // Cookies are scoped to /patient-portal
+      if (patientCookie)
+        expect(patientCookie).toContain('Path=/patient-portal');
+      if (csrfCookie) expect(csrfCookie).toContain('Path=/patient-portal');
+    });
+
+    it('should never return accessToken in login response body even with X-Request-Access-Token header', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/patient-portal/auth/login')
+        .set('X-Request-Access-Token', 'true')
+        .send({
+          tenantCode: tenant.name,
+          email: 'alice@portal.local',
+          password: 'password123',
+        })
+        .expect(200);
+
+      // X-Request-Access-Token opt-in has been removed — login never returns accessToken
+      expect(res.body.accessToken).toBeUndefined();
+      expect(res.body.patientId).toBe(patientA.id);
     });
 
     it('should reject login for incorrect passwords with 401', async () => {
@@ -351,7 +400,8 @@ describe('Patient Portal E2E', () => {
           email: 'alice@portal.local',
           password: 'password123',
         });
-      tokenA = resA.body.accessToken;
+      // Extract token from Set-Cookie header (default response no longer exposes accessToken)
+      tokenA = extractPatientToken(resA);
 
       const resB = await request(app.getHttpServer())
         .post('/patient-portal/auth/login')
@@ -360,10 +410,10 @@ describe('Patient Portal E2E', () => {
           email: 'bob@portal.local',
           password: 'password123',
         });
-      tokenB = resB.body.accessToken;
+      tokenB = extractPatientToken(resB);
     });
 
-    it('should fetch own profile successfully', async () => {
+    it('should fetch own profile via Bearer token (programmatic)', async () => {
       const res = await request(app.getHttpServer())
         .get('/patient-portal/profile')
         .set('Authorization', `Bearer ${tokenA}`)
@@ -372,6 +422,25 @@ describe('Patient Portal E2E', () => {
       expect(res.body.id).toBe(patientA.id);
       expect(res.body.firstName).toBe('Alice');
       expect(res.body.lastName).toBe('PatientA');
+    });
+
+    it('should fetch own profile via httpOnly cookie (browser)', async () => {
+      const loginRes = await request(app.getHttpServer())
+        .post('/patient-portal/auth/login')
+        .send({
+          tenantCode: tenant.name,
+          email: 'alice@portal.local',
+          password: 'password123',
+        });
+      const cookieToken = extractPatientToken(loginRes);
+
+      const res = await request(app.getHttpServer())
+        .get('/patient-portal/profile')
+        .set('Cookie', `patient_token=${cookieToken}`)
+        .expect(200);
+
+      expect(res.body.id).toBe(patientA.id);
+      expect(res.body.firstName).toBe('Alice');
     });
 
     it("should fetch own released lab results, excluding unreleased results and other patients' results", async () => {
@@ -445,16 +514,112 @@ describe('Patient Portal E2E', () => {
       expect(foundPatientBRx).toBe(false);
     });
 
-    it('should block patient portal requests without an active authorization header with 401', async () => {
+    function extractCsrfToken(loginRes: request.Response): string {
+      const cookies = loginRes.headers['set-cookie'];
+      const csrfCookieStr = Array.isArray(cookies)
+        ? cookies.find((c: string) => c.startsWith('patient_csrf='))
+        : cookies;
+      if (!csrfCookieStr) return '';
+      return csrfCookieStr.split(';')[0].replace('patient_csrf=', '');
+    }
+
+    it('should reject logout without CSRF token with 403', async () => {
+      const loginRes = await request(app.getHttpServer())
+        .post('/patient-portal/auth/login')
+        .send({
+          tenantCode: tenant.name,
+          email: 'alice@portal.local',
+          password: 'password123',
+        });
+      const cookieToken = extractPatientToken(loginRes);
+
+      // Logout without CSRF token should be rejected
+      await request(app.getHttpServer())
+        .post('/patient-portal/auth/logout')
+        .set('Cookie', `patient_token=${cookieToken}`)
+        .expect(403);
+    });
+
+    it('should reject logout with invalid CSRF token with 403', async () => {
+      const loginRes = await request(app.getHttpServer())
+        .post('/patient-portal/auth/login')
+        .send({
+          tenantCode: tenant.name,
+          email: 'alice@portal.local',
+          password: 'password123',
+        });
+      const cookieToken = extractPatientToken(loginRes);
+      const csrfToken = extractCsrfToken(loginRes);
+
+      // Send both cookies but wrong CSRF header value
+      await request(app.getHttpServer())
+        .post('/patient-portal/auth/logout')
+        .set(
+          'Cookie',
+          `patient_token=${cookieToken}; patient_csrf=${csrfToken}`,
+        )
+        .set('X-CSRF-Token', 'invalid-csrf-token-value')
+        .expect(403);
+    });
+
+    it('should logout and clear cookies when valid CSRF token is provided', async () => {
+      const loginRes = await request(app.getHttpServer())
+        .post('/patient-portal/auth/login')
+        .send({
+          tenantCode: tenant.name,
+          email: 'alice@portal.local',
+          password: 'password123',
+        });
+      const cookieToken = extractPatientToken(loginRes);
+      const csrfToken = extractCsrfToken(loginRes);
+
+      // Logout with both cookies and matching CSRF header
+      const logoutRes = await request(app.getHttpServer())
+        .post('/patient-portal/auth/logout')
+        .set(
+          'Cookie',
+          `patient_token=${cookieToken}; patient_csrf=${csrfToken}`,
+        )
+        .set('X-CSRF-Token', csrfToken)
+        .expect(204);
+
+      // Verify cookies are cleared
+      const setCookie = logoutRes.headers['set-cookie'];
+      if (setCookie) {
+        const clearTokenCookie = Array.isArray(setCookie)
+          ? setCookie.find((c: string) => c.startsWith('patient_token='))
+          : setCookie;
+        if (clearTokenCookie) {
+          expect(clearTokenCookie).toContain('=;');
+        }
+        const clearCsrfCookie = Array.isArray(setCookie)
+          ? setCookie.find((c: string) => c.startsWith('patient_csrf='))
+          : setCookie;
+        if (clearCsrfCookie) {
+          expect(clearCsrfCookie).toContain('=;');
+        }
+      }
+    });
+
+    it('should block patient portal requests without auth with 401', async () => {
       await request(app.getHttpServer())
         .get('/patient-portal/profile')
         .expect(401);
     });
 
-    it('should block patient portal requests using invalid tokens or staff credentials with 401', async () => {
+    it('should block patient portal requests using invalid tokens with 401', async () => {
       await request(app.getHttpServer())
         .get('/patient-portal/profile')
         .set('Authorization', 'Bearer invalidtokenstring')
+        .expect(401);
+    });
+
+    it('should block patient portal requests using a staff JWT token with 401', async () => {
+      // Generate a staff-like token (without isPatientPortal claim)
+      const staffToken = 'mock-staff-token';
+      await request(app.getHttpServer())
+        .get('/patient-portal/profile')
+        .set('Authorization', `Bearer ${staffToken}`)
         .expect(401);
     });
   });

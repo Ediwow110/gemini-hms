@@ -16,7 +16,8 @@ describe('SOC2 Type II Readiness (e2e)', () => {
   const tenantId = '00000000-0000-0000-0000-00000000000c';
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -55,7 +56,7 @@ describe('SOC2 Type II Readiness (e2e)', () => {
       userId: '11111111-1111-4111-8111-111111111111',
       tenantId,
       email: 'pharmacist@hospital.com',
-      roles: ['PHARMACIST'],
+      roles: ['Pharmacist'],
       permissions: [],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
@@ -80,7 +81,9 @@ describe('SOC2 Type II Readiness (e2e)', () => {
       .expect(200)
       .expect((res) => {
         expect(res.body.reviewTimestamp).toBeDefined();
-        expect(res.body.soc2ControlReference).toBe('SOC2 CC6.1 - Access Rights Management');
+        expect(res.body.soc2ControlReference).toBe(
+          'SOC2 CC6.1 - Access Rights Management',
+        );
         expect(res.body.accessReport).toBeDefined();
         expect(res.body.staleAccountsCount).toBeDefined();
         expect(res.body.privilegeEscalationsCount).toBeDefined();
@@ -152,7 +155,9 @@ describe('SOC2 Type II Readiness (e2e)', () => {
       .get('/api/v1/compliance/soc2/change-log')
       .expect(200)
       .expect((res) => {
-        expect(res.body.soc2ControlReference).toBe('SOC2 CC8.1 - Change Management Governing and Monitoring');
+        expect(res.body.soc2ControlReference).toBe(
+          'SOC2 CC8.1 - Change Management Governing and Monitoring',
+        );
         expect(res.body.deployments).toBeDefined();
         expect(res.body.schemaChanges).toBeDefined();
         expect(res.body.totalDeploymentsCount).toBeGreaterThanOrEqual(1);

@@ -1,10 +1,24 @@
-import { Controller, Get, Post, Param, Body, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ErxService } from './erx.service';
 import { BedManagementService } from './bed-management.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
+import type { RequestUser } from '../common/types/authenticated-request.type';
+import {
+  ScreenInteractionsDto,
+  AssignBedDto,
+} from './dto/advanced-clinical.dto';
 
 @UseGuards(RolesGuard)
 @Controller('api/v1/clinical')
@@ -36,38 +50,71 @@ export class AdvancedClinicalController {
 
   @Post('erx/screen-interactions')
   async screenInteractions(
-    @Body('patientId') patientId: string,
-    @Body('medications') medications: string[],
+    @GetUser('tenantId') tenantId: string,
+    @Body() dto: ScreenInteractionsDto,
   ) {
-    return this.erxService.screenDrugInteractions(patientId, medications);
+    // Note: ErxService.screenDrugInteractions doesn't use tenantId right now,
+    // but we pass it anyway for consistency and future-proofing.
+    return this.erxService.screenDrugInteractions(
+      tenantId,
+      dto.patientId,
+      dto.medications,
+    );
   }
 
   @Post('erx/transmit/:prescriptionId')
-  async transmitPrescription(@Param('prescriptionId') prescriptionId: string) {
-    return this.erxService.transmitPrescription(prescriptionId);
+  async transmitPrescription(
+    @GetUser() user: RequestUser,
+    @Param('prescriptionId') prescriptionId: string,
+  ) {
+    return this.erxService.transmitPrescription(user.tenantId, prescriptionId);
   }
 
   @Get('erx/transmission/:transmissionId/status')
-  async getTransmissionStatus(@Param('transmissionId') transmissionId: string) {
-    return this.erxService.getTransmissionStatus(transmissionId);
+  async getTransmissionStatus(
+    @GetUser('tenantId') tenantId: string,
+    @Param('transmissionId') transmissionId: string,
+  ) {
+    return this.erxService.getTransmissionStatus(tenantId, transmissionId);
   }
 
   @Post('beds/assign')
-  async assignBed(
-    @Body('patientId') patientId: string,
-    @Body('wardId') wardId: string,
-    @Body('bedNumber') bedNumber: string,
-  ) {
-    return this.bedService.assignBed(patientId, wardId, bedNumber);
+  async assignBed(@GetUser() user: RequestUser, @Body() dto: AssignBedDto) {
+    if (!user.roles?.includes('Super Admin') && !user.branchId) {
+      throw new ForbiddenException('access_denied: missing_branch_context');
+    }
+    return this.bedService.assignBed(
+      user.tenantId,
+      user.branchId || 'superadmin-branch',
+      dto.patientId,
+      dto.wardId,
+      dto.bedNumber,
+    );
   }
 
   @Post('beds/release/:bedId')
-  async releaseBed(@Param('bedId') bedId: string) {
-    return this.bedService.releaseBed(bedId);
+  async releaseBed(
+    @GetUser() user: RequestUser,
+    @Param('bedId') bedId: string,
+  ) {
+    if (!user.roles?.includes('Super Admin') && !user.branchId) {
+      throw new ForbiddenException('access_denied: missing_branch_context');
+    }
+    return this.bedService.releaseBed(
+      user.tenantId,
+      user.branchId || 'superadmin-branch',
+      bedId,
+    );
   }
 
   @Get('beds/occupancy')
-  async getBedOccupancy() {
-    return this.bedService.getBedOccupancy();
+  async getBedOccupancy(@GetUser() user: RequestUser) {
+    if (!user.roles?.includes('Super Admin') && !user.branchId) {
+      throw new ForbiddenException('access_denied: missing_branch_context');
+    }
+    return this.bedService.getBedOccupancy(
+      user.tenantId,
+      user.branchId || 'superadmin-branch',
+    );
   }
 }

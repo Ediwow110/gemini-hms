@@ -16,12 +16,15 @@ describe('OWASP Secure Security Headers Validation (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    
+
     // Wire up the same global middleware as main.ts
     app.use((req: any, res: any, next: () => void) => {
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('X-Frame-Options', 'DENY');
-      res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+      res.setHeader(
+        'Strict-Transport-Security',
+        'max-age=15552000; includeSubDomains',
+      );
       res.setHeader('Content-Security-Policy', "default-src 'self'");
       next();
     });
@@ -30,8 +33,7 @@ describe('OWASP Secure Security Headers Validation (e2e)', () => {
   });
 
   it('should include all required OWASP security headers in response', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/health');
+    const res = await request(app.getHttpServer()).get('/health');
 
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['x-frame-options']).toBe('DENY');

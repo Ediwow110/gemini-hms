@@ -11,7 +11,11 @@ export interface DrugInteractionWarning {
 export class ErxService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async screenDrugInteractions(patientId: string, medications: string[]): Promise<DrugInteractionWarning[]> {
+  async screenDrugInteractions(
+    tenantId: string,
+    patientId: string,
+    medications: string[],
+  ): Promise<DrugInteractionWarning[]> {
     const warnings: DrugInteractionWarning[] = [];
     const medsLower = medications.map((m) => m.toLowerCase());
 
@@ -23,7 +27,8 @@ export class ErxService {
       warnings.push({
         drugs: ['Sildenafil', 'Nitroglycerin'],
         severity: 'CONTRAINDICATED',
-        explanation: 'Co-administration can cause severe, life-threatening hypotension.',
+        explanation:
+          'Co-administration can cause severe, life-threatening hypotension.',
       });
     }
 
@@ -35,20 +40,21 @@ export class ErxService {
       warnings.push({
         drugs: ['Warfarin', 'Aspirin'],
         severity: 'MAJOR',
-        explanation: 'Co-administration significantly increases the risk of serious gastrointestinal bleeding.',
+        explanation:
+          'Co-administration significantly increases the risk of serious gastrointestinal bleeding.',
       });
     }
 
     return warnings;
   }
 
-  async transmitPrescription(prescriptionId: string) {
+  async transmitPrescription(tenantId: string, prescriptionId: string) {
     const prescription = await this.prisma.prescription.findUnique({
       where: { id: prescriptionId },
       include: { patient: true },
     });
 
-    if (!prescription) {
+    if (!prescription || prescription.tenantId !== tenantId) {
       throw new NotFoundException('Prescription not found');
     }
 
@@ -61,6 +67,8 @@ export class ErxService {
       transmissionTimestamp: new Date().toISOString(),
       recipientPharmacyNpi: '1982730192',
       status: 'TRANSMITTED',
+      isStub: true,
+      warning: 'This is a mock transmission stub for testing.',
       payloadStub: {
         header: {
           from: 'HMS-ERX-GATEWAY',
@@ -76,7 +84,7 @@ export class ErxService {
     };
   }
 
-  async getTransmissionStatus(transmissionId: string) {
+  async getTransmissionStatus(tenantId: string, transmissionId: string) {
     // Mimic surescripts/NCPDP state machine tracking
     const statuses = ['TRANSMITTED', 'RECEIVED', 'DISPENSED'];
     // Deterministically pick a status based on transmissionId length to keep tests consistent
@@ -85,7 +93,8 @@ export class ErxService {
       transmissionId,
       status: statuses[idx],
       updatedAt: new Date().toISOString(),
-      remarks: `Dispensing workflow tracked via Surescripts gateway routing.`,
+      isStub: true,
+      remarks: `MOCK_STUB: Dispensing workflow tracked via mock Surescripts gateway routing.`,
     };
   }
 }

@@ -277,8 +277,30 @@ export class AuthService {
     if (!user || user.status !== 'ACTIVE' || user.deactivatedAt !== null)
       return null;
 
-    // This usually requires a fresh token pair.
-    return null;
+    const roles = this.getActiveRoleNames(user.userRoles);
+
+    // Create a new session to reflect branch context
+    const newRtPlain = crypto.randomUUID();
+    const newRtHash = await bcrypt.hash(newRtPlain, 10);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const session = await this.sessionService.createSession(
+      user.id,
+      user.tenantId,
+      newRtHash,
+      expiresAt,
+    );
+
+    await this.sessionService.markMfaVerified(session.id);
+
+    return this.generateTokenPair(
+      user,
+      roles,
+      session.id,
+      newRtPlain,
+      branchId,
+    );
   }
 
   async refreshTokens(userId: string, sessionId: string, refreshToken: string) {
@@ -350,6 +372,7 @@ export class AuthService {
     return {
       accessToken: this.jwtService.sign(payload, { expiresIn: '15m' }),
       refreshToken: refreshTokenPlain,
+      sessionId,
       user: {
         id: user.id,
         tenantId: user.tenantId,

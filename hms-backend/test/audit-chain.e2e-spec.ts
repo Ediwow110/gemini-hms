@@ -20,7 +20,8 @@ describe('Audit Chain of Custody (e2e)', () => {
   const userId = '11111111-1111-4111-8111-111111111111';
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -69,13 +70,17 @@ describe('Audit Chain of Custody (e2e)', () => {
     });
 
     // Temporarily disable the immutable trigger during cleanup if needed, or simply delete logs
-    await prisma.$executeRawUnsafe('ALTER TABLE audit_logs DISABLE TRIGGER audit_log_immutable;');
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE audit_logs DISABLE TRIGGER audit_log_immutable;',
+    );
     try {
       await prisma.auditLog.deleteMany({
         where: { tenantId },
       });
     } finally {
-      await prisma.$executeRawUnsafe('ALTER TABLE audit_logs ENABLE TRIGGER audit_log_immutable;');
+      await prisma.$executeRawUnsafe(
+        'ALTER TABLE audit_logs ENABLE TRIGGER audit_log_immutable;',
+      );
     }
   });
 
@@ -143,7 +148,9 @@ describe('Audit Chain of Custody (e2e)', () => {
       });
 
     // 4. Simulate malicious tampering on the database by temporarily disabling the immutability trigger
-    await prisma.$executeRawUnsafe('ALTER TABLE audit_logs DISABLE TRIGGER audit_log_immutable;');
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE audit_logs DISABLE TRIGGER audit_log_immutable;',
+    );
     try {
       await prisma.auditLog.update({
         where: { id: log2.id },
@@ -152,7 +159,9 @@ describe('Audit Chain of Custody (e2e)', () => {
         },
       });
     } finally {
-      await prisma.$executeRawUnsafe('ALTER TABLE audit_logs ENABLE TRIGGER audit_log_immutable;');
+      await prisma.$executeRawUnsafe(
+        'ALTER TABLE audit_logs ENABLE TRIGGER audit_log_immutable;',
+      );
     }
 
     // 5. Verify custody chain detection of tampering

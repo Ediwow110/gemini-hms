@@ -45,7 +45,9 @@ jobs:
       - run: npm ci
       - name: Run Dependency Vulnerability Audit
         run: npm audit --audit-level=critical
+      - run: npm run typecheck
       - run: npm run lint
+      - run: npm run test
       - run: npm run build
 
   backend:
@@ -55,9 +57,9 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: gemini_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hms_test
         ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready
@@ -68,9 +70,11 @@ jobs:
       run:
         working-directory: ./hms-backend
     env:
-      DATABASE_URL:\ \$\{\{\ secrets\.CI_DATABASE_URL\ }}
-      JWT_SECRET:\ \$\{\{\ secrets\.CI_JWT_SECRET\ }}
-      JWT_REFRESH_SECRET:\ \$\{\{\ secrets\.CI_JWT_REFRESH_SECRET\ }}
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hms_test?schema=public
+      JWT_SECRET: test-secret-key-for-e2e-tests-that-is-long-enough
+      JWT_REFRESH_SECRET: test-refresh-secret-for-e2e-tests
+      MASTER_MFA_KEY: fallback-master-mfa-key-for-tests-32-chars-long
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -83,13 +87,34 @@ jobs:
         run: npm audit --audit-level=critical
       - name: Validate Prisma Schema
         run: npx prisma validate
-      - run: npx prisma generate
+      - name: Generate Prisma Client
+        run: npx prisma generate
       - run: npm run lint
       - run: npm run build
-      - run: npx prisma migrate deploy
+      - name: Check Migration Status
+        run: npx prisma migrate status
+      - name: Apply Migrations
+        run: npx prisma migrate deploy
       - name: Run Unit Tests with Coverage Threshold
         run: npm run test -- --coverage
-      - run: npm run test:e2e -- --runInBand
+      - name: Run E2E Tests (Serial)
+        run: npm run test:e2e
 
-
-
+  verifiers:
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    defaults:
+      run:
+        working-directory: ./hms-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: './hms-frontend/package-lock.json'
+      - run: npm ci
+      - name: Run Clinical Read-Only Verifier
+        run: npm run verify:clinical
+      - name: Run Security Config Verifier
+        run: npm run verify:security

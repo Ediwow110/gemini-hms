@@ -49,16 +49,10 @@ export const LoginForm = () => {
         return;
       }
 
-      const { accessToken, access_token, user } = response.data;
-      const token = accessToken || access_token;
-      
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-
-      if (user.branchId) {
+      // Cookies are set by the server; frontend just redirects
+      if (response.data.user?.branchId) {
         window.location.assign("/");
       } else {
-        // Fetch branches for selection
         const branchesRes = await apiClient.get("/v1/auth/branches");
         setAvailableBranches(branchesRes.data);
       }
@@ -91,13 +85,8 @@ export const LoginForm = () => {
         { headers: { Authorization: `Bearer ${mfaToken}` } }
       );
       
-      const { accessToken, access_token, user } = response.data;
-      const token = accessToken || access_token;
-      
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-
-      if (user.branchId) {
+      // Cookies are set by the server; frontend just redirects
+      if (response.data.user?.branchId) {
         window.location.assign("/");
       } else {
         const branchesRes = await apiClient.get("/v1/auth/branches");
@@ -115,12 +104,8 @@ export const LoginForm = () => {
   const handleSelectBranch = async (branchId: string) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.post("/v1/auth/select-branch", { branchId });
-      const { accessToken, access_token, user } = response.data;
-      const token = accessToken || access_token;
-      
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      await apiClient.post("/v1/auth/select-branch", { branchId });
+      // Cookies are set by the server; frontend just redirects
       window.location.assign("/");
     } catch {
       setError("Failed to select branch. Please try again.");
@@ -183,7 +168,7 @@ export const LoginForm = () => {
 
         <button 
           type="button"
-          onClick={() => { setShowMfaInput(false); localStorage.clear(); setMfaCode(""); }}
+          onClick={() => { setShowMfaInput(false); setMfaCode(""); setMfaToken(null); }}
           className="text-xs font-semibold text-slate-400 hover:text-slate-600 w-full text-center hover:underline cursor-pointer"
         >
           Back to Login
@@ -218,7 +203,7 @@ export const LoginForm = () => {
           ))}
         </div>
         <button 
-          onClick={() => { setAvailableBranches(null); localStorage.clear(); }}
+          onClick={() => { setAvailableBranches(null); }}
           className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 w-full text-center"
         >
           Back to Login

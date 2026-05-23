@@ -21,27 +21,36 @@ export class ChangeManagementService {
       {
         id: 'dep-101',
         version: 'v1.0.0-GA',
-        deployedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        deployedAt: new Date(
+          Date.now() - 30 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         deployedBy: 'CI/CD Pipeline',
-        changeSummary: 'Initial production rollout of Branch EMR and Core Financial workflows.',
+        changeSummary:
+          'Initial production rollout of Branch EMR and Core Financial workflows.',
         ticketReference: 'HMS-1001',
         status: 'SUCCESS',
       },
       {
         id: 'dep-102',
         version: 'v1.1.0-SaaS',
-        deployedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+        deployedAt: new Date(
+          Date.now() - 15 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         deployedBy: 'SRE Deployment Coordinator',
-        changeSummary: 'Phase 6 Multi-tenant Row-Level Isolation & Advanced Analytics Rollout.',
+        changeSummary:
+          'Phase 6 Multi-tenant Row-Level Isolation & Advanced Analytics Rollout.',
         ticketReference: 'HMS-2004',
         status: 'SUCCESS',
       },
       {
         id: 'dep-103',
         version: 'v1.2.0-Observability',
-        deployedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        deployedAt: new Date(
+          Date.now() - 5 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         deployedBy: 'CI/CD Pipeline',
-        changeSummary: 'Phase 7 Metrics Exporter and Grafana Telemetry dashboards.',
+        changeSummary:
+          'Phase 7 Metrics Exporter and Grafana Telemetry dashboards.',
         ticketReference: 'HMS-3081',
         status: 'SUCCESS',
       },
@@ -50,7 +59,8 @@ export class ChangeManagementService {
         version: 'v1.3.0-Compliance',
         deployedAt: new Date().toISOString(),
         deployedBy: 'CI/CD Pipeline',
-        changeSummary: 'Phase 8 HIPAA Compliance & SOC2 Evidence Collection systems.',
+        changeSummary:
+          'Phase 8 HIPAA Compliance & SOC2 Evidence Collection systems.',
         ticketReference: 'HMS-4112',
         status: 'SUCCESS',
       },
@@ -61,7 +71,7 @@ export class ChangeManagementService {
     try {
       // Direct raw query of the prisma migrations table to gather schema audit trail evidence
       const migrations = await this.prisma.$queryRawUnsafe<any[]>(
-        `SELECT id, migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at DESC`
+        `SELECT id, migration_name, finished_at FROM _prisma_migrations ORDER BY finished_at DESC`,
       );
       return migrations.map((m) => ({
         id: m.id,
@@ -74,7 +84,9 @@ export class ChangeManagementService {
         {
           id: 'mig-init',
           migrationName: '20260517000000_init_database',
-          appliedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          appliedAt: new Date(
+            Date.now() - 30 * 24 * 60 * 60 * 1000,
+          ).toISOString(),
         },
         {
           id: 'mig-retention',
@@ -114,7 +126,8 @@ export class ChangeManagementService {
         from: from || 'ALL',
         to: to || 'ALL',
       },
-      soc2ControlReference: 'SOC2 CC8.1 - Change Management Governing and Monitoring',
+      soc2ControlReference:
+        'SOC2 CC8.1 - Change Management Governing and Monitoring',
       totalDeploymentsCount: filteredDeployments.length,
       deployments: filteredDeployments,
       totalSchemaChangesCount: filteredSchemaChanges.length,

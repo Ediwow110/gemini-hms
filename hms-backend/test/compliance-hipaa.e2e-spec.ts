@@ -17,7 +17,8 @@ describe('HIPAA Compliance Automation (e2e)', () => {
   const otherTenantId = '00000000-0000-0000-0000-00000000000b';
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -127,7 +128,9 @@ describe('HIPAA Compliance Automation (e2e)', () => {
       .expect((res) => {
         expect(Array.isArray(res.body)).toBe(true);
         // Verify cross-tenant containment
-        const hasOtherTenant = res.body.some((log) => log.tenantId === otherTenantId);
+        const hasOtherTenant = res.body.some(
+          (log) => log.tenantId === otherTenantId,
+        );
         expect(hasOtherTenant).toBe(false);
         const hasOurTenant = res.body.some((log) => log.tenantId === tenantId);
         expect(hasOurTenant).toBe(true);
@@ -167,7 +170,9 @@ describe('HIPAA Compliance Automation (e2e)', () => {
         expect(res.body.ephiTypeInvolved).toBeDefined();
         expect(res.body.discoveryDate).toBeDefined();
         expect(res.body.mitigationStepsTaken).toBeDefined();
-        expect(res.body.regulatoryReportedStatus).toBe('PENDING_HHS_NOTIFICATION');
+        expect(res.body.regulatoryReportedStatus).toBe(
+          'PENDING_HHS_NOTIFICATION',
+        );
       });
   });
 

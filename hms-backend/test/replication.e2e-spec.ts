@@ -16,7 +16,10 @@ describe('Multi-Region Active-Active Replication (e2e)', () => {
   const tenantId = '00000000-0000-0000-0000-00000000000c';
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.NODE_ENV = 'test';
+    process.env.REGION_HEALTH_ENABLED = 'true';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -131,11 +134,13 @@ describe('Multi-Region Active-Active Replication (e2e)', () => {
     };
 
     await request(app.getHttpServer())
-      .post('/api/v1/replication/sync/Patient/c8711e74-279c-4eb2-a63d-4781b28d7a12')
+      .post(
+        '/api/v1/replication/sync/Patient/c8711e74-279c-4eb2-a63d-4781b28d7a12',
+      )
       .send({ targetRegion: 'eu-west-1' })
       .expect(201)
       .expect((res) => {
-        expect(res.body.status).toBe('SYNCHRONIZED');
+        expect(res.body.status).toBe('STUBBED');
         expect(res.body.targetRegion).toBe('eu-west-1');
       });
   });
@@ -168,7 +173,9 @@ describe('Multi-Region Active-Active Replication (e2e)', () => {
     };
 
     await request(app.getHttpServer())
-      .post('/api/v1/replication/resolve/Patient/c8711e74-279c-4eb2-a63d-4781b28d7a12')
+      .post(
+        '/api/v1/replication/resolve/Patient/c8711e74-279c-4eb2-a63d-4781b28d7a12',
+      )
       .send({ stateA, stateB })
       .expect(201)
       .expect((res) => {

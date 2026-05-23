@@ -3,7 +3,11 @@ import { LabService } from './lab.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApprovalsService } from '../approvals/approvals.service';
 import { AuditService } from '../audit/audit.service';
-import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 
 describe('LabService Branch Isolation', () => {
   let service: LabService;
@@ -27,7 +31,9 @@ describe('LabService Branch Isolation', () => {
         create: jest.fn(),
       },
     };
-    prismaMock.$transaction = jest.fn().mockImplementation(async (cb) => await cb(prismaMock));
+    prismaMock.$transaction = jest
+      .fn()
+      .mockImplementation(async (cb) => await cb(prismaMock));
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -180,10 +186,18 @@ describe('LabService Branch Isolation', () => {
         status: 'RELEASED',
       });
       prisma.labResultSignature.create.mockResolvedValue({ id: 'sig-1' });
-      prisma.order.update.mockResolvedValue({ id: 'order-1', status: 'RELEASED' });
+      prisma.order.update.mockResolvedValue({
+        id: 'order-1',
+        status: 'RELEASED',
+      });
       prisma.notificationOutbox.create.mockResolvedValue({ id: 'notif-1' });
 
-      const result = await service.releaseResult(tenantId, 'user-1', branchId, labResultId);
+      const result = await service.releaseResult(
+        tenantId,
+        'user-1',
+        branchId,
+        labResultId,
+      );
 
       expect(result.status).toBe('RELEASED');
       expect(prisma.labResult.update).toHaveBeenCalled();

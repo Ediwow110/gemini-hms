@@ -218,6 +218,8 @@ describe('AuthService', () => {
         tenantId,
         status: 'ACTIVE',
         deactivatedAt: null,
+        tenant: { id: tenantId },
+        userRoles: [],
       });
 
       const result = await service.selectBranch(userId, tenantId, branchId);
@@ -225,8 +227,13 @@ describe('AuthService', () => {
       expect(prisma.userBranch.findFirst).toHaveBeenCalledWith({
         where: { userId, tenantId, branchId, isActive: true },
       });
-      // selectBranch currently returns null (token refresh not yet implemented)
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result).toHaveProperty('accessToken');
+      expect(result).toHaveProperty('sessionId');
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ branchId }),
+        expect.anything(),
+      );
     });
 
     it('should return null if assignment does not exist', async () => {

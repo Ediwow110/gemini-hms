@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { PatientMergeRequestService } from './patient-merge-request.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,6 +15,7 @@ describe('PatientMergeRequestService', () => {
   let service: PatientMergeRequestService;
   let prisma: any;
   let auditService: any;
+  let loggerSpy: jest.SpyInstance;
 
   // Test fixtures
   const tenantId = 'tenant-uuid-1';
@@ -90,6 +92,15 @@ describe('PatientMergeRequestService', () => {
     service = module.get<PatientMergeRequestService>(
       PatientMergeRequestService,
     );
+
+    // Suppress expected error logs
+    loggerSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    loggerSpy.mockRestore();
   });
 
   describe('createMergeRequest', () => {

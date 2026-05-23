@@ -1,0 +1,11 @@
+[remediation/add-rotation-scripts-20260518-135903 85355e2] chore(docs): add k8s apply scripts for staging rotation
+ 2 files changed, 75 insertions(+)
+ create mode 100644 docs/evidence/security/rotation/apply-staging-k8s.ps1
+ create mode 100644 docs/evidence/security/rotation/apply-staging-k8s.sh
+remote: 
+remote: Create a pull request for 'remediation/add-rotation-scripts-20260518-135903' on GitHub by visiting:        
+remote:      https://github.com/Ediwow110/gemini-hms/pull/new/remediation/add-rotation-scripts-20260518-135903        
+remote: 
+To https://github.com/Ediwow110/gemini-hms.git
+ * [new branch]      remediation/add-rotation-scripts-20260518-135903 -> remediation/add-rotation-scripts-20260518-135903
+branch 'remediation/add-rotation-scripts-20260518-135903' set up to track 'origin/remediation/add-rotation-scripts-20260518-135903'.

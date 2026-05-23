@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Printer, CheckCircle, FileWarning } from "lucide-react";
 import { RequirePermission } from "../../components/ui/RequirePermission";
+import { logger } from "../../lib/logger";
 
 export const PrintPreview = () => {
   const [showAmendModal, setShowAmendModal] = useState(false);
@@ -9,7 +10,7 @@ export const PrintPreview = () => {
 
   const handleAmendRequest = () => {
     // In a real app, this would hit POST /api/v1/lab/results/:id/amend
-    console.log("Amendment requested with reason:", amendReason);
+    logger.info("Amendment requested with reason:", amendReason);
     setShowAmendModal(false);
     setAmendReason("");
   };

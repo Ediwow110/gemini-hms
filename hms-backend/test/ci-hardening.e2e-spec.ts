@@ -8,7 +8,10 @@ describe('CI/CD Hardening (e2e)', () => {
     const backendPath = path.resolve(__dirname, '../');
     let auditPassed = true;
     try {
-      execSync('npm audit --audit-level=critical', { cwd: backendPath, stdio: 'pipe' });
+      execSync('npm audit --audit-level=critical', {
+        cwd: backendPath,
+        stdio: 'pipe',
+      });
     } catch (error: any) {
       // If there are critical vulnerabilities, npm audit exits with non-zero code
       auditPassed = false;
@@ -24,7 +27,10 @@ describe('CI/CD Hardening (e2e)', () => {
       execSync('npx prisma validate', { cwd: backendPath, stdio: 'pipe' });
     } catch (error: any) {
       prismaValidated = false;
-      console.error('Prisma validation failed output:', error.stderr?.toString());
+      console.error(
+        'Prisma validation failed output:',
+        error.stderr?.toString(),
+      );
     }
     expect(prismaValidated).toBe(true);
   });
@@ -34,10 +40,10 @@ describe('CI/CD Hardening (e2e)', () => {
     expect(fs.existsSync(envExamplePath)).toBe(true);
 
     const content = fs.readFileSync(envExamplePath, 'utf8');
-    
+
     // Core environment variables that MUST be documented
     const requiredKeys = ['DATABASE_URL', 'JWT_SECRET'];
-    
+
     requiredKeys.forEach((key) => {
       expect(content).toContain(key);
     });

@@ -39,7 +39,10 @@ export class AnalyticsService {
       },
     });
 
-    const counts: Record<string, { code: string; name: string; count: number }> = {};
+    const counts: Record<
+      string,
+      { code: string; name: string; count: number }
+    > = {};
     for (const d of diagnoses) {
       if (!d.icd10Code) continue;
       const code = d.icd10Code.code;
@@ -84,7 +87,7 @@ export class AnalyticsService {
     for (const entry of completedEntries) {
       totalDiffMs += entry.updatedAt.getTime() - entry.createdAt.getTime();
     }
-    const averageMinutes = (totalDiffMs / completedEntries.length) / 60000;
+    const averageMinutes = totalDiffMs / completedEntries.length / 60000;
     return { averageWaitTimeMinutes: Number(averageMinutes.toFixed(2)) };
   }
 

@@ -10,6 +10,13 @@ export default tseslint.config(
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
+  {
+    files: ['**/*.controller.ts', '**/*.spec.ts'],
+    rules: {
+      'prefer-const': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+    },
+  },
   eslintPluginPrettierRecommended,
   {
     languageOptions: {

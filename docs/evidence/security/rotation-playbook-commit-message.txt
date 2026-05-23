@@ -1,0 +1,5 @@
+chore(docs): add rotation playbook for secret key rotation and verification
+
+Adds a rotation playbook at docs/evidence/security/rotation-playbook.md with step-by-step rotation commands, verification checks, and owner matrix.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>

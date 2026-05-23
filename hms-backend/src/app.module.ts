@@ -29,14 +29,17 @@ import { PatientPortalModule } from './patient-portal/patient-portal.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { ProcurementModule } from './procurement/procurement.module';
+import { InstallationModule } from './logistics/installation.module';
 import { ReferralPartnersModule } from './referral-partners/referral-partners.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SlaAlertsModule } from './sla-alerts/sla-alerts.module';
 import { ComplianceModule } from './compliance/compliance.module';
+import { PharmacyModule } from './pharmacy/pharmacy.module';
 import { ReplicationModule } from './replication/replication.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MfaGuard } from './auth/guards/mfa.guard';
 import { TenantGuard } from './auth/guards/tenant.guard';
+import { CsrfGuard } from './auth/guards/csrf.guard';
 import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 import { AuditContextMiddleware } from './audit/audit-context.middleware';
 
@@ -72,10 +75,12 @@ import { AuditContextMiddleware } from './audit/audit-context.middleware';
     LedgerModule,
     InsuranceModule,
     ProcurementModule,
+    InstallationModule,
     ReferralPartnersModule,
     AnalyticsModule,
     SlaAlertsModule,
     ComplianceModule,
+    PharmacyModule,
     ReplicationModule,
   ],
   controllers: [AppController],
@@ -86,6 +91,7 @@ import { AuditContextMiddleware } from './audit/audit-context.middleware';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: MfaGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
+    { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_INTERCEPTOR, useClass: PhiMaskingInterceptor },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
   ],

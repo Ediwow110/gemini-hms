@@ -1,0 +1,15 @@
+This PR adds a rotation checklist that assigns owners and links remediation PRs and runbooks.
+
+Files:
+- docs/evidence/security/rotation-checklist-pr.md
+
+Remediation PRs:
+- PR #43: https://github.com/Ediwow110/gemini-hms/pull/43
+- PR #44: https://github.com/Ediwow110/gemini-hms/pull/44
+- PR #45: https://github.com/Ediwow110/gemini-hms/pull/45
+
+Please assign owners, set a maintenance window, and request reviewers: @security-team, @devops-team, @release-manager.
+
+Suggested GitHub assignees & reviewers (replace placeholders with actual GitHub usernames or teams):
+- Assignees: release-manager, devops-lead, security-lead
+- Reviewers: security-team, devops-team, release-manager

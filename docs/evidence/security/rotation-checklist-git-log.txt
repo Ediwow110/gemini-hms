@@ -1,0 +1,11 @@
+[remediation/rotation-checklist-20260518-133748 2a58bd3] chore(docs): add rotation checklist PR
+ 1 file changed, 68 insertions(+)
+ create mode 100644 docs/evidence/security/rotation-checklist-pr.md
+remote: 
+remote: Create a pull request for 'remediation/rotation-checklist-20260518-133748' on GitHub by visiting:        
+remote:      https://github.com/Ediwow110/gemini-hms/pull/new/remediation/rotation-checklist-20260518-133748        
+remote: 
+To https://github.com/Ediwow110/gemini-hms.git
+ * [new branch]      remediation/rotation-checklist-20260518-133748 -> remediation/rotation-checklist-20260518-133748
+branch 'remediation/rotation-checklist-20260518-133748' set up to track 'origin/remediation/rotation-checklist-20260518-133748'.
+BRANCH:remediation/rotation-checklist-20260518-133748

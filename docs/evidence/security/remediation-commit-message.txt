@@ -1,0 +1,5 @@
+chore(security): remove tracked .env.production; add .gitignore entry; attach gitleaks report
+
+Removes tracked .env.production (keeps local copy), adds .env.production to .gitignore to prevent re-adds, and attaches gitleaks report for audit.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>

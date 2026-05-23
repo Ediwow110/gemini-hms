@@ -1,0 +1,17 @@
+Creating/updating branch: remediation/remove-inline-workflow-secrets-20260518-131856
+Switched to a new branch 'remediation/remove-inline-workflow-secrets-20260518-131856'
+M	hms-backend/src/auth/auth.controller.ts
+M	hms-backend/src/auth/auth.service.ts
+M	hms-backend/src/auth/dto/select-branch.dto.ts
+M	hms-frontend/src/App.tsx
+M	hms-frontend/src/app/AppShell.tsx
+M	hms-frontend/src/hooks/use-user.tsx
+Updated .github/workflows/ci.yml
+Updated .github/workflows/deploy.yml
+Updated .github/workflows/deploy-gate.yml
+warning: in the working copy of '.github/workflows/ci.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.github/workflows/deploy-gate.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.github/workflows/deploy.yml', LF will be replaced by CRLF the next time Git touches it
+[remediation/remove-inline-workflow-secrets-20260518-131856 fa792e4] chore(security): replace inline workflow secrets with GitHub Secrets references
+ 3 files changed, 14 insertions(+), 11 deletions(-)
+Completed

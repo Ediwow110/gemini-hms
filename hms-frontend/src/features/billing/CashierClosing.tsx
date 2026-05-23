@@ -4,6 +4,7 @@ import { SectionCard, FormField } from "../../components/ui/section-card";
 import { StatusBadge } from "../../components/ui/status-badge";
 import { useNavigate } from "react-router-dom";
 import { RequirePermission } from "../../components/ui/RequirePermission";
+import { logger } from "../../lib/logger";
 
 export const CashierClosing = () => {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export const CashierClosing = () => {
     };
     
     // In real app: POST /api/v1/billing/sessions/SESS-2026-0509/close
-    console.log("Submitting session reconciliation:", payload);
+    logger.info("Submitting session reconciliation:", payload);
     navigate('/');
   };
 

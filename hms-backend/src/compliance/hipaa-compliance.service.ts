@@ -25,7 +25,14 @@ export class HipaaComplianceService {
     const whereClause: any = {
       tenantId,
       recordType: {
-        in: ['Patient', 'Encounter', 'LabResult', 'Prescription', 'SOAP', 'ClinicalNote'],
+        in: [
+          'Patient',
+          'Encounter',
+          'LabResult',
+          'Prescription',
+          'SOAP',
+          'ClinicalNote',
+        ],
       },
     };
 
@@ -73,20 +80,26 @@ export class HipaaComplianceService {
           userId: log.userId,
           role,
           eventKey,
-          description: 'Restricted administrative/clinical operation attempted by non-authorized role',
+          description:
+            'Restricted administrative/clinical operation attempted by non-authorized role',
           severity: 'HIGH',
           timestamp: log.createdAt,
         });
       }
 
       // Rule 2: Patient accessing records other than their own profile
-      if (role === 'Patient' && eventKey.includes('VIEWED') && log.recordType !== 'PatientPortal') {
+      if (
+        role === 'Patient' &&
+        eventKey.includes('VIEWED') &&
+        log.recordType !== 'PatientPortal'
+      ) {
         anomalies.push({
           logId: log.id,
           userId: log.userId,
           role,
           eventKey,
-          description: 'Patient role attempted direct back-office ePHI data access',
+          description:
+            'Patient role attempted direct back-office ePHI data access',
           severity: 'CRITICAL',
           timestamp: log.createdAt,
         });
@@ -96,7 +109,10 @@ export class HipaaComplianceService {
     return anomalies;
   }
 
-  async generateBreachReport(tenantId: string, incidentId: string): Promise<BreachReport> {
+  async generateBreachReport(
+    tenantId: string,
+    incidentId: string,
+  ): Promise<BreachReport> {
     // Find audit log representing a potential or confirmed breach
     const breachEvent = await this.prisma.auditLog.findFirst({
       where: {
@@ -115,9 +131,15 @@ export class HipaaComplianceService {
       tenantId,
       discoveryDate: breachEvent.createdAt.toISOString(),
       incidentDescription: `Security event logged as ${breachEvent.eventKey} affecting record ${breachEvent.recordType} (ID: ${breachEvent.recordId}).`,
-      ephiTypeInvolved: ['Demographics', 'Clinical notes', 'Diagnostic details'],
-      mitigationStepsTaken: 'Affected account temporarily disabled. System firewall updated and cryptographic chain-of-custody audited.',
-      individualProtectionSteps: 'Individuals should monitor credit reports and contact the compliance department for identity protection support.',
+      ephiTypeInvolved: [
+        'Demographics',
+        'Clinical notes',
+        'Diagnostic details',
+      ],
+      mitigationStepsTaken:
+        'Affected account temporarily disabled. System firewall updated and cryptographic chain-of-custody audited.',
+      individualProtectionSteps:
+        'Individuals should monitor credit reports and contact the compliance department for identity protection support.',
       contactChannel: {
         phone: '+1 (555) 019-2911',
         email: 'privacy-officer@hospital-hms.local',

@@ -216,7 +216,9 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
       .get(`/clinical/encounters/${encounterId}`)
       .expect(200);
     expect(encounterAfterRestore.body.encounterDiagnoses.length).toBe(1);
-    expect(encounterAfterRestore.body.encounterDiagnoses[0].id).toBe(diagnosisId);
+    expect(encounterAfterRestore.body.encounterDiagnoses[0].id).toBe(
+      diagnosisId,
+    );
 
     // 8. Close the encounter
     await request(app.getHttpServer())

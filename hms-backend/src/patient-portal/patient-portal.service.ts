@@ -54,6 +54,7 @@ export class PatientPortalService {
 
     const token = await this.jwtService.signAsync(payload);
 
+    // Return token + safe patient info; controller decides whether to expose token in body
     return {
       accessToken: token,
       patientId: patientUser.patientId,

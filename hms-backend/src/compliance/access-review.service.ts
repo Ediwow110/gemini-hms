@@ -30,7 +30,9 @@ export class AccessReviewService {
         userId: user.id,
         email: user.email,
         roles,
-        lastLogin: latestSession ? latestSession.lastRotatedAt.toISOString() : null,
+        lastLogin: latestSession
+          ? latestSession.lastRotatedAt.toISOString()
+          : null,
         mfaEnabled: user.mfaEnabled,
         status: user.status,
         createdAt: user.createdAt.toISOString(),
@@ -64,7 +66,11 @@ export class AccessReviewService {
         tenantId,
         createdAt: { gte: thirtyDaysAgo },
         eventKey: {
-          in: ['ROLE_PERMISSION_CHANGE_APPROVED', 'PRIVILEGED_USER_CHANGE_APPROVED', 'USER_ROLE_ASSIGNED'],
+          in: [
+            'ROLE_PERMISSION_CHANGE_APPROVED',
+            'PRIVILEGED_USER_CHANGE_APPROVED',
+            'USER_ROLE_ASSIGNED',
+          ],
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -82,11 +88,12 @@ export class AccessReviewService {
   }
 
   async generateAccessReviewReport(tenantId: string) {
-    const [accessReport, staleAccounts, privilegeEscalations] = await Promise.all([
-      this.generateAccessReport(tenantId),
-      this.detectStaleAccounts(tenantId, 90),
-      this.detectPrivilegeEscalation(tenantId),
-    ]);
+    const [accessReport, staleAccounts, privilegeEscalations] =
+      await Promise.all([
+        this.generateAccessReport(tenantId),
+        this.detectStaleAccounts(tenantId, 90),
+        this.detectPrivilegeEscalation(tenantId),
+      ]);
 
     return {
       reviewTimestamp: new Date().toISOString(),
@@ -96,7 +103,8 @@ export class AccessReviewService {
       staleAccounts,
       privilegeEscalationsCount: privilegeEscalations.length,
       privilegeEscalations,
-      complianceStatus: staleAccounts.length > 0 ? 'NEEDS_ATTENTION' : 'COMPLIANT',
+      complianceStatus:
+        staleAccounts.length > 0 ? 'NEEDS_ATTENTION' : 'COMPLIANT',
     };
   }
 }

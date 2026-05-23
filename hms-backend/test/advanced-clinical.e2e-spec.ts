@@ -17,7 +17,8 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
   const tenantId = '00000000-0000-0000-0000-00000000000d';
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
+    process.env.JWT_SECRET =
+      'test-secret-key-for-e2e-tests-that-is-long-enough';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -124,7 +125,7 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/v1/clinical/erx/screen-interactions')
       .send({
-        patientId: '22222222-2222-2222-2222-222222222222',
+        patientId: '22222222-2222-4222-8222-222222222222',
         medications: ['Sildenafil', 'Nitroglycerin Spray', 'Aspirin'],
       })
       .expect(201)
@@ -138,28 +139,47 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
 
   it('should successfully stub prescription NCPDP transmission and lifecycle updates', async () => {
     const doctorId = '11111111-1111-4111-8111-111111111112';
-    const branchId = '33333333-3333-3333-3333-333333333333';
-    const patientId = '44444444-4444-4444-4444-444444444444';
-    const encounterId = '55555555-5555-5555-5555-555555555555';
-    const prescriptionId = '66666666-6666-6666-6666-666666666666';
+    const branchId = '33333333-3333-4333-8333-333333333333';
+    const patientId = '44444444-4444-4444-8444-444444444444';
+    const encounterId = '55555555-5555-4555-8555-555555555555';
+    const prescriptionId = '66666666-6666-4666-8666-666666666666';
 
     // Seed dependencies
     await prisma.branch.upsert({
       where: { id: branchId },
       update: {},
-      create: { id: branchId, tenantId, name: 'clinic-branch', code: 'BR-CLINIC' },
+      create: {
+        id: branchId,
+        tenantId,
+        name: 'clinic-branch',
+        code: 'BR-CLINIC',
+      },
     });
 
     await prisma.user.upsert({
       where: { id: doctorId },
       update: {},
-      create: { id: doctorId, tenantId, email: 'doctor@hospital.com', passwordHash: 'dummy', status: 'ACTIVE' },
+      create: {
+        id: doctorId,
+        tenantId,
+        email: 'doctor@hospital.com',
+        passwordHash: 'dummy',
+        status: 'ACTIVE',
+      },
     });
 
     await prisma.patient.upsert({
       where: { id: patientId },
       update: {},
-      create: { id: patientId, tenantId, patientNumber: 'P-CLINIC', firstName: 'Jane', lastName: 'Doe', dob: new Date(), status: 'ACTIVE' },
+      create: {
+        id: patientId,
+        tenantId,
+        patientNumber: 'P-CLINIC',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        dob: new Date(),
+        status: 'ACTIVE',
+      },
     });
 
     await prisma.encounter.upsert({
@@ -223,7 +243,7 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
   });
 
   it('should assign and release clinical bed occupancy and compute statistics', async () => {
-    const patientId = '44444444-4444-4444-4444-444444444444';
+    const patientId = '44444444-4444-4444-8444-444444444444';
     const wardId = 'ward-cardiology';
     const bedNumber = 'bed-10A';
 
@@ -242,7 +262,9 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
       .send({ patientId, wardId, bedNumber })
       .expect(201)
       .expect((res) => {
-        expect(res.body.bedId).toBe(`${wardId}-${bedNumber}`);
+        expect(res.body.bedId).toBe(
+          `${tenantId}:${MockJwtAuthGuard.user.branchId}:${wardId}-${bedNumber}`,
+        );
       });
 
     // Check occupancy

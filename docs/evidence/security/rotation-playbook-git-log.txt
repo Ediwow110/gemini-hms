@@ -1,0 +1,6 @@
+Creating branch: remediation/add-rotation-playbook-20260518-132158
+Switched to a new branch 'remediation/add-rotation-playbook-20260518-132158'
+[remediation/add-rotation-playbook-20260518-132158 07b3c9a] chore(docs): add rotation playbook for secret key rotation and verification
+ 1 file changed, 74 insertions(+)
+ create mode 100644 docs/evidence/security/rotation-playbook.md
+Done

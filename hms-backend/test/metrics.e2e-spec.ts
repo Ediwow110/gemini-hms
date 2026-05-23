@@ -38,7 +38,7 @@ describe('Prometheus Observability Metrics (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
-    
+
     // Seed tenant
     await prisma.tenant.upsert({
       where: { id: tenantId },

@@ -55,6 +55,9 @@ model Tenant {
   patientUsers       PatientUser[]
   insuranceClaims    InsuranceClaim[]
   ledgerEntries      LedgerEntry[]
+  triageRecords      Triage[]
+  clinicalOrderItems ClinicalOrderItem[]
+  labSpecimens       LabSpecimen[]
 
   suppliers          Supplier[]
   purchaseRequests   PurchaseRequest[]
@@ -64,6 +67,12 @@ model Tenant {
   referralRecords    ReferralRecord[]
   slaAlerts          SlaAlert[]
   cptCodes           CptCode[]
+  labTestDefinitions LabTestDefinition[]
+  labTestParameterDefinitions LabTestParameterDefinition[]
+  rfqs               RFQ[]
+  quotes             Quote[]
+  salesOrders        SalesOrder[]
+  assets             Asset[]
 
   @@map("tenants")
 }
@@ -90,6 +99,9 @@ model Branch {
   insuranceClaims  InsuranceClaim[]
   ledgerEntries    LedgerEntry[]
   employees        Employee[]
+  triageRecords    Triage[]
+  labSpecimens     LabSpecimen[]
+  rfqs             RFQ[]
 
   @@map("branches")
 }
@@ -124,8 +136,11 @@ model User {
   encountersAsDoctor  Encounter[]       @relation("EncounterDoctor")
   clinicalNotesAuthor ClinicalNote[]    @relation("ClinicalNoteAuthor")
   clinicalNotesLocker ClinicalNote[]    @relation("ClinicalNoteLocker")
-  prescriptionsPrescribed Prescription[] @relation("PrescribedBy")
-  referralsReferred       Referral[]     @relation("ReferredBy")
+  prescriptionsPrescribed  Prescription[] @relation("PrescribedBy")
+  prescriptionsDispensed   Prescription[] @relation("DispensedBy")
+  referralsReferred        Referral[]     @relation("ReferredBy")
+  requestedOrders         Order[]        @relation("OrderRequestedBy")
+  cancelledOrders         Order[]        @relation("OrderCancelledBy")
   sessions           Session[]
   mfaRecoveryCodes   UserMfaRecoveryCode[]
   employees          Employee[]
@@ -234,6 +249,7 @@ enum NoteType {
   PROGRESS
   NURSING
   DISCHARGE
+  SOAP
 }
 
 model Encounter {
@@ -268,6 +284,8 @@ model Encounter {
   clinicalNotes      ClinicalNote[]
   prescriptions      Prescription[]
   referrals          Referral[]
+  triageRecords      Triage[]
+  orders             Order[]
 
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
@@ -296,13 +314,50 @@ model Vitals {
   respiratory Int?     @map("respiratory_rate")
   weightKg    Decimal? @map("weight_kg") @db.Decimal(6, 2)
 
-  createdBy String @map("created_by") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
+  createdBy   String    @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  status      String    @default("ACTIVE")
+  errorAt     DateTime? @map("error_at")
+  errorById   String?   @map("error_by_id") @db.Uuid
+  errorReason String?   @map("error_reason")
 
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, encounterId])
   @@map("vitals")
+}
+
+model Triage {
+  id                   String    @id @default(uuid()) @db.Uuid
+  tenantId             String    @map("tenant_id") @db.Uuid
+  branchId             String    @map("branch_id") @db.Uuid
+  patientId            String    @map("patient_id") @db.Uuid
+  encounterId          String?   @map("encounter_id") @db.Uuid
+  queueEntryId         String?   @map("queue_entry_id") @db.Uuid
+  acuityLevel          String?   @map("acuity_level")
+  chiefComplaintSummary String?  @map("chief_complaint_summary")
+  arrivalMode          String?   @map("arrival_mode")
+  painScore            Int?      @map("pain_score")
+  infectiousRiskFlag   Boolean   @default(false) @map("infectious_risk_flag")
+  fallRiskFlag         Boolean   @default(false) @map("fall_risk_flag")
+  pregnancyFlag        Boolean   @default(false) @map("pregnancy_flag")
+  notes                String?
+  recordedById         String    @map("recorded_by_id") @db.Uuid
+  status               String    @default("ACTIVE")
+  errorReason          String?   @map("error_reason")
+  errorById            String?   @map("error_by_id") @db.Uuid
+  errorAt              DateTime? @map("error_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  patient  Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, patientId])
+  @@index([tenantId, encounterId])
+  @@map("triage_records")
 }
 
 model Diagnosis {
@@ -406,33 +461,52 @@ model Patient {
   referrals     Referral[]
   portalUser    PatientUser?
   insuranceClaims InsuranceClaim[]
+  triageRecords Triage[]
+  labSpecimens  LabSpecimen[]
 
   @@unique([tenantId, patientNumber])
   @@map("patients")
 }
 
 model Order {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  branchId    String   @map("branch_id") @db.Uuid
-  patientId   String   @map("patient_id") @db.Uuid
-  orderNumber String   @map("order_number")
-  status      String   @default("DRAFT")
-  createdById String?  @map("created_by_id") @db.Uuid
-  updatedById String?  @map("updated_by_id") @db.Uuid
-  deletedAt   DateTime? @map("deleted_at")
-  version     Int      @default(0)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id              String     @id @default(uuid()) @db.Uuid
+  tenantId        String     @map("tenant_id") @db.Uuid
+  branchId        String     @map("branch_id") @db.Uuid
+  patientId       String     @map("patient_id") @db.Uuid
+  orderNumber     String     @map("order_number")
+  status          String     @default("DRAFT")
+  encounterId     String?    @map("encounter_id") @db.Uuid
+  orderType       String?    @map("order_type")
+  priority        String?    @default("ROUTINE")
+  clinicalIndication String? @map("clinical_indication")
+  requestedById   String?    @map("requested_by_id") @db.Uuid
+  requestedAt     DateTime?  @map("requested_at")
+  cancelledReason String?    @map("cancelled_reason")
+  cancelledById   String?    @map("cancelled_by_id") @db.Uuid
+  cancelledAt     DateTime?  @map("cancelled_at")
+  createdById     String?    @map("created_by_id") @db.Uuid
+  updatedById     String?    @map("updated_by_id") @db.Uuid
+  deletedAt       DateTime?  @map("deleted_at")
+  version         Int        @default(0)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
 
-  tenant     Tenant      @relation(fields: [tenantId], references: [id])
-  branch     Branch      @relation(fields: [branchId], references: [id])
-  patient    Patient     @relation(fields: [patientId], references: [id])
-  items      OrderItem[]
-  invoice    Invoice?
-  labResult  LabResult?
+  tenant        Tenant              @relation(fields: [tenantId], references: [id])
+  branch        Branch              @relation(fields: [branchId], references: [id])
+  patient       Patient             @relation(fields: [patientId], references: [id])
+  encounter     Encounter?          @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  requestedBy   User?               @relation("OrderRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  cancelledBy   User?               @relation("OrderCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  items         OrderItem[]
+  clinicalItems ClinicalOrderItem[]
+  invoice       Invoice?
+  labSpecimen   LabSpecimen?
+  labResult     LabResult?
 
   @@unique([tenantId, orderNumber])
+  @@index([encounterId])
+  @@index([requestedById])
+  @@index([cancelledById])
   @@map("orders")
 }
 
@@ -454,6 +528,54 @@ model OrderItem {
   @@index([tenantId])
   @@index([orderId])
   @@map("order_items")
+}
+
+model ClinicalOrderItem {
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  orderId             String   @map("order_id") @db.Uuid
+  itemName            String   @map("item_name")
+  labTestDefinitionId String?  @map("lab_test_definition_id") @db.Uuid
+  notes               String?
+  status              String   @default("PENDING")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order            Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  labTestDefinition LabTestDefinition? @relation(fields: [labTestDefinitionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([labTestDefinitionId])
+  @@map("clinical_order_items")
+}
+
+model LabSpecimen {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  branchId        String    @map("branch_id") @db.Uuid
+  patientId       String    @map("patient_id") @db.Uuid
+  orderId         String    @unique @map("order_id") @db.Uuid
+  specimenType    String    @map("specimen_type")
+  accessionNumber String?   @map("accession_number")
+  collectionMode  String    @default("ROUTINE") @map("collection_mode")
+  collectedAt     DateTime? @map("collected_at")
+  receivedAt      DateTime  @default(now()) @map("received_at")
+  receivedById    String    @map("received_by_id") @db.Uuid
+  status          String    @default("RECEIVED")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([orderId])
+  @@index([tenantId, branchId])
+  @@map("lab_specimens")
 }
 
 model ServiceCategory {
@@ -606,9 +728,17 @@ model LabResult {
   status       String    @default("PENDING_COLLECTION")
   results      Json? // Key-value results snapshot
   remarks      String? // Clinical remarks
-  approvedById String?   @map("approved_by_id") @db.Uuid
-  lockedAt     DateTime? @map("locked_at")
-  createdById  String?   @map("created_by_id") @db.Uuid
+  approvedById  String?   @map("approved_by_id") @db.Uuid
+  lockedAt      DateTime? @map("locked_at")
+  encodedById   String?   @map("encoded_by_id") @db.Uuid
+  encodedAt     DateTime? @map("encoded_at")
+  validatedById String?   @map("validated_by_id") @db.Uuid
+  validatedAt   DateTime? @map("validated_at")
+  releasedById  String?   @map("released_by_id") @db.Uuid
+  releasedAt    DateTime? @map("released_at")
+  lastEditedById String?  @map("last_edited_by_id") @db.Uuid
+  lastEditedAt  DateTime? @map("last_edited_at")
+  createdById   String?   @map("created_by_id") @db.Uuid
   updatedById  String?   @map("updated_by_id") @db.Uuid
   deletedAt    DateTime? @map("deleted_at")
   version      Int       @default(0)
@@ -1220,6 +1350,8 @@ model Prescription {
   status         PrescriptionStatus @default(ACTIVE)
   createdById    String?            @map("created_by_id") @db.Uuid
   updatedById    String?            @map("updated_by_id") @db.Uuid
+  dispensedById  String?            @map("dispensed_by_id") @db.Uuid
+  dispensedAt    DateTime?          @map("dispensed_at")
   deletedAt      DateTime?          @map("deleted_at")
   version        Int                @default(0)
   createdAt      DateTime           @default(now()) @map("created_at")
@@ -1227,12 +1359,14 @@ model Prescription {
 
   encounter    Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   prescribedBy User      @relation("PrescribedBy", fields: [prescribedById], references: [id])
+  dispensedBy  User?     @relation("DispensedBy", fields: [dispensedById], references: [id])
   patient      Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
   tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch       Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, encounterId])
   @@index([patientId])
+  @@index([tenantId, branchId, status])
   @@map("prescriptions")
 }
 
@@ -1525,3 +1659,177 @@ model CptCode {
   @@map("cpt_codes")
 }
 
+model LabTestDefinition {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  code        String   @map("code")
+  name        String   @map("name")
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant             Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parameters         LabTestParameterDefinition[]
+  clinicalOrderItems ClinicalOrderItem[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("lab_test_definitions")
+}
+
+model LabTestParameterDefinition {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  testDefinitionId   String   @map("test_definition_id") @db.Uuid
+  parameterName      String   @map("parameter_name")
+  code               String   @map("code")
+  unit               String?
+  referenceRangeText String?  @map("reference_range_text")
+  minNormal          Float?   @map("min_normal")
+  maxNormal          Float?   @map("max_normal")
+  minCritical        Float?   @map("min_critical")
+  maxCritical        Float?   @map("max_critical")
+  valueType          String   @default("NUMERIC") @map("value_type")
+  allowedValues      String?  @map("allowed_values")
+  isRequired         Boolean  @default(true) @map("is_required")
+  displayOrder       Int      @default(0) @map("display_order")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  testDefinition LabTestDefinition @relation(fields: [testDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, testDefinitionId, code])
+  @@index([tenantId])
+  @@index([testDefinitionId])
+  @@map("lab_test_parameter_definitions")
+}
+
+
+enum RFQStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum OrderStatus {
+  CONFIRMED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+enum AssetInstallStatus {
+  PENDING_ASSESSMENT
+  SITE_READY
+  ASSEMBLING
+  INSTALLED
+  COMMISSIONED
+  HANDED_OVER
+}
+
+enum InstallStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMMISSIONED
+  COMPLETED
+  FAILED
+}
+
+model RFQ {
+  id            String         @id @default(uuid()) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  branchId      String         @map("branch_id") @db.Uuid
+  title         String
+  status        RFQStatus      @default(DRAFT)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  quotes        Quote[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, branchId])
+  @@index([status])
+  @@map("rfqs")
+}
+
+model Quote {
+  id            String         @id @default(uuid()) @db.Uuid
+  rfqId         String         @map("rfq_id") @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  status        QuoteStatus    @default(DRAFT)
+  totalAmount   Decimal        @map("total_amount") @db.Decimal(12, 2)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  convertedAt   DateTime?      @map("converted_at")
+  approvedAt    DateTime?      @map("approved_at")
+
+  rfq           RFQ            @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  salesOrders   SalesOrder[]
+
+  @@index([rfqId])
+  @@index([tenantId, status])
+  @@map("quotes")
+}
+
+model SalesOrder {
+  id            String         @id @default(uuid()) @db.Uuid
+  quoteId       String         @map("quote_id") @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  status        OrderStatus    @default(CONFIRMED)
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  quote         Quote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assets        Asset[]
+
+  @@index([quoteId])
+  @@index([tenantId])
+  @@map("sales_orders")
+}
+
+model Asset {
+  id                String         @id @default(uuid()) @db.Uuid
+  salesOrderId      String         @map("sales_order_id") @db.Uuid
+  tenantId          String         @map("tenant_id") @db.Uuid
+  serialNumber      String         @unique @map("serial_number")
+  model             String
+  warrantyStart     DateTime?      @map("warranty_start")
+  warrantyEnd       DateTime?      @map("warranty_end")
+  installationStatus AssetInstallStatus @default(PENDING_ASSESSMENT) @map("installation_status")
+
+  salesOrder        SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  installationJobs  InstallationJob[]
+
+  @@index([salesOrderId])
+  @@index([tenantId])
+  @@map("assets")
+}
+
+model InstallationJob {
+  id                String         @id @default(uuid()) @db.Uuid
+  assetId           String         @map("asset_id") @db.Uuid
+  assignedUserId    String         @map("assigned_user_id") @db.Uuid
+  status            InstallStatus  @default(ASSIGNED)
+  commissionedAt    DateTime?      @map("commissioned_at")
+  handoverSignedAt  DateTime?      @map("handover_signed_at")
+
+  asset             Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@map("installation_jobs")
+}

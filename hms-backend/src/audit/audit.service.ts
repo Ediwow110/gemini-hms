@@ -41,6 +41,26 @@ export interface AuditQueryDto {
 export class AuditService {
   constructor(private prisma: PrismaService) {}
 
+  private canonicalize(obj: any): any {
+    if (obj === null || obj === undefined) {
+      return null;
+    }
+    if (Array.isArray(obj)) {
+      return obj.map((item) => this.canonicalize(item));
+    }
+    if (typeof obj === 'object') {
+      const sortedKeys = Object.keys(obj).sort();
+      const result: any = {};
+      for (const key of sortedKeys) {
+        if (obj[key] !== undefined) {
+          result[key] = this.canonicalize(obj[key]);
+        }
+      }
+      return result;
+    }
+    return obj;
+  }
+
   private computeHash(entry: {
     tenantId: string;
     userId: string;
@@ -58,9 +78,9 @@ export class AuditService {
       eventKey: entry.eventKey,
       recordType: entry.recordType,
       recordId: entry.recordId,
-      oldValues: entry.oldValues || null,
-      newValues: entry.newValues || null,
-      createdAt: entry.createdAt.toISOString(),
+      oldValues: this.canonicalize(entry.oldValues),
+      newValues: this.canonicalize(entry.newValues),
+      createdAt: entry.createdAt.toISOString(), // Preserve exact persisted millisecond precision
       previousHash: entry.previousHash || '',
     });
     return createHash('sha256').update(payload).digest('hex');
@@ -74,19 +94,21 @@ export class AuditService {
   ) {
     const db = tx || this.prisma;
     const req = auditStorage.getStore() as any;
-    
-    const ipAddress = context?.ipAddress ?? req?.headers?.['x-forwarded-for'] ?? req?.ip;
+
+    const ipAddress =
+      context?.ipAddress ?? req?.headers?.['x-forwarded-for'] ?? req?.ip;
     const userAgent = context?.userAgent ?? req?.headers?.['user-agent'];
     const activeRole = context?.activeRole ?? req?.user?.role;
     const sessionId = context?.sessionId ?? req?.user?.sessionId;
 
     // Fetch the latest head in the tenant chain
-    const lastLog = typeof db.auditLog?.findFirst === 'function'
-      ? await db.auditLog.findFirst({
-          where: { tenantId: data.tenantId },
-          orderBy: { createdAt: 'desc' },
-        })
-      : null;
+    const lastLog =
+      typeof db.auditLog?.findFirst === 'function'
+        ? await db.auditLog.findFirst({
+            where: { tenantId: data.tenantId },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          })
+        : null;
 
     const previousHash = lastLog ? lastLog.hash : null;
     const createdAt = new Date();
@@ -136,7 +158,7 @@ export class AuditService {
   async verifyChain(tenantId: string) {
     const logs = await this.prisma.auditLog.findMany({
       where: { tenantId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
 
     const corruptedLogIds: string[] = [];
