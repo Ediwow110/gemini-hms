@@ -1,7 +1,8 @@
 # Final Demo Operator Checklist
 
 ## 24 Hours Before Demo
-- [ ] **Data Sync**: Run `npx tsx scripts/fix-demo-data.ts` to ensure all patients have `[DEMO]` prefix.
+- [ ] **Data Audit**: Run `npm run db:check:demo` to verify all records are correctly prefixed.
+- [ ] **Data Sync**: If audit fails, run `DEMO_DB_FIX_CONFIRM=FIX_SYNTHETIC_DEMO_LABELS npm run db:fix:demo` to apply prefixes.
 - [ ] **Feature Audit**: Briefly login as each role (Doctor, Lab, Pharmacist, Patient, Admin) to ensure routes load.
 - [ ] **Infrastructure**: Verify local machine has 8GB+ RAM available for parallel Node.js processes.
 
@@ -25,6 +26,10 @@
 - [ ] **Don't Panic**: Explain that this is a "Local Green" development baseline.
 - [ ] **Switch to Static**: Immediately minimize the browser and show the prepared screenshots.
 - [ ] **Explain Forensic Audit**: Mention that the failure is being logged in the forensic audit trail for analysis.
+
+## Nuclear Reset (Emergency Only)
+- [ ] **Action**: Run `DEMO_DB_RESET_CONFIRM=RESET_SYNTHETIC_DEMO_DB npm run db:reset:demo:safe -- --confirm-demo-reset`.
+- [ ] **WARNING**: This script is DESTRUCTIVE. It will wipe the current database and re-seed from scratch. NEVER run this against a production or staging database. It is guarded to only run against local/test databases.
 
 ## Forbidden Phrases
 - "This is production-ready."

@@ -2,39 +2,47 @@ import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import { validateDemoEnvironment } from './demo-safety-guard';
 
 async function main() {
+  // 1. Safety Guard
+  validateDemoEnvironment();
+
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const adapter = new PrismaPg(pool);
   const prisma = new PrismaClient({ adapter });
   
   try {
     const patients = await prisma.patient.findMany();
-    console.log(`Found ${patients.length} patients.`);
-    patients.forEach((p) => {
-      console.log(`- [${p.patientNumber}] ${p.firstName} ${p.lastName} (Status: ${p.status})`);
-    });
+    const totalCount = patients.length;
     
-    // Check for any ambiguous names or data
-    const realDataKeywords = ['John Doe', 'Jane Smith', 'Test Patient']; // Common synthetic names, but I should look for real-looking names
-    const suspicious = patients.filter(p => 
-      !p.firstName.includes('[DEMO]') && 
-      !p.firstName.includes('[SYNTHETIC]') &&
-      !p.lastName.includes('[DEMO]') &&
-      !p.lastName.includes('[SYNTHETIC]')
-    );
+    // Check for demo/synthetic prefixes
+    const demoCount = patients.filter(p => 
+      p.firstName.includes('[DEMO]') || 
+      p.firstName.includes('[SYNTHETIC]')
+    ).length;
+
+    const suspiciousCount = totalCount - demoCount;
     
-    if (suspicious.length > 0) {
-      console.log('\nWARNING: Suspicious patient data found (missing demo/synthetic prefixes):');
-      suspicious.forEach(p => console.log(`  !! ${p.firstName} ${p.lastName}`));
+    console.log('--- Patient Data Safety Audit ---');
+    console.log(`Total Patients: ${totalCount}`);
+    console.log(`Protected (Demo/Synthetic): ${demoCount}`);
+    console.log(`Suspicious (Missing Prefix): ${suspiciousCount}`);
+    
+    if (suspiciousCount > 0) {
+      console.log('\nWARNING: Suspicious records found that may not be synthetic.');
+      console.log('Please run scripts/fix-demo-data.ts to apply demo prefixes before demonstrating.');
+      process.exit(1);
     } else {
-      console.log('\nCONFIRMED: All patient names contain [DEMO] or [SYNTHETIC] prefixes.');
+      console.log('\nCONFIRMED: All patient records are correctly prefixed for demonstration.');
     }
     
   } catch (error) {
-    console.error('Error checking patients:', error);
+    console.error('Error during data audit:', error);
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
+    await pool.end();
   }
 }
 

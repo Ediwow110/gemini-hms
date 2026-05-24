@@ -19,7 +19,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
-    "db:reset:demo": "npx tsx scripts/reset-demo-db.ts"
+    "db:check:demo": "npx tsx scripts/check-demo-data.ts",
+    "db:fix:demo": "npx tsx scripts/fix-demo-data.ts",
+    "db:reset:demo:safe": "npx tsx scripts/reset-demo-db.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
