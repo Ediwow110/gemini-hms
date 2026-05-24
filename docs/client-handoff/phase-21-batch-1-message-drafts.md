@@ -28,6 +28,18 @@ We’ve just reached our **'Local Green'** development baseline for Gemini-HMS. 
 
 ---
 
+## B1-03: Victoria Healthcare
+- **Personalization Source**: victoriavn.com (Integrated specialized services in VN)
+- **Draft Subject**: Modernizing integrated specialized clinical workflows for Victoria Healthcare
+- **Draft Body**:
+"Hello, I’ve been researching Victoria Healthcare’s commitment to integrated specialized services across your clinic network in Vietnam.
+
+We have officially locked our **'Local Green'** verified baseline for Gemini-HMS. It is a security-hardened clinical system designed for multi-branch clinics requiring rigorous audit trails and secure clinical-to-lab integration. We are currently performing 15-minute technical walkthroughs using **strictly synthetic demo data** to demonstrate our hardened security guards. Would your medical admin team be interested in a brief discovery call?"
+
+- **Close**: "Please let us know if you prefer not to be contacted. Best regards."
+
+---
+
 ## B1-04: Kim Dental
 - **Personalization Source**: nhakhoakim.com (Rapid expansion in VN)
 - **Draft Subject**: Scalable multi-branch workflow verification for Kim Dental
