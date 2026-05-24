@@ -39,6 +39,13 @@ Our system is currently in a verified local demo state. We would like to offer a
 
 ---
 
+## Personalization Safety Rules
+- **Truthfulness**: Replace every `[placeholder]` with accurate, verified public information.
+- **Verification**: Do not say "I’ve been following..." unless you have actually researched the prospect's recent growth or news.
+- **Evidence**: Do not say "I’ve attached..." unless the relevant document (e.g., `technical-architecture.md`) is actually attached to the message.
+- **Boundaries**: Never imply a prior relationship, audit success, deployment status, or certification that does not exist.
+- **Channels**: Prefer official contact forms or role-based inboxes (info@, admin@) to minimize intrusion.
+
 ## Strict Messaging Boundaries
 - **DO NOT** say: "We are HIPAA certified." (Say: "Designed for HIPAA compliance.")
 - **DO NOT** say: "It's live on the cloud." (Say: "Local verified baseline ready for client-funded staging.")
