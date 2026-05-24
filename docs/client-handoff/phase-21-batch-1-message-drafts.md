@@ -23,6 +23,7 @@ I’m reaching out because we’ve just finalized our **'Local Green'** baseline
 "Hello, I’ve been following Belo Medical Group’s continued leadership in regional dermatology and facility expansion. 
 
 We’ve just reached our **'Local Green'** development baseline for Gemini-HMS. Given your scale, we thought you might be interested in a system architected for high-volume vitals/triage and branch-level coordination. Our current demos use **strictly synthetic data** to maintain total privacy. I’ve attached our technical architecture summary if your team would like a deep dive into our CSRF and audit protection strategies."
+- **Attachment**: technical-architecture.md
 
 - **Close**: "Please let me know if you'd like to opt out of future updates. Best regards."
 
@@ -71,6 +72,7 @@ I am pleased to confirm we’ve finalized the **'Local Green'** baseline for Gem
 "Hello, I’ve been following Asian Eye Institute’s commitment to advanced ophthalmology and technical excellence in clinical systems.
 
 We’ve just reached our **'Local Green'** verified baseline for Gemini-HMS. It’s a modular backend architected for secure clinical-to-order-to-billing sync. We are performing technical walkthroughs using **strictly synthetic demo data**—focusing on our CSRF guards and forensic audit trail. I’ve attached a summary of our architecture for your IT lead."
+- **Attachment**: technical-architecture.md
 
 - **Close**: "Best regards. (Opt-out available upon request)."
 
