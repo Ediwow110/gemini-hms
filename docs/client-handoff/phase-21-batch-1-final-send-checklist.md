@@ -4,7 +4,9 @@
 
 ## 1. Research & Contact Verification
 - [ ] **Public Origin**: Verified the organization name and public URL are from an official source.
+- [ ] **Real Contact Check**: Completed `phase-21-real-contact-verification.md` for all prospects in this batch.
 - [ ] **Official Inbox**: Using an official info@, admin@, or web contact form only.
+- [ ] **No Placeholder Data**: Confirmed no demo, test, or placeholder addresses are in the send list.
 - [ ] **No Private Data**: Confirmed NO personal email addresses or cell numbers are used.
 - [ ] **Zero PHI**: Verified that no patient information is included in the message or research notes.
 
