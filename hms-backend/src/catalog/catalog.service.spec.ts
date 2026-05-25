@@ -78,13 +78,17 @@ describe('CatalogService', () => {
 
   describe('findAllCategories', () => {
     it('should list categories for tenant', async () => {
-      prisma.serviceCategory.findMany.mockResolvedValue([{ id: 'cat1', name: 'Lab' }]);
+      prisma.serviceCategory.findMany.mockResolvedValue([
+        { id: 'cat1', name: 'Lab' },
+      ]);
 
       const result = await service.findAllCategories(mockTenantId, {});
 
-      expect(prisma.serviceCategory.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ tenantId: mockTenantId })
-      }));
+      expect(prisma.serviceCategory.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ tenantId: mockTenantId }),
+        }),
+      );
       expect(result).toHaveLength(1);
     });
   });
@@ -96,12 +100,19 @@ describe('CatalogService', () => {
       prisma.serviceCategory.findFirst.mockResolvedValue({ id, name: 'Old' });
       prisma.serviceCategory.update.mockResolvedValue({ id, ...dto });
 
-      const result = await service.updateCategory(mockTenantId, mockUserId, id, dto);
+      const result = await service.updateCategory(
+        mockTenantId,
+        mockUserId,
+        id,
+        dto,
+      );
 
       expect(prisma.serviceCategory.update).toHaveBeenCalled();
-      expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({
-        eventKey: 'CATALOG_CATEGORY_UPDATED'
-      }));
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'CATALOG_CATEGORY_UPDATED',
+        }),
+      );
       expect(result.name).toBe('New Name');
     });
   });
@@ -139,15 +150,26 @@ describe('CatalogService', () => {
     it('should update an item', async () => {
       const id = 'item1';
       const dto = { name: 'New Item Name' };
-      prisma.serviceItem.findFirst.mockResolvedValue({ id, name: 'Old', code: 'OLD' });
+      prisma.serviceItem.findFirst.mockResolvedValue({
+        id,
+        name: 'Old',
+        code: 'OLD',
+      });
       prisma.serviceItem.update.mockResolvedValue({ id, ...dto });
 
-      const result = await service.updateItem(mockTenantId, mockUserId, id, dto);
+      const result = await service.updateItem(
+        mockTenantId,
+        mockUserId,
+        id,
+        dto,
+      );
 
       expect(prisma.serviceItem.update).toHaveBeenCalled();
-      expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({
-        eventKey: 'CATALOG_ITEM_UPDATED'
-      }));
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'CATALOG_ITEM_UPDATED',
+        }),
+      );
       expect(result.name).toBe('New Item Name');
     });
   });
@@ -191,12 +213,14 @@ describe('CatalogService', () => {
 
       await service.findAllItems(mockTenantId, query);
 
-      expect(prisma.serviceItem.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({
-          tenantId: mockTenantId,
-          OR: expect.any(Array)
-        })
-      }));
+      expect(prisma.serviceItem.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: mockTenantId,
+            OR: expect.any(Array),
+          }),
+        }),
+      );
     });
 
     it('should resolve branch price if branchId provided', async () => {

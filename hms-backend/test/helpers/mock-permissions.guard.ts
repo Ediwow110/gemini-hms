@@ -5,7 +5,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PERMISSIONS_KEY, PermissionMetadata, PermissionMode } from '../../src/auth/decorators/permissions.decorator';
+import {
+  PERMISSIONS_KEY,
+  PermissionMetadata,
+  PermissionMode,
+} from '../../src/auth/decorators/permissions.decorator';
 
 @Injectable()
 export class MockPermissionsGuard implements CanActivate {
@@ -17,7 +21,11 @@ export class MockPermissionsGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!metadata || !metadata.permissions || metadata.permissions.length === 0) {
+    if (
+      !metadata ||
+      !metadata.permissions ||
+      metadata.permissions.length === 0
+    ) {
       return true;
     }
 
@@ -33,9 +41,13 @@ export class MockPermissionsGuard implements CanActivate {
 
     let hasPermission = false;
     if (mode === PermissionMode.ALL) {
-      hasPermission = permissions.every((perm) => userPermissions.includes(perm));
+      hasPermission = permissions.every((perm) =>
+        userPermissions.includes(perm),
+      );
     } else {
-      hasPermission = permissions.some((perm) => userPermissions.includes(perm));
+      hasPermission = permissions.some((perm) =>
+        userPermissions.includes(perm),
+      );
     }
 
     if (!hasPermission) {

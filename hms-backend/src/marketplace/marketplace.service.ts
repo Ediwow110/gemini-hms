@@ -328,6 +328,7 @@ export class MarketplaceService {
           quote: {
             include: { rfq: true },
           },
+          shipments: true,
         },
         orderBy: { createdAt: 'desc' },
       }),

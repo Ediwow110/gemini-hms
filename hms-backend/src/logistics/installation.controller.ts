@@ -2,34 +2,33 @@ import {
   Controller,
   Get,
   Patch,
-  Body,
   Param,
+  Body,
   UseGuards,
+  Req,
   NotFoundException,
 } from '@nestjs/common';
 import { InstallationService } from './installation.service';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { GetUser } from '../auth/decorators/get-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { UpdateInstallationJobStatusDto } from './dto/logistics.dto';
 
-@UseGuards(RolesGuard)
-@Controller('api/v1/logistics/installations')
+@Controller('logistics/installations')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class InstallationController {
   constructor(private readonly installationService: InstallationService) {}
 
   @Get()
-  @Roles('Nurse', 'Super Admin')
-  async findAll(@GetUser('tenantId') tenantId: string) {
-    return this.installationService.findAll(tenantId);
+  @RequirePermissions('field_service.job.view')
+  async findAll(@Req() req: any) {
+    return this.installationService.findAll(req.user.tenantId);
   }
 
   @Get(':id')
-  @Roles('Nurse', 'Super Admin')
-  async findOne(
-    @GetUser('tenantId') tenantId: string,
-    @Param('id') id: string,
-  ) {
-    const job = await this.installationService.findOne(tenantId, id);
+  @RequirePermissions('field_service.job.view')
+  async findOne(@Req() req: any, @Param('id') id: string) {
+    const job = await this.installationService.findOne(req.user.tenantId, id);
     if (!job) {
       throw new NotFoundException('Installation job not found');
     }
@@ -37,19 +36,17 @@ export class InstallationController {
   }
 
   @Patch(':id/status')
-  @Roles('Nurse', 'Super Admin')
+  @RequirePermissions('field_service.job.update')
   async updateStatus(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
+    @Req() req: any,
     @Param('id') id: string,
-    @Body() dto: { status: any; note?: string },
+    @Body() dto: UpdateInstallationJobStatusDto,
   ) {
     return this.installationService.updateStatus(
-      tenantId,
-      userId,
+      req.user.tenantId,
+      req.user.userId,
       id,
-      dto.status,
-      dto.note,
+      dto,
     );
   }
 }

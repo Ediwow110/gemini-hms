@@ -30,7 +30,7 @@ import { PatientPortalModule } from './patient-portal/patient-portal.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { InsuranceModule } from './insurance/insurance.module';
 import { ProcurementModule } from './procurement/procurement.module';
-import { InstallationModule } from './logistics/installation.module';
+import { LogisticsModule } from './logistics/logistics.module';
 import { ReferralPartnersModule } from './referral-partners/referral-partners.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SlaAlertsModule } from './sla-alerts/sla-alerts.module';
@@ -78,7 +78,7 @@ import { AuditContextMiddleware } from './audit/audit-context.middleware';
     LedgerModule,
     InsuranceModule,
     ProcurementModule,
-    InstallationModule,
+    LogisticsModule,
     ReferralPartnersModule,
     AnalyticsModule,
     SlaAlertsModule,
