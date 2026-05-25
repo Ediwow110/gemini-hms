@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, AlertTriangle, FileText, CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { Package, CheckCircle2, Loader2 } from 'lucide-react';
 import { apiClient } from '../../../../lib/api';
 
 interface Listing {
