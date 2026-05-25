@@ -40,7 +40,10 @@ describe('BillingController', () => {
 
     expect(
       Reflect.getMetadata(PERMISSIONS_KEY, descriptor?.value as object),
-    ).toEqual(['billing.payment.create']);
+    ).toEqual({
+      mode: 'any',
+      permissions: ['billing.payment.create'],
+    });
     expect(
       Reflect.getMetadata(
         REQUIRE_BRANCH_CONTEXT_KEY,
