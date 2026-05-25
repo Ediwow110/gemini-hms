@@ -354,6 +354,21 @@ async function main() {
     { email: 'marketplace.admin@hospital.com', role: 'Marketplace Admin' },
   ];
 
+  // 6. Create a Demo Supplier
+  console.log('Seeding Demo Supplier...');
+  const demoSupplier = await prisma.supplier.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000100' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000100',
+      tenantId: tenant.id,
+      name: 'Global Medical Supplies Corp',
+      contactName: 'John Supplier',
+      contactEmail: 'supplier@hospital.com',
+      status: 'ACTIVE',
+    },
+  });
+
   console.log('Seeding Demo Users...');
   for (const demo of demoUsers) {
     const user = await prisma.user.upsert({
@@ -363,12 +378,16 @@ async function main() {
           email: demo.email
         }
       },
-      update: { passwordHash },
+      update: { 
+        passwordHash,
+        supplierId: demo.role === 'Supplier' ? demoSupplier.id : null,
+      },
       create: {
         tenantId: tenant.id,
         email: demo.email,
         passwordHash,
         mfaEnabled: false,
+        supplierId: demo.role === 'Supplier' ? demoSupplier.id : null,
       },
     });
 
@@ -408,7 +427,7 @@ async function main() {
     });
   }
 
-  // 6. Seed Lab Test Catalog
+  // 7. Seed Lab Test Catalog
   console.warn('WARNING: Lab test catalog entries contain demo/reference ranges only.');
   console.log('Seeding Lab Test Catalog...');
 

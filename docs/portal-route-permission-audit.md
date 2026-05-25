@@ -15,7 +15,7 @@ This document provides a comprehensive mapping of frontend portals, their routes
 | **Cashier** | `/cashier` | `CashierDashboard` | Cashier | `allowedRoles=['Cashier']` | `billing.payment.create` | `cashier@hospital.com` | Partial |
 | **Med-Tech** | `/lab` | `LabDashboard` | Med-Tech | `permission='lab.result.view'` | `lab.result.encode`, `lab.result.view` | `medtech@hospital.com` | Partial |
 | **Pharmacist** | `/pharmacy` | `PharmacyHub` | Pharmacist | `permission='inventory.stock.dispense'` | `inventory.stock.dispense` | `pharmacist@hospital.com` | Partial |
-| **Supplier** | `/supplier` | `SupplierDashboard` | Supplier | `allowedRoles=['Supplier']` | `marketplace.supplier.manage_listing` | `supplier@hospital.com` | Mock |
+| **Supplier** | `/supplier` | `SupplierDashboard` | Supplier | `allowedRoles=['Supplier']` | `marketplace.supplier.manage_listing` | `supplier@hospital.com` | Real |
 | **Procurement** | `/procurement` | `ProcurementDashboard` | Procurement Officer | `permission='procurement.request.view'` | `procurement.*` | `procurement@hospital.com` | Real |
 | **Procurement Requests** | `/procurement/purchase-requests` | `PurchaseRequestsPage` | Procurement Officer | `permission='procurement.request.view'` | `procurement.request.*` | `procurement@hospital.com` | Real |
 | **Procurement Orders** | `/procurement/purchase-orders` | `PurchaseOrdersPage` | Procurement Officer | `permission='procurement.po.view'` | `procurement.po.*` | `procurement@hospital.com` | Real |
@@ -40,7 +40,7 @@ This document provides a comprehensive mapping of frontend portals, their routes
 ## Known WIP / Mock Modules
 - **Field Service**: UI Shell exists, logic is mock.
 - **IT / Compliance**: UI Shell exists, logic is mock.
-- **Supplier Portal**: UI Shell exists, logic is mock.
+- **Advanced Fulfillment**: Logistics tracking in Supplier portal remains partially mock pending real courier integration.
 
 ## Security Considerations
 - **Tenant Isolation**: Strictly enforced at the database level using `tenantId` and at the API level via `PermissionsGuard`.

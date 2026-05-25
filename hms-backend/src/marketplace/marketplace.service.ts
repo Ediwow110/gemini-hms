@@ -5,12 +5,13 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { ListingStatus } from '@prisma/client';
+import { ListingStatus, QuoteStatus } from '@prisma/client';
 import {
   CreateListingDto,
   UpdateListingDto,
   ModerateListingDto,
   GetListingsQueryDto,
+  CreateQuoteDto,
 } from './dto/marketplace.dto';
 
 @Injectable()
@@ -53,12 +54,13 @@ export class MarketplaceService {
   }
 
   async findAllListings(tenantId: string, query: GetListingsQueryDto) {
-    const { status, categoryId, search } = query;
+    const { status, categoryId, search, supplierId } = query;
 
     return this.prisma.marketplaceListing.findMany({
       where: {
         tenantId,
         ...(status ? { status } : {}),
+        ...(supplierId ? { supplierId } : {}),
         serviceItem: {
           ...(categoryId ? { categoryId } : {}),
           ...(search
@@ -148,8 +150,13 @@ export class MarketplaceService {
     userId: string,
     id: string,
     dto: UpdateListingDto,
+    supplierId?: string,
   ) {
     const existing = await this.findOneListing(tenantId, id);
+
+    if (supplierId && existing.supplierId !== supplierId) {
+      throw new ForbiddenException('You do not own this listing');
+    }
 
     const updated = await this.prisma.marketplaceListing.update({
       where: { id },
@@ -169,5 +176,170 @@ export class MarketplaceService {
     });
 
     return updated;
+  }
+
+  async deleteListing(
+    tenantId: string,
+    userId: string,
+    id: string,
+    supplierId?: string,
+  ) {
+    const existing = await this.findOneListing(tenantId, id);
+
+    if (supplierId && existing.supplierId !== supplierId) {
+      throw new ForbiddenException('You do not own this listing');
+    }
+
+    await this.prisma.marketplaceListing.delete({
+      where: { id },
+    });
+
+    await this.audit.log({
+      tenantId,
+      userId,
+      eventKey: 'MARKETPLACE_LISTING_DELETED',
+      recordType: 'MarketplaceListing',
+      recordId: id,
+      oldValues: existing,
+    });
+
+    return { success: true };
+  }
+
+  // --- Supplier Specific Methods ---
+
+  async findAllSupplierListings(tenantId: string, supplierId: string) {
+    return this.prisma.marketplaceListing.findMany({
+      where: {
+        tenantId,
+        supplierId,
+      },
+      include: {
+        serviceItem: {
+          include: {
+            category: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async findAvailableCatalogItems(tenantId: string) {
+    return this.prisma.serviceItem.findMany({
+      where: { tenantId, isActive: true },
+      include: { category: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  // --- RFQ and Quote Methods ---
+
+  async findAllRFQs(tenantId: string) {
+    return this.prisma.rFQ.findMany({
+      where: { tenantId },
+      include: {
+        branch: true,
+        _count: {
+          select: { quotes: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOneRFQ(tenantId: string, id: string) {
+    const rfq = await this.prisma.rFQ.findFirst({
+      where: { id, tenantId },
+      include: {
+        branch: true,
+        quotes: {
+          include: { supplier: true },
+        },
+      },
+    });
+
+    if (!rfq) {
+      throw new NotFoundException('RFQ not found');
+    }
+
+    return rfq;
+  }
+
+  async findSupplierQuotes(tenantId: string, supplierId: string) {
+    return this.prisma.quote.findMany({
+      where: { tenantId, supplierId },
+      include: {
+        rfq: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createQuote(
+    tenantId: string,
+    userId: string,
+    supplierId: string,
+    dto: CreateQuoteDto,
+  ) {
+    // Verify RFQ exists
+    const rfq = await this.prisma.rFQ.findFirst({
+      where: { id: dto.rfqId, tenantId },
+    });
+    if (!rfq) {
+      throw new NotFoundException('RFQ not found');
+    }
+
+    const quote = await this.prisma.quote.create({
+      data: {
+        tenantId,
+        rfqId: dto.rfqId,
+        supplierId,
+        totalAmount: dto.totalAmount,
+        status: QuoteStatus.SENT,
+      },
+    });
+
+    await this.audit.log({
+      tenantId,
+      userId,
+      eventKey: 'QUOTE_SUBMITTED',
+      recordType: 'Quote',
+      recordId: quote.id,
+      newValues: quote,
+    });
+
+    return quote;
+  }
+
+  // --- Order Visibility ---
+
+  async findSupplierOrders(tenantId: string, supplierId: string) {
+    // A supplier can see SalesOrders linked to their Quotes
+    // and PurchaseOrders linked directly to them.
+
+    const [salesOrders, purchaseOrders] = await Promise.all([
+      this.prisma.salesOrder.findMany({
+        where: {
+          tenantId,
+          quote: { supplierId },
+        },
+        include: {
+          quote: {
+            include: { rfq: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.purchaseOrder.findMany({
+        where: {
+          tenantId,
+          supplierId,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return { salesOrders, purchaseOrders };
   }
 }
