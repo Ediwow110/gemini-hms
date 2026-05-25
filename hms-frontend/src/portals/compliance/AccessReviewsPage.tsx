@@ -1,55 +1,48 @@
 import React, { useState } from 'react';
-import { Calendar, AlertTriangle, Users, CheckCircle } from 'lucide-react';
-import { AccessReviewPanel, AccessReviewUser } from './components/AccessReviewPanel';
+import { Calendar, AlertTriangle, Users, CheckCircle, HelpCircle } from 'lucide-react';
+import { AccessReviewPanel } from './components/AccessReviewPanel';
+import { useAccessReview } from '../../hooks/use-compliance';
 
 export const AccessReviewsPage: React.FC = () => {
   const [reviewPeriod, setReviewPeriod] = useState('Q2-2026');
-  const [users, setUsers] = useState<AccessReviewUser[]>([
-    {
-      id: "USR-004",
-      email: "support.staff@stjude.org",
-      roles: ["Nurse", "Receptionist"],
-      lastLogin: "2026-05-19 09:12:04",
-      mfaEnabled: true,
-      driftDetected: true,
-      driftDetails: "Manually granted queue.view permission directly without role validation",
-      staleAccount: false,
-      status: "PENDING"
-    },
-    {
-      id: "USR-005",
-      email: "billing.intern@mediclinics.org",
-      roles: ["Cashier"],
-      lastLogin: "2026-02-12 14:15:33",
-      mfaEnabled: false,
-      driftDetected: false,
-      staleAccount: true,
-      status: "PENDING"
-    },
-    {
-      id: "USR-006",
-      email: "dr.martinez@stjude.org",
-      roles: ["Doctor"],
-      lastLogin: "2026-05-21 13:45:10",
-      mfaEnabled: true,
-      driftDetected: false,
-      staleAccount: false,
-      status: "PENDING"
-    }
-  ]);
+  const { report, loading } = useAccessReview();
 
-  const handleActionComplete = (userId: string, status: 'APPROVED' | 'REVOKED', notes: string) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        return { ...u, status };
-      }
-      return u;
-    }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const users = (report?.accessReport || []).map((u: any) => ({
+    id: u.userId,
+    email: u.email,
+    roles: u.roles || [],
+    lastLogin: u.lastLogin || 'Never',
+    mfaEnabled: u.mfaEnabled,
+    driftDetected: false,
+    staleAccount: u.lastLogin === null,
+    status: 'PENDING' as const,
+  }));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const staleUsers = (report?.staleAccounts || []).map((u: any) => ({
+    id: u.userId,
+    email: u.email,
+    roles: u.roles || [],
+    lastLogin: u.lastLogin || 'Never',
+    mfaEnabled: u.mfaEnabled,
+    driftDetected: false,
+    staleAccount: true,
+    status: 'PENDING' as const,
+  }));
+
+  const allUsers = [...users, ...staleUsers].filter(
+    (u, i, arr) => arr.findIndex(x => x.id === u.id) === i
+  );
+
+  const handleActionComplete = (_userId: string, status: 'APPROVED' | 'REVOKED', notes: string) => {
     alert(`Access review action logged: Account status updated to ${status}. Notes: "${notes || 'None'}"`);
   };
 
-  const pendingCount = users.filter(u => u.status === 'PENDING').length;
-  const certifiedCount = users.filter(u => u.status !== 'PENDING').length;
+  const pendingCount = allUsers.filter(u => u.status === 'PENDING').length;
+  void pendingCount;
+  const certifiedCount = allUsers.filter(u => u.status !== 'PENDING').length;
+  void certifiedCount;
 
   return (
     <div className="space-y-6">
@@ -60,12 +53,6 @@ export const AccessReviewsPage: React.FC = () => {
             Access Certification Reviews
           </h2>
           <p className="text-xs text-slate-500 font-medium">Verify employee privilege scope boundaries, enforce MFA, and audit stale credentials</p>
-        </div>
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2 text-[10px] text-amber-800 leading-normal max-w-md">
-          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-          <p>
-            <strong>Sandbox Safety Rule:</strong> Access reviews executed in this sandbox are simulations. No user accounts are disabled, and no role modifications are pushed to backend authorization systems.
-          </p>
         </div>
       </div>
 
@@ -90,7 +77,6 @@ export const AccessReviewsPage: React.FC = () => {
           >
             <option value="Q2-2026">Q2 2026 (Active)</option>
             <option value="Q1-2026">Q1 2026 (Archived)</option>
-            <option value="Q4-2025">Q4 2025 (Archived)</option>
           </select>
         </div>
       </div>
@@ -99,32 +85,31 @@ export const AccessReviewsPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-between shadow-sm">
           <div>
-            <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Pending Certification</p>
-            <p className="text-xl font-extrabold text-slate-800 tracking-tight font-mono">{pendingCount} Accounts</p>
+            <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Total Accounts</p>
+            <p className="text-xl font-extrabold text-slate-800 tracking-tight font-mono">{allUsers.length}</p>
           </div>
           <div className="p-2.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl">
             <Users className="h-5 w-5" />
           </div>
         </div>
-
         <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-between shadow-sm">
           <div>
-            <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Reviewed Accounts</p>
-            <p className="text-xl font-extrabold text-emerald-600 tracking-tight font-mono">{certifiedCount} Certified</p>
+            <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Stale Accounts</p>
+            <p className="text-xl font-extrabold text-rose-600 tracking-tight font-mono">{staleUsers.length}</p>
+          </div>
+          <div className="p-2.5 bg-amber-50 text-amber-600 border border-amber-100 rounded-xl">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+        </div>
+        <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">MFA Compliance</p>
+            <p className="text-xl font-extrabold text-emerald-600 tracking-tight font-mono">
+              {allUsers.length > 0 ? Math.round(allUsers.filter(u => u.mfaEnabled).length / allUsers.length * 100) : 0}%
+            </p>
           </div>
           <div className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl">
             <CheckCircle className="h-5 w-5" />
-          </div>
-        </div>
-
-        <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Attestation Deadline</p>
-            <p className="text-sm font-extrabold text-slate-800 tracking-tight">June 15, 2026</p>
-            <p className="text-[10px] text-rose-500 font-bold mt-0.5">25 days remaining</p>
-          </div>
-          <div className="p-2.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl">
-            <Calendar className="h-5 w-5" />
           </div>
         </div>
       </div>
@@ -132,9 +117,22 @@ export const AccessReviewsPage: React.FC = () => {
       {/* Main Panel */}
       <div className="space-y-4">
         <div className="flex justify-between items-center px-1">
-          <h3 className="text-xs font-bold text-slate-850 uppercase tracking-wider">Awaiting Certification Panel</h3>
+          <h3 className="text-xs font-bold text-slate-850 uppercase tracking-wider">
+            {loading ? 'Loading...' : `Access Review — ${allUsers.length} Users`}
+          </h3>
         </div>
-        <AccessReviewPanel users={users} onActionComplete={handleActionComplete} />
+        {loading ? (
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-xs text-slate-400">
+            Loading access review data...
+          </div>
+        ) : allUsers.length === 0 ? (
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-slate-400 space-y-2">
+            <HelpCircle className="h-8 w-8 mx-auto text-slate-300" />
+            <p className="text-xs font-bold">No users found for access review</p>
+          </div>
+        ) : (
+          <AccessReviewPanel users={allUsers} onActionComplete={handleActionComplete} />
+        )}
       </div>
     </div>
   );

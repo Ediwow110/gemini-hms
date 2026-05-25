@@ -38,6 +38,7 @@ import { ComplianceModule } from './compliance/compliance.module';
 import { PharmacyModule } from './pharmacy/pharmacy.module';
 import { ReplicationModule } from './replication/replication.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
+import { ItSupportModule } from './it-support/it-support.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MfaGuard } from './auth/guards/mfa.guard';
 import { TenantGuard } from './auth/guards/tenant.guard';
@@ -86,6 +87,7 @@ import { AuditContextMiddleware } from './audit/audit-context.middleware';
     PharmacyModule,
     ReplicationModule,
     MarketplaceModule,
+    ItSupportModule,
   ],
   controllers: [AppController],
   providers: [

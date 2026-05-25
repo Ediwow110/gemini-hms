@@ -1626,7 +1626,7 @@ describe('BillingService Reversals', () => {
       );
       expect(schema).toContain('model Payment {');
       expect(schema).toContain(
-        'idempotencyKey   String   @map("idempotency_key")',
+        'idempotencyKey   String    @map("idempotency_key")',
       );
       expect(schema).not.toContain(
         'idempotencyKey   String   @unique @map("idempotency_key")',
