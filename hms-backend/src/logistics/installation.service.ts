@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { InstallStatus, AssetInstallStatus } from '@prisma/client';
+import { UpdateInstallationJobStatusDto } from './dto/logistics.dto';
 
 @Injectable()
 export class InstallationService {
@@ -12,15 +13,16 @@ export class InstallationService {
 
   async findAll(tenantId: string) {
     return this.prisma.installationJob.findMany({
-      where: { asset: { tenantId } },
-      include: { asset: true },
+      where: { tenantId },
+      include: { asset: true, assignedUser: true },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
   async findOne(tenantId: string, id: string) {
     return this.prisma.installationJob.findFirst({
-      where: { id, asset: { tenantId } },
-      include: { asset: true },
+      where: { id, tenantId },
+      include: { asset: true, assignedUser: true },
     });
   }
 
@@ -28,8 +30,7 @@ export class InstallationService {
     tenantId: string,
     userId: string,
     id: string,
-    status: InstallStatus,
-    note?: string,
+    dto: UpdateInstallationJobStatusDto,
   ) {
     const job = await this.findOne(tenantId, id);
     if (!job) {
@@ -41,14 +42,14 @@ export class InstallationService {
     let warrantyStart: Date | undefined;
     let warrantyEnd: Date | undefined;
 
-    if (status === InstallStatus.IN_PROGRESS) {
+    if (dto.status === InstallStatus.IN_PROGRESS) {
       assetStatus = AssetInstallStatus.ASSEMBLING;
-    } else if (status === InstallStatus.COMPLETED) {
+    } else if (dto.status === InstallStatus.COMPLETED) {
       assetStatus = AssetInstallStatus.HANDED_OVER;
       handoverSignedAt = new Date();
       warrantyStart = handoverSignedAt;
       warrantyEnd = new Date(
-        handoverSignedAt.getTime() + 365 * 24 * 60 * 60 * 1000,
+        handoverSignedAt.getTime() + 365 * 24 * 60 * 60 * 1000, // 1 year warranty by default
       );
     }
 
@@ -56,8 +57,9 @@ export class InstallationService {
       const updated = await tx.installationJob.update({
         where: { id },
         data: {
-          status,
+          status: dto.status,
           handoverSignedAt,
+          notes: dto.note,
         },
       });
 
@@ -79,10 +81,9 @@ export class InstallationService {
       eventKey: 'INSTALLATION_STATUS_UPDATED',
       recordType: 'InstallationJob',
       recordId: id,
-      newValues: { status, note, assetStatus },
+      newValues: { status: dto.status, note: dto.note, assetStatus },
     });
 
-    // Match the response expected by the test
     return {
       ...updatedJob,
       assetInstallStatus: assetStatus,

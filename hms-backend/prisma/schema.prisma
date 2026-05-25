@@ -73,6 +73,9 @@ model Tenant {
   rfqs               RFQ[]
   quotes             Quote[]
   salesOrders        SalesOrder[]
+  shipments          Shipment[]
+  deliveryJobs       DeliveryJob[]
+  installationJobs   InstallationJob[]
   assets             Asset[]
 
   @@map("tenants")
@@ -147,6 +150,8 @@ model User {
   sessions           Session[]
   mfaRecoveryCodes   UserMfaRecoveryCode[]
   employees          Employee[]
+  deliveryJobs       DeliveryJob[]
+  installationJobs   InstallationJob[]
 
   @@unique([tenantId, email])
   @@map("users")
@@ -1734,6 +1739,8 @@ enum QuoteStatus {
 enum OrderStatus {
   CONFIRMED
   PROCESSING
+  SHIPPED
+  DELIVERED
   COMPLETED
   CANCELLED
 }
@@ -1751,6 +1758,22 @@ enum InstallStatus {
   ASSIGNED
   IN_PROGRESS
   COMMISSIONED
+  COMPLETED
+  FAILED
+}
+
+enum ShipmentStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+enum DeliveryJobStatus {
+  ASSIGNED
+  IN_PROGRESS
   COMPLETED
   FAILED
 }
@@ -1804,10 +1827,52 @@ model SalesOrder {
   quote         Quote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   assets        Asset[]
+  shipments     Shipment[]
 
   @@index([quoteId])
   @@index([tenantId])
   @@map("sales_orders")
+}
+
+model Shipment {
+  id              String         @id @default(uuid()) @db.Uuid
+  tenantId        String         @map("tenant_id") @db.Uuid
+  salesOrderId    String         @map("sales_order_id") @db.Uuid
+  trackingNumber  String?        @unique @map("tracking_number")
+  status          ShipmentStatus @default(PENDING)
+  carrier         String?
+  shippedAt       DateTime?      @map("shipped_at")
+  deliveredAt     DateTime?      @map("delivered_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  salesOrder      SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  deliveryJobs    DeliveryJob[]
+
+  @@index([tenantId])
+  @@index([salesOrderId])
+  @@map("shipments")
+}
+
+model DeliveryJob {
+  id                String         @id @default(uuid()) @db.Uuid
+  tenantId          String         @map("tenant_id") @db.Uuid
+  shipmentId        String         @map("shipment_id") @db.Uuid
+  assignedUserId    String         @map("assigned_user_id") @db.Uuid
+  status            DeliveryJobStatus @default(ASSIGNED)
+  startedAt         DateTime?      @map("started_at")
+  completedAt       DateTime?      @map("completed_at")
+  notes             String?
+
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment          Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  assignedUser      User           @relation(fields: [assignedUserId], references: [id])
+
+  @@index([tenantId])
+  @@index([shipmentId])
+  @@index([assignedUserId])
+  @@map("delivery_jobs")
 }
 
 model Asset {
@@ -1831,15 +1896,23 @@ model Asset {
 
 model InstallationJob {
   id                String         @id @default(uuid()) @db.Uuid
+  tenantId          String         @map("tenant_id") @db.Uuid
   assetId           String         @map("asset_id") @db.Uuid
   assignedUserId    String         @map("assigned_user_id") @db.Uuid
   status            InstallStatus  @default(ASSIGNED)
+  notes             String?        @db.Text
   commissionedAt    DateTime?      @map("commissioned_at")
   handoverSignedAt  DateTime?      @map("handover_signed_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   asset             Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assignedUser      User           @relation(fields: [assignedUserId], references: [id])
 
   @@index([assetId])
+  @@index([tenantId])
+  @@index([assignedUserId])
   @@map("installation_jobs")
 }
 
