@@ -14,7 +14,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { UpdateInstallationJobStatusDto } from './dto/logistics.dto';
 
-@Controller('logistics/installations')
+@Controller('api/v1/logistics/installations')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class InstallationController {
   constructor(private readonly installationService: InstallationService) {}

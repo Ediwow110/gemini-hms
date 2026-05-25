@@ -20,7 +20,7 @@ import {
   UpdateDeliveryJobStatusDto,
 } from './dto/logistics.dto';
 
-@Controller('logistics')
+@Controller('api/v1/logistics')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class LogisticsController {
   constructor(private readonly logisticsService: LogisticsService) {}
