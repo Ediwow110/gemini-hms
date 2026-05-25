@@ -155,7 +155,14 @@ export class AuthController {
 
   @Get('me')
   async getMe(@GetUser() user: RequestUser) {
-    return this.authService.getMe(user.userId!, user.tenantId);
+    const res = await this.authService.getMe(user.userId!, user.tenantId);
+    if (res && user.branchId !== undefined) {
+      return {
+        ...res,
+        branchId: user.branchId,
+      };
+    }
+    return res;
   }
 
   @Get('branches')
