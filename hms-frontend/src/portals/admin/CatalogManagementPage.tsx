@@ -56,10 +56,6 @@ export const CatalogManagementPage: React.FC = () => {
     isActive: true
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -75,6 +71,10 @@ export const CatalogManagementPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
