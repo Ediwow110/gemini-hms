@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import request from 'supertest';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -7,6 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
+import { RolesGuard } from '../src/auth/guards/roles.guard';
 import { LogisticsModule } from '../src/logistics/logistics.module';
 import { randomUUID } from 'crypto';
 
@@ -30,7 +32,10 @@ describe('Logistics & Installation E2E Gates (e2e)', () => {
         PrismaModule,
         LogisticsModule,
       ],
-      providers: [],
+      providers: [{
+        provide: APP_GUARD,
+        useClass: RolesGuard,
+      }],
     })
       .overrideGuard(JwtAuthGuard)
       .useClass(MockJwtAuthGuard)

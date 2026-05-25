@@ -12,10 +12,12 @@ import { InstallationService } from './installation.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { UpdateInstallationJobStatusDto } from './dto/logistics.dto';
 
 @Controller('api/v1/logistics/installations')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@Roles('Nurse', 'Field Technician', 'Branch Admin', 'Super Admin')
 export class InstallationController {
   constructor(private readonly installationService: InstallationService) {}
 
