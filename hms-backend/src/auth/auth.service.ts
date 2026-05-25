@@ -337,6 +337,39 @@ export class AuthService {
     return assignments.map((a) => a.branch);
   }
 
+  private getDefaultPortalPath(roles: string[]): string {
+    const portalMap: Record<string, { path: string; priority: number }> = {
+      'Super Admin': { path: '/admin', priority: 100 },
+      'Branch Admin': { path: '/', priority: 90 },
+      'Procurement Officer': { path: '/procurement', priority: 85 },
+      'HR Manager': { path: '/hr', priority: 80 },
+      'Compliance Officer': { path: '/compliance', priority: 75 },
+      'Marketplace Admin': { path: '/marketplace-admin', priority: 70 },
+      Doctor: { path: '/doctor', priority: 60 },
+      Nurse: { path: '/nurse', priority: 55 },
+      Pharmacist: { path: '/pharmacy', priority: 50 },
+      'Med-Tech': { path: '/lab', priority: 45 },
+      Cashier: { path: '/cashier', priority: 40 },
+      Receptionist: { path: '/queue', priority: 35 },
+      'IT Support': { path: '/it', priority: 30 },
+      'Field Technician': { path: '/field-service', priority: 25 },
+      'HR Staff': { path: '/hr', priority: 20 },
+      Supplier: { path: '/supplier', priority: 15 },
+      Patient: { path: '/patient', priority: 10 },
+    };
+
+    let bestMatch = { path: '/', priority: -1 };
+
+    for (const role of roles) {
+      const match = portalMap[role];
+      if (match && match.priority > bestMatch.priority) {
+        bestMatch = match;
+      }
+    }
+
+    return bestMatch.path;
+  }
+
   async getMe(userId: string, tenantId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -385,6 +418,7 @@ export class AuthService {
       tenantId: user.tenantId,
       roles,
       permissions: Array.from(permissions),
+      defaultPortalPath: this.getDefaultPortalPath(roles),
     };
   }
 
@@ -399,6 +433,7 @@ export class AuthService {
     refreshTokenPlain: string,
     branchId?: string,
   ) {
+    const defaultPortalPath = this.getDefaultPortalPath(roles);
     const payload = {
       sub: user.id,
       sid: sessionId,
@@ -417,6 +452,7 @@ export class AuthService {
         id: user.id,
         tenantId: user.tenantId,
         roles,
+        defaultPortalPath,
         ...(branchId && { branchId }),
       },
     };

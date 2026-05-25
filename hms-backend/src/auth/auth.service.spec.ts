@@ -127,6 +127,7 @@ describe('AuthService', () => {
     });
 
     it('should return MFA challenge for sensitive role', async () => {
+      process.env.DISABLE_AUTH_VERIFICATION = 'false';
       const sensitiveUser = {
         ...mockUser,
         userRoles: [
@@ -441,6 +442,7 @@ describe('AuthService', () => {
         tenantId: 'tenant-456',
         roles: ['Doctor'],
         permissions: [],
+        defaultPortalPath: '/doctor',
       });
     });
 

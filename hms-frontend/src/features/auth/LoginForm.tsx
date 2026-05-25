@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormData } from "./login-schema";
-import { Eye, EyeOff, LogIn, Loader2, Building2, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, LogIn, Loader2, UserCircle2, ChevronRight, ShieldCheck, Building2 } from "lucide-react";
 import { apiClient } from "../../lib/api";
+import { getDefaultPortalPath } from "../../app/portal-registry";
 
 interface Branch {
   id: string;
@@ -11,20 +12,44 @@ interface Branch {
   code: string;
 }
 
+const DEMO_ACCOUNTS = [
+  { label: "Super Admin", email: "admin@hospital.com", role: "Super Admin" },
+  { label: "Branch Admin", email: "branch.admin@hospital.com", role: "Branch Admin" },
+  { label: "Receptionist", email: "receptionist@hospital.com", role: "Receptionist" },
+  { label: "Cashier", email: "cashier@hospital.com", role: "Cashier" },
+  { label: "Med-Tech", email: "medtech@hospital.com", role: "Med-Tech" },
+  { label: "Doctor", email: "doctor@hospital.com", role: "Doctor" },
+  { label: "Pharmacist", email: "pharmacist@hospital.com", role: "Pharmacist" },
+  { label: "Nurse", email: "nurse@hospital.com", role: "Nurse" },
+  { label: "Patient", email: "patient@hospital.com", role: "Patient" },
+  { label: "Supplier", email: "supplier@hospital.com", role: "Supplier" },
+  { label: "Procurement", email: "procurement@hospital.com", role: "Procurement Officer" },
+  { label: "HR Staff", email: "hr@hospital.com", role: "HR Staff" },
+  { label: "HR Manager", email: "hr.manager@hospital.com", role: "HR Manager" },
+  { label: "IT Support", email: "it.support@hospital.com", role: "IT Support" },
+  { label: "Compliance", email: "compliance@hospital.com", role: "Compliance Officer" },
+  { label: "Field Tech", email: "field.tech@hospital.com", role: "Field Technician" },
+  { label: "Marketplace Admin", email: "marketplace.admin@hospital.com", role: "Marketplace Admin" },
+];
+
 export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availableBranches, setAvailableBranches] = useState<Branch[] | null>(null);
+  const [showDemoSelector, setShowDemoSelector] = useState(false);
   
   // Phase 4 states
   const [showMfaInput, setShowMfaInput] = useState(false);
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
 
+  const isDev = import.meta.env.MODE !== 'production';
+
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -51,7 +76,8 @@ export const LoginForm = () => {
 
       // Cookies are set by the server; frontend just redirects
       if (response.data.user?.branchId) {
-        window.location.assign("/");
+        const path = response.data.user?.defaultPortalPath || getDefaultPortalPath(response.data.user?.roles || []);
+        window.location.assign(path);
       } else {
         const branchesRes = await apiClient.get("/v1/auth/branches");
         setAvailableBranches(branchesRes.data);
@@ -87,7 +113,8 @@ export const LoginForm = () => {
       
       // Cookies are set by the server; frontend just redirects
       if (response.data.user?.branchId) {
-        window.location.assign("/");
+        const path = response.data.user?.defaultPortalPath || getDefaultPortalPath(response.data.user?.roles || []);
+        window.location.assign(path);
       } else {
         const branchesRes = await apiClient.get("/v1/auth/branches");
         setAvailableBranches(branchesRes.data);
@@ -104,14 +131,22 @@ export const LoginForm = () => {
   const handleSelectBranch = async (branchId: string) => {
     setIsLoading(true);
     try {
-      await apiClient.post("/v1/auth/select-branch", { branchId });
+      const response = await apiClient.post("/v1/auth/select-branch", { branchId });
       // Cookies are set by the server; frontend just redirects
-      window.location.assign("/");
+      const path = response.data.user?.defaultPortalPath || getDefaultPortalPath(response.data.user?.roles || []);
+      window.location.assign(path);
     } catch {
       setError("Failed to select branch. Please try again.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const selectDemoAccount = (account: typeof DEMO_ACCOUNTS[0]) => {
+    setValue("email", account.email);
+    setValue("password", "Admin@123");
+    setValue("tenantCode", "Central Hospital (Main Branch)");
+    setShowDemoSelector(false);
   };
 
   if (showMfaInput) {
@@ -207,6 +242,46 @@ export const LoginForm = () => {
           className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 w-full text-center"
         >
           Back to Login
+        </button>
+      </div>
+    );
+  }
+
+  if (showDemoSelector && isDev) {
+    return (
+      <div className="space-y-4 w-full animate-fade-in max-h-[500px] overflow-y-auto pr-2">
+        <div className="text-center space-y-1 mb-4">
+          <h3 className="text-lg font-bold text-slate-900">Quick Demo Access</h3>
+          <p className="text-xs text-slate-500 font-medium uppercase tracking-tight">Development Mode Only</p>
+        </div>
+        
+        <div className="grid gap-2">
+          {DEMO_ACCOUNTS.map((account) => (
+            <button
+              key={account.email}
+              onClick={() => selectDemoAccount(account)}
+              className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-slate-50 group-hover:bg-indigo-100 p-2 rounded-xl transition-colors">
+                  <UserCircle2 className="h-5 w-5 text-slate-400 group-hover:text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{account.label}</p>
+                  <p className="text-[10px] text-slate-400 font-medium">{account.email}</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-400" />
+            </button>
+          ))}
+        </div>
+
+        <button 
+          type="button"
+          onClick={() => setShowDemoSelector(false)}
+          className="text-sm font-bold text-indigo-600 hover:text-indigo-500 w-full text-center py-2"
+        >
+          Cancel
         </button>
       </div>
     );
@@ -309,23 +384,36 @@ export const LoginForm = () => {
       </div>
 
       {/* Submit Button */}
-      <button
-        type="submit"
-        disabled={isSubmitting || isLoading}
-        className="btn btn-primary w-full justify-center py-3 text-sm gap-2 animate-fade-in stagger-4"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Processing...
-          </>
-        ) : (
-          <>
-            <LogIn className="h-4 w-4" />
-            Sign in to Dashboard
-          </>
+      <div className="space-y-3">
+        <button
+          type="submit"
+          disabled={isSubmitting || isLoading}
+          className="btn btn-primary w-full justify-center py-3 text-sm gap-2 animate-fade-in stagger-4"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <LogIn className="h-4 w-4" />
+              Sign in to Dashboard
+            </>
+          )}
+        </button>
+
+        {isDev && (
+          <button
+            type="button"
+            onClick={() => setShowDemoSelector(true)}
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-400 hover:text-indigo-600 transition-all border border-dashed border-slate-200 hover:border-indigo-300 rounded-xl bg-slate-50/50 hover:bg-indigo-50/30"
+          >
+            <UserCircle2 className="h-3.5 w-3.5" />
+            Use Demo Account
+          </button>
         )}
-      </button>
+      </div>
     </form>
   );
 };

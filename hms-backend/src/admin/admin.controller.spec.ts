@@ -109,7 +109,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('activate endpoint requires admin.role.change metadata', () => {
@@ -122,7 +125,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('assign role endpoint requires admin.role.change metadata', () => {
@@ -135,7 +141,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('revoke role endpoint requires admin.role.change metadata', () => {
@@ -148,7 +157,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('grant permission endpoint requires admin.role.change metadata', () => {
@@ -161,7 +173,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('revoke permission endpoint requires admin.role.change metadata', () => {
@@ -174,7 +189,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('create user endpoint requires admin.role.change metadata', () => {
@@ -187,7 +205,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('createUser calls adminService.createUser', async () => {
@@ -217,7 +238,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('updateUser calls adminService.updateUser', async () => {
@@ -246,7 +270,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('privileged revoke request endpoint requires admin.role.change metadata', () => {
@@ -259,7 +286,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('approve privileged role request endpoint includes admin.role.change and approval.request.process metadata', () => {
@@ -272,10 +302,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual([
-      'admin.role.change',
-      'approval.request.process',
-    ]);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change', 'approval.request.process'],
+    });
   });
 
   it('reject privileged role request endpoint includes admin.role.change and approval.request.process metadata', () => {
@@ -288,10 +318,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual([
-      'admin.role.change',
-      'approval.request.process',
-    ]);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change', 'approval.request.process'],
+    });
   });
 
   it('archive role endpoint requires admin.role.change metadata', () => {
@@ -304,7 +334,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('update role endpoint requires admin.role.change metadata', () => {
@@ -317,7 +350,10 @@ describe('AdminController', () => {
       descriptor?.value as object,
     );
 
-    expect(permissions).toEqual(['admin.role.change']);
+    expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
   });
 
   it('deactivateUser calls adminService.deactivateUser', async () => {
@@ -709,7 +745,10 @@ describe('AdminController', () => {
         PERMISSIONS_KEY,
         descriptor?.value as object,
       );
-      expect(permissions).toEqual(['admin.role.change']);
+      expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
     });
 
     it('request privileged role permission revoke endpoint requires admin.role.change metadata', () => {
@@ -721,7 +760,10 @@ describe('AdminController', () => {
         PERMISSIONS_KEY,
         descriptor?.value as object,
       );
-      expect(permissions).toEqual(['admin.role.change']);
+      expect(permissions).toEqual({
+      mode: 'any',
+      permissions: ['admin.role.change'],
+    });
     });
 
     it('approve privileged role permission change endpoint includes admin.role.change and approval.request.process metadata', () => {
@@ -733,10 +775,10 @@ describe('AdminController', () => {
         PERMISSIONS_KEY,
         descriptor?.value as object,
       );
-      expect(permissions).toEqual([
-        'admin.role.change',
-        'approval.request.process',
-      ]);
+      expect(permissions).toEqual({
+        mode: 'any',
+        permissions: ['admin.role.change', 'approval.request.process'],
+      });
     });
 
     it('reject privileged role permission change endpoint includes admin.role.change and approval.request.process metadata', () => {
@@ -748,10 +790,10 @@ describe('AdminController', () => {
         PERMISSIONS_KEY,
         descriptor?.value as object,
       );
-      expect(permissions).toEqual([
-        'admin.role.change',
-        'approval.request.process',
-      ]);
+      expect(permissions).toEqual({
+        mode: 'any',
+        permissions: ['admin.role.change', 'approval.request.process'],
+      });
     });
 
     it('requestPrivilegedRolePermissionGrant calls service', async () => {

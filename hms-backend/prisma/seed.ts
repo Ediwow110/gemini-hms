@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import type { Permission, Role, LabTestDefinition, LabTestParameterDefinition } from '@prisma/client';  
+import type { Permission, Role } from '@prisma/client';  
 import * as bcrypt from 'bcrypt';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -19,7 +19,7 @@ async function main() {
 
   // 1. Create a default Tenant
   const tenant = await prisma.tenant.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000001' }, // Deterministic UUID for seeding
+    where: { id: '00000000-0000-0000-0000-000000000001' }, 
     update: {},
     create: {
       id: '00000000-0000-0000-0000-000000000001',
@@ -29,7 +29,7 @@ async function main() {
   });
   console.log('Tenant created:', tenant.name);
 
-  // 1a. Create Demo Tenants for Multi-Tenancy testing (demo/sandbox only — not for production use)
+  // 1a. Create Demo Tenants for Multi-Tenancy testing
   const tenantAlpha = await prisma.tenant.upsert({
     where: { id: '00000000-0000-0000-0000-00000000000a' },
     update: {},
@@ -52,7 +52,7 @@ async function main() {
   });
   console.log('Demo Tenant Beta created:', tenantBeta.name);
 
-  // 1b. Create a default Branch for the default Tenant
+  // 1b. Create a default Branch
   const branch = await prisma.branch.upsert({
     where: { id: '00000000-0000-0000-0000-000000000010' },
     update: {},
@@ -65,8 +65,9 @@ async function main() {
   });
   console.log('Branch created:', branch.name);
 
-  // 2. Minimum Set of Permissions (Section 9.1)
+  // 2. Comprehensive Set of Permissions
   const permissionsData = [
+    // Existing Foundation
     { name: 'patient.view', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'patient.create', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'patient.update', scope: 'tenant/branch', riskLevel: 'LOW' },
@@ -93,6 +94,7 @@ async function main() {
     { name: 'catalog.service.create', scope: 'tenant', riskLevel: 'MEDIUM' },
     { name: 'catalog.service.update', scope: 'tenant', riskLevel: 'MEDIUM' },
     { name: 'catalog.service.deactivate', scope: 'tenant', riskLevel: 'HIGH' },
+    { name: 'catalog.manage', scope: 'tenant', riskLevel: 'HIGH' },
     { name: 'inventory.item.view', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'inventory.item.create', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'inventory.item.update', scope: 'tenant/branch', riskLevel: 'LOW' },
@@ -115,6 +117,55 @@ async function main() {
     { name: 'encounter.create', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'encounter.view', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'encounter.update', scope: 'tenant/branch', riskLevel: 'LOW' },
+    
+    // Procurement
+    { name: 'procurement.supplier.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'procurement.supplier.manage', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+    { name: 'procurement.request.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'procurement.request.create', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'procurement.request.approve', scope: 'tenant/branch', riskLevel: 'HIGH' },
+    { name: 'procurement.rfq.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'procurement.rfq.manage', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+    { name: 'procurement.quote.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'procurement.po.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'procurement.po.create', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+    { name: 'procurement.po.approve', scope: 'tenant/branch', riskLevel: 'HIGH' },
+    { name: 'procurement.receiving.post', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+    { name: 'procurement.vendor.performance.view', scope: 'tenant', riskLevel: 'MEDIUM' },
+
+    // Marketplace
+    { name: 'marketplace.buyer.view', scope: 'tenant', riskLevel: 'LOW' },
+    { name: 'marketplace.supplier.view', scope: 'tenant', riskLevel: 'LOW' },
+    { name: 'marketplace.supplier.manage_listing', scope: 'tenant', riskLevel: 'MEDIUM' },
+    { name: 'marketplace.admin.view', scope: 'tenant', riskLevel: 'MEDIUM' },
+    { name: 'marketplace.admin.manage', scope: 'tenant', riskLevel: 'HIGH' },
+
+    // Patient Portal
+    { name: 'patient.portal.view_own', scope: 'tenant/user', riskLevel: 'LOW' },
+    { name: 'patient.portal.message', scope: 'tenant/user', riskLevel: 'LOW' },
+    { name: 'patient.portal.appointment.view', scope: 'tenant/user', riskLevel: 'LOW' },
+    { name: 'patient.portal.billing.view', scope: 'tenant/user', riskLevel: 'LOW' },
+    { name: 'patient.portal.result.view', scope: 'tenant/user', riskLevel: 'LOW' },
+
+    // Field Service
+    { name: 'field_service.job.view', scope: 'tenant/user', riskLevel: 'LOW' },
+    { name: 'field_service.job.update', scope: 'tenant/user', riskLevel: 'MEDIUM' },
+    { name: 'field_service.delivery.proof_create', scope: 'tenant/user', riskLevel: 'LOW' },
+    { name: 'field_service.installation.update', scope: 'tenant/user', riskLevel: 'MEDIUM' },
+    { name: 'field_service.maintenance.update', scope: 'tenant/user', riskLevel: 'MEDIUM' },
+
+    // IT / Compliance
+    { name: 'it.system.view', scope: 'tenant', riskLevel: 'MEDIUM' },
+    { name: 'it.support.manage', scope: 'tenant', riskLevel: 'HIGH' },
+    { name: 'compliance.audit.review', scope: 'tenant', riskLevel: 'HIGH' },
+    { name: 'compliance.phi.monitor', scope: 'tenant', riskLevel: 'PRIVILEGED' },
+    { name: 'compliance.report.export', scope: 'tenant', riskLevel: 'HIGH' },
+
+    // HR
+    { name: 'hr.employee.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'hr.employee.manage', scope: 'tenant/branch', riskLevel: 'HIGH' },
+    { name: 'hr.payroll.view', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+    { name: 'hr.payroll.manage', scope: 'tenant/branch', riskLevel: 'HIGH' },
   ];
 
   console.log('Seeding Permissions...');
@@ -136,7 +187,7 @@ async function main() {
     });
   }
 
-  // 3. Create Basic Roles
+  // 3. Define Roles
   const rolesData = [
     { name: 'Super Admin', id: '00000000-0000-0000-0000-000000000002' },
     { name: 'Branch Admin', id: '00000000-0000-0000-0000-000000000003' },
@@ -145,6 +196,16 @@ async function main() {
     { name: 'Med-Tech', id: '00000000-0000-0000-0000-000000000006' },
     { name: 'Doctor', id: '00000000-0000-0000-0000-000000000007' },
     { name: 'Pharmacist', id: '00000000-0000-0000-0000-000000000008' },
+    { name: 'Nurse', id: '00000000-0000-0000-0000-000000000009' },
+    { name: 'Patient', id: '00000000-0000-0000-0000-000000000011' },
+    { name: 'Supplier', id: '00000000-0000-0000-0000-000000000012' },
+    { name: 'Procurement Officer', id: '00000000-0000-0000-0000-000000000013' },
+    { name: 'HR Staff', id: '00000000-0000-0000-0000-000000000014' },
+    { name: 'HR Manager', id: '00000000-0000-0000-0000-000000000015' },
+    { name: 'IT Support', id: '00000000-0000-0000-0000-000000000016' },
+    { name: 'Compliance Officer', id: '00000000-0000-0000-0000-000000000017' },
+    { name: 'Field Technician', id: '00000000-0000-0000-0000-000000000018' },
+    { name: 'Marketplace Admin', id: '00000000-0000-0000-0000-000000000019' },
   ];
 
   console.log('Seeding Roles...');
@@ -162,68 +223,9 @@ async function main() {
     });
   }
 
-  // 4. Create Default Admin User (dev-only — replace password before production)
-  const passwordHash = await bcrypt.hash('Admin@123', 10);
-  const user = await prisma.user.upsert({
-    where: { 
-      tenantId_email: {
-        tenantId: tenant.id,
-        email: 'admin@hospital.com'
-      }
-    },
-    update: {
-      passwordHash: passwordHash
-    },
-    create: {
-      tenantId: tenant.id,
-      email: 'admin@hospital.com',
-      passwordHash: passwordHash,
-      mfaEnabled: false,
-    },
-  });
-  console.log('User created:', user.email);
-
-  // 5. Link User to Super Admin Role
-  await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
-        userId: user.id,
-        roleId: '00000000-0000-0000-0000-000000000002'
-      }
-    },
-    update: {},
-    create: {
-      userId: user.id,
-      roleId: '00000000-0000-0000-0000-000000000002',
-    },
-  });
-  console.log('User linked to role.');
-
-  // 5b. Assign User to default Branch
-  await prisma.userBranch.upsert({
-    where: {
-      tenantId_userId_branchId: {
-        tenantId: tenant.id,
-        userId: user.id,
-        branchId: branch.id,
-      },
-    },
-    update: {},
-    create: {
-      tenantId: tenant.id,
-      userId: user.id,
-      branchId: branch.id,
-      isActive: true,
-    },
-  });
-  console.log('User assigned to branch:', branch.name);
-
-  // 6. Map role names to permissions
-  const allRoles: Role[] = await prisma.role.findMany({ where: { tenantId: tenant.id } });
-  const allPerms: Permission[] = await prisma.permission.findMany({ where: { tenantId: tenant.id } });
-
+  // 4. Role-Permission Mappings
   const rolePermissionMap: Record<string, string[]> = {
-    'Super Admin': permissionsData.map(p => p.name), // Has everything
+    'Super Admin': permissionsData.map(p => p.name), 
     'Branch Admin': [
       'patient.view', 'patient.create', 'patient.update', 
       'order.view', 'order.create', 'order.cancel',
@@ -232,7 +234,8 @@ async function main() {
       'queue.view', 'queue.manage', 
       'approval.request.view', 'approval.request.process',
       'report.export', 'audit.view',
-      'encounter.create', 'encounter.view', 'encounter.update'
+      'encounter.create', 'encounter.view', 'encounter.update',
+      'procurement.supplier.view', 'procurement.request.view', 'procurement.po.view'
     ],
     'Receptionist': [
       'patient.view', 'patient.create', 'patient.update', 
@@ -243,21 +246,64 @@ async function main() {
     'Cashier': [
       'patient.view', 'order.view', 'billing.invoice.view', 
       'billing.payment.create', 'billing.refund.request',
-      'billing.claim.view'
+      'billing.claim.view', 'queue.view'
     ],
     'Med-Tech': [
       'patient.view', 'lab.result.view', 'lab.result.encode',
-      'inventory.item.view'
+      'inventory.item.view', 'queue.view'
     ],
     'Doctor': [
       'patient.view', 'lab.result.view', 'lab.result.approve', 'lab.result.release',
       'inventory.item.view',
-      'encounter.create', 'encounter.view', 'encounter.update'
+      'encounter.create', 'encounter.view', 'encounter.update', 'queue.view',
+      'procurement.request.create'
     ],
     'Pharmacist': [
       'patient.view', 'inventory.item.view', 'inventory.stock.dispense', 'queue.view'
+    ],
+    'Nurse': [
+      'patient.view', 'patient.update', 'encounter.view', 'encounter.update', 
+      'inventory.item.view', 'queue.view', 'procurement.request.create'
+    ],
+    'Patient': [
+      'patient.portal.view_own', 'patient.portal.message', 'patient.portal.appointment.view',
+      'patient.portal.billing.view', 'patient.portal.result.view'
+    ],
+    'Supplier': [
+      'marketplace.supplier.view', 'marketplace.supplier.manage_listing',
+      'procurement.quote.view', 'procurement.po.view'
+    ],
+    'Procurement Officer': [
+      'procurement.supplier.view', 'procurement.supplier.manage', 'procurement.request.view',
+      'procurement.rfq.view', 'procurement.rfq.manage', 'procurement.quote.view',
+      'procurement.po.view', 'procurement.po.create', 'procurement.po.approve',
+      'procurement.receiving.post', 'procurement.vendor.performance.view'
+    ],
+    'HR Staff': [
+      'hr.employee.view', 'hr.payroll.view'
+    ],
+    'HR Manager': [
+      'hr.employee.view', 'hr.employee.manage', 'hr.payroll.view', 'hr.payroll.manage',
+      'approval.request.process'
+    ],
+    'IT Support': [
+      'it.system.view', 'it.support.manage', 'audit.view'
+    ],
+    'Compliance Officer': [
+      'compliance.audit.review', 'compliance.phi.monitor', 'compliance.report.export',
+      'audit.view'
+    ],
+    'Field Technician': [
+      'field_service.job.view', 'field_service.job.update', 'field_service.delivery.proof_create',
+      'field_service.installation.update', 'field_service.maintenance.update'
+    ],
+    'Marketplace Admin': [
+      'marketplace.admin.view', 'marketplace.admin.manage'
     ]
   };
+
+  const allRoles = await prisma.role.findMany({ where: { tenantId: tenant.id } });
+  const allPerms = await prisma.permission.findMany({ where: { tenantId: tenant.id } });
 
   console.log('Seeding Role Permissions...');
   for (const roleName of Object.keys(rolePermissionMap)) {
@@ -266,7 +312,7 @@ async function main() {
 
     const permsToAssign = rolePermissionMap[roleName];
     for (const permName of permsToAssign) {
-      const permission = allPerms.find((p: Permission) => p.name === permName);
+      const permission = allPerms.find(p => p.name === permName);
       if (!permission) continue;
 
       await prisma.rolePermission.upsert({
@@ -285,9 +331,85 @@ async function main() {
     }
   }
 
-  // 7. Seed Lab Test Catalog (demo/reference definitions — NOT certified clinical reference data)
+  // 5. Create Demo Users
+  const passwordHash = await bcrypt.hash('Admin@123', 10);
+  
+  const demoUsers = [
+    { email: 'admin@hospital.com', role: 'Super Admin' },
+    { email: 'branch.admin@hospital.com', role: 'Branch Admin' },
+    { email: 'receptionist@hospital.com', role: 'Receptionist' },
+    { email: 'cashier@hospital.com', role: 'Cashier' },
+    { email: 'medtech@hospital.com', role: 'Med-Tech' },
+    { email: 'doctor@hospital.com', role: 'Doctor' },
+    { email: 'pharmacist@hospital.com', role: 'Pharmacist' },
+    { email: 'nurse@hospital.com', role: 'Nurse' },
+    { email: 'patient@hospital.com', role: 'Patient' },
+    { email: 'supplier@hospital.com', role: 'Supplier' },
+    { email: 'procurement@hospital.com', role: 'Procurement Officer' },
+    { email: 'hr@hospital.com', role: 'HR Staff' },
+    { email: 'hr.manager@hospital.com', role: 'HR Manager' },
+    { email: 'it.support@hospital.com', role: 'IT Support' },
+    { email: 'compliance@hospital.com', role: 'Compliance Officer' },
+    { email: 'field.tech@hospital.com', role: 'Field Technician' },
+    { email: 'marketplace.admin@hospital.com', role: 'Marketplace Admin' },
+  ];
+
+  console.log('Seeding Demo Users...');
+  for (const demo of demoUsers) {
+    const user = await prisma.user.upsert({
+      where: { 
+        tenantId_email: {
+          tenantId: tenant.id,
+          email: demo.email
+        }
+      },
+      update: { passwordHash },
+      create: {
+        tenantId: tenant.id,
+        email: demo.email,
+        passwordHash,
+        mfaEnabled: false,
+      },
+    });
+
+    const role = allRoles.find(r => r.name === demo.role);
+    if (role) {
+      await prisma.userRole.upsert({
+        where: {
+          userId_roleId: {
+            userId: user.id,
+            roleId: role.id
+          }
+        },
+        update: {},
+        create: {
+          userId: user.id,
+          roleId: role.id,
+        },
+      });
+    }
+
+    // Assign staff users to branch (except Patient and Supplier if they don't strictly need it, but for demo we assign all)
+    await prisma.userBranch.upsert({
+      where: {
+        tenantId_userId_branchId: {
+          tenantId: tenant.id,
+          userId: user.id,
+          branchId: branch.id,
+        },
+      },
+      update: { isActive: true },
+      create: {
+        tenantId: tenant.id,
+        userId: user.id,
+        branchId: branch.id,
+        isActive: true,
+      },
+    });
+  }
+
+  // 6. Seed Lab Test Catalog
   console.warn('WARNING: Lab test catalog entries contain demo/reference ranges only.');
-  console.warn('These values are NOT certified, validated, or authoritative for clinical use.');
   console.log('Seeding Lab Test Catalog...');
 
   const cbcTest = await prisma.labTestDefinition.upsert({
@@ -301,19 +423,19 @@ async function main() {
     create: {
       tenantId: tenant.id,
       code: 'CBC',
-      name: 'Complete Blood Count (CBC)', // name must match ClinicalOrderItem.itemName for catalog lookup — do not change
-      description: '[DEMO] A complete blood count panel measuring cellular components of blood. Reference ranges are demo samples — NOT certified for clinical diagnosis.',
+      name: 'Complete Blood Count (CBC)',
+      description: '[DEMO] A complete blood count panel measuring cellular components of blood.',
       isActive: true,
     },
   });
 
   const cbcParameters = [
-    { code: 'WBC', parameterName: 'White Blood Cells (WBC)', unit: 'x10^9/L', referenceRangeText: '4.5 - 11.0', minNormal: 4.5, maxNormal: 11.0, minCritical: 2.0, maxCritical: 25.0, displayOrder: 1 },
+    { code: 'WBC', parameterName: 'White Blood Cells (WBC)', unit: 'x10^9/L', referenceRangeText: '4.5 - 11.0', minNormal: 4.5, maxNormal: 11.0, displayOrder: 1 },
     { code: 'RBC', parameterName: 'Red Blood Cells (RBC)', unit: 'x10^12/L', referenceRangeText: '4.00 - 5.50', minNormal: 4.0, maxNormal: 5.5, displayOrder: 2 },
-    { code: 'Hgb', parameterName: 'Hemoglobin (Hgb)', unit: 'g/L', referenceRangeText: '120 - 160', minNormal: 120, maxNormal: 160, minCritical: 70, maxCritical: 200, displayOrder: 3 },
-    { code: 'PLT', parameterName: 'Platelets (PLT)', unit: 'x10^9/L', referenceRangeText: '150 - 450', minNormal: 150, maxNormal: 450, minCritical: 50, maxCritical: 1000, displayOrder: 4 },
+    { code: 'Hgb', parameterName: 'Hemoglobin (Hgb)', unit: 'g/L', referenceRangeText: '120 - 160', minNormal: 120, maxNormal: 160, displayOrder: 3 },
+    { code: 'PLT', parameterName: 'Platelets (PLT)', unit: 'x10^9/L', referenceRangeText: '150 - 450', minNormal: 150, maxNormal: 450, displayOrder: 4 },
     { code: 'HCT', parameterName: 'Hematocrit (HCT)', unit: '%', referenceRangeText: '36 - 46', minNormal: 36, maxNormal: 46, displayOrder: 5 },
-    { code: 'MCV', parameterName: 'Mean Corpuscular Volume (MCV)', unit: 'fL', referenceRangeText: '80 - 100', minNormal: 80, maxNormal: 100, displayOrder: 6 },
+    { code: 'MCV', parameterName: 'Mean Corpuscular Volume (MCV)', unit: 'fL', referenceRangeText: '80 - 100', minNormal: 80, maxNormal: 100, displayOrder: 6 }, 
   ];
 
   for (const param of cbcParameters) {
@@ -331,8 +453,6 @@ async function main() {
         referenceRangeText: param.referenceRangeText,
         minNormal: param.minNormal,
         maxNormal: param.maxNormal,
-        minCritical: param.minCritical ?? null,
-        maxCritical: param.maxCritical ?? null,
         displayOrder: param.displayOrder,
         isActive: true,
       },
@@ -345,8 +465,6 @@ async function main() {
         referenceRangeText: param.referenceRangeText,
         minNormal: param.minNormal,
         maxNormal: param.maxNormal,
-        minCritical: param.minCritical ?? null,
-        maxCritical: param.maxCritical ?? null,
         displayOrder: param.displayOrder,
         isActive: true,
       },
@@ -364,8 +482,8 @@ async function main() {
     create: {
       tenantId: tenant.id,
       code: 'BMP',
-      name: 'Basic Metabolic Panel (BMP)', // name must match ClinicalOrderItem.itemName for catalog lookup — do not change
-      description: '[DEMO] A basic metabolic panel measuring glucose, electrolytes, and kidney function. Reference ranges are demo samples — NOT certified for clinical diagnosis.',
+      name: 'Basic Metabolic Panel (BMP)',
+      description: '[DEMO] A basic metabolic panel measuring glucose, electrolytes, and kidney function.',
       isActive: true,
     },
   });
@@ -414,13 +532,7 @@ async function main() {
   }
 
   console.log('Lab Test Catalog seeded: CBC (6 parameters), BMP (7 parameters).');
-  console.log('*'.repeat(60));
-  console.log('WARNING: This seed creates DEMO data only.');
-  console.log('- Reference ranges are sample values — NOT certified for clinical diagnosis.');
-  console.log('- Admin account credentials (admin@hospital.com / Admin@123) are for development only.');
-  console.log('- Demo tenants (tenant-alpha, tenant-beta) are for multi-tenancy testing only.');
-  console.log('Replace or override these values before any production deployment.');
-  console.log('*'.repeat(60));
+
   console.log('Seed completed successfully!');
 }
 

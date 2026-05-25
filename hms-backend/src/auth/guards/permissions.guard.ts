@@ -5,7 +5,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
+import {
+  PERMISSIONS_KEY,
+  PermissionMode,
+  PermissionMetadata,
+} from '../decorators/permissions.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AuthenticatedRequest } from '../../common/types/authenticated-request.type';
 
@@ -17,10 +21,18 @@ export class PermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
-      PERMISSIONS_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const metadata = this.reflector.getAllAndOverride<
+      string[] | PermissionMetadata
+    >(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
+
+    if (!metadata) {
+      return true;
+    }
+
+    const requiredPermissions = Array.isArray(metadata)
+      ? metadata
+      : metadata.permissions;
+    const mode = Array.isArray(metadata) ? PermissionMode.ANY : metadata.mode;
 
     if (!requiredPermissions || requiredPermissions.length === 0) {
       return true;
@@ -69,12 +81,17 @@ export class PermissionsGuard implements CanActivate {
       }
     }
 
-    // CURRENT BEHAVIOR: RequireAnyPermission
-    // This allows access if the user has AT LEAST ONE of the required permissions.
-    // To implement RequireAllPermissions, use `.every` instead of `.some`.
-    const hasPermission = requiredPermissions.some((perm) =>
-      userPermissions.has(perm),
-    );
+    let hasPermission = false;
+    if (mode === PermissionMode.ALL) {
+      hasPermission = requiredPermissions.every((perm) =>
+        userPermissions.has(perm),
+      );
+    } else {
+      // Default: ANY
+      hasPermission = requiredPermissions.some((perm) =>
+        userPermissions.has(perm),
+      );
+    }
 
     if (!hasPermission) {
       // Blueprint Error Code Catalog (Section 15) uses 'permission_denied'
@@ -82,7 +99,7 @@ export class PermissionsGuard implements CanActivate {
         statusCode: 403,
         error: 'Forbidden',
         message: 'permission_denied',
-        details: 'You lack the required permissions to perform this action',
+        details: `You lack the required permissions to perform this action. Mode: ${mode}, Required: [${requiredPermissions.join(', ')}]`,
       });
     }
 

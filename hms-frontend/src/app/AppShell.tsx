@@ -1,40 +1,20 @@
 import { 
-  LayoutDashboard, 
-  Users, 
   PlusCircle, 
-  CreditCard, 
-  ClipboardCheck, 
-  ShieldCheck, 
-  Package, 
-  BarChart3, 
-  ListOrdered, 
-  FlaskConical, 
   Search, 
   Bell, 
   Briefcase,
   Stethoscope,
-  ClipboardList,
   Menu,
   X,
   LogOut,
-  Settings as SettingsIcon,
-  Clock,
   User,
-  GitMerge,
-  CheckSquare,
-  Pill,
-  ShoppingBag
+  Clock
 } from 'lucide-react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
-interface NavItem {
-  label: string;
-  to: string;
-  icon: React.ElementType;
-}
-
 import { useUser, useAuth, usePermissions } from '../hooks/use-user';
+import { getNavGroups } from './portal-registry';
 
 function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick?: () => void }) {
   const isActive = (path: string) => pathname === path;
@@ -42,47 +22,7 @@ function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick
   const { logout } = useAuth();
   const { hasPermission } = usePermissions();
 
-  const navItemsWithPermissions: (NavItem & { permission?: string })[] = [
-    { label: 'Command Center', to: '/', icon: LayoutDashboard },
-    { label: 'Patient Management', to: '/patients', icon: Users, permission: 'patient.view' },
-    { label: 'Appointment & Queue', to: '/queue', icon: ListOrdered, permission: 'queue.view' },
-    { label: 'EMR / Records', to: '/emr', icon: ClipboardList, permission: 'patient.view' },
-    { label: 'Laboratory / LIS', to: '/lab/results', icon: FlaskConical, permission: 'lab.result.view' },
-    { label: 'Radiology', to: '/radiology', icon: CheckSquare, permission: 'lab.result.view' },
-    { label: 'Pharmacy', to: '/pharmacy', icon: Pill, permission: 'inventory.stock.dispense' },
-    { label: 'Billing & Cashier', to: '/billing', icon: CreditCard, permission: 'billing.invoice.view' },
-    { label: 'HMO Claims', to: '/claims', icon: ShieldCheck, permission: 'billing.invoice.view' },
-    { label: 'Inventory & Stock', to: '/inventory', icon: Package, permission: 'inventory.item.view' },
-    { label: 'Procurement', to: '/procurement', icon: ShoppingBag, permission: 'inventory.stock.receive' },
-    { label: 'Products & Services', to: '/orders/new', icon: PlusCircle, permission: 'order.create' },
-    { label: 'Approvals', to: '/approvals', icon: ClipboardCheck, permission: 'approval.request.view' },
-    { label: 'Users & Roles', to: '/admin/users', icon: Users, permission: 'admin.role.change' },
-    { label: 'Chart Reconciliation', to: '/admin/patient-merges', icon: GitMerge, permission: 'admin.role.change' },
-    { label: 'HR Management', to: '/hr', icon: Briefcase },
-    { label: 'Reports & Analytics', to: '/reports', icon: BarChart3, permission: 'report.export' },
-    { label: 'Notifications', to: '/notifications', icon: Bell },
-    { label: 'Security & Audit Logs', to: '/audit-logs', icon: ShieldCheck, permission: 'audit.view' },
-    { label: 'System Settings', to: '/settings', icon: SettingsIcon, permission: 'admin.role.change' },
-  ];
-
-  const groups: { label: string; items: typeof navItemsWithPermissions }[] = [
-    {
-      label: 'Dashboard & Core',
-      items: navItemsWithPermissions.slice(0, 3),
-    },
-    {
-      label: 'Clinical Modules',
-      items: navItemsWithPermissions.slice(3, 7),
-    },
-    {
-      label: 'Finance & Supply',
-      items: navItemsWithPermissions.slice(7, 11),
-    },
-    {
-      label: 'Administration & Security',
-      items: navItemsWithPermissions.slice(11),
-    },
-  ];
+  const groups = getNavGroups(user?.roles || []);
 
   return (
     <>

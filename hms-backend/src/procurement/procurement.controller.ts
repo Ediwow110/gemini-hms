@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   UseGuards,
+  Get,
 } from '@nestjs/common';
 import { ProcurementService } from './procurement.service';
 import {
@@ -14,24 +15,16 @@ import {
   ReceivePurchaseOrderDto,
 } from './dto/procurement.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 
-@UseGuards(RolesGuard)
+@UseGuards(PermissionsGuard)
 @Controller('api/v1/procurement')
 export class ProcurementController {
   constructor(private readonly procurementService: ProcurementService) {}
 
   @Post('suppliers')
-  @Roles(
-    'Super Admin',
-    'Branch Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Manager',
-    'Inventory Staff',
-    'Staff',
-  )
+  @RequirePermissions('procurement.supplier.manage')
   createSupplier(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -41,15 +34,7 @@ export class ProcurementController {
   }
 
   @Post('purchase-requests')
-  @Roles(
-    'Super Admin',
-    'Branch Admin',
-    'Inventory Staff',
-    'Staff',
-    'Doctor',
-    'Nurse',
-    'HR Staff',
-  )
+  @RequirePermissions('procurement.request.create')
   createPurchaseRequest(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -59,7 +44,7 @@ export class ProcurementController {
   }
 
   @Patch('purchase-requests/:id/approve')
-  @Roles('Super Admin', 'Branch Admin', 'Branch Manager')
+  @RequirePermissions('procurement.request.approve')
   approvePurchaseRequest(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -69,7 +54,7 @@ export class ProcurementController {
   }
 
   @Post('purchase-orders')
-  @Roles('Super Admin', 'Branch Admin', 'Branch Manager')
+  @RequirePermissions('procurement.po.create')
   createPurchaseOrder(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -79,7 +64,7 @@ export class ProcurementController {
   }
 
   @Post('purchase-orders/:id/receive')
-  @Roles('Super Admin', 'Branch Admin', 'Inventory Staff', 'Staff')
+  @RequirePermissions('procurement.receiving.post')
   receivePurchaseOrder(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
