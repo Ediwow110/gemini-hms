@@ -435,10 +435,12 @@ describe('AuthService', () => {
       const result = await service.getMe('user-123', 'tenant-456');
 
       expect(result).toEqual({
+        id: 'user-123',
         userId: 'user-123',
         email: 'test@example.com',
         tenantId: 'tenant-456',
         roles: ['Doctor'],
+        permissions: [],
       });
     });
 

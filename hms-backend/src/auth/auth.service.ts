@@ -340,16 +340,51 @@ export class AuthService {
   async getMe(userId: string, tenantId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { userRoles: { include: { role: true } } },
+      include: {
+        userRoles: {
+          include: {
+            role: {
+              include: {
+                rolePermissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
     if (!user || user.tenantId !== tenantId) return null;
 
     const roles = this.getActiveRoleNames(user.userRoles);
+
+    // Retrieve active role permissions
+    const permissions = new Set<string>();
+    for (const ur of user.userRoles) {
+      if (
+        ur.status === 'ACTIVE' &&
+        ur.role &&
+        ur.role.status === 'ACTIVE' &&
+        ur.role.archivedAt === null &&
+        ur.role.rolePermissions
+      ) {
+        for (const rp of ur.role.rolePermissions) {
+          if (rp.permission && rp.permission.name) {
+            permissions.add(rp.permission.name);
+          }
+        }
+      }
+    }
+
     return {
+      id: user.id,
       userId: user.id,
       email: user.email,
       tenantId: user.tenantId,
       roles,
+      permissions: Array.from(permissions),
     };
   }
 
