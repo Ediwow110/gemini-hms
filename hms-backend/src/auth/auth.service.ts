@@ -63,7 +63,12 @@ export class AuthService {
     pass: string,
   ): Promise<AuthenticatedUser | null> {
     const tenant = await this.prisma.tenant.findFirst({
-      where: { name: tenantCode },
+      where: {
+        name: {
+          equals: tenantCode,
+          mode: 'insensitive',
+        },
+      },
     });
     if (!tenant) return null;
 
