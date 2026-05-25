@@ -27,7 +27,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Prisma Schema Syntax Validation Sweep
-        run: npx prisma validate --schema=../hms-backend/prisma/schema.prisma
+        run: npx prisma@7.8.0 validate --schema=../hms-backend/prisma/schema.prisma
 
   provision-deployment:
     needs: build-and-validate
