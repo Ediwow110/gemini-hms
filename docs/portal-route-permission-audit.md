@@ -22,7 +22,7 @@ This document provides a comprehensive mapping of frontend portals, their routes
 | **HR** | `/hr` | `HRDashboard` | HR Staff / Manager | `permission='hr.employee.view'` | `hr.employee.view`, `hr.payroll.view` | `hr@hospital.com` | Partial |
 | **IT Support** | `/it` | `ITSupportDashboard` | IT Support | `permission='it.system.view'` | `it.system.view`, `it.support.manage` | `it.support@hospital.com` | Mock |
 | **Compliance** | `/compliance` | `ComplianceDashboard` | Compliance Officer | `permission='compliance.audit.review'` | `compliance.*`, `audit.view` | `compliance@hospital.com` | Mock |
-| **Marketplace Admin** | `/marketplace-admin` | `MarketplaceAdminDashboard` | Marketplace Admin | `allowedRoles=['Marketplace Admin']` | `marketplace.admin.*` | `marketplace.admin@hospital.com` | Mock |
+| **Marketplace Admin** | `/marketplace-admin` | `MarketplaceAdminDashboard` | Marketplace Admin | `allowedRoles=['Marketplace Admin']` | `marketplace.admin.*` | `marketplace.admin@hospital.com` | Real |
 | **Field Service** | `/field-service` | `FieldServiceDashboard` | Field Technician | `allowedRoles=['Field Technician']` | `field_service.*` | `field.tech@hospital.com` | Mock |
 | **Catalog** | `/admin/catalog` | `CatalogManagementPage` | Branch Admin / Super Admin | `permission='catalog.manage'` | `catalog.manage`, `catalog.service.view` | `branch.admin@hospital.com` | Real |
 
@@ -38,7 +38,6 @@ This document provides a comprehensive mapping of frontend portals, their routes
 - **allowedRoles**: Array of roles, at least one must be present.
 
 ## Known WIP / Mock Modules
-- **Marketplace**: UI Shell exists, but logic is mostly mock.
 - **Field Service**: UI Shell exists, logic is mock.
 - **IT / Compliance**: UI Shell exists, logic is mock.
 - **Supplier Portal**: UI Shell exists, logic is mock.

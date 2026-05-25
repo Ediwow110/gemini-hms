@@ -58,6 +58,7 @@ model Tenant {
   triageRecords      Triage[]
   clinicalOrderItems ClinicalOrderItem[]
   labSpecimens       LabSpecimen[]
+  marketplaceListings MarketplaceListing[]
 
   suppliers          Supplier[]
   purchaseRequests   PurchaseRequest[]
@@ -611,6 +612,7 @@ model ServiceItem {
   tenant   Tenant          @relation(fields: [tenantId], references: [id])
   category ServiceCategory @relation(fields: [categoryId], references: [id])
   prices   ServicePrice[]
+  marketplaceListings MarketplaceListing[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -1527,6 +1529,7 @@ model Supplier {
   status       String          @default("ACTIVE")
   createdAt    DateTime        @default(now()) @map("created_at")
   purchaseOrders PurchaseOrder[]
+  marketplaceListings MarketplaceListing[]
 
   tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1832,4 +1835,40 @@ model InstallationJob {
 
   @@index([assetId])
   @@map("installation_jobs")
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+model MarketplaceListing {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  serviceItemId   String        @map("service_item_id") @db.Uuid
+  supplierId      String?       @map("supplier_id") @db.Uuid
+  status          ListingStatus @default(PENDING_APPROVAL)
+  
+  // Overrides or additional info for marketplace
+  description     String?       @db.Text
+  priceOverride   Decimal?      @map("price_override") @db.Decimal(12, 2)
+  
+  // Metadata for moderation
+  rejectionReason String?       @map("rejection_reason")
+  approvedAt      DateTime?     @map("approved_at")
+  approvedById    String?       @map("approved_by_id") @db.Uuid
+  
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  serviceItem ServiceItem @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
+  supplier    Supplier?   @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("marketplace_listings")
 }

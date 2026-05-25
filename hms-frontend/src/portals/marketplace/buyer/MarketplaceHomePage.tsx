@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
@@ -7,22 +7,65 @@ import {
   ShieldCheck,
   Package,
   ArrowRight,
-  Box
+  Box,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import MarketplaceShellNotice from './components/MarketplaceShellNotice';
 import MarketplaceSearchBar from './components/MarketplaceSearchBar';
 import CategoryNavigation from './components/CategoryNavigation';
 import ProductCard, { Product } from './components/ProductCard';
+import { apiClient } from '../../../lib/api';
+
+interface MarketplaceListing {
+  id: string;
+  serviceItem: {
+    id: string;
+    name: string;
+    code: string;
+    category: { name: string };
+    prices: { price: number }[];
+  };
+  supplier?: { name: string };
+  priceOverride?: number;
+  description?: string;
+  createdAt: string;
+}
 
 export const MarketplaceHomePage: React.FC = () => {
   const navigate = useNavigate();
+  const [listings, setListings] = useState<MarketplaceListing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const mockFeaturedProducts: Product[] = [
-    { id: '1', name: 'GE Healthcare Voluson E10 BT20', brand: 'GE Healthcare', price: 4250000, rating: 5, reviews: 12, image: '', hasInstallation: true, hasWarranty: true, category: 'Imaging' },
-    { id: '2', name: 'Roche cobas c 311 analyzer', brand: 'Roche', price: 1850000, rating: 4, reviews: 8, image: '', hasInstallation: true, hasWarranty: true, category: 'Laboratory' },
-    { id: '3', name: 'Philips Affiniti 70 Ultrasound', brand: 'Philips', price: 3100000, rating: 5, reviews: 15, image: '', hasInstallation: true, hasWarranty: true, category: 'Imaging' },
-    { id: '4', name: 'Mindray BeneVision N17 Monitor', brand: 'Mindray', price: 450000, rating: 4, reviews: 22, image: '', hasInstallation: false, hasWarranty: true, category: 'Clinical' },
-  ];
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        const response = await apiClient.get('/marketplace/listings');
+        setListings(response.data);
+      } catch (err) {
+        console.error('Failed to fetch marketplace listings:', err);
+        setError('Failed to load marketplace data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchListings();
+  }, []);
+
+  // Map backend listing to ProductCard interface
+  const featuredProducts: Product[] = listings.map(l => ({
+    id: l.id,
+    name: l.serviceItem.name,
+    brand: l.supplier?.name || 'Various Suppliers',
+    price: l.priceOverride || (l.serviceItem.prices && l.serviceItem.prices[0]?.price) || 0,
+    rating: 5,
+    reviews: 0,
+    image: '',
+    hasInstallation: true,
+    hasWarranty: true,
+    category: l.serviceItem.category?.name || 'General'
+  }));
 
   return (
     <div className="space-y-8">
@@ -124,16 +167,35 @@ export const MarketplaceHomePage: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {mockFeaturedProducts.map((p) => (
-            <ProductCard 
-              key={p.id} 
-              product={p} 
-              onAddToCart={() => navigate('/marketplace/cart')}
-              onViewDetails={() => navigate(`/marketplace/products/${p.id}`)}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+            <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Loading Marketplace...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <AlertCircle className="h-8 w-8 text-rose-500" />
+            <p className="text-sm font-black text-slate-400 uppercase tracking-widest">{error}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featuredProducts.length > 0 ? (
+              featuredProducts.map((p) => (
+                <ProductCard 
+                  key={p.id} 
+                  product={p} 
+                  onAddToCart={() => navigate('/marketplace/cart')}
+                  onViewDetails={() => navigate(`/marketplace/products/${p.id}`)}
+                />
+              ))
+            ) : (
+              <div className="col-span-full py-20 text-center">
+                <Package className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+                <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No listings available</p>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Frequently Ordered / Best Value Bundles */}
