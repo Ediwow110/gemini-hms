@@ -166,7 +166,7 @@ describe('ItSupportService', () => {
 
       const result = await service.update(
         'ticket-1',
-        { status: 'IN_PROGRESS' as any },
+        { status: 'IN_PROGRESS' },
         'tenant-1',
         'user-1',
       );
@@ -194,7 +194,7 @@ describe('ItSupportService', () => {
 
       await service.update(
         'ticket-1',
-        { status: 'RESOLVED' as any, resolution: 'Fixed' },
+        { status: 'RESOLVED', resolution: 'Fixed' },
         'tenant-1',
         'user-1',
       );
