@@ -3,7 +3,7 @@ import { Suspense, lazy } from 'react';
 import { AppShell } from './app/AppShell';
 import { LoginPage } from './app/LoginPage';
 import { ProtectedRoute } from './app/ProtectedRoute';
-import { PermissionRoute } from './app/PermissionRoute';
+import { PermissionRoute, GuardMode } from './app/PermissionRoute';
 import { AuthProvider } from './hooks/use-user';
 
 // Core routes — eagerly loaded (always needed)
@@ -244,19 +244,20 @@ const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <Dashboard /> },
-          { path: 'patients', element: <PatientList /> },
-          { path: 'patients/new', element: <RegisterPatient /> },
-          { path: 'patients/:id', element: <PatientProfile /> },
-          { path: 'orders/new', element: <CreateOrder /> },
-          { path: 'queue', element: <Queue /> },
+          { path: 'patients', element: <PermissionRoute permission="patient.view"><PatientList /></PermissionRoute> },
+          { path: 'patients/new', element: <PermissionRoute permission="patient.create"><RegisterPatient /></PermissionRoute> },
+          { path: 'patients/:id', element: <PermissionRoute permission="patient.view"><PatientProfile /></PermissionRoute> },
+          { path: 'orders/new', element: <PermissionRoute permission="order.create"><CreateOrder /></PermissionRoute> },
+          { path: 'queue', element: <PermissionRoute permission="queue.view"><Queue /></PermissionRoute> },
           // Lazy-loaded routes below
-          { path: 'billing', element: <LazyPage><Billing /></LazyPage> },
-          { path: 'billing/cashier-closing', element: <LazyPage><CashierClosing /></LazyPage> },
-          { path: 'approvals', element: <LazyPage><ApprovalCenter /></LazyPage> },
+          { path: 'billing', element: <PermissionRoute permission="billing.invoice.view"><LazyPage><Billing /></LazyPage></PermissionRoute> },
+          { path: 'billing/cashier-closing', element: <PermissionRoute allowedRoles={['Cashier']}><LazyPage><CashierClosing /></LazyPage></PermissionRoute> },
+          { path: 'approvals', element: <PermissionRoute permission="approval.request.view"><LazyPage><ApprovalCenter /></LazyPage></PermissionRoute> },
           { path: 'audit-logs', element: <PermissionRoute permission="audit.view"><LazyPage><AuditLogViewer /></LazyPage></PermissionRoute> },
           { path: 'admin/users/:id', element: <PermissionRoute permission="admin.role.change"><LazyPage><UserDetail /></LazyPage></PermissionRoute> },
           { path: 'admin/roles', element: <PermissionRoute permission="admin.role.change"><LazyPage><RoleList /></LazyPage></PermissionRoute> },
           { path: 'admin/roles/:id', element: <PermissionRoute permission="admin.role.change"><LazyPage><RoleDetail /></LazyPage></PermissionRoute> },
+          { path: 'admin/catalog', element: <PermissionRoute permission="catalog.manage"><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
           {
             path: 'settings',
             element: <PermissionRoute permission="admin.role.change"><SettingsLayout /></PermissionRoute>,
@@ -275,14 +276,14 @@ const router = createBrowserRouter([
           { path: 'inventory', element: <PermissionRoute permission="inventory.item.view"><LazyPage><Inventory /></LazyPage></PermissionRoute> },
           { path: 'inventory/:id', element: <PermissionRoute permission="inventory.item.view"><LazyPage><InventoryDetail /></LazyPage></PermissionRoute> },
           { path: 'inventory/receiving', element: <PermissionRoute permission="inventory.stock.receive"><LazyPage><StockReceiving /></LazyPage></PermissionRoute> },
-          { path: 'lab/results', element: <LazyPage><LabResultList /></LazyPage> },
-          { path: 'lab/results/:id/encode', element: <LazyPage><LabEncode /></LazyPage> },
-          { path: 'lab/results/:id/approval', element: <LazyPage><LabApproval /></LazyPage> },
-          { path: 'lab/results/:id/print-preview', element: <LazyPage><PrintPreview /></LazyPage> },
-          { path: 'lab/validated', element: <LazyPage><ValidatedResultsPage /></LazyPage> },
-          { path: 'lab/released', element: <LazyPage><ReleasedResultsPage /></LazyPage> },
-          { path: 'lab/released/:patientId/:orderId', element: <LazyPage><ReleasedResultDetailPage /></LazyPage> },
-          { path: 'emr', element: <LazyPage><EMRWorkspace /></LazyPage> },
+          { path: 'lab/results', element: <PermissionRoute permission="lab.result.view"><LazyPage><LabResultList /></LazyPage></PermissionRoute> },
+          { path: 'lab/results/:id/encode', element: <PermissionRoute permission="lab.result.encode"><LazyPage><LabEncode /></LazyPage></PermissionRoute> },
+          { path: 'lab/results/:id/approval', element: <PermissionRoute permission="lab.result.approve"><LazyPage><LabApproval /></LazyPage></PermissionRoute> },
+          { path: 'lab/results/:id/print-preview', element: <PermissionRoute permission="lab.result.view"><LazyPage><PrintPreview /></LazyPage></PermissionRoute> },
+          { path: 'lab/validated', element: <PermissionRoute permission="lab.result.view"><LazyPage><ValidatedResultsPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/released', element: <PermissionRoute permission="lab.result.view"><LazyPage><ReleasedResultsPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/released/:patientId/:orderId', element: <PermissionRoute permission="lab.result.view"><LazyPage><ReleasedResultDetailPage /></LazyPage></PermissionRoute> },
+          { path: 'emr', element: <PermissionRoute permission="patient.view"><LazyPage><EMRWorkspace /></LazyPage></PermissionRoute> },
           { path: 'radiology', element: <PermissionRoute permission="lab.result.view"><LazyPage><RadiologyCanvas /></LazyPage></PermissionRoute> },
           { path: 'pharmacy', element: <PermissionRoute permission="inventory.stock.dispense"><LazyPage><PharmacyHub /></LazyPage></PermissionRoute> },
           { path: 'claims', element: <PermissionRoute permission="billing.claim.view"><LazyPage><ClaimsDashboard /></LazyPage></PermissionRoute> },
@@ -445,18 +446,19 @@ const router = createBrowserRouter([
           { path: 'cashier/reconciliation', element: <PermissionRoute allowedRoles={['Cashier']}><LazyPage><DailyReconciliationPage /></LazyPage></PermissionRoute> },
 
           // Other Features
-          { path: 'telehealth', element: <LazyPage><TelehealthConsole /></LazyPage> },
-          { path: 'spatial', element: <LazyPage><SpatialConsole /></LazyPage> },
-          { path: 'sales-dashboard', element: <LazyPage><SalesDashboard /></LazyPage> },
-          { path: 'logistics-checklist', element: <LazyPage><InstallationChecklist /></LazyPage> },
+          { path: 'telehealth', element: <PermissionRoute permission="encounter.create"><LazyPage><TelehealthConsole /></LazyPage></PermissionRoute> },
+          { path: 'spatial', element: <PermissionRoute permission="it.system.view"><LazyPage><SpatialConsole /></LazyPage></PermissionRoute> },
+          { path: 'sales-dashboard', element: <PermissionRoute permission="report.export"><LazyPage><SalesDashboard /></LazyPage></PermissionRoute> },
+          { path: 'logistics-checklist', element: <PermissionRoute permission="field_service.job.view"><LazyPage><InstallationChecklist /></LazyPage></PermissionRoute> },
 
           // Pharmacy Sub-routes
-          { path: 'pharmacy/dispense', element: <LazyPage><WIPPage /></LazyPage> },
-          { path: 'pharmacy/inventory', element: <LazyPage><WIPPage /></LazyPage> },
+          { path: 'pharmacy/dispense', element: <PermissionRoute permission="inventory.stock.dispense"><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'pharmacy/inventory', element: <PermissionRoute permission="inventory.stock.dispense"><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
 
-          { path: 'notifications', element: <LazyPage><NotificationCenter /></LazyPage> },
-          { path: 'notifications/templates', element: <LazyPage><NotificationTemplates /></LazyPage> },
-          { path: 'notifications/settings', element: <LazyPage><NotificationSettingsPage /></LazyPage> },
+          // Notifications
+          { path: 'notifications', element: <PermissionRoute mode={GuardMode.ANY} permissions={['it.system.view', 'compliance.audit.review']}><LazyPage><NotificationCenter /></LazyPage></PermissionRoute> },
+          { path: 'notifications/templates', element: <PermissionRoute permission="admin.role.change"><LazyPage><NotificationTemplates /></LazyPage></PermissionRoute> },
+          { path: 'notifications/settings', element: <PermissionRoute mode={GuardMode.ANY} permissions={['it.system.view', 'admin.role.change']}><LazyPage><NotificationSettingsPage /></LazyPage></PermissionRoute> },
         ],
       },
     ],

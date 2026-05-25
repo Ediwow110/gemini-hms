@@ -14,19 +14,22 @@ interface Branch {
 
 const DEMO_ACCOUNTS = [
   { label: "Super Admin", email: "admin@hospital.com", role: "Super Admin" },
-  { label: "Doctor", email: "doctor@hospital.com", role: "Doctor" },
-  { label: "Nurse", email: "nurse@hospital.com", role: "Nurse" },
+  { label: "Branch Admin", email: "branch.admin@hospital.com", role: "Branch Admin" },
   { label: "Receptionist", email: "receptionist@hospital.com", role: "Receptionist" },
   { label: "Cashier", email: "cashier@hospital.com", role: "Cashier" },
-  { label: "Pharmacist", email: "pharmacist@hospital.com", role: "Pharmacist" },
   { label: "Med-Tech", email: "medtech@hospital.com", role: "Med-Tech" },
+  { label: "Doctor", email: "doctor@hospital.com", role: "Doctor" },
+  { label: "Pharmacist", email: "pharmacist@hospital.com", role: "Pharmacist" },
+  { label: "Nurse", email: "nurse@hospital.com", role: "Nurse" },
   { label: "Patient", email: "patient@hospital.com", role: "Patient" },
   { label: "Supplier", email: "supplier@hospital.com", role: "Supplier" },
   { label: "Procurement", email: "procurement@hospital.com", role: "Procurement Officer" },
+  { label: "HR Staff", email: "hr@hospital.com", role: "HR Staff" },
   { label: "HR Manager", email: "hr.manager@hospital.com", role: "HR Manager" },
   { label: "IT Support", email: "it.support@hospital.com", role: "IT Support" },
   { label: "Compliance", email: "compliance@hospital.com", role: "Compliance Officer" },
   { label: "Field Tech", email: "field.tech@hospital.com", role: "Field Technician" },
+  { label: "Marketplace Admin", email: "marketplace.admin@hospital.com", role: "Marketplace Admin" },
 ];
 
 export const LoginForm = () => {

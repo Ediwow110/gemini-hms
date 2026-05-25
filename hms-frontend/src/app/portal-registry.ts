@@ -127,7 +127,7 @@ export const PORTAL_NAV_CONFIG: Record<string, NavGroup[]> = {
     {
       label: 'System Operations',
       items: [
-        { label: 'Catalog Manage', to: '/catalog', icon: ListOrdered, permission: 'catalog.manage' },
+        { label: 'Catalog Manage', to: '/admin/catalog', icon: ListOrdered, permission: 'catalog.manage' },
         { label: 'Reports', to: '/reports', icon: BarChart3, permission: 'report.export' },
         { label: 'Settings', to: '/settings', icon: SettingsIcon, permission: 'admin.role.change' },
       ],
@@ -230,8 +230,8 @@ export const PORTAL_NAV_CONFIG: Record<string, NavGroup[]> = {
       items: [
         { label: 'Procurement Home', to: '/procurement', icon: ShoppingBag },
         { label: 'Suppliers', to: '/procurement/suppliers', icon: Users },
-        { label: 'Purchase Requests', to: '/procurement/requests', icon: FileText },
-        { label: 'Purchase Orders', to: '/procurement/orders', icon: Package },
+        { label: 'Purchase Requests', to: '/procurement/purchase-requests', icon: FileText },
+        { label: 'Purchase Orders', to: '/procurement/purchase-orders', icon: Package },
       ],
     },
   ],
@@ -240,7 +240,7 @@ export const PORTAL_NAV_CONFIG: Record<string, NavGroup[]> = {
       label: 'Field Service',
       items: [
         { label: 'My Jobs', to: '/field-service', icon: Zap },
-        { label: 'Active Tasks', to: '/field-service/tasks', icon: CheckSquare },
+        { label: 'Schedule', to: '/field-service/schedule', icon: CheckSquare },
         { label: 'Installations', to: '/field-service/installations', icon: Box },
       ],
     },

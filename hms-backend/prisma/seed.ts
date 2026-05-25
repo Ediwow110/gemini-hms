@@ -29,6 +29,29 @@ async function main() {
   });
   console.log('Tenant created:', tenant.name);
 
+  // 1a. Create Demo Tenants for Multi-Tenancy testing
+  const tenantAlpha = await prisma.tenant.upsert({
+    where: { id: '00000000-0000-0000-0000-00000000000a' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-00000000000a',
+      name: 'tenant-alpha',
+      status: 'ACTIVE',
+    },
+  });
+  console.log('Demo Tenant Alpha created:', tenantAlpha.name);
+
+  const tenantBeta = await prisma.tenant.upsert({
+    where: { id: '00000000-0000-0000-0000-00000000000b' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-00000000000b',
+      name: 'tenant-beta',
+      status: 'ACTIVE',
+    },
+  });
+  console.log('Demo Tenant Beta created:', tenantBeta.name);
+
   // 1b. Create a default Branch
   const branch = await prisma.branch.upsert({
     where: { id: '00000000-0000-0000-0000-000000000010' },
@@ -385,23 +408,34 @@ async function main() {
     });
   }
 
-  // 6. Seed Lab Test Catalog (keep existing)
+  // 6. Seed Lab Test Catalog
+  console.warn('WARNING: Lab test catalog entries contain demo/reference ranges only.');
   console.log('Seeding Lab Test Catalog...');
+
   const cbcTest = await prisma.labTestDefinition.upsert({
-    where: { tenantId_code: { tenantId: tenant.id, code: 'CBC' } },
+    where: {
+      tenantId_code: {
+        tenantId: tenant.id,
+        code: 'CBC',
+      },
+    },
     update: { isActive: true },
     create: {
       tenantId: tenant.id,
       code: 'CBC',
       name: 'Complete Blood Count (CBC)',
-      description: '[DEMO] A complete blood count panel.',
+      description: '[DEMO] A complete blood count panel measuring cellular components of blood.',
       isActive: true,
     },
   });
 
   const cbcParameters = [
     { code: 'WBC', parameterName: 'White Blood Cells (WBC)', unit: 'x10^9/L', referenceRangeText: '4.5 - 11.0', minNormal: 4.5, maxNormal: 11.0, displayOrder: 1 },
-    { code: 'Hgb', parameterName: 'Hemoglobin (Hgb)', unit: 'g/L', referenceRangeText: '120 - 160', minNormal: 120, maxNormal: 160, displayOrder: 2 },
+    { code: 'RBC', parameterName: 'Red Blood Cells (RBC)', unit: 'x10^12/L', referenceRangeText: '4.00 - 5.50', minNormal: 4.0, maxNormal: 5.5, displayOrder: 2 },
+    { code: 'Hgb', parameterName: 'Hemoglobin (Hgb)', unit: 'g/L', referenceRangeText: '120 - 160', minNormal: 120, maxNormal: 160, displayOrder: 3 },
+    { code: 'PLT', parameterName: 'Platelets (PLT)', unit: 'x10^9/L', referenceRangeText: '150 - 450', minNormal: 150, maxNormal: 450, displayOrder: 4 },
+    { code: 'HCT', parameterName: 'Hematocrit (HCT)', unit: '%', referenceRangeText: '36 - 46', minNormal: 36, maxNormal: 46, displayOrder: 5 },
+    { code: 'MCV', parameterName: 'Mean Corpuscular Volume (MCV)', unit: 'fL', referenceRangeText: '80 - 100', minNormal: 80, maxNormal: 100, displayOrder: 6 }, 
   ];
 
   for (const param of cbcParameters) {
@@ -413,17 +447,91 @@ async function main() {
           code: param.code,
         },
       },
-      update: { parameterName: param.parameterName, unit: param.unit, isActive: true },
+      update: {
+        parameterName: param.parameterName,
+        unit: param.unit,
+        referenceRangeText: param.referenceRangeText,
+        minNormal: param.minNormal,
+        maxNormal: param.maxNormal,
+        displayOrder: param.displayOrder,
+        isActive: true,
+      },
       create: {
         tenantId: tenant.id,
         testDefinitionId: cbcTest.id,
         code: param.code,
         parameterName: param.parameterName,
         unit: param.unit,
+        referenceRangeText: param.referenceRangeText,
+        minNormal: param.minNormal,
+        maxNormal: param.maxNormal,
+        displayOrder: param.displayOrder,
         isActive: true,
       },
     });
   }
+
+  const bmpTest = await prisma.labTestDefinition.upsert({
+    where: {
+      tenantId_code: {
+        tenantId: tenant.id,
+        code: 'BMP',
+      },
+    },
+    update: { isActive: true },
+    create: {
+      tenantId: tenant.id,
+      code: 'BMP',
+      name: 'Basic Metabolic Panel (BMP)',
+      description: '[DEMO] A basic metabolic panel measuring glucose, electrolytes, and kidney function.',
+      isActive: true,
+    },
+  });
+
+  const bmpParameters = [
+    { code: 'GLU', parameterName: 'Glucose', unit: 'mg/dL', referenceRangeText: '70 - 110', minNormal: 70, maxNormal: 110, displayOrder: 1 },
+    { code: 'NA', parameterName: 'Sodium (Na)', unit: 'mEq/L', referenceRangeText: '135 - 145', minNormal: 135, maxNormal: 145, displayOrder: 2 },
+    { code: 'K', parameterName: 'Potassium (K)', unit: 'mEq/L', referenceRangeText: '3.5 - 5.1', minNormal: 3.5, maxNormal: 5.1, displayOrder: 3 },
+    { code: 'CL', parameterName: 'Chloride (Cl)', unit: 'mEq/L', referenceRangeText: '96 - 106', minNormal: 96, maxNormal: 106, displayOrder: 4 },
+    { code: 'CO2', parameterName: 'Carbon Dioxide (CO2)', unit: 'mEq/L', referenceRangeText: '23 - 29', minNormal: 23, maxNormal: 29, displayOrder: 5 },
+    { code: 'BUN', parameterName: 'Blood Urea Nitrogen', unit: 'mg/dL', referenceRangeText: '7 - 20', minNormal: 7, maxNormal: 20, displayOrder: 6 },
+    { code: 'CRE', parameterName: 'Creatinine', unit: 'mg/dL', referenceRangeText: '0.6 - 1.2', minNormal: 0.6, maxNormal: 1.2, displayOrder: 7 },
+  ];
+
+  for (const param of bmpParameters) {
+    await prisma.labTestParameterDefinition.upsert({
+      where: {
+        tenantId_testDefinitionId_code: {
+          tenantId: tenant.id,
+          testDefinitionId: bmpTest.id,
+          code: param.code,
+        },
+      },
+      update: {
+        parameterName: param.parameterName,
+        unit: param.unit,
+        referenceRangeText: param.referenceRangeText,
+        minNormal: param.minNormal,
+        maxNormal: param.maxNormal,
+        displayOrder: param.displayOrder,
+        isActive: true,
+      },
+      create: {
+        tenantId: tenant.id,
+        testDefinitionId: bmpTest.id,
+        code: param.code,
+        parameterName: param.parameterName,
+        unit: param.unit,
+        referenceRangeText: param.referenceRangeText,
+        minNormal: param.minNormal,
+        maxNormal: param.maxNormal,
+        displayOrder: param.displayOrder,
+        isActive: true,
+      },
+    });
+  }
+
+  console.log('Lab Test Catalog seeded: CBC (6 parameters), BMP (7 parameters).');
 
   console.log('Seed completed successfully!');
 }
