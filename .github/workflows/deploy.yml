@@ -23,7 +23,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+      DATABASE_URL: postgresql://test:test@localhost:5432/gemini_test?schema=public
       JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.CI_JWT_REFRESH_SECRET }}
     steps:
