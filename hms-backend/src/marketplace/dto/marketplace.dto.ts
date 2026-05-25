@@ -61,6 +61,19 @@ export class GetListingsQueryDto {
   categoryId?: string;
 
   @IsOptional()
+  @IsUUID()
+  supplierId?: string;
+
+  @IsOptional()
   @IsString()
   search?: string;
+}
+
+export class CreateQuoteDto {
+  @IsUUID()
+  rfqId: string;
+
+  @IsNumber()
+  @Min(0)
+  totalAmount: number;
 }

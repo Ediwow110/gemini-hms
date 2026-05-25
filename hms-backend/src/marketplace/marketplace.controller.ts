@@ -3,11 +3,13 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
   Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { MarketplaceService } from './marketplace.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,6 +21,7 @@ import {
   UpdateListingDto,
   ModerateListingDto,
   GetListingsQueryDto,
+  CreateQuoteDto,
 } from './dto/marketplace.dto';
 
 @Controller('marketplace')
@@ -45,8 +48,126 @@ export class MarketplaceController {
       req.user.tenantId,
       id,
     );
-    // Optional: if listing is not approved, maybe restrict for non-admins
     return listing;
+  }
+
+  // --- Supplier Endpoints ---
+
+  @Get('supplier/listings')
+  @RequirePermissions('marketplace.supplier.view')
+  async findAllSupplier(@Req() req: any) {
+    if (!req.user.supplierId) {
+      throw new ForbiddenException('User is not associated with a supplier');
+    }
+    return this.marketplaceService.findAllSupplierListings(
+      req.user.tenantId,
+      req.user.supplierId,
+    );
+  }
+
+  @Post('supplier/listings')
+  @RequirePermissions('marketplace.supplier.manage_listing')
+  async createSupplierListing(@Req() req: any, @Body() dto: CreateListingDto) {
+    if (!req.user.supplierId) {
+      throw new ForbiddenException('User is not associated with a supplier');
+    }
+    return this.marketplaceService.createListing(
+      req.user.tenantId,
+      req.user.userId,
+      {
+        ...dto,
+        supplierId: req.user.supplierId,
+      },
+    );
+  }
+
+  @Patch('supplier/listings/:id')
+  @RequirePermissions('marketplace.supplier.manage_listing')
+  async updateSupplierListing(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateListingDto,
+  ) {
+    if (!req.user.supplierId) {
+      throw new ForbiddenException('User is not associated with a supplier');
+    }
+    return this.marketplaceService.updateListing(
+      req.user.tenantId,
+      req.user.userId,
+      id,
+      dto,
+      req.user.supplierId,
+    );
+  }
+
+  @Delete('supplier/listings/:id')
+  @RequirePermissions('marketplace.supplier.manage_listing')
+  async deleteSupplierListing(@Req() req: any, @Param('id') id: string) {
+    if (!req.user.supplierId) {
+      throw new ForbiddenException('User is not associated with a supplier');
+    }
+    return this.marketplaceService.deleteListing(
+      req.user.tenantId,
+      req.user.userId,
+      id,
+      req.user.supplierId,
+    );
+  }
+
+  @Get('supplier/catalog-items')
+  @RequirePermissions('marketplace.supplier.manage_listing')
+  async findAvailableCatalogItems(@Req() req: any) {
+    return this.marketplaceService.findAvailableCatalogItems(req.user.tenantId);
+  }
+
+  @Get('supplier/rfqs')
+  @RequirePermissions('marketplace.supplier.view')
+  async findAllSupplierRFQs(@Req() req: any) {
+    return this.marketplaceService.findAllRFQs(req.user.tenantId);
+  }
+
+  @Get('supplier/rfqs/:id')
+  @RequirePermissions('marketplace.supplier.view')
+  async findOneSupplierRFQ(@Req() req: any, @Param('id') id: string) {
+    return this.marketplaceService.findOneRFQ(req.user.tenantId, id);
+  }
+
+  @Get('supplier/quotes')
+  @RequirePermissions('marketplace.supplier.view')
+  async findSupplierQuotes(@Req() req: any) {
+    if (!req.user.supplierId) {
+      throw new ForbiddenException('User is not associated with a supplier');
+    }
+    return this.marketplaceService.findSupplierQuotes(
+      req.user.tenantId,
+      req.user.supplierId,
+    );
+  }
+
+  @Post('supplier/quotes')
+  @RequirePermissions('marketplace.supplier.manage_listing') // Re-using permission for quoting for now
+  async createSupplierQuote(@Req() req: any, @Body() dto: CreateQuoteDto) {
+    if (!req.user.supplierId) {
+      throw new ForbiddenException('User is not associated with a supplier');
+    }
+    return this.marketplaceService.createQuote(
+      req.user.tenantId,
+      req.user.userId,
+      req.user.supplierId,
+      dto,
+    );
+  }
+
+  @Get('supplier/orders')
+  @RequirePermissions('marketplace.supplier.view')
+  async findSupplierOrders(@Req() req: any) {
+    if (!req.user.supplierId) {
+      throw new ForbiddenException('User is not associated with a supplier');
+    }
+    return this.marketplaceService.findSupplierOrders(
+      req.user.tenantId,
+      req.user.supplierId,
+    );
   }
 
   // --- Admin Endpoints ---

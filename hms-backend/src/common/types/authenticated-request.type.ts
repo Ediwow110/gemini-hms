@@ -4,6 +4,7 @@ export interface RequestUser {
   email?: string;
   tenantId: string;
   branchId?: string;
+  supplierId?: string | null;
   roles?: string[];
   permissions?: string[];
   tokenVersion?: number;

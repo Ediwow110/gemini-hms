@@ -80,6 +80,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       sessionId: session.id,
       email: session.user.email,
       tenantId: session.tenantId,
+      supplierId: session.user.supplierId,
       roles: payload.roles ?? [],
       tokenVersion: session.user.tokenVersion,
       mfaVerified: !!payload.mfaVerified,
