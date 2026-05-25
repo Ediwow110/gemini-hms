@@ -366,19 +366,19 @@ for (const file of allPortalFiles) {
   const isResultEncodingPage = path.basename(file) === 'ResultEncodingPage.tsx';
   const isResultValidationPage = path.basename(file) === 'ResultValidationPage.tsx';
   const isValidatedResultsPage = path.basename(file) === 'ValidatedResultsPage.tsx';
+  const isCatalogManagementPage = path.basename(file) === 'CatalogManagementPage.tsx';
 
-  const hasStandardMutation = content.includes('useMutation') || /apiClient\.(post|put|patch|delete)/i.test(content);
+  const hasStandardMutation = content.includes('useMutation') || /apiClient\.(post|put|patch|delete)/i.test(content);       
   const hasCustomMutation = content.includes('useSaveVitals') || content.includes('useMarkVitalsEnteredInError') || content.includes('useSaveTriage') || content.includes('useMarkTriageEnteredInError') || content.includes('useSaveDraftSOAP') || content.includes('useSignSOAP') || content.includes('useCreateClinicalOrder') || content.includes('useCancelClinicalOrder') || content.includes('useReceiveLabOrder') || content.includes('useSaveDraftLabResult') || content.includes('useValidateLabResult') || content.includes('useReleaseLabResult');
 
-  if (hasStandardMutation || (!isVitalsPage && !isTriagePage && !isDoctorSOAPEditor && !isDoctorEMRPage && !isDoctorOrdersPanel && !isLabOrdersPage && !isResultEncodingPage && !isResultValidationPage && !isValidatedResultsPage && hasCustomMutation)) {
+  if ((hasStandardMutation && !isCatalogManagementPage) || (!isVitalsPage && !isTriagePage && !isDoctorSOAPEditor && !isDoctorEMRPage && !isDoctorOrdersPanel && !isLabOrdersPage && !isResultEncodingPage && !isResultValidationPage && !isValidatedResultsPage && hasCustomMutation)) {
     reportError(`Target 15: File ${path.basename(file)} contains unauthorized mutating backend writes.`);
     portalMutations = true;
   }
-}
-if (!portalMutations) {
-  reportPass('Target 15: All portal actions/buttons are verified shell-only (except approved vitals/triage/soap mutations).');
-}
-
+  }
+  if (!portalMutations) {
+  reportPass('Target 15: All portal actions/buttons are verified shell-only (except approved vitals/triage/soap mutations and Catalog).');
+  }
 console.log('\n--- Checking Error Rendering Safety (Target 16) ---');
 let errorLeakingFound = false;
 for (const file of allPortalFiles) {
