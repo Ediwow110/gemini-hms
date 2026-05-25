@@ -7,7 +7,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { RolesGuard } from '../src/auth/guards/roles.guard';
-import { InstallationModule } from '../src/logistics/installation.module';
+import { LogisticsModule } from '../src/logistics/logistics.module';
 import { randomUUID } from 'crypto';
 
 describe('Logistics & Installation E2E Gates (e2e)', () => {
@@ -28,7 +28,7 @@ describe('Logistics & Installation E2E Gates (e2e)', () => {
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
         PrismaModule,
-        InstallationModule,
+        LogisticsModule,
       ],
       providers: [
         {
