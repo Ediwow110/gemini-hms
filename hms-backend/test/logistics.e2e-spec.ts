@@ -153,7 +153,7 @@ describe('Logistics & Field Service (e2e)', () => {
     } as any;
 
     const res = await request(app.getHttpServer())
-      .get('/logistics/technician/jobs')
+      .get('/api/v1/logistics/technician/jobs')
       .expect(200);
 
     expect(res.body.deliveries).toHaveLength(1);
@@ -171,7 +171,7 @@ describe('Logistics & Field Service (e2e)', () => {
     } as any;
 
     const res = await request(app.getHttpServer())
-      .get('/logistics/technician/jobs')
+      .get('/api/v1/logistics/technician/jobs')
       .expect(200);
 
     expect(res.body.deliveries).toHaveLength(0);
@@ -187,7 +187,7 @@ describe('Logistics & Field Service (e2e)', () => {
     } as any;
 
     const res = await request(app.getHttpServer())
-      .patch(`/logistics/installations/${installationJobId}/status`)
+      .patch(`/api/v1/logistics/installations/${installationJobId}/status`)
       .send({ status: 'IN_PROGRESS', note: 'Starting now' })
       .expect(200);
 
@@ -208,7 +208,7 @@ describe('Logistics & Field Service (e2e)', () => {
     } as any;
 
     const res = await request(app.getHttpServer())
-      .get('/logistics/technician/jobs')
+      .get('/api/v1/logistics/technician/jobs')
       .expect(200);
 
     expect(res.body.deliveries).toHaveLength(0);
