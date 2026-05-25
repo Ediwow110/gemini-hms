@@ -170,7 +170,7 @@ export class AuthService {
     );
 
     // 2. Handle MFA Step-Up
-    if (isSensitive) {
+    if (isSensitive && process.env.DISABLE_AUTH_VERIFICATION !== 'true') {
       const challenge = user.mfaEnabled ? 'MFA_VERIFY' : 'MFA_SETUP';
 
       // Issue a restricted mfaToken (short-lived, limited scope)

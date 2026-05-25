@@ -72,7 +72,7 @@ export const RFQsPage: React.FC = () => {
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-semibold">
-        <strong>Sandbox Notice:</strong> RFQ data is simulated. Invite/Extend/Close actions affect UI state only and do not notify suppliers.
+        <strong>Sandbox Status (Backend Integration Pending):</strong> This is the Request for Quotations (RFQ) module. All data is simulated; no real financial or stock mutation is performed.
       </div>
     </div>
   );

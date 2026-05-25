@@ -35,7 +35,7 @@ export const PurchaseOrdersPage: React.FC = () => {
       <PurchaseOrderTable orders={mockOrders} />
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-semibold">
-        <strong>Sandbox Notice:</strong> Purchase orders are mock-generated. Generate/Send actions affect UI only and do not trigger real financial transactions or legal commitments.
+        <strong>Sandbox Status (Backend Integration Pending):</strong> This is the Purchase Order Management module. All data is simulated; no real financial or stock mutation is performed.
       </div>
     </div>
   );

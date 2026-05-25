@@ -22,7 +22,8 @@ import {
   User,
   GitMerge,
   CheckSquare,
-  Pill
+  Pill,
+  ShoppingBag
 } from 'lucide-react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
@@ -51,7 +52,8 @@ function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick
     { label: 'Pharmacy', to: '/pharmacy', icon: Pill, permission: 'inventory.stock.dispense' },
     { label: 'Billing & Cashier', to: '/billing', icon: CreditCard, permission: 'billing.invoice.view' },
     { label: 'HMO Claims', to: '/claims', icon: ShieldCheck, permission: 'billing.invoice.view' },
-    { label: 'Inventory & Procurement', to: '/inventory', icon: Package, permission: 'inventory.item.view' },
+    { label: 'Inventory & Stock', to: '/inventory', icon: Package, permission: 'inventory.item.view' },
+    { label: 'Procurement', to: '/procurement', icon: ShoppingBag, permission: 'inventory.stock.receive' },
     { label: 'Products & Services', to: '/orders/new', icon: PlusCircle, permission: 'order.create' },
     { label: 'Approvals', to: '/approvals', icon: ClipboardCheck, permission: 'approval.request.view' },
     { label: 'Users & Roles', to: '/admin/users', icon: Users, permission: 'admin.role.change' },
@@ -74,11 +76,11 @@ function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick
     },
     {
       label: 'Finance & Supply',
-      items: navItemsWithPermissions.slice(7, 10),
+      items: navItemsWithPermissions.slice(7, 11),
     },
     {
       label: 'Administration & Security',
-      items: navItemsWithPermissions.slice(10),
+      items: navItemsWithPermissions.slice(11),
     },
   ];
 

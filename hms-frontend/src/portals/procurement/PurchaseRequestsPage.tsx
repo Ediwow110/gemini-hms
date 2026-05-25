@@ -64,7 +64,7 @@ export const PurchaseRequestsPage: React.FC = () => {
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-semibold">
-        <strong>Sandbox Notice:</strong> Purchase requests are simulated. No real budget commitment or supplier notifications occur.
+        <strong>Sandbox Status (Backend Integration Pending):</strong> This is the Internal Purchase Requests module. All data is simulated; no real financial or stock mutation is performed.
       </div>
     </div>
   );

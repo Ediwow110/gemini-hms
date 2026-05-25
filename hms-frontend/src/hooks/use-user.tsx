@@ -1,8 +1,9 @@
+// @refresh reset
 /* eslint-disable react-refresh/only-export-components -- Co-locating context and hooks is acceptable for this prototype */
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { apiClient } from '../lib/api';
 
-interface UserState {
+export interface UserState {
   id: string;
   email: string;
   tenantId: string;
@@ -11,7 +12,7 @@ interface UserState {
   permissions: string[];
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: UserState | null;
   isLoading: boolean;
   logout: () => void;
@@ -53,7 +54,7 @@ export const usePermissions = () => {
   return { hasRole, hasPermission, isSuperAdmin, isBranchAdmin, isStaff, canAccess };
 };
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 

@@ -3,7 +3,7 @@ import ProcurementScopeFilter from './components/ProcurementScopeFilter';
 import { ReceivingMonitorPanel, ReceivingItem } from './components/ReceivingMonitorPanel';
 import { ClipboardList } from 'lucide-react';
 
-export const ReceivingPage: React.FC = () => {
+export const ProcurementReceivingPage: React.FC = () => {
   const mockShipments: ReceivingItem[] = [
     { id: 'REC-001', poNumber: 'PO-2026-441', supplier: 'Apex Medical Corp', expectedDate: 'Today', itemsCount: 15, status: 'PENDING' },
     { id: 'REC-002', poNumber: 'PO-2026-438', supplier: 'Global Pharma Inc', expectedDate: 'Yesterday', itemsCount: 8, status: 'ISSUE' },
@@ -20,7 +20,7 @@ export const ReceivingPage: React.FC = () => {
           <p className="text-xs text-slate-500 font-medium">Record incoming shipments, inspect quality, and update logical stock availability</p>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          <strong>Sandbox Notice:</strong> Receiving logs are mock-generated. No real inventory or sub-ledger mutation occurs.
+          <strong>Sandbox Status (Backend Integration Pending):</strong> This is the Warehouse Receiving Dock module. All data is simulated; no real financial or stock mutation is performed.
         </div>
       </div>
 
@@ -68,4 +68,4 @@ export const ReceivingPage: React.FC = () => {
   );
 };
 
-export default ReceivingPage;
+export default ProcurementReceivingPage;
