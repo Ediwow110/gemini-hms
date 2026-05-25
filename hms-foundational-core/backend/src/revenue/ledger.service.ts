@@ -1,4 +1,4 @@
-import { SecurityException } from '../middleware/tenant-isolation';
+import { SecurityException } from '../../middleware/tenant-isolation';
 
 export interface ProcessPaymentDto {
   amount: number;
