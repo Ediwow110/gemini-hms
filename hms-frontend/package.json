@@ -19,6 +19,7 @@
     "@tanstack/react-query": "^5.100.9",
     "@tanstack/react-table": "^8.21.3",
     "axios": "^1.16.0",
+    "axios-cookiejar-support": "^7.0.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^1.14.0",
@@ -28,6 +29,7 @@
     "react-hook-form": "^7.75.0",
     "react-router-dom": "^7.15.0",
     "tailwind-merge": "^3.5.0",
+    "tough-cookie": "^6.0.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },
@@ -46,6 +48,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
     "jsdom": "^29.1.1",
+    "playwright": "^1.60.0",
     "postcss": "^8.5.14",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.22.3",
