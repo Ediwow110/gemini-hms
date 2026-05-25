@@ -1,11 +1,7 @@
 import React from 'react';
 import { useAuth, usePermissions, useUser } from '../hooks/use-user';
 import { UnauthorizedState } from '../components/feedback/UnauthorizedState';
-
-export enum GuardMode {
-  ANY = 'any',
-  ALL = 'all',
-}
+import { GuardMode } from './types';
 
 interface PermissionRouteProps {
   /** Single permission to check */

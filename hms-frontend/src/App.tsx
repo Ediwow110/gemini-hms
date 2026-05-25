@@ -3,7 +3,8 @@ import { Suspense, lazy } from 'react';
 import { AppShell } from './app/AppShell';
 import { LoginPage } from './app/LoginPage';
 import { ProtectedRoute } from './app/ProtectedRoute';
-import { PermissionRoute, GuardMode } from './app/PermissionRoute';
+import { PermissionRoute } from './app/PermissionRoute';
+import { GuardMode } from './app/types';
 import { AuthProvider } from './hooks/use-user';
 
 // Core routes — eagerly loaded (always needed)
