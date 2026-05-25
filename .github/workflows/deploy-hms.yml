@@ -8,6 +8,9 @@ on:
 jobs:
   build-and-validate:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./hms-foundational-core
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
