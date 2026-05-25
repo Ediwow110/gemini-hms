@@ -125,6 +125,7 @@ describe('Logistics & Installation E2E Gates (e2e)', () => {
     const job = await prisma.installationJob.create({
       data: {
         id: randomUUID(),
+        tenantId,
         assetId: asset.id,
         assignedUserId: testUserId,
         status: 'ASSIGNED',
