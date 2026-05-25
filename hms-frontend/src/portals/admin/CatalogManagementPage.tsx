@@ -56,7 +56,7 @@ export const CatalogManagementPage: React.FC = () => {
     isActive: true
   });
 
-  const fetchData = async () => {
+  const fetchData = React.useCallback(async () => {
     setLoading(true);
     try {
       const [catsRes, itemsRes] = await Promise.all([
@@ -70,11 +70,11 @@ export const CatalogManagementPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
