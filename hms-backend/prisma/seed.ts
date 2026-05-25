@@ -157,6 +157,8 @@ async function main() {
     // IT / Compliance
     { name: 'it.system.view', scope: 'tenant', riskLevel: 'MEDIUM' },
     { name: 'it.support.manage', scope: 'tenant', riskLevel: 'HIGH' },
+    { name: 'it.ticket.view', scope: 'tenant', riskLevel: 'MEDIUM' },
+    { name: 'it.ticket.manage', scope: 'tenant', riskLevel: 'HIGH' },
     { name: 'compliance.audit.review', scope: 'tenant', riskLevel: 'HIGH' },
     { name: 'compliance.phi.monitor', scope: 'tenant', riskLevel: 'PRIVILEGED' },
     { name: 'compliance.report.export', scope: 'tenant', riskLevel: 'HIGH' },
@@ -287,7 +289,7 @@ async function main() {
       'approval.request.process'
     ],
     'IT Support': [
-      'it.system.view', 'it.support.manage', 'audit.view'
+      'it.system.view', 'it.support.manage', 'it.ticket.view', 'it.ticket.manage', 'audit.view'
     ],
     'Compliance Officer': [
       'compliance.audit.review', 'compliance.phi.monitor', 'compliance.report.export',

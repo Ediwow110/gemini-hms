@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { 
+import {
   ShieldAlert, 
   Users, 
   History, 
@@ -7,83 +7,44 @@ import {
   Lock, 
   Eye, 
   FileText, 
-  TrendingUp, 
-  ArrowRight
+  ArrowRight,
+  HelpCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ComplianceScopeFilter from './components/ComplianceScopeFilter';
 import ComplianceRiskCard from './components/ComplianceRiskCard';
-import PHIAccessTable, { PHIAccessEvent } from './components/PHIAccessTable';
+import PHIAccessTable from './components/PHIAccessTable';
 import { StatusBadge } from '../../components/feedback/StatusBadge';
+import { useAuditEvents, useAccessReview } from '../../hooks/use-compliance';
 
 export const ComplianceDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [scope, setScope] = useState({ tenantId: 'all', branchId: 'all' });
+  const [, setScope] = useState({ tenantId: 'all', branchId: 'all' });
+  const { events: auditEvents, loading: auditLoading } = useAuditEvents({ pageSize: 50 });
+  const { report: accessReview, loading: reviewLoading } = useAccessReview();
 
-  // Mock PHI Access Events
-  const mockPHIAccessEvents: PHIAccessEvent[] = [
-    {
-      id: 'EVT-1002',
-      timestamp: '2026-05-21 13:45:10',
-      actorName: 'Dr. Evelyn Martinez',
-      actorRole: 'Doctor',
-      patientName: 'John Doe',
-      patientId: 'PAT-8812',
-      tenantName: 'St. Jude Hospital Network',
-      branchName: 'St. Jude Metro',
-      accessType: 'ROUTINE',
-      reason: 'Standard EMR charting during consultation',
-      riskScore: 12
-    },
-    {
-      id: 'EVT-1003',
-      timestamp: '2026-05-21 12:30:15',
-      actorName: 'Nurse Marcus Vance',
-      actorRole: 'Nurse',
-      patientName: 'Jane Smith',
-      patientId: 'PAT-4322',
-      tenantName: 'St. Jude Hospital Network',
-      branchName: 'St. Jude Metro',
-      accessType: 'EMERGENCY',
-      reason: 'Break-glass trigger: Critical triage entry in ICU',
-      riskScore: 68
-    },
-    {
-      id: 'EVT-1004',
-      timestamp: '2026-05-21 11:15:00',
-      actorName: 'Unknown Administrator',
-      actorRole: 'System Admin',
-      patientName: 'Robert Johnson',
-      patientId: 'PAT-7019',
-      tenantName: 'MediClinics Group',
-      branchName: 'MediClinics Central',
-      accessType: 'UNAUTHORIZED',
-      reason: 'Access from anomalous IP range outside subnet',
-      riskScore: 92
-    }
-  ];
+  // Derive PHI events from audit logs (filter for patient/clinical record types)
+  const phiEvents = auditEvents
+    .filter(e => ['Patient', 'Encounter', 'LabResult', 'Prescription', 'SOAP', 'ClinicalNote'].includes(e.recordType))
+    .slice(0, 5)
+    .map(e => ({
+      id: e.id,
+      timestamp: new Date(e.createdAt).toLocaleString(),
+      actorName: e.activeRole || 'Unknown',
+      actorRole: e.activeRole || 'N/A',
+      patientName: e.recordId,
+      patientId: e.recordId,
+      tenantName: '',
+      branchName: '',
+      accessType: (e.eventKey?.includes('BREAK_GLASS') || e.eventKey?.includes('UNAUTHORIZED')) ? 'UNAUTHORIZED' as const : 'ROUTINE' as const,
+      reason: e.eventKey || '',
+      riskScore: e.eventKey?.includes('BREAK_GLASS') ? 68 : e.eventKey?.includes('UNAUTHORIZED') ? 92 : 12,
+    }));
 
-  // Mock security/audit tasks
-  const openComplianceTasks = [
-    { id: 'TSK-01', text: 'Certify quarterly access permissions for St. Jude Metro', due: '2 days', severity: 'HIGH' },
-    { id: 'TSK-02', text: 'Investigate 2 break-glass occurrences in St. Jude North', due: '5 days', severity: 'MEDIUM' },
-    { id: 'TSK-03', text: 'Confirm retention clean-up dry-run log for MediClinics', due: 'Today', severity: 'CRITICAL' },
-  ];
-
-  // Mock privilege changes
-  const recentPrivilegeChanges = [
-    { id: 'PC-1', user: 'admin.support@stjude.org', action: 'Assigned "Billing Admin" role', actor: 'Super Admin', time: '1 hr ago' },
-    { id: 'PC-2', user: 'dr.martinez@stjude.org', action: 'Bypassed temporary MFA policy', actor: 'Branch Admin', time: '3 hrs ago' },
-  ];
-
-  // Filter events based on selected tenant/branch mock scopes
-  const filteredEvents = mockPHIAccessEvents.filter(e => {
-    if (scope.tenantId !== 'all') {
-      const matchTenant = scope.tenantId === 'TEN-001' ? 'St. Jude Hospital Network' : scope.tenantId === 'TEN-002' ? 'MediClinics Group' : 'Apex Healthcare Services';
-      if (e.tenantName !== matchTenant) return false;
-    }
-    return true;
-  });
+  const criticalCount = phiEvents.filter(e => e.riskScore > 50).length;
+  const breakGlassCount = phiEvents.filter(e => e.accessType === 'UNAUTHORIZED').length;
+  const auditChainBlocks = auditEvents.length;
+  const staleAccountsCount = accessReview?.staleAccountsCount || 0;
 
   return (
     <div className="space-y-6">
@@ -95,9 +56,6 @@ export const ComplianceDashboard: React.FC = () => {
           </h2>
           <p className="text-xs text-slate-500 font-medium">Real-time PHI monitor, audit-chain verifier, and data privacy dashboard</p>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          <strong>Sandbox Notice:</strong> You are viewing simulated metrics. No backend logs are mutated.
-        </div>
       </div>
 
       {/* Scope Filter */}
@@ -107,199 +65,173 @@ export const ComplianceDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <ComplianceRiskCard
           title="Critical Breach Alerts"
-          value="1 Active"
+          value={auditLoading ? '...' : `${criticalCount} Active`}
           icon={ShieldAlert}
-          riskLevel="CRITICAL"
-          description="IP spoofing alert flagged on Tenant 2"
+          riskLevel={criticalCount > 0 ? 'CRITICAL' : 'LOW'}
+          description={criticalCount > 0 ? 'High-risk events flagged' : 'No critical alerts'}
           actionLabel="View Alerts"
           onActionClick={() => navigate('/compliance/breach-alerts')}
         />
         <ComplianceRiskCard
-          title="Break-Glass Events"
-          value="3 Today"
+          title="Unauthorized Access"
+          value={`${breakGlassCount} Events`}
           icon={Eye}
-          riskLevel="MEDIUM"
-          description="Critical emergency access overrides"
+          riskLevel={breakGlassCount > 0 ? 'MEDIUM' : 'LOW'}
+          description="Flagged access events"
           actionLabel="Review Access Logs"
           onActionClick={() => navigate('/compliance/phi-access')}
         />
         <ComplianceRiskCard
-          title="Audit Chain Health"
-          value="124 Blocks"
+          title="Audit Chain"
+          value={`${auditChainBlocks} Events`}
           icon={Lock}
           riskLevel="LOW"
-          description="Hash links validated successfully"
-          actionLabel="Verify Ledger Integrity"
+          description="Hash-linked audit trail"
+          actionLabel="Verify Integrity"
           onActionClick={() => navigate('/compliance/audit-chain')}
         />
         <ComplianceRiskCard
-          title="Pending Attestations"
-          value="5 Accounts"
+          title="Stale Accounts"
+          value={reviewLoading ? '...' : `${staleAccountsCount} Accounts`}
           icon={Users}
-          riskLevel="HIGH"
-          description="Stale accounts awaiting certification"
+          riskLevel={staleAccountsCount > 0 ? 'HIGH' : 'LOW'}
+          description={staleAccountsCount > 0 ? 'Awaiting certification' : 'All accounts active'}
           actionLabel="Run Access Reviews"
           onActionClick={() => navigate('/compliance/access-reviews')}
         />
       </div>
 
-      {/* Main Grid: Left column (Activities, PHI, Log tables) / Right column (Security metrics, tasks, trends) */}
+      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Column: PHI monitor Table & Export Logs */}
+        {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
-          
           {/* PHI Access Monitor */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">PHI Access Events Monitor</h3>
-                <p className="text-[10px] text-slate-400 font-medium">Real-time audit records of patient health information requests</p>
+                <p className="text-[10px] text-slate-400 font-medium">Real audit records of clinical data access</p>
               </div>
-              <button 
+              <button
                 onClick={() => navigate('/compliance/phi-access')}
                 className="text-xs font-bold text-indigo-650 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors"
               >
                 Full Monitor <ArrowRight className="h-3 w-3" />
               </button>
             </div>
-            <PHIAccessTable events={filteredEvents} />
+            {auditLoading ? (
+              <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-6 text-center text-xs text-slate-400">
+                Loading audit events...
+              </div>
+            ) : phiEvents.length === 0 ? (
+              <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-8 text-center text-slate-400 space-y-2">
+                <HelpCircle className="h-6 w-6 mx-auto text-slate-300" />
+                <p className="text-xs font-bold">No PHI access events found</p>
+                <p className="text-[10px]">Clinical data access events will appear here from the audit log.</p>
+              </div>
+            ) : (
+              <PHIAccessTable events={phiEvents} />
+            )}
           </div>
 
-          {/* Export & Privilege Event Summary */}
+          {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* Failed Login Trends & Security Events */}
+            {/* Failed Login Trends */}
             <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-4">
-              <div>
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Failed Login Trends</h4>
-                <p className="text-[10px] text-slate-400 font-medium font-semibold">IP block triggers & brute-force prevention</p>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs border-b pb-2">
-                  <span className="font-semibold text-slate-655 text-slate-600">IP: 198.51.100.42</span>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status="BLOCKED" type="danger" />
-                    <span className="font-mono font-bold text-slate-500">15 attempts</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-xs border-b pb-2">
-                  <span className="font-semibold text-slate-655 text-slate-600">IP: 203.0.113.88</span>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status="WARNING" type="warning" />
-                    <span className="font-mono font-bold text-slate-500">4 attempts</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-655 text-slate-600">IP: 198.51.100.99</span>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status="BLOCKED" type="danger" />
-                    <span className="font-mono font-bold text-slate-500">12 attempts</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 border p-3 rounded-xl flex items-center gap-2 text-[10px] text-slate-500">
-                <TrendingUp className="h-4 w-4 text-indigo-500 flex-shrink-0" />
-                <span>Failed login metrics are simulated for tenant isolation boundary validation.</span>
-              </div>
-            </div>
-
-            {/* Privilege Changes */}
-            <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-4">
-              <div>
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Privilege Changes</h4>
-                <p className="text-[10px] text-slate-400 font-medium font-semibold font-mono">RBAC modifications audit track</p>
-              </div>
-
-              <div className="space-y-3">
-                {recentPrivilegeChanges.map((pc) => (
-                  <div key={pc.id} className="text-xs border-b pb-2 last:border-0 last:pb-0 space-y-1">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Recent Audit Activity</h4>
+              <div className="space-y-2">
+                {auditEvents.slice(0, 5).map(e => (
+                  <div key={e.id} className="text-xs border-b pb-2 last:border-0 last:pb-0">
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-700 truncate max-w-[150px]">{pc.user}</span>
-                      <span className="text-[9px] text-slate-400 font-mono">{pc.time}</span>
+                      <span className="font-bold text-slate-700">{e.eventKey}</span>
+                      <span className="text-[9px] text-slate-400 font-mono">{new Date(e.createdAt).toLocaleTimeString()}</span>
                     </div>
-                    <p className="text-slate-500 font-medium text-[11px]">{pc.action}</p>
-                    <p className="text-[9px] text-slate-400 font-semibold">Granted by: {pc.actor}</p>
+                    <p className="text-[10px] text-slate-500">{e.recordType} | {e.activeRole || 'N/A'}</p>
                   </div>
                 ))}
               </div>
             </div>
 
+            {/* Access Review Summary */}
+            <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-4">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">SOC2 Access Review</h4>
+              {reviewLoading ? (
+                <p className="text-xs text-slate-400">Loading...</p>
+              ) : accessReview ? (
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs border-b pb-2">
+                    <span className="font-semibold text-slate-600">Status</span>
+                    <StatusBadge
+                      status={accessReview.complianceStatus === 'COMPLIANT' ? 'COMPLIANT' : 'NEEDS_ATTENTION'}
+                      type={accessReview.complianceStatus === 'COMPLIANT' ? 'success' : 'danger'}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs border-b pb-2">
+                    <span className="font-semibold text-slate-600">Stale Accounts</span>
+                    <span className="font-bold text-slate-700">{accessReview.staleAccountsCount}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="font-semibold text-slate-600">Privilege Escalations</span>
+                    <span className="font-bold text-slate-700">{accessReview.privilegeEscalationsCount}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">Access review data unavailable</p>
+              )}
+            </div>
           </div>
-
         </div>
 
-        {/* Right Column: Tasks, Quick Actions, Warnings */}
+        {/* Right Column */}
         <div className="space-y-6">
-          
           {/* Quick Actions Panel */}
           <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-4">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Compliance Quick Actions</h4>
-            
             <div className="space-y-2">
-              <button 
-                onClick={() => navigate('/compliance/audit-chain')}
-                className="w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all text-xs font-bold text-slate-700 flex justify-between items-center cursor-pointer"
-              >
-                <span>Verify Ledger Chains</span>
-                <Lock className="h-4 w-4 text-indigo-500" />
-              </button>
-              <button 
-                onClick={() => navigate('/compliance/retention')}
-                className="w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all text-xs font-bold text-slate-700 flex justify-between items-center cursor-pointer"
-              >
-                <span>Retention Policies Clean-up</span>
-                <Database className="h-4 w-4 text-indigo-500" />
-              </button>
-              <button 
-                onClick={() => navigate('/compliance/reports')}
-                className="w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all text-xs font-bold text-slate-700 flex justify-between items-center cursor-pointer"
-              >
-                <span>Generate Audit Reports</span>
-                <FileText className="h-4 w-4 text-indigo-500" />
-              </button>
-              <button 
-                onClick={() => navigate('/compliance/export-logs')}
-                className="w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all text-xs font-bold text-slate-700 flex justify-between items-center cursor-pointer"
-              >
-                <span>Data Export Logs</span>
-                <History className="h-4 w-4 text-indigo-500" />
-              </button>
+              {[
+                { label: 'Verify Ledger Chains', icon: Lock, path: '/compliance/audit-chain' },
+                { label: 'Retention Policies', icon: Database, path: '/compliance/retention' },
+                { label: 'Audit Reports', icon: FileText, path: '/compliance/reports' },
+                { label: 'Export Logs', icon: History, path: '/compliance/export-logs' },
+              ].map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className="w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all text-xs font-bold text-slate-700 flex justify-between items-center cursor-pointer"
+                >
+                  <span>{item.label}</span>
+                  <item.icon className="h-4 w-4 text-indigo-500" />
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Open Compliance Tasks */}
           <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-4">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Open Tasks</h4>
-            <div className="space-y-3">
-              {openComplianceTasks.map((t) => (
-                <div key={t.id} className="p-3 bg-slate-50 border border-slate-250/60 rounded-xl space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono text-[9px] text-slate-400 font-bold">{t.id}</span>
-                    <StatusBadge status={t.severity} type={t.severity === 'CRITICAL' ? 'danger' : t.severity === 'HIGH' ? 'danger' : 'warning'} />
-                  </div>
-                  <p className="text-xs font-bold text-slate-700 leading-normal">{t.text}</p>
-                  <p className="text-[10px] text-slate-400 font-bold">Due: {t.due}</p>
-                </div>
-              ))}
-            </div>
+            {accessReview && accessReview.staleAccountsCount > 0 ? (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
+                <p className="text-xs font-bold text-rose-700">
+                  {accessReview.staleAccountsCount} stale accounts need certification
+                </p>
+                <p className="text-[10px] text-rose-500">Run access reviews to certify or revoke.</p>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">No pending compliance tasks</p>
+            )}
           </div>
 
-          {/* Audit Chain Warnings & Security Info */}
+          {/* Security Info */}
           <div className="p-4 bg-indigo-50/40 border border-indigo-150 rounded-2xl space-y-2.5">
             <div className="flex items-center gap-2">
-              <Lock className="h-4.5 w-4.5 text-indigo-600 animate-pulse" />
+              <Lock className="h-4.5 w-4.5 text-indigo-600" />
               <h5 className="text-xs font-bold text-indigo-900 uppercase">Cryptographic Verified</h5>
             </div>
             <p className="text-[11px] text-indigo-800 leading-relaxed font-semibold">
-              The dashboard integrates automatic SHA-256 validation checks. If any audit record drift or tampering is suspected, alerts escalate instantly.
+              Audit events are hash-chained with SHA-256. Any tampered records are immediately detectable.
             </p>
           </div>
-
         </div>
-
       </div>
     </div>
   );

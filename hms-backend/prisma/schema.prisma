@@ -16,67 +16,68 @@ model Tenant {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  branches           Branch[]
-  users              User[]
-  patients           Patient[]
-  roles              Role[]
-  permissions        Permission[]
-  approvalRequests   ApprovalRequest[]
-  notifications      Notification[]
-  files              File[]
-  cashierSessions    CashierSession[]
-  numberingSequences NumberingSequence[]
-  serviceCategories  ServiceCategory[]
-  serviceItems       ServiceItem[]
-  servicePrices      ServicePrice[]
-  orders             Order[]
-  orderItems         OrderItem[]
-  invoices           Invoice[]
-  payments           Payment[]
-  labResults         LabResult[]
-  auditLogs          AuditLog[]
-  inventoryItems     InventoryItem[]
-  branchStocks       BranchStock[]
-  stockLogs          StockLog[]
-  departments        Department[]
-  employees          Employee[]
-  employeeBranches   EmployeeBranch[]
-  payslips         Payslip[]
-  queueEntries       QueueEntry[]
-  hmoPartners        HmoPartner[]
-  claims             Claim[]
-  userBranches       UserBranch[]
-  reportExports       ReportExport[]
+  branches             Branch[]
+  users                User[]
+  patients             Patient[]
+  roles                Role[]
+  permissions          Permission[]
+  approvalRequests     ApprovalRequest[]
+  notifications        Notification[]
+  files                File[]
+  cashierSessions      CashierSession[]
+  numberingSequences   NumberingSequence[]
+  serviceCategories    ServiceCategory[]
+  serviceItems         ServiceItem[]
+  servicePrices        ServicePrice[]
+  orders               Order[]
+  orderItems           OrderItem[]
+  invoices             Invoice[]
+  payments             Payment[]
+  labResults           LabResult[]
+  auditLogs            AuditLog[]
+  inventoryItems       InventoryItem[]
+  branchStocks         BranchStock[]
+  stockLogs            StockLog[]
+  departments          Department[]
+  employees            Employee[]
+  employeeBranches     EmployeeBranch[]
+  payslips             Payslip[]
+  queueEntries         QueueEntry[]
+  hmoPartners          HmoPartner[]
+  claims               Claim[]
+  userBranches         UserBranch[]
+  reportExports        ReportExport[]
   patientMergeRequests PatientMergeRequest[]
-  idempotencyRecords IdempotencyRecord[]
-  encounters         Encounter[]
-  prescriptions      Prescription[]
-  referrals          Referral[]
-  patientUsers       PatientUser[]
-  insuranceClaims    InsuranceClaim[]
-  ledgerEntries      LedgerEntry[]
-  triageRecords      Triage[]
-  clinicalOrderItems ClinicalOrderItem[]
-  labSpecimens       LabSpecimen[]
-  marketplaceListings MarketplaceListing[]
+  idempotencyRecords   IdempotencyRecord[]
+  encounters           Encounter[]
+  prescriptions        Prescription[]
+  referrals            Referral[]
+  patientUsers         PatientUser[]
+  insuranceClaims      InsuranceClaim[]
+  ledgerEntries        LedgerEntry[]
+  triageRecords        Triage[]
+  clinicalOrderItems   ClinicalOrderItem[]
+  labSpecimens         LabSpecimen[]
+  marketplaceListings  MarketplaceListing[]
 
-  suppliers          Supplier[]
-  purchaseRequests   PurchaseRequest[]
-  purchaseOrders     PurchaseOrder[]
-  receivingRecords   ReceivingRecord[]
-  referrers          Referrer[]
-  referralRecords    ReferralRecord[]
-  slaAlerts          SlaAlert[]
-  cptCodes           CptCode[]
-  labTestDefinitions LabTestDefinition[]
+  suppliers                   Supplier[]
+  purchaseRequests            PurchaseRequest[]
+  purchaseOrders              PurchaseOrder[]
+  receivingRecords            ReceivingRecord[]
+  referrers                   Referrer[]
+  referralRecords             ReferralRecord[]
+  slaAlerts                   SlaAlert[]
+  cptCodes                    CptCode[]
+  labTestDefinitions          LabTestDefinition[]
   labTestParameterDefinitions LabTestParameterDefinition[]
-  rfqs               RFQ[]
-  quotes             Quote[]
-  salesOrders        SalesOrder[]
-  shipments          Shipment[]
-  deliveryJobs       DeliveryJob[]
-  installationJobs   InstallationJob[]
-  assets             Asset[]
+  rfqs                        RFQ[]
+  quotes                      Quote[]
+  salesOrders                 SalesOrder[]
+  shipments                   Shipment[]
+  deliveryJobs                DeliveryJob[]
+  installationJobs            InstallationJob[]
+  assets                      Asset[]
+  supportTickets              SupportTicket[]
 
   @@map("tenants")
 }
@@ -106,52 +107,55 @@ model Branch {
   triageRecords    Triage[]
   labSpecimens     LabSpecimen[]
   rfqs             RFQ[]
+  supportTickets   SupportTicket[]
 
   @@map("branches")
 }
 
 model User {
-  id                String    @id @default(uuid()) @db.Uuid
-  tenantId          String    @map("tenant_id") @db.Uuid
-  supplierId        String?   @map("supplier_id") @db.Uuid
-  email             String
-  passwordHash       String   @map("password_hash")
-  mfaEnabled         Boolean  @default(false) @map("is_mfa_enabled")
-  mfaSecret          String?  @map("mfa_secret")
-  status             String   @default("ACTIVE")
-  deactivatedAt     DateTime? @map("deactivated_at")
-  deactivatedReason String?   @map("deactivated_reason")
-  tokenVersion      Int       @default(0) @map("token_version")
-  failedLoginAttempts Int     @default(0) @map("failed_login_attempts")
-  lockedUntil       DateTime? @map("locked_until")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid()) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  supplierId          String?   @map("supplier_id") @db.Uuid
+  email               String
+  passwordHash        String    @map("password_hash")
+  mfaEnabled          Boolean   @default(false) @map("is_mfa_enabled")
+  mfaSecret           String?   @map("mfa_secret")
+  status              String    @default("ACTIVE")
+  deactivatedAt       DateTime? @map("deactivated_at")
+  deactivatedReason   String?   @map("deactivated_reason")
+  tokenVersion        Int       @default(0) @map("token_version")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  tenant             Tenant            @relation(fields: [tenantId], references: [id])
-  supplier           Supplier?         @relation(fields: [supplierId], references: [id])
-  auditLogs          AuditLog[]
-  userRoles          UserRole[]
-  userBranches       UserBranch[]
-  reportExports      ReportExport[]    @relation("RequestedExports")
-  decidedExports     ReportExport[]    @relation("DecidedExports")
-  requestedApprovals ApprovalRequest[] @relation("RequestedApprovals")
-  approvedApprovals  ApprovalRequest[] @relation("ApprovedApprovals")
-  mergeRequested     PatientMergeRequest[] @relation("MergeRequested")
-  mergeApproved      PatientMergeRequest[] @relation("MergeApproved")
-  encountersAttending Encounter[] @relation("EncounterAttending")
-  encountersAsDoctor  Encounter[]       @relation("EncounterDoctor")
-  clinicalNotesAuthor ClinicalNote[]    @relation("ClinicalNoteAuthor")
-  clinicalNotesLocker ClinicalNote[]    @relation("ClinicalNoteLocker")
-  prescriptionsPrescribed  Prescription[] @relation("PrescribedBy")
-  prescriptionsDispensed   Prescription[] @relation("DispensedBy")
-  referralsReferred        Referral[]     @relation("ReferredBy")
-  requestedOrders         Order[]        @relation("OrderRequestedBy")
-  cancelledOrders         Order[]        @relation("OrderCancelledBy")
-  sessions           Session[]
-  mfaRecoveryCodes   UserMfaRecoveryCode[]
-  employees          Employee[]
-  deliveryJobs       DeliveryJob[]
-  installationJobs   InstallationJob[]
+  tenant                  Tenant                @relation(fields: [tenantId], references: [id])
+  supplier                Supplier?             @relation(fields: [supplierId], references: [id])
+  auditLogs               AuditLog[]
+  userRoles               UserRole[]
+  userBranches            UserBranch[]
+  reportExports           ReportExport[]        @relation("RequestedExports")
+  decidedExports          ReportExport[]        @relation("DecidedExports")
+  requestedApprovals      ApprovalRequest[]     @relation("RequestedApprovals")
+  approvedApprovals       ApprovalRequest[]     @relation("ApprovedApprovals")
+  mergeRequested          PatientMergeRequest[] @relation("MergeRequested")
+  mergeApproved           PatientMergeRequest[] @relation("MergeApproved")
+  encountersAttending     Encounter[]           @relation("EncounterAttending")
+  encountersAsDoctor      Encounter[]           @relation("EncounterDoctor")
+  clinicalNotesAuthor     ClinicalNote[]        @relation("ClinicalNoteAuthor")
+  clinicalNotesLocker     ClinicalNote[]        @relation("ClinicalNoteLocker")
+  prescriptionsPrescribed Prescription[]        @relation("PrescribedBy")
+  prescriptionsDispensed  Prescription[]        @relation("DispensedBy")
+  referralsReferred       Referral[]            @relation("ReferredBy")
+  requestedOrders         Order[]               @relation("OrderRequestedBy")
+  cancelledOrders         Order[]               @relation("OrderCancelledBy")
+  sessions                Session[]
+  mfaRecoveryCodes        UserMfaRecoveryCode[]
+  employees               Employee[]
+  deliveryJobs            DeliveryJob[]
+  installationJobs        InstallationJob[]
+  ticketsReported         SupportTicket[]       @relation("TicketReporter")
+  ticketsAssigned         SupportTicket[]       @relation("TicketAssignee")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -180,8 +184,8 @@ model Session {
   lastRotatedAt    DateTime @default(now()) @map("last_rotated_at")
   userAgent        String?  @map("user_agent")
   ipAddress        String?  @map("ip_address")
-  
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([tenantId])
@@ -270,19 +274,19 @@ model Encounter {
   encounteredAt  DateTime @default(now()) @map("encountered_at")
   chiefComplaint String   @default("") @map("chief_complaint") @db.Text
 
-  status      EncounterStatus @default(OPEN)
-  type        String?  // OUTPATIENT, INPATIENT, EMERGENCY, etc.
+  status EncounterStatus @default(OPEN)
+  type   String? // OUTPATIENT, INPATIENT, EMERGENCY, etc.
 
-  startedAt   DateTime @default(now()) @map("started_at")
-  endedAt     DateTime? @map("ended_at")
+  startedAt DateTime  @default(now()) @map("started_at")
+  endedAt   DateTime? @map("ended_at")
 
-  reason      String?
-  notes       String?
+  reason String?
+  notes  String?
 
-  createdBy   String   @map("created_by") @db.Uuid
-  updatedBy   String   @map("updated_by") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedBy     String    @map("updated_by") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
   archivedAt    DateTime? @map("archived_at")
   archiveReason String?   @map("archive_reason")
 
@@ -295,11 +299,11 @@ model Encounter {
   triageRecords      Triage[]
   orders             Order[]
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  attending User?    @relation("EncounterAttending", fields: [attendingId], references: [id])
-  doctor    User?    @relation("EncounterDoctor", fields: [doctorId], references: [id])
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  attending User?   @relation("EncounterAttending", fields: [attendingId], references: [id])
+  doctor    User?   @relation("EncounterDoctor", fields: [doctorId], references: [id])
 
   @@index([tenantId, patientId])
   @@index([tenantId, status])
@@ -311,9 +315,9 @@ model Encounter {
 }
 
 model Vitals {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  encounterId String   @map("encounter_id") @db.Uuid
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  encounterId String @map("encounter_id") @db.Uuid
 
   temperature Decimal? @db.Decimal(5, 2)
   systolicBp  Int?     @map("systolic_bp")
@@ -336,31 +340,31 @@ model Vitals {
 }
 
 model Triage {
-  id                   String    @id @default(uuid()) @db.Uuid
-  tenantId             String    @map("tenant_id") @db.Uuid
-  branchId             String    @map("branch_id") @db.Uuid
-  patientId            String    @map("patient_id") @db.Uuid
-  encounterId          String?   @map("encounter_id") @db.Uuid
-  queueEntryId         String?   @map("queue_entry_id") @db.Uuid
-  acuityLevel          String?   @map("acuity_level")
-  chiefComplaintSummary String?  @map("chief_complaint_summary")
-  arrivalMode          String?   @map("arrival_mode")
-  painScore            Int?      @map("pain_score")
-  infectiousRiskFlag   Boolean   @default(false) @map("infectious_risk_flag")
-  fallRiskFlag         Boolean   @default(false) @map("fall_risk_flag")
-  pregnancyFlag        Boolean   @default(false) @map("pregnancy_flag")
-  notes                String?
-  recordedById         String    @map("recorded_by_id") @db.Uuid
-  status               String    @default("ACTIVE")
-  errorReason          String?   @map("error_reason")
-  errorById            String?   @map("error_by_id") @db.Uuid
-  errorAt              DateTime? @map("error_at")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  id                    String    @id @default(uuid()) @db.Uuid
+  tenantId              String    @map("tenant_id") @db.Uuid
+  branchId              String    @map("branch_id") @db.Uuid
+  patientId             String    @map("patient_id") @db.Uuid
+  encounterId           String?   @map("encounter_id") @db.Uuid
+  queueEntryId          String?   @map("queue_entry_id") @db.Uuid
+  acuityLevel           String?   @map("acuity_level")
+  chiefComplaintSummary String?   @map("chief_complaint_summary")
+  arrivalMode           String?   @map("arrival_mode")
+  painScore             Int?      @map("pain_score")
+  infectiousRiskFlag    Boolean   @default(false) @map("infectious_risk_flag")
+  fallRiskFlag          Boolean   @default(false) @map("fall_risk_flag")
+  pregnancyFlag         Boolean   @default(false) @map("pregnancy_flag")
+  notes                 String?
+  recordedById          String    @map("recorded_by_id") @db.Uuid
+  status                String    @default("ACTIVE")
+  errorReason           String?   @map("error_reason")
+  errorById             String?   @map("error_by_id") @db.Uuid
+  errorAt               DateTime? @map("error_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  patient  Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
   encounter Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, patientId])
@@ -369,15 +373,15 @@ model Triage {
 }
 
 model Diagnosis {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  encounterId String   @map("encounter_id") @db.Uuid
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  encounterId String @map("encounter_id") @db.Uuid
 
-  icd10Code   String   @map("icd_10_code")
-  description String   @db.Text
-  isPrimary   Boolean  @default(false) @map("is_primary")
+  icd10Code   String  @map("icd_10_code")
+  description String  @db.Text
+  isPrimary   Boolean @default(false) @map("is_primary")
 
-  createdBy String @map("created_by") @db.Uuid
+  createdBy String   @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
@@ -387,27 +391,27 @@ model Diagnosis {
 }
 
 model ClinicalNote {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  encounterId String   @map("encounter_id") @db.Uuid
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  encounterId String @map("encounter_id") @db.Uuid
 
-  noteType    NoteType @default(PROGRESS) @map("note_type")
-  content     String   @default("") @db.Text
+  noteType NoteType @default(PROGRESS) @map("note_type")
+  content  String   @default("") @db.Text
 
-  authorId    String?  @map("author_id") @db.Uuid
-  subjective  String?  @db.Text
-  objective   String?  @db.Text
-  assessment  String?  @db.Text
-  plan        String?  @db.Text
-  lockedAt    DateTime? @map("locked_at")
-  lockedBy    String?  @map("locked_by") @db.Uuid
+  authorId   String?   @map("author_id") @db.Uuid
+  subjective String?   @db.Text
+  objective  String?   @db.Text
+  assessment String?   @db.Text
+  plan       String?   @db.Text
+  lockedAt   DateTime? @map("locked_at")
+  lockedBy   String?   @map("locked_by") @db.Uuid
 
-  createdBy   String   @map("created_by") @db.Uuid
-  updatedBy   String   @map("updated_by") @db.Uuid
-  deletedAt   DateTime? @map("deleted_at")
-  version     Int      @default(0)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy String    @map("created_by") @db.Uuid
+  updatedBy String    @map("updated_by") @db.Uuid
+  deletedAt DateTime? @map("deleted_at")
+  version   Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   author    User?     @relation("ClinicalNoteAuthor", fields: [authorId], references: [id])
@@ -423,81 +427,81 @@ model Icd10Code {
   description String   @db.Text
   createdAt   DateTime @default(now()) @map("created_at")
 
-  diagnoses   EncounterDiagnosis[]
+  diagnoses EncounterDiagnosis[]
 
   @@map("icd_10_codes")
 }
 
 model EncounterDiagnosis {
-  id           String   @id @default(uuid()) @db.Uuid
-  encounterId  String   @map("encounter_id") @db.Uuid
-  icd10CodeId  String   @map("icd10_code_id") @db.Uuid
-  isPrimary    Boolean  @default(false) @map("is_primary")
-  notes        String?  @db.Text
-  createdAt    DateTime @default(now()) @map("created_at")
+  id           String    @id @default(uuid()) @db.Uuid
+  encounterId  String    @map("encounter_id") @db.Uuid
+  icd10CodeId  String    @map("icd10_code_id") @db.Uuid
+  isPrimary    Boolean   @default(false) @map("is_primary")
+  notes        String?   @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
   deletedAt    DateTime? @map("deleted_at")
   deletedById  String?   @map("deleted_by_id") @db.Uuid
   deleteReason String?   @map("delete_reason")
 
-  encounter    Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
-  icd10Code    Icd10Code @relation(fields: [icd10CodeId], references: [id], onDelete: Cascade)
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  icd10Code Icd10Code @relation(fields: [icd10CodeId], references: [id], onDelete: Cascade)
 
   @@map("encounter_diagnoses")
 }
 
 model Patient {
-  id            String   @id @default(uuid()) @db.Uuid
-  tenantId      String   @map("tenant_id") @db.Uuid
-  patientNumber String   @map("patient_number")
-  firstName     String   @map("first_name")
-  lastName      String   @map("last_name")
-  dob           DateTime @db.Date
-  status        String   @default("ACTIVE")
-  createdById   String?  @map("created_by_id") @db.Uuid
-  updatedById   String?  @map("updated_by_id") @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  patientNumber String    @map("patient_number")
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  dob           DateTime  @db.Date
+  status        String    @default("ACTIVE")
+  createdById   String?   @map("created_by_id") @db.Uuid
+  updatedById   String?   @map("updated_by_id") @db.Uuid
   deletedAt     DateTime? @map("deleted_at")
-  version       Int      @default(0)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  version       Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
   archivedAt    DateTime? @map("archived_at")
   archiveReason String?   @map("archive_reason")
 
-  tenant     Tenant      @relation(fields: [tenantId], references: [id])
-  orders     Order[]
-  encounters Encounter[]
-  prescriptions Prescription[]
-  referrals     Referral[]
-  portalUser    PatientUser?
+  tenant          Tenant           @relation(fields: [tenantId], references: [id])
+  orders          Order[]
+  encounters      Encounter[]
+  prescriptions   Prescription[]
+  referrals       Referral[]
+  portalUser      PatientUser?
   insuranceClaims InsuranceClaim[]
-  triageRecords Triage[]
-  labSpecimens  LabSpecimen[]
+  triageRecords   Triage[]
+  labSpecimens    LabSpecimen[]
 
   @@unique([tenantId, patientNumber])
   @@map("patients")
 }
 
 model Order {
-  id              String     @id @default(uuid()) @db.Uuid
-  tenantId        String     @map("tenant_id") @db.Uuid
-  branchId        String     @map("branch_id") @db.Uuid
-  patientId       String     @map("patient_id") @db.Uuid
-  orderNumber     String     @map("order_number")
-  status          String     @default("DRAFT")
-  encounterId     String?    @map("encounter_id") @db.Uuid
-  orderType       String?    @map("order_type")
-  priority        String?    @default("ROUTINE")
-  clinicalIndication String? @map("clinical_indication")
-  requestedById   String?    @map("requested_by_id") @db.Uuid
-  requestedAt     DateTime?  @map("requested_at")
-  cancelledReason String?    @map("cancelled_reason")
-  cancelledById   String?    @map("cancelled_by_id") @db.Uuid
-  cancelledAt     DateTime?  @map("cancelled_at")
-  createdById     String?    @map("created_by_id") @db.Uuid
-  updatedById     String?    @map("updated_by_id") @db.Uuid
-  deletedAt       DateTime?  @map("deleted_at")
-  version         Int        @default(0)
-  createdAt       DateTime   @default(now()) @map("created_at")
-  updatedAt       DateTime   @updatedAt @map("updated_at")
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  branchId           String    @map("branch_id") @db.Uuid
+  patientId          String    @map("patient_id") @db.Uuid
+  orderNumber        String    @map("order_number")
+  status             String    @default("DRAFT")
+  encounterId        String?   @map("encounter_id") @db.Uuid
+  orderType          String?   @map("order_type")
+  priority           String?   @default("ROUTINE")
+  clinicalIndication String?   @map("clinical_indication")
+  requestedById      String?   @map("requested_by_id") @db.Uuid
+  requestedAt        DateTime? @map("requested_at")
+  cancelledReason    String?   @map("cancelled_reason")
+  cancelledById      String?   @map("cancelled_by_id") @db.Uuid
+  cancelledAt        DateTime? @map("cancelled_at")
+  createdById        String?   @map("created_by_id") @db.Uuid
+  updatedById        String?   @map("updated_by_id") @db.Uuid
+  deletedAt          DateTime? @map("deleted_at")
+  version            Int       @default(0)
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   tenant        Tenant              @relation(fields: [tenantId], references: [id])
   branch        Branch              @relation(fields: [branchId], references: [id])
@@ -548,8 +552,8 @@ model ClinicalOrderItem {
   status              String   @default("PENDING")
   createdAt           DateTime @default(now()) @map("created_at")
 
-  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  order            Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
   labTestDefinition LabTestDefinition? @relation(fields: [labTestDefinitionId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
@@ -574,10 +578,10 @@ model LabSpecimen {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Restrict)
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
   @@index([branchId])
@@ -616,9 +620,9 @@ model ServiceItem {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant   Tenant          @relation(fields: [tenantId], references: [id])
-  category ServiceCategory @relation(fields: [categoryId], references: [id])
-  prices   ServicePrice[]
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  category            ServiceCategory      @relation(fields: [categoryId], references: [id])
+  prices              ServicePrice[]
   marketplaceListings MarketplaceListing[]
 
   @@unique([tenantId, code])
@@ -651,28 +655,28 @@ model ServicePrice {
 }
 
 model Invoice {
-  id            String   @id @default(uuid()) @db.Uuid
-  tenantId      String   @map("tenant_id") @db.Uuid
-  orderId       String   @unique @map("order_id") @db.Uuid
-  invoiceNumber String?  @map("invoice_number")
-  totalAmount   Decimal  @map("total_amount") @db.Decimal(12, 2)
-  paidAmount    Decimal  @default(0) @map("paid_amount") @db.Decimal(12, 2)
-  status        String   @default("UNPAID")
-  createdById   String?  @map("created_by_id") @db.Uuid
-  updatedById   String?  @map("updated_by_id") @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  orderId       String    @unique @map("order_id") @db.Uuid
+  invoiceNumber String?   @map("invoice_number")
+  totalAmount   Decimal   @map("total_amount") @db.Decimal(12, 2)
+  paidAmount    Decimal   @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  status        String    @default("UNPAID")
+  createdById   String?   @map("created_by_id") @db.Uuid
+  updatedById   String?   @map("updated_by_id") @db.Uuid
   deletedAt     DateTime? @map("deleted_at")
-  version       Int      @default(0)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  version       Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
   archivedAt    DateTime? @map("archived_at")
   archiveReason String?   @map("archive_reason")
 
-  tenant    Tenant            @relation(fields: [tenantId], references: [id])
-  order     Order             @relation(fields: [orderId], references: [id])
-  payments  Payment[]
-  reversals PaymentReversal[]
-  claims    Claim[]
-  refunds   Refund[]
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  order           Order             @relation(fields: [orderId], references: [id])
+  payments        Payment[]
+  reversals       PaymentReversal[]
+  claims          Claim[]
+  refunds         Refund[]
   insuranceClaims InsuranceClaim[]
 
   @@unique([tenantId, invoiceNumber])
@@ -680,21 +684,21 @@ model Invoice {
 }
 
 model Payment {
-  id               String   @id @default(uuid()) @db.Uuid
-  tenantId         String   @map("tenant_id") @db.Uuid
-  invoiceId        String   @map("invoice_id") @db.Uuid
-  cashierSessionId String   @map("cashier_session_id") @db.Uuid
-  receiptNumber    String?  @map("receipt_number")
-  amount           Decimal  @db.Decimal(12, 2)
-  paymentMethod    String   @map("payment_method")
-  status           String   @default("POSTED")
-  idempotencyKey   String   @map("idempotency_key")
-  createdById      String?  @map("created_by_id") @db.Uuid
-  updatedById      String?  @map("updated_by_id") @db.Uuid
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  invoiceId        String    @map("invoice_id") @db.Uuid
+  cashierSessionId String    @map("cashier_session_id") @db.Uuid
+  receiptNumber    String?   @map("receipt_number")
+  amount           Decimal   @db.Decimal(12, 2)
+  paymentMethod    String    @map("payment_method")
+  status           String    @default("POSTED")
+  idempotencyKey   String    @map("idempotency_key")
+  createdById      String?   @map("created_by_id") @db.Uuid
+  updatedById      String?   @map("updated_by_id") @db.Uuid
   deletedAt        DateTime? @map("deleted_at")
-  version          Int      @default(0)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  version          Int       @default(0)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
   archivedAt       DateTime? @map("archived_at")
   archiveReason    String?   @map("archive_reason")
 
@@ -710,17 +714,17 @@ model Payment {
 }
 
 model IdempotencyRecord {
-  id                String   @id @default(uuid()) @db.Uuid
-  tenantId          String   @map("tenant_id") @db.Uuid
-  operation         String // BILLING_PAYMENT_POST
-  key               String
-  requestFingerprint String  @map("request_fingerprint") // Hash of normalized request
-  status            String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED
-  paymentId         String?  @map("payment_id") @db.Uuid // Set after successful payment creation
-  responseData      Json?    @map("response_data") // Cached response for replay
-  error             String?
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  operation          String // BILLING_PAYMENT_POST
+  key                String
+  requestFingerprint String   @map("request_fingerprint") // Hash of normalized request
+  status             String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, FAILED
+  paymentId          String?  @map("payment_id") @db.Uuid // Set after successful payment creation
+  responseData       Json?    @map("response_data") // Cached response for replay
+  error              String?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
@@ -731,34 +735,34 @@ model IdempotencyRecord {
 }
 
 model LabResult {
-  id           String    @id @default(uuid()) @db.Uuid
-  tenantId     String    @map("tenant_id") @db.Uuid
-  orderId      String    @unique @map("order_id") @db.Uuid
-  status       String    @default("PENDING_COLLECTION")
-  results      Json? // Key-value results snapshot
-  remarks      String? // Clinical remarks
-  approvedById  String?   @map("approved_by_id") @db.Uuid
-  lockedAt      DateTime? @map("locked_at")
-  encodedById   String?   @map("encoded_by_id") @db.Uuid
-  encodedAt     DateTime? @map("encoded_at")
-  validatedById String?   @map("validated_by_id") @db.Uuid
-  validatedAt   DateTime? @map("validated_at")
-  releasedById  String?   @map("released_by_id") @db.Uuid
-  releasedAt    DateTime? @map("released_at")
-  lastEditedById String?  @map("last_edited_by_id") @db.Uuid
-  lastEditedAt  DateTime? @map("last_edited_at")
-  createdById   String?   @map("created_by_id") @db.Uuid
-  updatedById  String?   @map("updated_by_id") @db.Uuid
-  deletedAt    DateTime? @map("deleted_at")
-  version      Int       @default(0)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  archivedAt   DateTime? @map("archived_at")
-  archiveReason String?   @map("archive_reason")
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  orderId        String    @unique @map("order_id") @db.Uuid
+  status         String    @default("PENDING_COLLECTION")
+  results        Json? // Key-value results snapshot
+  remarks        String? // Clinical remarks
+  approvedById   String?   @map("approved_by_id") @db.Uuid
+  lockedAt       DateTime? @map("locked_at")
+  encodedById    String?   @map("encoded_by_id") @db.Uuid
+  encodedAt      DateTime? @map("encoded_at")
+  validatedById  String?   @map("validated_by_id") @db.Uuid
+  validatedAt    DateTime? @map("validated_at")
+  releasedById   String?   @map("released_by_id") @db.Uuid
+  releasedAt     DateTime? @map("released_at")
+  lastEditedById String?   @map("last_edited_by_id") @db.Uuid
+  lastEditedAt   DateTime? @map("last_edited_at")
+  createdById    String?   @map("created_by_id") @db.Uuid
+  updatedById    String?   @map("updated_by_id") @db.Uuid
+  deletedAt      DateTime? @map("deleted_at")
+  version        Int       @default(0)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  archivedAt     DateTime? @map("archived_at")
+  archiveReason  String?   @map("archive_reason")
 
-  tenant   Tenant             @relation(fields: [tenantId], references: [id])
-  order    Order              @relation(fields: [orderId], references: [id])
-  versions LabResultVersion[]
+  tenant    Tenant              @relation(fields: [tenantId], references: [id])
+  order     Order               @relation(fields: [orderId], references: [id])
+  versions  LabResultVersion[]
   signature LabResultSignature?
 
   @@map("lab_results")
@@ -781,41 +785,41 @@ model LabResultVersion {
 }
 
 model LabResultSignature {
-  id            String   @id @default(uuid()) @db.Uuid
-  labResultId   String   @unique @map("lab_result_id") @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  labResultId   String    @unique @map("lab_result_id") @db.Uuid
   labResult     LabResult @relation(fields: [labResultId], references: [id])
-  signedById    String   @map("signed_by_id") @db.Uuid
-  signedAt      DateTime @map("signed_at")
-  signatureHash String   @map("signature_hash")
+  signedById    String    @map("signed_by_id") @db.Uuid
+  signedAt      DateTime  @map("signed_at")
+  signatureHash String    @map("signature_hash")
 
   @@map("lab_result_signatures")
 }
 
 model NotificationOutbox {
-  id          String   @id @default(uuid()) @db.Uuid
-  recipientId String   @map("recipient_id") @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  recipientId String    @map("recipient_id") @db.Uuid
   type        String
   payload     String
-  scheduledAt DateTime @map("scheduled_at")
+  scheduledAt DateTime  @map("scheduled_at")
   sentAt      DateTime? @map("sent_at")
-  status      String   @default("PENDING")
+  status      String    @default("PENDING")
 
   @@map("notification_outbox")
 }
 
 model AuditLog {
-  id         String   @id @default(uuid()) @db.Uuid
-  tenantId   String   @map("tenant_id") @db.Uuid
-  branchId   String?  @map("branch_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  eventKey   String   @map("event_key")
-  recordType String   @map("record_type")
-  recordId   String   @map("record_id") @db.Uuid
-  oldValues  Json?    @map("old_values")
-  newValues  Json?    @map("new_values")
-  createdAt  DateTime @default(now()) @map("created_at")
-  ipAddress  String?  @map("ip_address")
-  userAgent  String?  @map("user_agent")
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  branchId     String?  @map("branch_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  eventKey     String   @map("event_key")
+  recordType   String   @map("record_type")
+  recordId     String   @map("record_id") @db.Uuid
+  oldValues    Json?    @map("old_values")
+  newValues    Json?    @map("new_values")
+  createdAt    DateTime @default(now()) @map("created_at")
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
   activeRole   String?  @map("active_role")
   sessionId    String?  @map("session_id") @db.Uuid
   hash         String?  @map("hash") @db.Char(64)
@@ -929,13 +933,13 @@ model Employee {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   // Existing/Legacy fields (kept for schema / existing service compatibility)
-  firstName      String?      @map("first_name")
-  lastName       String?      @map("last_name")
-  jobTitle       String?      @map("job_title")
-  joiningDate    DateTime?    @map("joining_date") @db.Date
-  salary         Decimal?     @db.Decimal(12, 2)
-  departmentId   String?      @map("department_id") @db.Uuid
-  departmentRef  Department?  @relation(fields: [departmentId], references: [id])
+  firstName     String?     @map("first_name")
+  lastName      String?     @map("last_name")
+  jobTitle      String?     @map("job_title")
+  joiningDate   DateTime?   @map("joining_date") @db.Date
+  salary        Decimal?    @db.Decimal(12, 2)
+  departmentId  String?     @map("department_id") @db.Uuid
+  departmentRef Department? @relation(fields: [departmentId], references: [id])
 
   tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch           Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
@@ -1023,7 +1027,7 @@ model HmoPartner {
   id            String   @id @default(uuid()) @db.Uuid
   tenantId      String   @map("tenant_id") @db.Uuid
   name          String
-  code      String
+  code          String
   contactPerson String?  @map("contact_person")
   email         String?
   status        String   @default("ACTIVE")
@@ -1193,9 +1197,9 @@ model CashierSession {
   openedAt       DateTime  @default(now()) @map("opened_at")
   closedAt       DateTime? @map("closed_at")
 
-  tenant         Tenant               @relation(fields: [tenantId], references: [id])
-  payments       Payment[]
-  ledgerEntries  CashierLedgerEntry[]
+  tenant        Tenant               @relation(fields: [tenantId], references: [id])
+  payments      Payment[]
+  ledgerEntries CashierLedgerEntry[]
 
   @@map("cashier_sessions")
 }
@@ -1247,9 +1251,9 @@ model ReportExport {
   lastDownloadedAt    DateTime? @map("last_downloaded_at")
   failureReason       String?   @map("failure_reason")
 
-  tenant    Tenant  @relation(fields: [tenantId], references: [id])
-  user      User    @relation("RequestedExports", fields: [requestedBy], references: [id])
-  decider   User?   @relation("DecidedExports", fields: [decidedById], references: [id])
+  tenant  Tenant @relation(fields: [tenantId], references: [id])
+  user    User   @relation("RequestedExports", fields: [requestedBy], references: [id])
+  decider User?  @relation("DecidedExports", fields: [decidedById], references: [id])
 
   @@index([tenantId])
   @@index([branchId])
@@ -1257,21 +1261,21 @@ model ReportExport {
 }
 
 model PatientMergeRequest {
-  id              String   @id @default(uuid()) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  branchId        String?  @map("branch_id") @db.Uuid
-  requesterId     String   @map("requester_id") @db.Uuid
-  approverId      String?  @map("approver_id") @db.Uuid
-  sourcePatientId String   @map("source_patient_id") @db.Uuid
-  targetPatientId String   @map("target_patient_id") @db.Uuid
-  status          String   @default("PENDING")  // PENDING, APPROVED, REJECTED
-  reason          String   // Why merge is needed
-  remarks         String?  // Approver comments
-  riskLevel       String   @default("HIGH")     // Patient merge is always HIGH risk
-  fieldSnapshots  Json?    @map("field_snapshots")  // Snapshots of conflicting fields
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  branchId        String?   @map("branch_id") @db.Uuid
+  requesterId     String    @map("requester_id") @db.Uuid
+  approverId      String?   @map("approver_id") @db.Uuid
+  sourcePatientId String    @map("source_patient_id") @db.Uuid
+  targetPatientId String    @map("target_patient_id") @db.Uuid
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  reason          String // Why merge is needed
+  remarks         String? // Approver comments
+  riskLevel       String    @default("HIGH") // Patient merge is always HIGH risk
+  fieldSnapshots  Json?     @map("field_snapshots") // Snapshots of conflicting fields
   appliedAt       DateTime? @map("applied_at")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   tenant    Tenant @relation(fields: [tenantId], references: [id])
   requester User   @relation("MergeRequested", fields: [requesterId], references: [id])
@@ -1291,7 +1295,7 @@ model PaymentVoid {
   voidedAt   DateTime @default(now()) @map("voided_at")
   reason     String
 
-  payment    Payment  @relation(fields: [paymentId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
 
   @@map("payment_voids")
 }
@@ -1306,8 +1310,8 @@ model Refund {
   method     String
   reason     String
 
-  invoice    Invoice  @relation(fields: [invoiceId], references: [id])
-  payment    Payment  @relation(fields: [paymentId], references: [id])
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
 
   @@map("refunds")
 }
@@ -1315,12 +1319,12 @@ model Refund {
 model CashierLedgerEntry {
   id               String   @id @default(uuid()) @db.Uuid
   cashierSessionId String   @map("cashier_session_id") @db.Uuid
-  type             String   // PAYMENT, VOID, REFUND
+  type             String // PAYMENT, VOID, REFUND
   amount           Decimal  @db.Decimal(12, 2)
   referenceId      String   @map("reference_id") @db.Uuid
   createdAt        DateTime @default(now()) @map("created_at")
 
-  cashierSession   CashierSession @relation(fields: [cashierSessionId], references: [id])
+  cashierSession CashierSession @relation(fields: [cashierSessionId], references: [id])
 
   @@map("cashier_ledger_entries")
 }
@@ -1380,23 +1384,23 @@ model Prescription {
 }
 
 model Referral {
-  id             String         @id @default(uuid()) @db.Uuid
-  tenantId       String         @map("tenant_id") @db.Uuid
-  branchId       String         @map("branch_id") @db.Uuid
-  encounterId    String         @map("encounter_id") @db.Uuid
-  referredById   String         @map("referred_by_id") @db.Uuid
-  patientId      String         @map("patient_id") @db.Uuid
-  referredToName String         @map("referred_to_name")
+  id             String          @id @default(uuid()) @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
+  branchId       String          @map("branch_id") @db.Uuid
+  encounterId    String          @map("encounter_id") @db.Uuid
+  referredById   String          @map("referred_by_id") @db.Uuid
+  patientId      String          @map("patient_id") @db.Uuid
+  referredToName String          @map("referred_to_name")
   specialty      String
-  reason         String         @db.Text
+  reason         String          @db.Text
   urgency        ReferralUrgency @default(ROUTINE)
-  status         ReferralStatus @default(PENDING)
-  createdById    String?        @map("created_by_id") @db.Uuid
-  updatedById    String?        @map("updated_by_id") @db.Uuid
-  deletedAt      DateTime?      @map("deleted_at")
-  version        Int            @default(0)
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  status         ReferralStatus  @default(PENDING)
+  createdById    String?         @map("created_by_id") @db.Uuid
+  updatedById    String?         @map("updated_by_id") @db.Uuid
+  deletedAt      DateTime?       @map("deleted_at")
+  version        Int             @default(0)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
 
   encounter  Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   referredBy User      @relation("ReferredBy", fields: [referredById], references: [id])
@@ -1476,15 +1480,15 @@ model LedgerEntry {
 }
 
 model AttendanceLog {
-  id         String   @id @default(uuid()) @db.Uuid
-  employeeId String   @map("employee_id") @db.Uuid
-  tenantId   String   @map("tenant_id") @db.Uuid
-  branchId   String   @map("branch_id") @db.Uuid
-  date       DateTime @db.Date
-  checkIn    DateTime @map("check_in")
+  id         String    @id @default(uuid()) @db.Uuid
+  employeeId String    @map("employee_id") @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  branchId   String    @map("branch_id") @db.Uuid
+  date       DateTime  @db.Date
+  checkIn    DateTime  @map("check_in")
   checkOut   DateTime? @map("check_out")
-  source     String   @default("WEB") // WEB, MOBILE, BIOMETRIC
-  createdAt  DateTime @default(now()) @map("created_at")
+  source     String    @default("WEB") // WEB, MOBILE, BIOMETRIC
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
@@ -1495,7 +1499,7 @@ model LeaveRequest {
   id           String   @id @default(uuid()) @db.Uuid
   employeeId   String   @map("employee_id") @db.Uuid
   tenantId     String   @map("tenant_id") @db.Uuid
-  type         String   // VACATION, SICK, EMERGENCY, etc.
+  type         String // VACATION, SICK, EMERGENCY, etc.
   startDate    DateTime @map("start_date")
   endDate      DateTime @map("end_date")
   status       String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
@@ -1526,21 +1530,21 @@ model LicenseRecord {
 }
 
 model Supplier {
-  id           String          @id @default(uuid()) @db.Uuid
-  tenantId     String          @map("tenant_id") @db.Uuid
-  name         String
-  contactName  String?         @map("contact_name")
-  contactEmail String?         @map("contact_email")
-  contactPhone String?         @map("contact_phone")
-  address      String?
-  status       String          @default("ACTIVE")
-  createdAt    DateTime        @default(now()) @map("created_at")
-  purchaseOrders PurchaseOrder[]
+  id                  String               @id @default(uuid()) @db.Uuid
+  tenantId            String               @map("tenant_id") @db.Uuid
+  name                String
+  contactName         String?              @map("contact_name")
+  contactEmail        String?              @map("contact_email")
+  contactPhone        String?              @map("contact_phone")
+  address             String?
+  status              String               @default("ACTIVE")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  purchaseOrders      PurchaseOrder[]
   marketplaceListings MarketplaceListing[]
-  quotes             Quote[]
-  users              User[]
+  quotes              Quote[]
+  users               User[]
 
-  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("suppliers")
 }
@@ -1558,7 +1562,7 @@ model PurchaseRequest {
   updatedAt      DateTime        @updatedAt @map("updated_at")
   purchaseOrders PurchaseOrder[]
 
-  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("purchase_requests")
 }
@@ -1577,7 +1581,7 @@ model PurchaseOrder {
   purchaseRequest   PurchaseRequest   @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
   receivingRecords  ReceivingRecord[]
 
-  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, orderNumber])
   @@map("purchase_orders")
@@ -1591,10 +1595,10 @@ model ReceivingRecord {
   receivedById    String        @map("received_by_id") @db.Uuid
   receivedAt      DateTime      @default(now()) @map("received_at")
   notes           String?
-  createdAt      DateTime      @default(now()) @map("created_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 
-  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("receiving_records")
 }
@@ -1610,7 +1614,7 @@ model Referrer {
   createdAt       DateTime         @default(now()) @map("created_at")
   referralRecords ReferralRecord[]
 
-  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("referrers")
 }
@@ -1655,15 +1659,15 @@ model SlaAlert {
 }
 
 model CptCode {
-  id             String   @id @default(uuid()) @db.Uuid
-  tenantId       String   @map("tenant_id") @db.Uuid
-  code           String
-  description    String
-  category       String
-  fees           Decimal  @db.Decimal(10, 2)
-  status         String   @default("ACTIVE")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  code        String
+  description String
+  category    String
+  fees        Decimal  @db.Decimal(10, 2)
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1681,7 +1685,7 @@ model LabTestDefinition {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant             Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant             Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   parameters         LabTestParameterDefinition[]
   clinicalOrderItems ClinicalOrderItem[]
 
@@ -1710,7 +1714,7 @@ model LabTestParameterDefinition {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   testDefinition LabTestDefinition @relation(fields: [testDefinitionId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, testDefinitionId, code])
@@ -1718,7 +1722,6 @@ model LabTestParameterDefinition {
   @@index([testDefinitionId])
   @@map("lab_test_parameter_definitions")
 }
-
 
 enum RFQStatus {
   DRAFT
@@ -1779,17 +1782,17 @@ enum DeliveryJobStatus {
 }
 
 model RFQ {
-  id            String         @id @default(uuid()) @db.Uuid
-  tenantId      String         @map("tenant_id") @db.Uuid
-  branchId      String         @map("branch_id") @db.Uuid
-  title         String
-  status        RFQStatus      @default(DRAFT)
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  branchId  String    @map("branch_id") @db.Uuid
+  title     String
+  status    RFQStatus @default(DRAFT)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
-  quotes        Quote[]
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch        Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  quotes Quote[]
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, branchId])
   @@index([status])
@@ -1797,20 +1800,20 @@ model RFQ {
 }
 
 model Quote {
-  id            String         @id @default(uuid()) @db.Uuid
-  rfqId         String         @map("rfq_id") @db.Uuid
-  tenantId      String         @map("tenant_id") @db.Uuid
-  supplierId    String?        @map("supplier_id") @db.Uuid
-  status        QuoteStatus    @default(DRAFT)
-  totalAmount   Decimal        @map("total_amount") @db.Decimal(12, 2)
-  createdAt     DateTime       @default(now()) @map("created_at")
-  convertedAt   DateTime?      @map("converted_at")
-  approvedAt    DateTime?      @map("approved_at")
+  id          String      @id @default(uuid()) @db.Uuid
+  rfqId       String      @map("rfq_id") @db.Uuid
+  tenantId    String      @map("tenant_id") @db.Uuid
+  supplierId  String?     @map("supplier_id") @db.Uuid
+  status      QuoteStatus @default(DRAFT)
+  totalAmount Decimal     @map("total_amount") @db.Decimal(12, 2)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  convertedAt DateTime?   @map("converted_at")
+  approvedAt  DateTime?   @map("approved_at")
 
-  rfq           RFQ            @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  supplier      Supplier?      @relation(fields: [supplierId], references: [id])
-  salesOrders   SalesOrder[]
+  rfq         RFQ          @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier    Supplier?    @relation(fields: [supplierId], references: [id])
+  salesOrders SalesOrder[]
 
   @@index([rfqId])
   @@index([tenantId, status])
@@ -1818,16 +1821,16 @@ model Quote {
 }
 
 model SalesOrder {
-  id            String         @id @default(uuid()) @db.Uuid
-  quoteId       String         @map("quote_id") @db.Uuid
-  tenantId      String         @map("tenant_id") @db.Uuid
-  status        OrderStatus    @default(CONFIRMED)
-  createdAt     DateTime       @default(now()) @map("created_at")
+  id        String      @id @default(uuid()) @db.Uuid
+  quoteId   String      @map("quote_id") @db.Uuid
+  tenantId  String      @map("tenant_id") @db.Uuid
+  status    OrderStatus @default(CONFIRMED)
+  createdAt DateTime    @default(now()) @map("created_at")
 
-  quote         Quote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  assets        Asset[]
-  shipments     Shipment[]
+  quote     Quote      @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assets    Asset[]
+  shipments Shipment[]
 
   @@index([quoteId])
   @@index([tenantId])
@@ -1835,20 +1838,20 @@ model SalesOrder {
 }
 
 model Shipment {
-  id              String         @id @default(uuid()) @db.Uuid
-  tenantId        String         @map("tenant_id") @db.Uuid
-  salesOrderId    String         @map("sales_order_id") @db.Uuid
-  trackingNumber  String?        @unique @map("tracking_number")
-  status          ShipmentStatus @default(PENDING)
-  carrier         String?
-  shippedAt       DateTime?      @map("shipped_at")
-  deliveredAt     DateTime?      @map("delivered_at")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  id             String         @id @default(uuid()) @db.Uuid
+  tenantId       String         @map("tenant_id") @db.Uuid
+  salesOrderId   String         @map("sales_order_id") @db.Uuid
+  trackingNumber String?        @unique @map("tracking_number")
+  status         ShipmentStatus @default(PENDING)
+  carrier        String?
+  shippedAt      DateTime?      @map("shipped_at")
+  deliveredAt    DateTime?      @map("delivered_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  salesOrder      SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
-  deliveryJobs    DeliveryJob[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  salesOrder   SalesOrder    @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  deliveryJobs DeliveryJob[]
 
   @@index([tenantId])
   @@index([salesOrderId])
@@ -1856,18 +1859,18 @@ model Shipment {
 }
 
 model DeliveryJob {
-  id                String         @id @default(uuid()) @db.Uuid
-  tenantId          String         @map("tenant_id") @db.Uuid
-  shipmentId        String         @map("shipment_id") @db.Uuid
-  assignedUserId    String         @map("assigned_user_id") @db.Uuid
-  status            DeliveryJobStatus @default(ASSIGNED)
-  startedAt         DateTime?      @map("started_at")
-  completedAt       DateTime?      @map("completed_at")
-  notes             String?
+  id             String            @id @default(uuid()) @db.Uuid
+  tenantId       String            @map("tenant_id") @db.Uuid
+  shipmentId     String            @map("shipment_id") @db.Uuid
+  assignedUserId String            @map("assigned_user_id") @db.Uuid
+  status         DeliveryJobStatus @default(ASSIGNED)
+  startedAt      DateTime?         @map("started_at")
+  completedAt    DateTime?         @map("completed_at")
+  notes          String?
 
-  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  shipment          Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
-  assignedUser      User           @relation(fields: [assignedUserId], references: [id])
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shipment     Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  assignedUser User     @relation(fields: [assignedUserId], references: [id])
 
   @@index([tenantId])
   @@index([shipmentId])
@@ -1876,18 +1879,18 @@ model DeliveryJob {
 }
 
 model Asset {
-  id                String         @id @default(uuid()) @db.Uuid
-  salesOrderId      String         @map("sales_order_id") @db.Uuid
-  tenantId          String         @map("tenant_id") @db.Uuid
-  serialNumber      String         @unique @map("serial_number")
-  model             String
-  warrantyStart     DateTime?      @map("warranty_start")
-  warrantyEnd       DateTime?      @map("warranty_end")
+  id                 String             @id @default(uuid()) @db.Uuid
+  salesOrderId       String             @map("sales_order_id") @db.Uuid
+  tenantId           String             @map("tenant_id") @db.Uuid
+  serialNumber       String             @unique @map("serial_number")
+  model              String
+  warrantyStart      DateTime?          @map("warranty_start")
+  warrantyEnd        DateTime?          @map("warranty_end")
   installationStatus AssetInstallStatus @default(PENDING_ASSESSMENT) @map("installation_status")
 
-  salesOrder        SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
-  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  installationJobs  InstallationJob[]
+  salesOrder       SalesOrder        @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  installationJobs InstallationJob[]
 
   @@index([salesOrderId])
   @@index([tenantId])
@@ -1895,20 +1898,20 @@ model Asset {
 }
 
 model InstallationJob {
-  id                String         @id @default(uuid()) @db.Uuid
-  tenantId          String         @map("tenant_id") @db.Uuid
-  assetId           String         @map("asset_id") @db.Uuid
-  assignedUserId    String         @map("assigned_user_id") @db.Uuid
-  status            InstallStatus  @default(ASSIGNED)
-  notes             String?        @db.Text
-  commissionedAt    DateTime?      @map("commissioned_at")
-  handoverSignedAt  DateTime?      @map("handover_signed_at")
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt @map("updated_at")
+  id               String        @id @default(uuid()) @db.Uuid
+  tenantId         String        @map("tenant_id") @db.Uuid
+  assetId          String        @map("asset_id") @db.Uuid
+  assignedUserId   String        @map("assigned_user_id") @db.Uuid
+  status           InstallStatus @default(ASSIGNED)
+  notes            String?       @db.Text
+  commissionedAt   DateTime?     @map("commissioned_at")
+  handoverSignedAt DateTime?     @map("handover_signed_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  asset             Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  assignedUser      User           @relation(fields: [assignedUserId], references: [id])
+  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset        Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assignedUser User   @relation(fields: [assignedUserId], references: [id])
 
   @@index([assetId])
   @@index([tenantId])
@@ -1924,24 +1927,80 @@ enum ListingStatus {
   SUSPENDED
 }
 
+// --- MODULE 5(e): IT SUPPORT ---
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_USER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketIssueType {
+  LOGIN_FAILURE
+  PASSWORD_RESET
+  MFA_RESET
+  ACCOUNT_UNLOCK
+  PERMISSION_REQUEST
+  SESSION_LOCKOUT
+  SYSTEM_BUG
+  OTHER
+}
+
+model SupportTicket {
+  id           String          @id @default(uuid()) @db.Uuid
+  tenantId     String          @map("tenant_id") @db.Uuid
+  branchId     String?         @map("branch_id") @db.Uuid
+  reportedById String          @map("reported_by_id") @db.Uuid
+  assignedToId String?         @map("assigned_to_id") @db.Uuid
+  issueType    TicketIssueType @map("issue_type")
+  summary      String
+  description  String?         @db.Text
+  status       TicketStatus    @default(OPEN)
+  priority     TicketPriority  @default(MEDIUM)
+  resolution   String?         @db.Text
+  resolvedAt   DateTime?       @map("resolved_at")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  reportedBy User    @relation("TicketReporter", fields: [reportedById], references: [id])
+  assignedTo User?   @relation("TicketAssignee", fields: [assignedToId], references: [id])
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([status])
+  @@index([assignedToId])
+  @@map("support_tickets")
+}
+
 model MarketplaceListing {
-  id              String        @id @default(uuid()) @db.Uuid
-  tenantId        String        @map("tenant_id") @db.Uuid
-  serviceItemId   String        @map("service_item_id") @db.Uuid
-  supplierId      String?       @map("supplier_id") @db.Uuid
-  status          ListingStatus @default(PENDING_APPROVAL)
-  
+  id            String        @id @default(uuid()) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  serviceItemId String        @map("service_item_id") @db.Uuid
+  supplierId    String?       @map("supplier_id") @db.Uuid
+  status        ListingStatus @default(PENDING_APPROVAL)
+
   // Overrides or additional info for marketplace
-  description     String?       @db.Text
-  priceOverride   Decimal?      @map("price_override") @db.Decimal(12, 2)
-  
+  description   String?  @db.Text
+  priceOverride Decimal? @map("price_override") @db.Decimal(12, 2)
+
   // Metadata for moderation
-  rejectionReason String?       @map("rejection_reason")
-  approvedAt      DateTime?     @map("approved_at")
-  approvedById    String?       @map("approved_by_id") @db.Uuid
-  
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  rejectionReason String?   @map("rejection_reason")
+  approvedAt      DateTime? @map("approved_at")
+  approvedById    String?   @map("approved_by_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   serviceItem ServiceItem @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)

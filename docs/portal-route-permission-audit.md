@@ -20,8 +20,8 @@ This document provides a comprehensive mapping of frontend portals, their routes
 | **Procurement Requests** | `/procurement/purchase-requests` | `PurchaseRequestsPage` | Procurement Officer | `permission='procurement.request.view'` | `procurement.request.*` | `procurement@hospital.com` | Real |
 | **Procurement Orders** | `/procurement/purchase-orders` | `PurchaseOrdersPage` | Procurement Officer | `permission='procurement.po.view'` | `procurement.po.*` | `procurement@hospital.com` | Real |
 | **HR** | `/hr` | `HRDashboard` | HR Staff / Manager | `permission='hr.employee.view'` | `hr.employee.view`, `hr.payroll.view` | `hr@hospital.com` | Partial |
-| **IT Support** | `/it` | `ITSupportDashboard` | IT Support | `permission='it.system.view'` | `it.system.view`, `it.support.manage` | `it.support@hospital.com` | Mock |
-| **Compliance** | `/compliance` | `ComplianceDashboard` | Compliance Officer | `permission='compliance.audit.review'` | `compliance.*`, `audit.view` | `compliance@hospital.com` | Mock |
+| **IT Support** | `/it` | `ITSupportDashboard` | IT Support | `permission='it.system.view'` | `it.system.view`, `it.support.manage`, `it.ticket.view`, `it.ticket.manage`, `audit.view` | `it.support@hospital.com` | Partial (Real Ticket Backend + APIs) |
+| **Compliance** | `/compliance` | `ComplianceDashboard` | Compliance Officer | `permission='compliance.audit.review'` | `compliance.*`, `audit.view` | `compliance@hospital.com` | Partial (Real Audit/Compliance APIs) |
 | **Marketplace Admin** | `/marketplace-admin` | `MarketplaceAdminDashboard` | Marketplace Admin | `allowedRoles=['Marketplace Admin']` | `marketplace.admin.*`, `fulfillment.view` | `marketplace.admin@hospital.com` | Real |
 | **Field Service** | `/field-service` | `FieldServiceDashboard` | Field Technician | `allowedRoles=['Field Technician']` | `field_service.job.view`, `field_service.job.update` | `field.tech@hospital.com` | Partial (Real Job Foundations) |
 | **Catalog** | `/admin/catalog` | `CatalogManagementPage` | Branch Admin / Super Admin | `permission='catalog.manage'` | `catalog.manage`, `catalog.service.view` | `branch.admin@hospital.com` | Real |
@@ -37,9 +37,10 @@ This document provides a comprehensive mapping of frontend portals, their routes
 - **allPermissions**: Array of permissions, all must be present.
 - **allowedRoles**: Array of roles, at least one must be present.
 
-## Known WIP / Mock Modules
+## Known WIP / Partial Modules
 - **Field Service**: Core job management and status tracking is Real. Advanced mobile offline sync and complex scheduling remain Partially Mock.
-- **IT / Compliance**: UI Shell exists, logic is mock.
+- **IT Support**: Ticket backend and APIs are Real (create, list, update, status/priority management, tenant isolation, audit logging). Dashboard, User Support, and Incident pages fetch real ticket data. System Health, Sessions, Logs, Integrations, Backup pages remain Mock (no real infrastructure monitoring).
+- **Compliance**: Audit Review page fetches real audit log data from the backend. Compliance Dashboard shows real PHI access events and access review data. PHI Access Monitor uses real audit events. HIPAA breach reports, data retention, and change management are Real. Full GRC automation, external SIEM, and legal/regulatory advice remain WIP/Mock.
 - **Advanced Fulfillment**: Logistics tracking and job management is Real. 3rd-party courier API integration remains WIP/Mock.
 
 ## Security Considerations

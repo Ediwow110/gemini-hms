@@ -9,10 +9,10 @@ export interface SupportTicket {
   userRole: string;
   tenantName: string;
   branchName: string;
-  issueType: 'LOGIN_FAILURE' | 'MFA_RESET' | 'SESSION_LOCKOUT' | 'PERMISSION_REQUEST' | 'PASSWORD_RESET' | 'ACCOUNT_UNLOCK';
+  issueType: string;
   summary: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'WAITING_USER' | 'RESOLVED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  status: string;
+  priority: string;
   createdAt: string;
 }
 
