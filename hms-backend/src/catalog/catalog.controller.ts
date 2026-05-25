@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Query,
@@ -11,9 +12,12 @@ import {
 import { CatalogService } from './catalog.service';
 import {
   CreateCategoryDto,
+  UpdateCategoryDto,
   CreateItemDto,
+  UpdateItemDto,
   SetPriceDto,
   GetItemsQueryDto,
+  GetCategoriesQueryDto,
 } from './dto/catalog.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
@@ -33,10 +37,67 @@ export class CatalogController {
     );
   }
 
+  @Get('categories')
+  @RequirePermissions('catalog.service.view', 'catalog.manage')
+  async findAllCategories(
+    @Request() req: any,
+    @Query() query: GetCategoriesQueryDto,
+  ) {
+    return this.catalogService.findAllCategories(req.user.tenantId, query);
+  }
+
+  @Get('categories/:id')
+  @RequirePermissions('catalog.service.view', 'catalog.manage')
+  async findOneCategory(@Request() req: any, @Param('id') id: string) {
+    return this.catalogService.findOneCategory(req.user.tenantId, id);
+  }
+
+  @Patch('categories/:id')
+  @RequirePermissions('catalog.manage')
+  async updateCategory(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateCategoryDto,
+  ) {
+    return this.catalogService.updateCategory(
+      req.user.tenantId,
+      req.user.id,
+      id,
+      dto,
+    );
+  }
+
   @Post('items')
   @RequirePermissions('catalog.manage')
   async createItem(@Request() req: any, @Body() dto: CreateItemDto) {
     return this.catalogService.createItem(req.user.tenantId, req.user.id, dto);
+  }
+
+  @Get('items')
+  @RequirePermissions('catalog.service.view', 'catalog.manage')
+  async findAllItems(@Request() req: any, @Query() query: GetItemsQueryDto) {
+    return this.catalogService.findAllItems(req.user.tenantId, query);
+  }
+
+  @Get('items/:id')
+  @RequirePermissions('catalog.service.view', 'catalog.manage')
+  async findOneItem(@Request() req: any, @Param('id') id: string) {
+    return this.catalogService.findOneItem(req.user.tenantId, id);
+  }
+
+  @Patch('items/:id')
+  @RequirePermissions('catalog.manage')
+  async updateItem(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateItemDto,
+  ) {
+    return this.catalogService.updateItem(
+      req.user.tenantId,
+      req.user.id,
+      id,
+      dto,
+    );
   }
 
   @Post('items/:id/prices')
@@ -52,11 +113,5 @@ export class CatalogController {
       id,
       dto,
     );
-  }
-
-  @Get('items')
-  @RequirePermissions('catalog.view', 'catalog.manage')
-  async findAllItems(@Request() req: any, @Query() query: GetItemsQueryDto) {
-    return this.catalogService.findAllItems(req.user.tenantId, query);
   }
 }

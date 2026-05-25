@@ -5,6 +5,7 @@ import {
   IsUUID,
   IsNumber,
   IsDateString,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateCategoryDto {
@@ -15,6 +16,20 @@ export class CreateCategoryDto {
   @IsString()
   @IsOptional()
   description?: string;
+}
+
+export class UpdateCategoryDto {
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }
 
 export class CreateItemDto {
@@ -33,6 +48,28 @@ export class CreateItemDto {
   @IsString()
   @IsOptional()
   description?: string;
+}
+
+export class UpdateItemDto {
+  @IsUUID()
+  @IsOptional()
+  categoryId?: string;
+
+  @IsString()
+  @IsOptional()
+  code?: string;
+
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }
 
 export class SetPriceDto {
@@ -57,4 +94,22 @@ export class GetItemsQueryDto {
   @IsUUID()
   @IsOptional()
   categoryId?: string;
+
+  @IsString()
+  @IsOptional()
+  search?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  includeInactive?: boolean;
+}
+
+export class GetCategoriesQueryDto {
+  @IsString()
+  @IsOptional()
+  search?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  includeInactive?: boolean;
 }

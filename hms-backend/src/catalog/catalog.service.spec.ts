@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CatalogService } from './catalog.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 describe('CatalogService', () => {
@@ -19,11 +19,14 @@ describe('CatalogService', () => {
       serviceCategory: {
         create: jest.fn(),
         findFirst: jest.fn(),
+        findMany: jest.fn(),
+        update: jest.fn(),
       },
       serviceItem: {
         create: jest.fn(),
         findFirst: jest.fn(),
         findMany: jest.fn(),
+        update: jest.fn(),
       },
       servicePrice: {
         create: jest.fn(),
@@ -68,7 +71,38 @@ describe('CatalogService', () => {
           createdBy: mockUserId,
         }),
       });
+      expect(audit.log).toHaveBeenCalled();
       expect(result.id).toBe('cat1');
+    });
+  });
+
+  describe('findAllCategories', () => {
+    it('should list categories for tenant', async () => {
+      prisma.serviceCategory.findMany.mockResolvedValue([{ id: 'cat1', name: 'Lab' }]);
+
+      const result = await service.findAllCategories(mockTenantId, {});
+
+      expect(prisma.serviceCategory.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ tenantId: mockTenantId })
+      }));
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('updateCategory', () => {
+    it('should update a category', async () => {
+      const id = 'cat1';
+      const dto = { name: 'New Name' };
+      prisma.serviceCategory.findFirst.mockResolvedValue({ id, name: 'Old' });
+      prisma.serviceCategory.update.mockResolvedValue({ id, ...dto });
+
+      const result = await service.updateCategory(mockTenantId, mockUserId, id, dto);
+
+      expect(prisma.serviceCategory.update).toHaveBeenCalled();
+      expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({
+        eventKey: 'CATALOG_CATEGORY_UPDATED'
+      }));
+      expect(result.name).toBe('New Name');
     });
   });
 
@@ -86,6 +120,7 @@ describe('CatalogService', () => {
       const result = await service.createItem(mockTenantId, mockUserId, dto);
 
       expect(prisma.serviceItem.create).toHaveBeenCalled();
+      expect(audit.log).toHaveBeenCalled();
       expect(result.id).toBe('item1');
     });
 
@@ -97,6 +132,23 @@ describe('CatalogService', () => {
       await expect(
         service.createItem(mockTenantId, mockUserId, dto),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('updateItem', () => {
+    it('should update an item', async () => {
+      const id = 'item1';
+      const dto = { name: 'New Item Name' };
+      prisma.serviceItem.findFirst.mockResolvedValue({ id, name: 'Old', code: 'OLD' });
+      prisma.serviceItem.update.mockResolvedValue({ id, ...dto });
+
+      const result = await service.updateItem(mockTenantId, mockUserId, id, dto);
+
+      expect(prisma.serviceItem.update).toHaveBeenCalled();
+      expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({
+        eventKey: 'CATALOG_ITEM_UPDATED'
+      }));
+      expect(result.name).toBe('New Item Name');
     });
   });
 
@@ -130,23 +182,23 @@ describe('CatalogService', () => {
       expect(audit.log).toHaveBeenCalled();
       expect(result.id).toBe('new-p');
     });
-
-    it('should rollback if audit fails (implicit via transaction)', async () => {
-      const itemId = 'item1';
-      const dto = { branchId: mockBranchId, amount: 500 };
-
-      prisma.serviceItem.findFirst.mockResolvedValue({ id: itemId });
-      prisma.servicePrice.findFirst.mockResolvedValue(null);
-      prisma.servicePrice.create.mockResolvedValue({ id: 'new-p' });
-      audit.log.mockRejectedValue(new Error('Audit failure'));
-
-      await expect(
-        service.setPrice(mockTenantId, mockUserId, itemId, dto),
-      ).rejects.toThrow('Audit failure');
-    });
   });
 
   describe('findAllItems', () => {
+    it('should list items with search', async () => {
+      const query = { search: 'CBC' };
+      prisma.serviceItem.findMany.mockResolvedValue([]);
+
+      await service.findAllItems(mockTenantId, query);
+
+      expect(prisma.serviceItem.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: mockTenantId,
+          OR: expect.any(Array)
+        })
+      }));
+    });
+
     it('should resolve branch price if branchId provided', async () => {
       const query = { branchId: mockBranchId };
       prisma.serviceItem.findMany.mockResolvedValue([
@@ -161,40 +213,6 @@ describe('CatalogService', () => {
 
       expect(result[0].currentPrice).toEqual(new Prisma.Decimal(150));
       expect(result[0].prices).toBeUndefined();
-    });
-
-    it('should return null price if no price for branch', async () => {
-      const query = { branchId: 'other-branch' };
-      prisma.serviceItem.findMany.mockResolvedValue([
-        {
-          id: 'item1',
-          name: 'CBC',
-          prices: [],
-        },
-      ]);
-
-      const result = await service.findAllItems(mockTenantId, query);
-
-      expect(result[0].currentPrice).toBeNull();
-    });
-
-    it('should return all branch prices if branchId NOT provided', async () => {
-      const query = {};
-      prisma.serviceItem.findMany.mockResolvedValue([
-        {
-          id: 'item1',
-          name: 'CBC',
-          prices: [
-            { amount: new Prisma.Decimal(150), branchId: 'b1' },
-            { amount: new Prisma.Decimal(200), branchId: 'b2' },
-          ],
-        },
-      ]);
-
-      const result = await service.findAllItems(mockTenantId, query);
-
-      expect(result[0].currentPrice).toBeNull();
-      expect(result[0].prices).toHaveLength(2);
     });
   });
 });

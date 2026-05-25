@@ -41,6 +41,7 @@ const PharmacyHub = lazy(() => import('./features/pharmacy/PharmacyHub').then(m 
 const RadiologyCanvas = lazy(() => import('./features/radiology/RadiologyCanvas').then(m => ({ default: m.RadiologyCanvas })));
 const ClaimsDashboard = lazy(() => import('./features/claims/ClaimsDashboard').then(m => ({ default: m.ClaimsDashboard })));
 const PatientMergeRequests = lazy(() => import('./features/admin/PatientMergeRequests').then(m => ({ default: m.PatientMergeRequests })));
+const CatalogManagementPage = lazy(() => import('./portals/admin/CatalogManagementPage').then(m => ({ default: m.CatalogManagementPage })));
 
 const WIPPage = lazy(() => import('./app/WIPPage').then(m => ({ default: m.WIPPage })));
 
@@ -258,7 +259,7 @@ const router = createBrowserRouter([
           { path: 'admin/users/:id', element: <PermissionRoute permission="admin.role.change"><LazyPage><UserDetail /></LazyPage></PermissionRoute> },
           { path: 'admin/roles', element: <PermissionRoute permission="admin.role.change"><LazyPage><RoleList /></LazyPage></PermissionRoute> },
           { path: 'admin/roles/:id', element: <PermissionRoute permission="admin.role.change"><LazyPage><RoleDetail /></LazyPage></PermissionRoute> },
-          { path: 'admin/catalog', element: <PermissionRoute permission="catalog.manage"><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'admin/catalog', element: <PermissionRoute permission="catalog.manage"><LazyPage><CatalogManagementPage /></LazyPage></PermissionRoute> },
           {
             path: 'settings',
             element: <PermissionRoute permission="admin.role.change"><SettingsLayout /></PermissionRoute>,
