@@ -1,64 +1,59 @@
 import { useState } from 'react';
-import { Pill, Plus, Trash2, AlertTriangle } from 'lucide-react';
-
-interface Prescription {
-  id: string;
-  medicationName: string;
-  dosage: string;
-  frequency: string;
-  duration: string;
-  instructions: string;
-}
+import { Pill, Plus, AlertTriangle } from 'lucide-react';
+import { usePatientPrescriptions, useCreatePrescription } from '../../../hooks/use-doctor';
+import type { PrescriptionDto } from '../../../services/doctor.service';
 
 interface DoctorPrescriptionPanelProps {
   patientId: string;
   isLocked: boolean;
 }
 
-export const DoctorPrescriptionPanel = ({ patientId: _patientId, isLocked }: DoctorPrescriptionPanelProps) => {
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>([
-    { id: 'RX-01', medicationName: 'Amlodipine 5mg', dosage: '1 tablet', frequency: 'Once daily (OD)', duration: '30 days', instructions: 'Take in the morning with or without food.' },
-    { id: 'RX-02', medicationName: 'Metformin 500mg', dosage: '1 tablet', frequency: 'Twice daily (BID)', duration: '60 days', instructions: 'Take with meals to minimize GI side effects.' },
-  ]);
+export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescriptionPanelProps) => {
+  const { data: prescriptions, isLoading, refetch } = usePatientPrescriptions(patientId);
+  const createRx = useCreatePrescription();
 
-  const [medName, setMedName] = useState('');
+  const [medicationName, setMedicationName] = useState('');
   const [dosage, setDosage] = useState('1 tablet');
   const [frequency, setFrequency] = useState('Once daily (OD)');
   const [duration, setDuration] = useState('30 days');
   const [instructions, setInstructions] = useState('');
+  const [encounterId, setEncounterId] = useState('');
+
+  const safePrescriptions = prescriptions || [];
 
   const handleAddRx = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!medName || isLocked) return;
+    if (!medicationName || isLocked || !encounterId) return;
 
-    const newRx: Prescription = {
-      id: `RX-${Math.floor(100 + Math.random() * 900)}`,
-      medicationName: medName,
-      dosage,
-      frequency,
-      duration,
-      instructions,
-    };
-
-    setPrescriptions([...prescriptions, newRx]);
-    setMedName('');
-    setInstructions('');
-  };
-
-  const handleRemoveRx = (id: string) => {
-    if (isLocked) return;
-    setPrescriptions(prescriptions.filter(p => p.id !== id));
+    createRx.mutate(
+      {
+        patientId,
+        encounterId,
+        medicationName,
+        dosage,
+        frequency,
+        duration,
+        notes: instructions || undefined,
+      },
+      {
+        onSuccess: () => {
+          setMedicationName('');
+          setInstructions('');
+          refetch();
+        },
+      },
+    );
   };
 
   return (
-    <div className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4" data-patient-id={_patientId}>
-      {/* Mock/WIP Warning Banner */}
+    <div className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4" data-patient-id={patientId}>
+      {/* WIP Banner */}
       <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex gap-2 text-xs text-amber-800">
         <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
         <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">E-Prescription (WIP/Mock)</h5>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Prescriptions (Real — CDS/E-Prescribing WIP)</h5>
           <p className="font-medium mt-0.5">
-            Medication ordering is currently running in demo mode. No actual prescriptions are sent to pharmacy or recorded in the medical record.
+            Prescriptions are saved to the live patient record and visible in the pharmacy queue. Drug interaction checks and external e-prescribing remain in development.
           </p>
         </div>
       </div>
@@ -67,21 +62,35 @@ export const DoctorPrescriptionPanel = ({ patientId: _patientId, isLocked }: Doc
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase flex items-center gap-2">
           <Pill className="h-4 w-4 text-indigo-500" />
-          Active E-Prescriptions
+          Prescriptions
         </h3>
         <span className="bg-indigo-50 text-indigo-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase">
-          {prescriptions.length} Meds
+          {safePrescriptions.length} Meds
         </span>
       </div>
 
+      {/* Encounter ID input (required for prescription creation) */}
+      {!isLocked && !encounterId && (
+        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
+          <p className="font-semibold">Enter Encounter ID to enable prescribing:</p>
+          <input
+            type="text"
+            value={encounterId}
+            onChange={(e) => setEncounterId(e.target.value)}
+            placeholder="Paste encounter UUID..."
+            className="mt-2 w-full px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+          />
+        </div>
+      )}
+
       {/* Add Prescription form */}
-      {!isLocked && (
+      {!isLocked && encounterId && (
         <form onSubmit={handleAddRx} className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col">
           <div className="flex gap-2">
             <input
               type="text"
-              value={medName}
-              onChange={(e) => setMedName(e.target.value)}
+              value={medicationName}
+              onChange={(e) => setMedicationName(e.target.value)}
               placeholder="Medication Name (e.g. Paracetamol 500mg)..."
               className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all"
             />
@@ -90,7 +99,7 @@ export const DoctorPrescriptionPanel = ({ patientId: _patientId, isLocked }: Doc
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
               placeholder="Duration (e.g. 7 days)..."
-              className="w-28 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all"
+              className="w-28 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none"
             />
           </div>
 
@@ -100,12 +109,12 @@ export const DoctorPrescriptionPanel = ({ patientId: _patientId, isLocked }: Doc
               value={dosage}
               onChange={(e) => setDosage(e.target.value)}
               placeholder="Dosage (e.g. 1 tab)..."
-              className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all"
+              className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none"
             />
             <select
               value={frequency}
               onChange={(e) => setFrequency(e.target.value)}
-              className="flex-1 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10"
+              className="flex-1 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none"
             >
               <option value="Once daily (OD)">Once daily (OD)</option>
               <option value="Twice daily (BID)">Twice daily (BID)</option>
@@ -121,60 +130,74 @@ export const DoctorPrescriptionPanel = ({ patientId: _patientId, isLocked }: Doc
               type="text"
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              placeholder="Special instructions (e.g. Take with food)..."
+              placeholder="Special instructions..."
               className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none"
             />
             <button
               type="submit"
-              disabled={true}
-              className="btn bg-slate-200 text-slate-500 text-xs px-3.5 py-1.5 flex items-center gap-1.5 cursor-not-allowed"
+              disabled={createRx.isPending || !medicationName}
+              className="btn bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-1.5 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Plus className="h-3.5 w-3.5" /> Add
+              {createRx.isPending ? 'Saving...' : <><Plus className="h-3.5 w-3.5" /> Add</>}
             </button>
           </div>
+
+          {createRx.isError && (
+            <p className="text-[10px] text-rose-600 font-semibold">
+              Failed to save prescription. Please verify the encounter ID and try again.
+            </p>
+          )}
         </form>
       )}
 
-      {/* Prescription List */}
-      <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-        {prescriptions.length === 0 ? (
-          <div className="text-center py-6 text-slate-400 text-xs font-semibold">
-            No active prescriptions for this patient.
-          </div>
-        ) : (
-          prescriptions.map(rx => (
-            <div
-              key={rx.id}
-              className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl flex items-start justify-between gap-3 text-xs"
-            >
-              <div className="space-y-1">
-                <p className="font-bold text-slate-800 flex items-center gap-1.5">
-                  <Pill className="h-3.5 w-3.5 text-indigo-500" />
-                  {rx.medicationName}
-                </p>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 font-semibold">
-                  <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{rx.dosage}</span>
-                  <span>{rx.frequency}</span>
-                  <span className="text-slate-300">•</span>
-                  <span className="text-slate-600">Dur: {rx.duration}</span>
-                </div>
-                {rx.instructions && (
-                  <p className="text-[10px] text-slate-400 italic">Instructions: {rx.instructions}</p>
-                )}
-              </div>
+      {/* Loading state */}
+      {isLoading && (
+        <div className="text-center py-4 text-slate-400 text-xs font-semibold">
+          Loading prescriptions...
+        </div>
+      )}
 
-              {!isLocked && (
-                <button
-                  onClick={() => handleRemoveRx(rx.id)}
-                  className="p-1 text-slate-400 hover:text-rose-600 transition-colors flex-shrink-0"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              )}
+      {/* Prescription List */}
+      {!isLoading && (
+        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+          {safePrescriptions.length === 0 ? (
+            <div className="text-center py-6 text-slate-400 text-xs font-semibold">
+              No active prescriptions for this patient.
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            safePrescriptions.map((rx: PrescriptionDto) => (
+              <div
+                key={rx.id}
+                className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl flex items-start justify-between gap-3 text-xs"
+              >
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                    <Pill className="h-3.5 w-3.5 text-indigo-500" />
+                    {rx.medicationName}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 font-semibold">
+                    <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{rx.dosage}</span>
+                    <span>{rx.frequency}</span>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-600">Dur: {rx.duration}</span>
+                    <span className="text-slate-300">•</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      rx.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' :
+                      rx.status === 'DISPENSED' ? 'bg-blue-50 text-blue-700' :
+                      'bg-slate-100 text-slate-500'
+                    }`}>
+                      {rx.status}
+                    </span>
+                  </div>
+                  {rx.notes && (
+                    <p className="text-[10px] text-slate-400 italic">Instructions: {rx.notes}</p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { CreatePatientDto, UpdatePatientDto } from './dto/patient.dto';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
@@ -71,10 +72,22 @@ export class PatientsService {
     });
   }
 
-  async findAll(tenantId: string) {
+  async findAll(tenantId: string, search?: string) {
+    const where: Prisma.PatientWhereInput = { tenantId };
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      where.OR = [
+        { firstName: { contains: searchLower, mode: 'insensitive' } },
+        { lastName: { contains: searchLower, mode: 'insensitive' } },
+        { patientNumber: { contains: searchLower, mode: 'insensitive' } },
+      ];
+    }
+
     return this.prisma.patient.findMany({
-      where: { tenantId },
+      where,
       orderBy: { createdAt: 'desc' },
+      take: 50,
     });
   }
 

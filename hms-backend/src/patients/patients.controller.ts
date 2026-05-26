@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { PatientsService } from './patients.service';
@@ -31,8 +32,11 @@ export class PatientsController {
 
   @Get()
   @RequirePermissions('patient.view')
-  findAll(@GetUser('tenantId') tenantId: string) {
-    return this.patientsService.findAll(tenantId);
+  findAll(
+    @GetUser('tenantId') tenantId: string,
+    @Query('search') search?: string,
+  ) {
+    return this.patientsService.findAll(tenantId, search);
   }
 
   @Get(':id')

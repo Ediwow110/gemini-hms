@@ -61,4 +61,61 @@ describe('PatientsService write isolation', () => {
       data: expect.any(Object),
     });
   });
+
+  describe('findAll with search', () => {
+    it('should find all patients without search', async () => {
+      const mockPatients = [
+        { id: 'p1', firstName: 'John', lastName: 'Doe', patientNumber: 'MRN-001', tenantId },
+        { id: 'p2', firstName: 'Jane', lastName: 'Smith', patientNumber: 'MRN-002', tenantId },
+      ];
+      prisma.patient.findMany = jest.fn().mockResolvedValue(mockPatients);
+
+      const result = await service.findAll(tenantId);
+
+      expect(prisma.patient.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tenantId },
+        }),
+      );
+      expect(result).toHaveLength(2);
+    });
+
+    it('should search patients by name', async () => {
+      prisma.patient.findMany = jest.fn().mockResolvedValue([
+        { id: 'p1', firstName: 'John', lastName: 'Doe', patientNumber: 'MRN-001', tenantId },
+      ]);
+
+      const result = await service.findAll(tenantId, 'john');
+
+      expect(prisma.patient.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId,
+            OR: expect.arrayContaining([
+              expect.objectContaining({ firstName: { contains: 'john', mode: 'insensitive' } }),
+            ]),
+          }),
+        }),
+      );
+      expect(result).toHaveLength(1);
+    });
+
+    it('should search patients by patient number', async () => {
+      prisma.patient.findMany = jest.fn().mockResolvedValue([
+        { id: 'p1', firstName: 'John', lastName: 'Doe', patientNumber: 'MRN-001', tenantId },
+      ]);
+
+      const result = await service.findAll(tenantId, 'MRN-001');
+
+      expect(result).toHaveLength(1);
+    });
+
+    it('should return empty array for non-matching search', async () => {
+      prisma.patient.findMany = jest.fn().mockResolvedValue([]);
+
+      const result = await service.findAll(tenantId, 'nonexistent');
+
+      expect(result).toEqual([]);
+    });
+  });
 });

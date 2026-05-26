@@ -51,8 +51,10 @@ This document provides a comprehensive mapping of frontend portals, their routes
 - **Permissions**: `patient.portal.view_own` (frontend only; backend uses PatientJwtGuard)
 
 ### Doctor Portal
-- **Real API-backed**: Dashboard metrics (useClinicalDashboardSummary), Work queue (useClinicalWorkQueue), SOAP Editor (useClinicalWorkflow)
-- **WIP/Mock (Visible Banner)**: Doctor Dashboard (real queue data displayed, but schedule/criticals/high-risk alerts are mock), Patients Page (simulated patient records, no backend patient list API), Prescription Panel (wired UI with disabled Add button — no backend prescribing endpoint)
+- **Real API-backed**: Dashboard metrics (useClinicalDashboardSummary), Work queue (useClinicalWorkQueue), SOAP Editor (useClinicalWorkflow), Patient directory/list with search (GET /api/v1/patients?search=), Prescription list (GET /api/v1/prescriptions?patientId=), Prescription creation (POST /api/v1/prescriptions with audit)
+- **Permissions added**: doctor.patient.view, doctor.prescription.view, doctor.prescription.create — assigned to Doctor role
+- **WIP (Visible Banner)**: Full EMR chart view, clinical decision support, drug interaction checks, e-prescribing to external pharmacies, insurance authorization
+- **Status**: Partial (real patient list, prescriptions, and SOAP; advanced EMR/CDS/eprescribing remain WIP)
 - **All mock pages have visible WIP banners, disabled unsafe actions, and clear explanations of missing backend support.
 
 ### Nurse Portal

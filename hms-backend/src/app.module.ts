@@ -29,6 +29,7 @@ import { ClinicalModule } from './clinical/clinical.module';
 import { PatientPortalModule } from './patient-portal/patient-portal.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { InsuranceModule } from './insurance/insurance.module';
+import { PrescriptionsModule } from './prescriptions/prescriptions.module';
 import { ProcurementModule } from './procurement/procurement.module';
 import { LogisticsModule } from './logistics/logistics.module';
 import { ReferralPartnersModule } from './referral-partners/referral-partners.module';
@@ -71,6 +72,7 @@ import { AuditContextMiddleware } from './audit/audit-context.middleware';
     ApprovalsModule,
     NumberingModule,
     NotificationsModule,
+    PrescriptionsModule,
     ReportsModule,
     AdminModule,
     EncountersModule,
