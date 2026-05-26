@@ -80,3 +80,52 @@ export const useDispenseMedication = () => {
     },
   });
 };
+
+// ──── Sprint 2B additions ────
+
+export const useStockMovements = (itemId: string | null) => {
+  return useQuery({
+    queryKey: ['pharmacy', 'stock-movements', itemId],
+    queryFn: () => pharmacyService.getStockMovements(itemId!),
+    enabled: !!itemId,
+    retry: false,
+  });
+};
+
+export const useLowStockAlerts = () => {
+  const user = useUser();
+  const roleScope = user?.roles?.join(',');
+  return useQuery({
+    queryKey: [
+      'pharmacy',
+      'low-stock-alerts',
+      user?.tenantId,
+      user?.branchId,
+      user?.id,
+      roleScope,
+    ],
+    queryFn: () => pharmacyService.getLowStockAlerts(),
+    enabled: !!user?.tenantId,
+    retry: false,
+  });
+};
+
+export const useAdjustStock = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      itemId,
+      newQuantity,
+      reason,
+    }: {
+      itemId: string;
+      newQuantity: number;
+      reason: string;
+    }) => pharmacyService.adjustStock(itemId, newQuantity, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pharmacy', 'drug-catalog'] });
+      queryClient.invalidateQueries({ queryKey: ['pharmacy', 'low-stock-alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['pharmacy', 'stock-movements'] });
+    },
+  });
+};

@@ -8,6 +8,7 @@ import {
   CreateInventoryItemDto,
   ReceiveStockDto,
   UpdateInventoryItemDto,
+  AdjustStockDto,
   InventoryStatus,
 } from './dto/inventory.dto';
 import { AuditService } from '../audit/audit.service';
@@ -368,14 +369,75 @@ export class InventoryService {
   }
 
   async getLowStockAlerts(tenantId: string, branchId: string) {
-    return this.prisma.branchStock.findMany({
-      where: {
-        tenantId,
-        branchId,
-        quantity: { lte: this.prisma.branchStock.fields.reorderLevel },
-      },
+    const branchStocks = await this.prisma.branchStock.findMany({
+      where: { tenantId, branchId },
       include: { inventoryItem: true },
       orderBy: { quantity: 'asc' },
+    });
+    return branchStocks.filter(bs => bs.quantity <= bs.reorderLevel);
+  }
+
+  async adjustStock(
+    tenantId: string,
+    branchId: string,
+    userId: string,
+    id: string,
+    dto: AdjustStockDto,
+  ) {
+    const stock = await this.prisma.branchStock.findFirst({
+      where: { inventoryItemId: id, tenantId, branchId },
+    });
+
+    if (!stock) {
+      throw new NotFoundException('Stock not found for this item and branch');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const previousStock = stock.quantity;
+      const newStock = dto.newQuantity;
+
+      const stockUpdate = await tx.branchStock.updateMany({
+        where: { id: stock.id, tenantId, branchId },
+        data: { quantity: newStock },
+      });
+
+      if (stockUpdate.count === 0) {
+        throw new NotFoundException('Stock not found');
+      }
+
+      // Create stock log for the adjustment
+      await tx.stockLog.create({
+        data: {
+          tenantId,
+          branchId,
+          inventoryItemId: id,
+          type: 'ADJUSTMENT',
+          quantity: newStock - previousStock,
+          previousStock,
+          newStock,
+          referenceType: 'ADJUSTMENT',
+          remarks: dto.reason,
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'STOCK_ADJUSTED',
+          recordType: 'BranchStock',
+          recordId: stock.id,
+          oldValues: { quantity: previousStock },
+          newValues: { quantity: newStock, reason: dto.reason },
+        },
+        tx,
+        branchId,
+      );
+
+      return tx.branchStock.findFirst({
+        where: { id: stock.id },
+        include: { inventoryItem: true },
+      });
     });
   }
 }

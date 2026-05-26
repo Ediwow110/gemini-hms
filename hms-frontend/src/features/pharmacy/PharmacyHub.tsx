@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useUser } from "../../hooks/use-user";
-import { usePrescriptionQueue, useDrugCatalog, useDispenseMedication } from "../../hooks/use-pharmacy";
+import { usePrescriptionQueue, useDrugCatalog, useDispenseMedication, useLowStockAlerts, useStockMovements } from "../../hooks/use-pharmacy";
 import { PageHeader } from "../../components/ui/page-header";
 import {
   Pill,
@@ -18,6 +18,9 @@ export const PharmacyHub = () => {
   const { data: orders, isLoading: ordersLoading, refetch: refetchOrders } = usePrescriptionQueue("ACTIVE");
   const { data: stock, isLoading: stockLoading, refetch: refetchStock } = useDrugCatalog();
   const dispenseMutation = useDispenseMedication();
+  const { data: lowStockItems } = useLowStockAlerts();
+  const [selectedStockItemId, setSelectedStockItemId] = useState<string | null>(null);
+  const { data: stockMovements } = useStockMovements(selectedStockItemId);
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string>("");
@@ -27,6 +30,9 @@ export const PharmacyHub = () => {
 
   const selectedOrder = orders?.find((o) => o.id === selectedOrderId);
   const drugItems = (stock || []).filter((item) => item.type === "DRUG");
+
+  const lowStockAlerts = lowStockItems || [];
+  const lowStockCount = lowStockAlerts.length;
 
   const getMatchingDrugs = (medicationName: string) => {
     const name = medicationName.toLowerCase();
@@ -258,6 +264,93 @@ export const PharmacyHub = () => {
           )}
         </div>
       </div>
+
+      {/* ──── Low Stock Alerts ──── */}
+      {lowStockCount > 0 && (
+        <div className="card p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
+          <div className="flex items-center gap-2 text-xs font-bold text-amber-800 uppercase tracking-wider">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            Low Stock Alerts ({lowStockCount})
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {lowStockAlerts.slice(0, 6).map((alert) => (
+              <div
+                key={alert.id}
+                className="flex items-center justify-between p-2 bg-white rounded-xl border border-amber-100 text-xs"
+              >
+                <div>
+                  <span className="font-bold text-slate-800">{alert.inventoryItem.name}</span>
+                  <p className="text-[10px] text-slate-400">
+                    Stock: {alert.quantity} / Reorder: {alert.reorderLevel}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedStockItemId(alert.inventoryItemId)}
+                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 shrink-0"
+                >
+                  View Log
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ──── Stock Movement Log ──── */}
+      {selectedStockItemId && stockMovements && stockMovements.length > 0 && (
+        <div className="card p-4 bg-white border border-slate-200/80 shadow-sm rounded-2xl">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              Stock Movement Log
+            </h4>
+            <button
+              onClick={() => setSelectedStockItemId(null)}
+              className="text-[10px] font-bold text-slate-400 hover:text-slate-600"
+            >
+              Close
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 text-slate-455 font-black uppercase tracking-wider border-b border-slate-150">
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2">Type</th>
+                  <th className="px-3 py-2">Qty</th>
+                  <th className="px-3 py-2">Before</th>
+                  <th className="px-3 py-2">After</th>
+                  <th className="px-3 py-2">Reason</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {stockMovements.slice(0, 20).map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50/30">
+                    <td className="px-3 py-2 text-[10px] text-slate-500">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        log.type === 'IN' ? 'bg-emerald-50 text-emerald-700' :
+                        log.type === 'OUT' ? 'bg-rose-50 text-rose-700' :
+                        log.type === 'ADJUSTMENT' ? 'bg-amber-50 text-amber-700' :
+                        'bg-slate-50 text-slate-600'
+                      }`}>
+                        {log.type}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 font-mono">{log.quantity}</td>
+                    <td className="px-3 py-2 font-mono">{log.previousStock}</td>
+                    <td className="px-3 py-2 font-mono">{log.newStock}</td>
+                    <td className="px-3 py-2 text-[10px] text-slate-400 max-w-[200px] truncate">
+                      {log.remarks || log.referenceType || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {showDispenseModal && selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">

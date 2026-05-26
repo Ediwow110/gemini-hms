@@ -307,4 +307,69 @@ describe('InventoryService', () => {
       expect(prisma.stockLog.create).not.toHaveBeenCalled();
     });
   });
+
+  describe('adjustStock', () => {
+    const mockBranchStock = {
+      id: 'stock-1',
+      inventoryItemId: 'item-1',
+      tenantId: 'tenant1',
+      branchId: 'branch1',
+      quantity: 10,
+      reorderLevel: 5,
+    };
+
+    it('should adjust stock to a new quantity and create a stock log', async () => {
+      prisma.branchStock.findFirst
+        .mockResolvedValueOnce(mockBranchStock)
+        .mockResolvedValueOnce({ ...mockBranchStock, quantity: 25 });
+      prisma.branchStock.updateMany.mockResolvedValue({ count: 1 });
+      prisma.stockLog.create.mockResolvedValue({});
+
+      const result = await service.adjustStock('tenant1', 'branch1', 'user1', 'item-1', {
+        newQuantity: 25,
+        reason: 'Physical inventory count correction',
+      });
+
+      expect(prisma.branchStock.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { quantity: 25 },
+        }),
+      );
+      expect(prisma.stockLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            type: 'ADJUSTMENT',
+            quantity: 15, // 25 - 10
+            previousStock: 10,
+            newStock: 25,
+            remarks: 'Physical inventory count correction',
+          }),
+        }),
+      );
+      expect(audit.log).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if stock not found', async () => {
+      prisma.branchStock.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.adjustStock('tenant1', 'branch1', 'user1', 'nonexistent', {
+          newQuantity: 10,
+          reason: 'Correction',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException if stock update fails', async () => {
+      prisma.branchStock.findFirst.mockResolvedValue(mockBranchStock);
+      prisma.branchStock.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.adjustStock('tenant1', 'branch1', 'user1', 'item-1', {
+          newQuantity: 20,
+          reason: 'Correction',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
 });

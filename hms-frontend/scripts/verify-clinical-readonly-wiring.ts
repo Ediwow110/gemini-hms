@@ -155,18 +155,21 @@ if (fs.existsSync(CLINICAL_HOOKS_FILE)) {
     hooksContent.includes('useValidateLabResult') &&
     hooksContent.includes('useReleaseLabResult');
 
+  const pharmacyContentCheck = fs.existsSync(PHARMACY_HOOKS_FILE)
+    ? fs.readFileSync(PHARMACY_HOOKS_FILE, 'utf-8')
+    : '';
   const pharmacyApproved =
-    fs.existsSync(PHARMACY_HOOKS_FILE) &&
-    fs.readFileSync(PHARMACY_HOOKS_FILE, 'utf-8').includes('useDispenseMedication');
+    pharmacyContentCheck.includes('useDispenseMedication') &&
+    pharmacyContentCheck.includes('useAdjustStock');
 
   if (
-    totalMutationCount === 13 &&
+    totalMutationCount === 14 &&
     clinicalMutationCount === 12 &&
-    pharmacyMutationCount === 1 &&
+    pharmacyMutationCount === 2 &&
     allClinicalApproved &&
     pharmacyApproved
   ) {
-    reportPass('Target 8: Total 13 approved mutations (12 clinical: useSaveVitals, useMarkVitalsEnteredInError, useSaveTriage, useMarkTriageEnteredInError, useSaveDraftSOAP, useSignSOAP, useCreateClinicalOrder, useCancelClinicalOrder, useReceiveLabOrder, useSaveDraftLabResult, useValidateLabResult, useReleaseLabResult; 1 pharmacy: useDispenseMedication).');
+    reportPass('Target 8: Total 14 approved mutations (12 clinical: useSaveVitals, useMarkVitalsEnteredInError, useSaveTriage, useMarkTriageEnteredInError, useSaveDraftSOAP, useSignSOAP, useCreateClinicalOrder, useCancelClinicalOrder, useReceiveLabOrder, useSaveDraftLabResult, useValidateLabResult, useReleaseLabResult; 2 pharmacy: useDispenseMedication, useAdjustStock).');
   } else {
     reportError(`Target 8: Found ${totalMutationCount} total mutations (clinical: ${clinicalMutationCount}, pharmacy: ${pharmacyMutationCount}). Expected exactly 13 (12 clinical + 1 pharmacy).`);
   }

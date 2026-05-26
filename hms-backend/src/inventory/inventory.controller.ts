@@ -14,6 +14,7 @@ import {
   CreateInventoryItemDto,
   ReceiveStockDto,
   UpdateInventoryItemDto,
+  AdjustStockDto,
   InventoryStatus,
 } from './dto/inventory.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -131,5 +132,18 @@ export class InventoryController {
     @GetUser('branchId') branchId: string,
   ) {
     return this.inventoryService.getLowStockAlerts(tenantId, branchId);
+  }
+
+  @Patch('stock/:id/adjust')
+  @RequirePermissions('inventory.stock.dispense')
+  @RequireBranchContext()
+  adjustStock(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+    @GetUser('userId') userId: string,
+    @Param('id') id: string,
+    @Body() dto: AdjustStockDto,
+  ) {
+    return this.inventoryService.adjustStock(tenantId, branchId, userId, id, dto);
   }
 }
