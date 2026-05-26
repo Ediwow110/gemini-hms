@@ -7,6 +7,7 @@ const FRONTEND_SRC_DIR = path.join(process.cwd(), 'src');
 const CLINICAL_SERVICE_FILE = path.join(FRONTEND_SRC_DIR, 'services', 'clinicalWorkflow.service.ts');
 const CLINICAL_HOOKS_FILE = path.join(FRONTEND_SRC_DIR, 'hooks', 'use-clinical-workflow.ts');
 const PHARMACY_HOOKS_FILE = path.join(FRONTEND_SRC_DIR, 'hooks', 'use-pharmacy.ts');
+const DOCTOR_HOOKS_FILE = path.join(FRONTEND_SRC_DIR, 'hooks', 'use-doctor.ts');
 const PORTALS_DIR = path.join(FRONTEND_SRC_DIR, 'portals');
 const PATIENT_PORTAL_DIR = path.join(PORTALS_DIR, 'patient');
 const DOCTOR_PORTAL_DIR = path.join(PORTALS_DIR, 'doctor');
@@ -139,7 +140,14 @@ if (fs.existsSync(CLINICAL_HOOKS_FILE)) {
     pharmacyMutationCount = pharmacyMutationMatch ? pharmacyMutationMatch.length : 0;
   }
 
-  const totalMutationCount = clinicalMutationCount + pharmacyMutationCount;
+  let doctorMutationCount = 0;
+  if (fs.existsSync(DOCTOR_HOOKS_FILE)) {
+    const doctorContent = stripComments(fs.readFileSync(DOCTOR_HOOKS_FILE, 'utf-8'));
+    const doctorMutationMatch = doctorContent.match(/useMutation\s*\(\s*\{/g);
+    doctorMutationCount = doctorMutationMatch ? doctorMutationMatch.length : 0;
+  }
+
+  const totalMutationCount = clinicalMutationCount + pharmacyMutationCount + doctorMutationCount;
 
   const allClinicalApproved =
     hooksContent.includes('useSaveVitals') &&
@@ -162,16 +170,23 @@ if (fs.existsSync(CLINICAL_HOOKS_FILE)) {
     pharmacyContentCheck.includes('useDispenseMedication') &&
     pharmacyContentCheck.includes('useAdjustStock');
 
+  const doctorContentCheck = fs.existsSync(DOCTOR_HOOKS_FILE)
+    ? fs.readFileSync(DOCTOR_HOOKS_FILE, 'utf-8')
+    : '';
+  const doctorApproved = doctorContentCheck.includes('useCreatePrescription');
+
   if (
-    totalMutationCount === 14 &&
+    totalMutationCount === 15 &&
     clinicalMutationCount === 12 &&
     pharmacyMutationCount === 2 &&
+    doctorMutationCount === 1 &&
     allClinicalApproved &&
-    pharmacyApproved
+    pharmacyApproved &&
+    doctorApproved
   ) {
-    reportPass('Target 8: Total 14 approved mutations (12 clinical: useSaveVitals, useMarkVitalsEnteredInError, useSaveTriage, useMarkTriageEnteredInError, useSaveDraftSOAP, useSignSOAP, useCreateClinicalOrder, useCancelClinicalOrder, useReceiveLabOrder, useSaveDraftLabResult, useValidateLabResult, useReleaseLabResult; 2 pharmacy: useDispenseMedication, useAdjustStock).');
+    reportPass('Target 8: Total 15 approved mutations (12 clinical: useSaveVitals, useMarkVitalsEnteredInError, useSaveTriage, useMarkTriageEnteredInError, useSaveDraftSOAP, useSignSOAP, useCreateClinicalOrder, useCancelClinicalOrder, useReceiveLabOrder, useSaveDraftLabResult, useValidateLabResult, useReleaseLabResult; 2 pharmacy: useDispenseMedication, useAdjustStock; 1 doctor: useCreatePrescription).');
   } else {
-    reportError(`Target 8: Found ${totalMutationCount} total mutations (clinical: ${clinicalMutationCount}, pharmacy: ${pharmacyMutationCount}). Expected exactly 13 (12 clinical + 1 pharmacy).`);
+    reportError(`Target 8: Found ${totalMutationCount} total mutations (clinical: ${clinicalMutationCount}, pharmacy: ${pharmacyMutationCount}, doctor: ${doctorMutationCount}). Expected exactly 15 (12 clinical + 2 pharmacy + 1 doctor).`);
   }
 
   // 6. Query keys include tenant, user, and branch scopes

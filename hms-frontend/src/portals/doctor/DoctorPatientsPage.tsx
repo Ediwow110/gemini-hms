@@ -2,48 +2,31 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, ChevronRight, FileText, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
-
-interface PatientRecord {
-  id: string;
-  name: string;
-  age: number;
-  gender: string;
-  dob: string;
-  contact: string;
-  status: string;
-}
+import { usePatientList } from '../../hooks/use-doctor';
 
 export const DoctorPatientsPage = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const { data: patients, isLoading, error } = usePatientList(searchQuery || undefined);
 
-  const patients: PatientRecord[] = [
-    { id: 'P-101', name: 'Eleanor Vance', age: 37, gender: 'Female', dob: '1988-11-24', contact: '+63 912 345 6789', status: 'Active' },
-    { id: 'P-102', name: 'Arthur Pendleton', age: 60, gender: 'Male', dob: '1965-04-12', contact: '+63 923 456 7890', status: 'Active' },
-    { id: 'P-103', name: 'Victor Frankenstein', age: 29, gender: 'Male', dob: '1996-08-18', contact: '+63 934 567 8901', status: 'Active' },
-  ];
-
-  const filteredPatients = patients.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const safePatients = patients || [];
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Mock/WIP Warning Banner */}
+      {/* Notice: WIP for advanced EMR features */}
       <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
         <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Patient Directory (WIP/Mock)</h5>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Patient Directory (Real — Advanced EMR features WIP)</h5>
           <p className="font-medium mt-0.5">
-            This directory is currently running in demo mode with simulated patient records. Integration with the production patient repository is pending.
+            Patient list is loaded from the live patient repository. Advanced EMR features (full chart, CDS, e-prescribing) remain in development.
           </p>
         </div>
       </div>
 
       <PageHeader 
         title="Patient Directory" 
-        description="Search global medical records and browse active clinical profile summaries." 
+        description="Search patient records and access clinical profile summaries." 
       />
 
       {/* Directory Filter bar */}
@@ -52,7 +35,7 @@ export const DoctorPatientsPage = () => {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search patient record directories by name or MRN number..."
+            placeholder="Search patient by name or MRN number..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all"
@@ -60,28 +43,52 @@ export const DoctorPatientsPage = () => {
         </div>
       </div>
 
+      {/* Loading state */}
+      {isLoading && (
+        <div className="card bg-white border border-slate-200/80 shadow-sm p-10 text-center">
+          <div className="animate-pulse space-y-3">
+            <div className="h-4 bg-slate-100 rounded w-1/3 mx-auto" />
+            <div className="h-3 bg-slate-50 rounded w-1/4 mx-auto" />
+          </div>
+          <p className="text-xs text-slate-400 font-semibold mt-4">Loading patient records...</p>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && !isLoading && (
+        <div className="card bg-white border border-rose-200 shadow-sm p-10 text-center">
+          <p className="text-sm font-bold text-rose-600">Failed to load patient records</p>
+          <p className="text-xs text-slate-400 mt-1">Please try again or contact IT support.</p>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && !error && safePatients.length === 0 && (
+        <div className="card bg-white border border-slate-200/80 shadow-sm p-10 text-center">
+          <p className="text-sm font-semibold text-slate-400">No patient records found</p>
+          <p className="text-xs text-slate-400 mt-1">
+            {searchQuery ? 'No records match your search query.' : 'No patients registered in this branch.'}
+          </p>
+        </div>
+      )}
+
       {/* Patient Directory Grid/Table */}
-      <div className="card overflow-hidden bg-white border border-slate-200/80 shadow-sm">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">Patient Name</th>
-              <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">MRN Number</th>
-              <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">Date of Birth</th>
-              <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">Contact Info</th>
-              <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filteredPatients.length === 0 ? (
+      {!isLoading && !error && safePatients.length > 0 && (
+        <div className="card overflow-hidden bg-white border border-slate-200/80 shadow-sm">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-semibold">
-                  No patient records match query terms.
-                </td>
+                <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">Patient Name</th>
+                <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">MRN Number</th>
+                <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">Date of Birth</th>
+                <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3.5 font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
-            ) : (
-              filteredPatients.map((p) => {
-                const initials = p.name.split(' ').map(n => n[0]).join('');
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {safePatients.map((p) => {
+                const initials = `${p.firstName[0]}${p.lastName[0]}`;
+                const displayDob = p.dob ? new Date(p.dob).toLocaleDateString() : '—';
                 return (
                   <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-4">
@@ -90,21 +97,24 @@ export const DoctorPatientsPage = () => {
                           {initials}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{p.name}</p>
-                          <p className="text-[10px] text-slate-400 font-semibold">{p.gender} · {p.age} Years Old</p>
+                          <p className="font-bold text-slate-900">{p.firstName} {p.lastName}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="font-extrabold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-[10px] uppercase">
-                        {p.id}
+                        {p.patientNumber}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-slate-500 font-semibold">
-                      {p.dob}
+                      {displayDob}
                     </td>
-                    <td className="px-6 py-4 text-slate-500 font-semibold">
-                      {p.contact}
+                    <td className="px-6 py-4">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        p.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {p.status}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
@@ -118,11 +128,11 @@ export const DoctorPatientsPage = () => {
                     </td>
                   </tr>
                 );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

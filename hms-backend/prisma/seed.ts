@@ -108,6 +108,9 @@ async function main() {
     { name: 'inventory.adjust.request', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
     { name: 'inventory.adjust.approve', scope: 'tenant/branch', riskLevel: 'HIGH' },
     { name: 'pharmacy.stockmovement.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'doctor.patient.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'doctor.prescription.view', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+    { name: 'doctor.prescription.create', scope: 'tenant/branch', riskLevel: 'HIGH' },
     { name: 'report.export', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
     { name: 'audit.view', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
     { name: 'admin.role.change', scope: 'tenant/system', riskLevel: 'PRIVILEGED' },
@@ -273,7 +276,8 @@ async function main() {
       'inventory.item.view',
       'encounter.create', 'encounter.view', 'encounter.update', 'queue.view',
       'procurement.request.create',
-      'lab.critical.view'
+      'lab.critical.view',
+      'doctor.patient.view', 'doctor.prescription.view', 'doctor.prescription.create'
     ],
     'Pharmacist': [
       'patient.view', 'inventory.item.view', 'inventory.stock.dispense', 'pharmacy.stockmovement.view', 'queue.view'
