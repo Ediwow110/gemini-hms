@@ -1,14 +1,24 @@
 import React from 'react';
-import PatientBillingSummary, { Invoice } from './components/PatientBillingSummary';
+import PatientBillingSummary from './components/PatientBillingSummary';
 import PatientPortalShellNotice from './components/PatientPortalShellNotice';
+import { usePatientInvoices } from '../../hooks/use-patient-portal';
+import { HelpCircle } from 'lucide-react';
 
 export const PatientBillingPage: React.FC = () => {
-  const mockInvoices: Invoice[] = [
-    { id: 'INV-2026-001', service: 'Complete Blood Count (CBC)', amount: 1250, date: '2026-05-18', status: 'UNPAID' },
-    { id: 'INV-2026-002', service: 'Urinalysis', amount: 850, date: '2026-05-19', status: 'UNPAID' },
-    { id: 'INV-2026-003', service: 'General Consultation', amount: 2150, date: '2026-05-15', status: 'UNPAID' },
-    { id: 'INV-2026-004', service: 'X-Ray Chest PA', amount: 3500, date: '2026-04-10', status: 'PAID' },
-  ];
+  const { invoices, loading } = usePatientInvoices();
+
+  const displayInvoices = invoices.map((inv) => ({
+    id: inv.id,
+    service: `Invoice ${inv.invoiceNumber || inv.id.substring(0, 8)}`,
+    amount: Number(inv.balance > 0 ? inv.totalAmount : inv.paidAmount),
+    date: new Date(inv.createdAt).toLocaleDateString(),
+    status: inv.status === 'PAID' ? 'PAID' as const : inv.status === 'PARTIAL' ? 'PARTIAL' as const : 'UNPAID' as const,
+  }));
+
+  const outstandingBalance = invoices.reduce(
+    (sum, inv) => sum + Number(inv.balance),
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -23,9 +33,21 @@ export const PatientBillingPage: React.FC = () => {
 
       <PatientPortalShellNotice />
 
-      <div className="grid grid-cols-1 gap-6">
-        <PatientBillingSummary invoices={mockInvoices} outstandingBalance={4250} />
-      </div>
+      {loading ? (
+        <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center">
+          <p className="text-xs text-slate-400 font-semibold">Loading your invoices...</p>
+        </div>
+      ) : displayInvoices.length === 0 ? (
+        <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-slate-400 space-y-2">
+          <HelpCircle className="h-8 w-8 mx-auto text-slate-300" />
+          <p className="text-xs font-bold text-slate-600">No invoices found</p>
+          <p className="text-[11px] text-slate-450">When services are billed, invoices will appear here.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6">
+          <PatientBillingSummary invoices={displayInvoices} outstandingBalance={outstandingBalance} />
+        </div>
+      )}
     </div>
   );
 };

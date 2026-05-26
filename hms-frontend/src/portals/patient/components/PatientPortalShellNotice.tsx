@@ -8,10 +8,12 @@ export const PatientPortalShellNotice: React.FC = () => {
         <ShieldAlert className="h-5 w-5 text-indigo-600" />
       </div>
       <div>
-        <h4 className="text-sm font-black text-indigo-900 tracking-tight">Patient Portal Sandbox</h4>
+        <h4 className="text-sm font-black text-indigo-900 tracking-tight">Patient Portal</h4>
         <p className="text-xs text-indigo-700 font-medium leading-relaxed mt-0.5">
-          This workspace is a <strong>secure functional shell</strong>. All medical records, test results, and appointments shown are 
-          mock-generated for demonstration purposes. No real actions (booking, payment, messaging) are performed in this phase.
+          <strong>Real data:</strong> Lab results, prescriptions, billing invoices, and your profile are loaded from live records.
+        </p>
+        <p className="text-xs text-indigo-700 font-medium leading-relaxed mt-0.5">
+          <strong>In development:</strong> Appointment booking, medical records, messaging, and online payments.
         </p>
       </div>
     </div>
