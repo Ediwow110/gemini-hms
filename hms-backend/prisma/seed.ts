@@ -113,6 +113,7 @@ async function main() {
     { name: 'doctor.prescription.create', scope: 'tenant/branch', riskLevel: 'HIGH' },
     { name: 'report.export', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
     { name: 'audit.view', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
+    { name: 'admin.health.view', scope: 'tenant', riskLevel: 'LOW' },
     { name: 'admin.role.change', scope: 'tenant/system', riskLevel: 'PRIVILEGED' },
     { name: 'approval.request.create', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
     { name: 'approval.request.view', scope: 'tenant/branch', riskLevel: 'MEDIUM' },

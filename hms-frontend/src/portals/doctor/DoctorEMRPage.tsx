@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
 import { PatientSafetyHeader, PatientSafetyInfo } from './components/PatientSafetyHeader';
 import { DoctorSOAPEditor } from './components/DoctorSOAPEditor';
@@ -165,6 +166,14 @@ export const DoctorEMRPage = () => {
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {/* WIP Banner */}
+      <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex gap-2 text-xs text-amber-800">
+        <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <h5 className="font-bold uppercase text-[10px] tracking-wider">EMR Chart (WIP)</h5>
+          <p className="font-medium mt-0.5">Patient data displayed here is simulated for demonstration. The SOAP editor, vitals history, and patient alerts are mock data. Do not use for actual clinical decision-making.</p>
+        </div>
+      </div>
       {/* Page Header */}
       <div className="flex items-center gap-3">
         <button 

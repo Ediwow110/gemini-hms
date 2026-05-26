@@ -67,6 +67,7 @@ export class AuditService {
     eventKey: string;
     recordType: string;
     recordId: string;
+    branchId?: string | null;
     oldValues: any;
     newValues: any;
     createdAt: Date;
@@ -78,6 +79,7 @@ export class AuditService {
       eventKey: entry.eventKey,
       recordType: entry.recordType,
       recordId: entry.recordId,
+      branchId: entry.branchId || null,
       oldValues: this.canonicalize(entry.oldValues),
       newValues: this.canonicalize(entry.newValues),
       createdAt: entry.createdAt.toISOString(), // Preserve exact persisted millisecond precision
@@ -119,6 +121,7 @@ export class AuditService {
       eventKey: data.eventKey,
       recordType: data.recordType,
       recordId: data.recordId,
+      branchId: branchId || null,
       oldValues: data.oldValues,
       newValues: data.newValues,
       createdAt,
@@ -171,6 +174,7 @@ export class AuditService {
         eventKey: log.eventKey,
         recordType: log.recordType,
         recordId: log.recordId,
+        branchId: log.branchId,
         oldValues: log.oldValues,
         newValues: log.newValues,
         createdAt: log.createdAt,

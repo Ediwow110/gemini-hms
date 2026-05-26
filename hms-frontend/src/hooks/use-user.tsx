@@ -45,6 +45,8 @@ export const usePermissions = () => {
   const isStaff = () => !!(user && !user.roles.includes('Patient') && !user.roles.includes('Customer'));
 
   const canAccess = (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
+    // Super Admin bypass — can access all navigation items
+    if (isSuperAdmin) return true;
     if (opts.permission && hasPermission(opts.permission)) return true;
     if (opts.allowedRoles && opts.allowedRoles.some(r => hasRole(r))) return true;
     if (!opts.allowedRoles && !opts.permission) return true;

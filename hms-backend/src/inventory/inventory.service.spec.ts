@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -152,12 +152,14 @@ describe('InventoryService', () => {
         id: '1',
         quantity: 20,
         reorderLevel: 10,
+        version: 1,
       });
       prisma.branchStock.updateMany.mockResolvedValue({ count: 1 });
       prisma.branchStock.findFirst.mockResolvedValue({
         id: '1',
         quantity: 15,
         reorderLevel: 10,
+        version: 1,
       });
       prisma.inventoryItem.findUnique.mockResolvedValue({
         id: 'item-1',
@@ -237,8 +239,16 @@ describe('InventoryService', () => {
         tenantId: 'tenant1',
         branchId: 'branch1',
         quantity: 0,
+        version: 1,
       });
       prisma.branchStock.updateMany.mockResolvedValue({ count: 0 });
+      prisma.branchStock.findUnique.mockResolvedValue({
+        id: 'bs-99',
+        tenantId: 'tenant1',
+        branchId: 'branch1',
+        quantity: 0,
+        version: 2,
+      });
 
       await expect(
         service.receiveStock('tenant1', 'branch1', 'user1', 'item-99', {
@@ -246,15 +256,16 @@ describe('InventoryService', () => {
           supplierName: 'ACME',
           remarks: 'in',
         }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(ConflictException);
 
       expect(prisma.branchStock.updateMany).toHaveBeenCalledWith({
         where: {
           id: 'bs-99',
           tenantId: 'tenant1',
           branchId: 'branch1',
+          version: 1,
         },
-        data: expect.objectContaining({ quantity: 10 }),
+        data: expect.objectContaining({ quantity: 10, version: { increment: 1 } }),
       });
       expect(prisma.stockLog.create).not.toHaveBeenCalled();
     });
@@ -297,12 +308,20 @@ describe('InventoryService', () => {
         id: 'bs-1',
         quantity: 10,
         reorderLevel: 5,
+        version: 1,
       });
       prisma.branchStock.updateMany.mockResolvedValue({ count: 0 });
+      // The second findUnique (inside transaction for current stock check) returns the stock
+      prisma.branchStock.findUnique.mockResolvedValue({
+        id: 'bs-1',
+        quantity: 10,
+        reorderLevel: 5,
+        version: 2,
+      });
 
       await expect(
         service.dispenseItem('tenant1', 'branch1', 'user1', 'item-1', 2),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(ConflictException);
 
       expect(prisma.stockLog.create).not.toHaveBeenCalled();
     });
@@ -316,6 +335,7 @@ describe('InventoryService', () => {
       branchId: 'branch1',
       quantity: 10,
       reorderLevel: 5,
+      version: 1,
     };
 
     it('should adjust stock to a new quantity and create a stock log', async () => {
@@ -332,7 +352,7 @@ describe('InventoryService', () => {
 
       expect(prisma.branchStock.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: { quantity: 25 },
+          data: expect.objectContaining({ quantity: 25, version: { increment: 1 } }),
         }),
       );
       expect(prisma.stockLog.create).toHaveBeenCalledWith(
@@ -360,16 +380,17 @@ describe('InventoryService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw NotFoundException if stock update fails', async () => {
+    it('should throw ConflictException if stock version mismatch', async () => {
       prisma.branchStock.findFirst.mockResolvedValue(mockBranchStock);
       prisma.branchStock.updateMany.mockResolvedValue({ count: 0 });
+      prisma.branchStock.findUnique.mockResolvedValue({ ...mockBranchStock, version: 2 });
 
       await expect(
         service.adjustStock('tenant1', 'branch1', 'user1', 'item-1', {
           newQuantity: 20,
           reason: 'Correction',
         }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

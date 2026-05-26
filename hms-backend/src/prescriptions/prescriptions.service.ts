@@ -32,42 +32,44 @@ export class PrescriptionsService {
       throw new NotFoundException('Encounter not found for this patient');
     }
 
-    const prescription = await this.prisma.prescription.create({
-      data: {
-        tenantId,
-        branchId,
-        encounterId: dto.encounterId,
-        patientId: dto.patientId,
-        prescribedById: userId,
-        medicationName: dto.medicationName,
-        dosage: dto.dosage,
-        frequency: dto.frequency,
-        duration: dto.duration,
-        notes: dto.notes,
-        status: 'ACTIVE',
-      },
-    });
-
-    await this.audit.log(
-      {
-        tenantId,
-        userId,
-        eventKey: 'PRESCRIPTION_CREATED',
-        recordType: 'Prescription',
-        recordId: prescription.id,
-        newValues: {
+    return this.prisma.$transaction(async (tx) => {
+      const prescription = await tx.prescription.create({
+        data: {
+          tenantId,
+          branchId,
+          encounterId: dto.encounterId,
           patientId: dto.patientId,
+          prescribedById: userId,
           medicationName: dto.medicationName,
           dosage: dto.dosage,
           frequency: dto.frequency,
           duration: dto.duration,
+          notes: dto.notes,
+          status: 'ACTIVE',
         },
-      },
-      undefined,
-      branchId,
-    );
+      });
 
-    return prescription;
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'PRESCRIPTION_CREATED',
+          recordType: 'Prescription',
+          recordId: prescription.id,
+          newValues: {
+            patientId: dto.patientId,
+            medicationName: dto.medicationName,
+            dosage: dto.dosage,
+            frequency: dto.frequency,
+            duration: dto.duration,
+          },
+        },
+        tx,
+        branchId,
+      );
+
+      return prescription;
+    });
   }
 
   async findByPatient(
