@@ -75,15 +75,15 @@ export const LabOrdersPage = () => {
     return {
       id: item.id,
       patientName: item.patientName || '[REDACTED]',
-      patientAge: 35,
-      patientGender: 'Unknown',
+      patientAge: 0,
+      patientGender: '[REDACTED]',
       mrn: item.patientNumber,
       dob: 'N/A',
       accessCode: `LIS-${item.queueNumber}`,
-      physician: 'Dr. Frankenstein (Default)',
-      department: 'OPD Clinic A',
+      physician: '[REDACTED]',
+      department: '[REDACTED]',
       billingStatus: 'Prepaid',
-      testPanels: ['Complete Blood Count (CBC)'],
+      testPanels: [],
       status,
       orderDate: item.timestamp ? format(new Date(item.timestamp), 'yyyy-MM-dd hh:mm a') : 'N/A',
       urgency: item.category === 'EMERGENCY' ? 'STAT' : 'Routine'
@@ -161,9 +161,9 @@ export const LabOrdersPage = () => {
       <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
         <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Demonstration Sandbox Shell</h5>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">LIS Order Intake Queue (WIP/Mock)</h5>
           <p className="font-medium mt-0.5">
-            This LIS orders workspace runs in a hybrid read-only mode. Orders are fetched from the clinical queue, but barcode prints, specimen receiving registries, and result releases remain mock/UI-only.
+            This workspace uses real queue data but lacks full LIS demographics and clinical details. Patient demographics and test panels are intentionally masked to prevent clinical misinformation.
           </p>
         </div>
       </div>

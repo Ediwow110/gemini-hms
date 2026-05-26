@@ -2,14 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/page-header';
 import { LabOrderHeader } from './components/LabOrderHeader';
-import { 
-  Send, 
-  CheckSquare, 
-  UserCheck, 
-  ShieldAlert, 
-  FileText,
-  AlertTriangle
-} from 'lucide-react';
+import { CheckSquare, AlertTriangle, Send, ShieldAlert, FileText, UserCheck } from 'lucide-react';
 
 const mockOrder = {
   id: 'ORD-2026-901',
@@ -43,7 +36,6 @@ export const ResultReleasePage = () => {
   const [criticalAck, setCriticalAck] = useState(false);
   const [signerName, setSignerName] = useState('Dr. Elizabeth Lavenza');
 
-  // Let's assume CBC has some elevated results, so we require critical result acknowledgment if flag exists.
   const hasCriticalsInOrder = true; // Simulated
 
   const isFormValid = 
@@ -64,13 +56,24 @@ export const ResultReleasePage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Mock/WIP Warning Banner */}
+      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
+        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+        <div>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Diagnostic Dispatch (WIP/Mock)</h5>
+          <p className="font-medium mt-0.5">
+            The result release workflow is currently running in demo mode. Releasing this assay simulates record dispatch and generates a mock system audit log locally in client state. No persistent EMR changes will be written to the server database.
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <PageHeader 
+        <PageHeader
           title="Diagnostic Dispatch & Release Desk" 
           description="Final releasing workspace. Perform secondary safety checks, apply electronic signature, and dispatch validated results to patient portals and EMR." 
         />
         
-        <div className="text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-150 px-3.5 py-1.5 rounded-xl select-none animate-pulse">
+        <div className="text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-150 px-3.5 py-1.5 rounded-xl animate-pulse">
           Release Gate Active
         </div>
       </div>
@@ -100,12 +103,12 @@ export const ResultReleasePage = () => {
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-semibold text-slate-650">
-              <label className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl flex items-start gap-3 cursor-pointer select-none hover:bg-slate-100/30 transition-colors">
+              <label className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl flex items-start gap-3 cursor-pointer select-none">
                 <input 
                   type="checkbox" 
                   checked={checklist.identityMatch}
                   onChange={(e) => setChecklist({ ...checklist, identityMatch: e.target.checked })}
-                  className="rounded text-indigo-650 focus:ring-indigo-500 mt-0.5" 
+                  className="rounded text-indigo-600 focus:ring-indigo-500 mt-0.5" 
                 />
                 <div>
                   <p className="font-black text-slate-800">Verify Patient Identity</p>
@@ -113,12 +116,12 @@ export const ResultReleasePage = () => {
                 </div>
               </label>
 
-              <label className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl flex items-start gap-3 cursor-pointer select-none hover:bg-slate-100/30 transition-colors">
+              <label className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl flex items-start gap-3 cursor-pointer select-none">
                 <input 
                   type="checkbox" 
                   checked={checklist.barcodeScanned}
                   onChange={(e) => setChecklist({ ...checklist, barcodeScanned: e.target.checked })}
-                  className="rounded text-indigo-650 focus:ring-indigo-500 mt-0.5" 
+                  className="rounded text-indigo-600 focus:ring-indigo-500 mt-0.5" 
                 />
                 <div>
                   <p className="font-black text-slate-800">Barcode / Accession Verification</p>
@@ -126,12 +129,12 @@ export const ResultReleasePage = () => {
                 </div>
               </label>
 
-              <label className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl flex items-start gap-3 cursor-pointer select-none hover:bg-slate-100/30 transition-colors">
+              <label className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl flex items-start gap-3 cursor-pointer select-none">
                 <input 
                   type="checkbox" 
                   checked={checklist.signatureVerified}
                   onChange={(e) => setChecklist({ ...checklist, signatureVerified: e.target.checked })}
-                  className="rounded text-indigo-650 focus:ring-indigo-500 mt-0.5" 
+                  className="rounded text-indigo-600 focus:ring-indigo-500 mt-0.5" 
                 />
                 <div>
                   <p className="font-black text-slate-800">Supervisor Signature Validation</p>
@@ -144,7 +147,7 @@ export const ResultReleasePage = () => {
                   type="checkbox" 
                   checked={checklist.billingCleared}
                   disabled
-                  className="rounded text-emerald-650 focus:ring-emerald-500 mt-0.5 cursor-not-allowed" 
+                  className="rounded text-emerald-600 focus:ring-emerald-500 mt-0.5 cursor-not-allowed" 
                 />
                 <div>
                   <p className="font-black text-emerald-800">Billing Clearance Confirmed</p>
@@ -155,11 +158,11 @@ export const ResultReleasePage = () => {
             
             {/* Critical results warning check */}
             {hasCriticalsInOrder && (
-              <div className="p-4.5 bg-rose-50 border border-rose-150 rounded-2xl space-y-3.5">
+              <div className="p-4.5 bg-rose-50 border border-rose-100 rounded-2xl space-y-3.5">
                 <div className="flex gap-2.5 text-xs text-rose-800">
                   <ShieldAlert className="h-5 w-5 text-rose-600 mt-0.5 flex-shrink-0 animate-pulse" />
                   <div>
-                    <h5 className="font-black text-sm text-rose-900">Critical Results Acknowledgment Required</h5>
+                    <h5 className="font-extrabold text-sm text-rose-900">Critical Results Acknowledgment Required</h5>
                     <p className="font-medium mt-0.5">
                       This panel contains critical results (elevated parameters). The supervisor must confirm physician contact details are registered prior to release.
                     </p>
@@ -234,14 +237,13 @@ export const ResultReleasePage = () => {
             </div>
           </div>
 
-          <div className="card p-5 bg-indigo-50/20 border border-indigo-100/60 rounded-2xl text-xs text-indigo-850 font-semibold space-y-2">
+          <div className="card p-5 bg-indigo-50/20 border border-indigo-100/60 rounded-2xl text-xs text-indigo-800 font-semibold space-y-2">
             <h4 className="font-bold text-indigo-900 uppercase tracking-wider text-[10px]">Release Authorization Notes</h4>
             <p className="text-[10.5px] leading-relaxed">
               By releasing this document, you certify that quality control procedures were followed and all diagnostic values match primary assay printouts.
             </p>
           </div>
         </div>
-
       </form>
     </div>
   );

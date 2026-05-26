@@ -51,18 +51,20 @@ This document provides a comprehensive mapping of frontend portals, their routes
 - **Permissions**: `patient.portal.view_own` (frontend only; backend uses PatientJwtGuard)
 
 ### Doctor Portal
-- **Real API-backed**: Dashboard metrics (useClinicalDashboardSummary), Work queue (useClinicalWorkQueue)
-- **Partial**: EMR Page (uses clinical workflow hooks for some data, but SOAP editor and comprehensive charting remain WIP)
-- **Mock**: Results panel, Prescription panel (UI components need real API wiring)
+- **Real API-backed**: Dashboard metrics (useClinicalDashboardSummary), Work queue (useClinicalWorkQueue), SOAP Editor (useClinicalWorkflow)
+- **WIP/Mock (Visible Banner)**: Doctor Dashboard (real queue data displayed, but schedule/criticals/high-risk alerts are mock), Patients Page (simulated patient records, no backend patient list API), Prescription Panel (wired UI with disabled Add button — no backend prescribing endpoint)
+- **All mock pages have visible WIP banners, disabled unsafe actions, and clear explanations of missing backend support.
 
 ### Nurse Portal
 - **Real API-backed**: Dashboard metrics (useClinicalDashboardSummary), Work queue (useClinicalWorkQueue), Triage queue (triages patients), Vitals capture (POST vitals)
-- **Partial**: Tasks page (uses queue data but no dedicated nursing task backend)
-- **Mock**: Specimen collection page
+- **WIP/Mock (Visible Banner)**: Nurse Dashboard (real queue metrics shown, but nurse assignments, schedule, and notifications are mock), Tasks Page (no backend "Nursing Task" model exists — all task status change buttons disabled with visible WIP banner)
+- **All mock pages have visible WIP banners, disabled unsafe actions, and clear explanations of missing backend support.
 
 ### Lab Portal
-- **Real API-backed**: Dashboard metrics from work queue, Orders page via work queue, Result validation, Validated results list, Released results
-- **Mock**: Critical results panel, Turnaround time monitor, Specimen receiving page, Result release page UI (API exists but UI uses mock data)
+- **Real API-backed**: Dashboard metrics from work queue, Result encoding (useClinicalWorkflow), Result validation (useClinicalWorkflow), Validated results list, Released results list
+- **Partial/WIP**: LabOrdersPage (displays real queue data but patient demographics are redacted — `[REDACTED]` shown instead of hardcoded values)
+- **WIP/Mock (Visible Banner)**: Lab Dashboard (real queue metrics preserved; mock specimens, TAT, and criticals widgets labeled), Specimen Receiving (simulated biosample registration), Result Release (simulated dispatch with signature checklist), Critical Results (simulated panic alert registry), Turnaround Time Monitor (simulated SLA metrics)
+- **All mock pages have visible WIP banners, disabled unsafe actions where applicable, and clear explanations of missing backend support.
 
 ### Pharmacy Portal
 - **Real API-backed**: Prescription queue (GET /api/v1/pharmacy/prescriptions), Drug catalog (GET /api/v1/pharmacy/drugs), Dispense (POST /api/v1/pharmacy/prescriptions/:id/dispense)

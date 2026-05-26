@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { PageHeader } from '../../components/ui/page-header';
 import { 
-  ShieldAlert, 
   Search, 
   PhoneCall, 
   CheckCircle, 
   Clock, 
-  User
+  User,
+  AlertTriangle,
+  ShieldAlert
 } from 'lucide-react';
 
 interface CriticalResultLog {
@@ -83,14 +84,6 @@ export const CriticalResultsPage = () => {
   const [activeLogId, setActiveLogId] = useState<string | null>(null);
   const [remarksText, setRemarksText] = useState('');
 
-  const filteredLogs = logs.filter(l => {
-    const matchesSearch = l.patientName.toLowerCase().includes(search.toLowerCase()) || 
-                          l.mrn.toLowerCase().includes(search.toLowerCase()) ||
-                          l.physicianName.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === 'ALL' || l.status === filter;
-    return matchesSearch && matchesFilter;
-  });
-
   const handleOpenAcknowledge = (id: string) => {
     setActiveLogId(id);
     setShowLogModal(true);
@@ -118,20 +111,39 @@ export const CriticalResultsPage = () => {
     setRemarksText('');
   };
 
+  const filteredLogs = logs.filter(l => {
+    const matchesSearch = l.patientName.toLowerCase().includes(search.toLowerCase()) || 
+                          l.mrn.toLowerCase().includes(search.toLowerCase()) ||
+                          l.physicianName.toLowerCase().includes(search.toLowerCase());
+    const matchesFilter = filter === 'ALL' || l.status === filter;
+    return matchesSearch && matchesFilter;
+  });
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Mock/WIP Warning Banner */}
+      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
+        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+        <div>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Critical Alerts Registry (WIP/Mock)</h5>
+          <p className="font-medium mt-0.5">
+            This panic alert registry is currently running in demo mode with simulated critical findings. Real-time physician notification integration is pending.
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <PageHeader 
           title="Critical Alerts & Notification Registry" 
           description="Track panic-level diagnostic results that require direct, immediate physician notification. Log caller identity and clinican acknowledgment times." 
         />
-        <div className="text-[10px] font-black uppercase text-rose-700 bg-rose-50 border border-rose-150 px-3.5 py-1.5 rounded-xl select-none animate-pulse">
+        <div className="text-[10px] font-black uppercase text-rose-700 bg-rose-50 border border-rose-150 px-3.5 py-1.5 rounded-xl animate-pulse">
           Panic Registry Active
         </div>
       </div>
 
       {/* Filter and search bar */}
-      <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl flex flex-col md:flex-row gap-4 items-center">
+      <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl flex flex-col md:flex-row gap-4">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
@@ -207,11 +219,11 @@ export const CriticalResultsPage = () => {
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-extrabold text-[9px] border border-emerald-100 select-none">
                             <CheckCircle className="h-3 w-3" /> Contacted
                           </span>
-                          <p className="text-[9px] text-slate-400 font-medium leading-tight">
+                          <p className="text-[10px] text-slate-400 font-medium leading-tight">
                             Logged: {log.contactedTime} by {log.contactedBy}
                           </p>
                           {log.remarks && (
-                            <p className="text-[9px] text-slate-505 italic max-w-xs truncate" title={log.remarks}>
+                            <p className="text-[10px] text-slate-505 italic max-w-xs truncate" title={log.remarks}>
                               "{log.remarks}"
                             </p>
                           )}
@@ -246,7 +258,7 @@ export const CriticalResultsPage = () => {
       {/* Log Call Modal Dialog */}
       {showLogModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <form onSubmit={handleConfirmAcknowledge} className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 animate-scale-in relative space-y-4">
+          <form onSubmit={handleConfirmAcknowledge} className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 animate-scale-in space-y-4">
             <h4 className="font-extrabold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3">
               Document Physician Contact
             </h4>
@@ -280,7 +292,7 @@ export const CriticalResultsPage = () => {
                   setActiveLogId(null);
                   setRemarksText('');
                 }}
-                className="btn border border-slate-200 text-slate-650 hover:bg-slate-550 text-xs font-bold px-4 py-2.5 rounded-xl"
+                className="btn border border-slate-200 text-slate-650 hover:bg-slate-50 text-xs font-bold px-4 py-2.5 rounded-xl"
               >
                 Cancel
               </button>
@@ -288,7 +300,6 @@ export const CriticalResultsPage = () => {
           </form>
         </div>
       )}
-
     </div>
   );
 };

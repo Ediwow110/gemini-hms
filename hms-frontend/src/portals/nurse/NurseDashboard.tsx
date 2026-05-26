@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { 
-  Activity, 
   Users, 
   FlaskConical, 
   CheckSquare, 
@@ -10,7 +9,8 @@ import {
   AlertOctagon, 
   AlertTriangle,
   ArrowRight,
-  Heart
+  Heart,
+  Activity
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
 import { TriagePriorityBadge, TriagePriorityLevel } from './components/TriagePriorityBadge';
@@ -92,13 +92,13 @@ export const NurseDashboard = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       
-      {/* Sandbox Warning Banner */}
+      {/* Mock/WIP Warning Banner */}
       <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
         <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Demonstration Sandbox Shell</h5>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Nurse Dashboard (WIP/Mock)</h5>
           <p className="font-medium mt-0.5">
-            This nursing operations workspace runs in local sandbox memory. Patient intake forms, triage scores, vitals logging, and specimen status updates simulate local state only. No real patient data is persisted, and no clinical dispatch occurs.
+            The Dashboard metrics (Critical Alerts) and Nursing Task integration are currently running in demo mode with simulated data.
           </p>
         </div>
       </div>
@@ -173,7 +173,7 @@ export const NurseDashboard = () => {
                       <TriagePriorityBadge level={item.priority} showIcon={false} />
                       <button
                         onClick={() => navigate(`/nurse/triage?patientId=${item.patientId}`)}
-                        className="btn border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 px-3 py-1.5 text-[11px] font-extrabold rounded-xl shadow-sm transition-all"
+                        className="btn text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
                       >
                         Start Triage
                       </button>
@@ -188,7 +188,7 @@ export const NurseDashboard = () => {
         {/* Right Column: Vitals Alerts & Quick Links */}
         <div className="space-y-6">
           {/* Critical Alerts */}
-          <div className="card p-5 bg-rose-50/50 border border-rose-100/80 shadow-sm space-y-4 rounded-2xl">
+          <div className="card p-5 bg-rose-50/50 border border-rose-100/80 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-rose-100 pb-3">
               <h3 className="font-bold text-rose-800 text-sm tracking-wider uppercase flex items-center gap-2">
                 <AlertOctagon className="h-4 w-4 text-rose-600 animate-pulse" />
@@ -266,5 +266,4 @@ export const NurseDashboard = () => {
     </div>
   );
 };
-
 export default NurseDashboard;
