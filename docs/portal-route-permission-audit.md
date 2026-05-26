@@ -66,7 +66,8 @@ This document provides a comprehensive mapping of frontend portals, their routes
 - **Partial/WIP**: LabOrdersPage (displays real queue data but patient demographics are redacted — `[REDACTED]` shown instead of hardcoded values)
 - **Real (Phase 4D)**: Specimen Receiving (GET/PATCH /api/v1/lab/specimens/pending and /receive with real API, RBAC, audit logging), Result Release (uses existing POST /api/v1/lab/results/:id/release with releasable results list at GET /api/v1/lab/results/releasable)
 - **Real (Phase 4E)**: Critical Results (GET /api/v1/lab/critical-results, PATCH acknowledge/escalate/resolve, PATCH /api/v1/lab/results/:id/mark-critical — all with RBAC, audit logging, notification outbox)
-- **WIP/Mock (Visible Banner)**: Lab Dashboard (real queue metrics preserved; mock specimens, TAT, and criticals widgets labeled), Turnaround Time Monitor (simulated SLA metrics)
+- **Real (Phase 4F)**: Turnaround Time Monitor (GET /api/v1/lab/turnaround — real TAT metrics from lifecycle timestamps: specimen-to-release, order-to-release, receipt-to-encode, encode-to-validate, validate-to-release. Missing timestamps reported honestly.)
+- **WIP/Mock (Visible Banner)**: Lab Dashboard (real queue metrics preserved; mock specimens and criticals widgets labeled)
 - **All mock pages have visible WIP banners, disabled unsafe actions where applicable, and clear explanations of missing backend support.
 
 ### Pharmacy Portal

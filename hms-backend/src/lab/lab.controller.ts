@@ -21,7 +21,7 @@ import { BranchGuard } from '../auth/guards/branch.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 import { SelfApprovalGuard } from '../common/guards/self-approval.guard';
-import { PendingSpecimenDto, ReleasableResultDto, ReleaseResultResponseDto, CriticalResultDto, AcknowledgeCriticalDto, EscalateCriticalDto } from './dto/lab-responses.dto';
+import { PendingSpecimenDto, ReleasableResultDto, ReleaseResultResponseDto, CriticalResultDto, AcknowledgeCriticalDto, EscalateCriticalDto, TurnaroundSummaryDto } from './dto/lab-responses.dto';
 import { MarkCriticalDto } from './dto/mark-critical.dto';
 
 @UseGuards(PermissionsGuard, BranchGuard)
@@ -209,5 +209,18 @@ export class LabController {
     @Body() dto: AcknowledgeCriticalDto,
   ): Promise<CriticalResultDto[]> {
     return this.labService.resolveCriticalResult(tenantId, userId, branchId, id, dto.notes);
+  }
+
+  // ──── Phase 4F: Turnaround Time Metrics ────
+
+  @Get('turnaround')
+  @RequirePermissions('lab.result.view')
+  @RequireBranchContext()
+  async getTurnaroundMetrics(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+    @GetUser('userId') _userId: string,
+  ): Promise<TurnaroundSummaryDto> {
+    return this.labService.getTurnaroundMetrics(tenantId, branchId);
   }
 }

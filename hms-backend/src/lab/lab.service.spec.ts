@@ -53,6 +53,8 @@ describe('LabService — Phase 4D additions', () => {
     createdAt: new Date(),
     order: {
       orderNumber: 'ORD-001',
+      createdAt: new Date('2026-05-26T08:00:00Z'),
+      labSpecimen: { receivedAt: new Date('2026-05-26T08:30:00Z') },
       patient: { id: mockPatientId, firstName: 'John', lastName: 'Doe', patientNumber: 'MRN-001' },
       clinicalItems: [{ itemName: 'CBC' }],
     },
@@ -351,6 +353,92 @@ describe('LabService — Phase 4D additions', () => {
       await expect(
         service.resolveCriticalResult(mockTenantId, mockUserId, mockBranchId, mockResultId),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getTurnaroundMetrics', () => {
+    const releasedResult = {
+      ...mockResult,
+      status: 'RELEASED',
+      encodedAt: new Date('2026-05-26T09:00:00Z'),
+      validatedAt: new Date('2026-05-26T09:30:00Z'),
+      releasedAt: new Date('2026-05-26T10:00:00Z'),
+    };
+
+    it('should return summary with metrics and detail rows', async () => {
+      prisma.labResult.findMany.mockResolvedValue([releasedResult]);
+      const result = await service.getTurnaroundMetrics(mockTenantId, mockBranchId);
+
+      expect(result.totalResults).toBe(1);
+      expect(result.releasedCount).toBe(1);
+      expect(result.metrics).toHaveLength(5);
+      expect(result.detailRows).toHaveLength(1);
+
+      // Specimen-to-release: 10:00 - 08:30 = 90 min
+      const specMetric = result.metrics.find(m => m.field === 'specimenToRelease');
+      expect(specMetric?.count).toBe(1);
+      expect(specMetric?.averageMinutes).toBe(90);
+
+      // Order-to-release: 10:00 - 08:00 = 120 min
+      const orderMetric = result.metrics.find(m => m.field === 'orderToRelease');
+      expect(orderMetric?.averageMinutes).toBe(120);
+    });
+
+    it('should set null for metrics with missing timestamps', async () => {
+      const pendingResult = {
+        ...mockResult,
+        status: 'PENDING_COLLECTION',
+        encodedAt: null,
+        validatedAt: null,
+        releasedAt: null,
+      };
+      prisma.labResult.findMany.mockResolvedValue([pendingResult]);
+      const result = await service.getTurnaroundMetrics(mockTenantId, mockBranchId);
+
+      expect(result.totalResults).toBe(1);
+      expect(result.releasedCount).toBe(0);
+
+      const specMetric = result.metrics.find(m => m.field === 'specimenToRelease');
+      expect(specMetric?.count).toBe(0);
+      expect(specMetric?.averageMinutes).toBeNull();
+      expect(specMetric?.missingTimestampCount).toBe(0); // no null diffs since no released results
+
+      const receiptMetric = result.metrics.find(m => m.field === 'receiptToEncode');
+      expect(receiptMetric?.count).toBe(0);
+      // No encoded results at all, so no missing-timestamp entries to count
+      expect(receiptMetric?.missingTimestampCount).toBe(0);
+    });
+
+    it('should filter by tenant and branch', async () => {
+      prisma.labResult.findMany.mockResolvedValue([]);
+      const result = await service.getTurnaroundMetrics(mockTenantId, mockBranchId);
+
+      expect(result.totalResults).toBe(0);
+      expect(prisma.labResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            order: expect.objectContaining({ tenantId: mockTenantId, branchId: mockBranchId }),
+          }),
+        }),
+      );
+    });
+
+    it('should handle mixed results with partial timestamps', async () => {
+      const mixedResults = [
+        releasedResult,
+        { ...mockResult, status: 'ENCODED', encodedAt: new Date('2026-05-26T11:00:00Z'), validatedAt: null, releasedAt: null },
+        { ...mockResult, id: 'result-3', status: 'RELEASED', encodedAt: new Date('2026-05-26T12:00:00Z'), validatedAt: new Date('2026-05-26T12:30:00Z'), releasedAt: new Date('2026-05-26T13:00:00Z') },
+      ];
+      prisma.labResult.findMany.mockResolvedValue(mixedResults);
+
+      const result = await service.getTurnaroundMetrics(mockTenantId, mockBranchId);
+
+      expect(result.totalResults).toBe(3);
+      expect(result.releasedCount).toBe(2);
+      expect(result.metrics.length).toBe(5);
+
+      const orderMetric = result.metrics.find(m => m.field === 'orderToRelease');
+      expect(orderMetric?.count).toBe(2);
     });
   });
 });

@@ -769,4 +769,124 @@ export class LabService {
 
     return this.getCriticalResults(tenantId, branchId);
   }
+
+  // ──── Phase 4F: Turnaround Time Metrics ────
+
+  async getTurnaroundMetrics(tenantId: string, branchId: string) {
+    // Query all lab results for this tenant/branch with their specimens and orders
+    const results = await this.prisma.labResult.findMany({
+      where: {
+        order: { tenantId, branchId },
+        deletedAt: null,
+      },
+      include: {
+        order: {
+          include: {
+            labSpecimen: { select: { receivedAt: true } },
+            patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+            clinicalItems: { select: { itemName: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const releasedResults = results.filter((r) => r.status === 'RELEASED');
+    const encodedResults = results.filter((r) => r.encodedAt);
+    const validatedResults = results.filter((r) => r.validatedAt);
+
+    // Helper: compute minutes between two dates
+    const minutesDiff = (end?: Date | null, start?: Date | null): number | null => {
+      if (!end || !start) return null;
+      return Math.round((end.getTime() - start.getTime()) / 60000);
+    };
+
+    // Helper: compute stats for a duration field
+    const computeMetric = (
+      label: string,
+      field: string,
+      values: (number | null)[],
+    ): {
+      label: string;
+      field: string;
+      count: number;
+      averageMinutes: number | null;
+      minMinutes: number | null;
+      maxMinutes: number | null;
+      missingTimestampCount: number;
+    } => {
+      const validValues = values.filter((v): v is number => v !== null && v >= 0);
+      return {
+        label,
+        field,
+        count: validValues.length,
+        averageMinutes: validValues.length > 0
+          ? Math.round(validValues.reduce((a, b) => a + b, 0) / validValues.length)
+          : null,
+        minMinutes: validValues.length > 0 ? Math.min(...validValues) : null,
+        maxMinutes: validValues.length > 0 ? Math.max(...validValues) : null,
+        missingTimestampCount: values.length - validValues.length,
+      };
+    };
+
+    // Compute specimen-to-release (core TAT)
+    const specimenToRelease = releasedResults.map((r) =>
+      minutesDiff(r.releasedAt, r.order.labSpecimen?.receivedAt),
+    );
+
+    // Compute order-to-release
+    const orderToRelease = releasedResults.map((r) =>
+      minutesDiff(r.releasedAt, r.order.createdAt),
+    );
+
+    // Compute receipt-to-encode
+    const receiptToEncode = encodedResults.map((r) =>
+      minutesDiff(r.encodedAt, r.order.labSpecimen?.receivedAt),
+    );
+
+    // Compute encode-to-validate
+    const encodeToValidate = validatedResults.map((r) =>
+      minutesDiff(r.validatedAt, r.encodedAt),
+    );
+
+    // Compute validate-to-release
+    const validateToRelease = releasedResults.map((r) =>
+      minutesDiff(r.releasedAt, r.validatedAt),
+    );
+
+    // Detail rows (most recent 50 results)
+    const detailRows = results.slice(0, 50).map((r) => ({
+      resultId: r.id,
+      orderId: r.orderId,
+      orderNumber: r.order.orderNumber,
+      patientName: `${r.order.patient.firstName} ${r.order.patient.lastName}`,
+      testNames: r.order.clinicalItems.map((ci) => ci.itemName),
+      status: r.status,
+      orderCreatedAt: r.order.createdAt.toISOString(),
+      specimenReceivedAt: r.order.labSpecimen?.receivedAt?.toISOString() || null,
+      encodedAt: r.encodedAt?.toISOString() || null,
+      validatedAt: r.validatedAt?.toISOString() || null,
+      releasedAt: r.releasedAt?.toISOString() || null,
+      specimenToReleaseMinutes: r.status === 'RELEASED'
+        ? minutesDiff(r.releasedAt, r.order.labSpecimen?.receivedAt)
+        : null,
+      orderToReleaseMinutes: r.status === 'RELEASED'
+        ? minutesDiff(r.releasedAt, r.order.createdAt)
+        : null,
+    }));
+
+    return {
+      totalResults: results.length,
+      releasedCount: releasedResults.length,
+      pendingCount: results.length - releasedResults.length,
+      metrics: [
+        computeMetric('Specimen to Release', 'specimenToRelease', specimenToRelease),
+        computeMetric('Order to Release', 'orderToRelease', orderToRelease),
+        computeMetric('Receipt to Encode', 'receiptToEncode', receiptToEncode),
+        computeMetric('Encode to Validate', 'encodeToValidate', encodeToValidate),
+        computeMetric('Validate to Release', 'validateToRelease', validateToRelease),
+      ],
+      detailRows,
+    };
+  }
 }

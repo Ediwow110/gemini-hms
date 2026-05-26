@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { labService, PendingSpecimenDto, ReleasableResultDto, CriticalResultDto } from '../services/lab.service';
+import { labService, PendingSpecimenDto, ReleasableResultDto, CriticalResultDto, TurnaroundSummaryDto } from '../services/lab.service';
 
 // ──── Pending Specimens ────
 
@@ -147,4 +147,37 @@ export function useCriticalResults(statusFilter?: string): UseCriticalResultsRet
     acknowledge, escalate, resolve,
     acknowledgingId, escalatingId, resolvingId,
   };
+}
+
+// ──── Turnaround Time Metrics ────
+
+export interface UseTurnaroundMetricsReturn {
+  data: TurnaroundSummaryDto | null;
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export function useTurnaroundMetrics(): UseTurnaroundMetricsReturn {
+  const [data, setData] = useState<TurnaroundSummaryDto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await labService.getTurnaroundMetrics();
+      setData(result);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(axiosErr?.response?.data?.message || axiosErr?.message || 'Failed to load turnaround metrics');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { data, isLoading, error, refetch: fetch };
 }

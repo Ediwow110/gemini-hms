@@ -36,6 +36,42 @@ export interface ReleasableResultDto {
   testNames?: string[];
 }
 
+// ──── Phase 4F: Turnaround Time Metrics DTOs ────
+
+export interface TurnaroundMetricDto {
+  label: string;
+  field: string;
+  count: number;
+  averageMinutes: number | null;
+  minMinutes: number | null;
+  maxMinutes: number | null;
+  missingTimestampCount: number;
+}
+
+export interface TurnaroundDetailRowDto {
+  resultId: string;
+  orderId: string;
+  orderNumber: string;
+  patientName: string;
+  testNames?: string[];
+  status: string;
+  orderCreatedAt?: string | null;
+  specimenReceivedAt?: string | null;
+  encodedAt?: string | null;
+  validatedAt?: string | null;
+  releasedAt?: string | null;
+  specimenToReleaseMinutes?: number | null;
+  orderToReleaseMinutes?: number | null;
+}
+
+export interface TurnaroundSummaryDto {
+  totalResults: number;
+  releasedCount: number;
+  pendingCount: number;
+  metrics: TurnaroundMetricDto[];
+  detailRows: TurnaroundDetailRowDto[];
+}
+
 export interface CriticalResultDto {
   id: string;
   orderId: string;
@@ -121,6 +157,16 @@ export const labService = {
   /** Resolve a critical result */
   resolveCriticalResult: async (id: string, notes?: string): Promise<CriticalResultDto[]> => {
     const response = await apiClient.patch(`/v1/lab/critical-results/${id}/resolve`, { notes });
+    return response.data;
+  },
+
+  // ──── Phase 4F: Turnaround Time Metrics ────
+
+  /** Fetch turnaround time metrics */
+  getTurnaroundMetrics: async (): Promise<TurnaroundSummaryDto> => {
+    const response: AxiosResponse<TurnaroundSummaryDto> = await apiClient.get(
+      '/v1/lab/turnaround',
+    );
     return response.data;
   },
 };
