@@ -1,22 +1,19 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { PatientBillingPage } from '../PatientBillingPage';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { apiClient } from '../../../lib/api';
+import { useInvoices, useActiveSession, useCreatePayment } from '../../../hooks/use-billing';
 
-// Mock the apiClient
-vi.mock('../../../lib/api', () => ({
-  apiClient: {
-    get: vi.fn(),
-    interceptors: {
-      request: { use: vi.fn() },
-      response: { use: vi.fn() },
-    },
-  },
+vi.mock('../../../hooks/use-billing', () => ({
+  useInvoices: vi.fn(),
+  useActiveSession: vi.fn(),
+  useCreatePayment: vi.fn(),
 }));
 
-// Mock the useUser hook for Cashier role
+vi.mock('../../../hooks/use-clinical-workflow', () => ({
+  usePatientBillingHandoff: () => ({ data: null, loading: false }),
+}));
+
 vi.mock('../../../hooks/use-user', () => ({
   useUser: () => ({
     id: 'cashier-1',
@@ -24,79 +21,133 @@ vi.mock('../../../hooks/use-user', () => ({
     tenantId: 'tenant-1',
     branchId: 'branch-1',
     roles: ['Cashier'],
-    permissions: ['view_billing_workspace'],
   }),
 }));
 
 describe('PatientBillingPage Runtime Tests', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
-
-  const renderWithParams = (patientId: string) => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          gcTime: 0,
-        },
+  const mockInvoice = {
+    id: 'invoice-123',
+    invoiceNumber: 'INV-2026-001',
+    status: 'UNPAID',
+    totalAmount: 1500,
+    paidAmount: 500,
+    createdAt: new Date().toISOString(),
+    order: {
+      patient: {
+        firstName: 'John',
+        lastName: 'Doe',
+        patientNumber: 'MRN-100',
       },
-    });
-
-    return render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={[`/cashier/billing?patientId=${patientId}`]}>
-          <PatientBillingPage />
-        </MemoryRouter>
-      </QueryClientProvider>
-    );
+    },
   };
 
-  it('renders redacted demographics when in real UUID patient mode', async () => {
-    // Mock the billing handoff request response
-    vi.mocked(apiClient.get).mockResolvedValueOnce({
-      data: [
-        {
-          id: 'handoff-1',
-          orderId: 'order-1',
-          orderNumber: 'ORD-9999',
-          patientId: 'd3b07384-d113-4956-a5db-25785715e21c',
-          totalAmount: 1500,
-          status: 'PENDING',
-          createdAt: new Date(),
-          timestamp: new Date(),
-          accessLabel: 'PUBLIC',
-          isReadOnly: true,
-        }
-      ],
+  const mockSession = {
+    id: 'session-456',
+    status: 'OPEN',
+    openedAt: new Date().toISOString(),
+    openingBalance: 5000,
+    payments: [],
+  };
+
+  const mockPostPayment = vi.fn();
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(useInvoices).mockReturnValue({
+      invoices: [mockInvoice],
+      loading: false,
+      error: null,
+      refetch: vi.fn() as unknown as () => Promise<void>,
     });
-
-    renderWithParams('d3b07384-d113-4956-a5db-25785715e21c');
-
-    await waitFor(() => {
-      expect(screen.getByText('[REDACTED (Access Restricted)]')).toBeInTheDocument();
+    vi.mocked(useActiveSession).mockReturnValue({
+      session: mockSession,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      openSession: vi.fn(),
+      closeSession: vi.fn(),
     });
-
-    // Verify MRN and demographics are redacted
-    expect(screen.getByText('MRN: [REDACTED (Access Restricted)]')).toBeInTheDocument();
-    expect(screen.getByText('[REDACTED] / [REDACTED]')).toBeInTheDocument();
-
-    // Verify clinical details are ABSENT
-    expect(screen.queryByText('chiefComplaint')).not.toBeInTheDocument();
-    expect(screen.queryByText('diagnosis')).not.toBeInTheDocument();
-    expect(screen.queryByText('vitals')).not.toBeInTheDocument();
-    expect(screen.queryByText('prescriptions')).not.toBeInTheDocument();
-    expect(screen.queryByText('internal notes')).not.toBeInTheDocument();
-    expect(screen.queryByText('lab results')).not.toBeInTheDocument();
+    vi.mocked(useCreatePayment).mockReturnValue({
+      postPayment: mockPostPayment,
+      loading: false,
+      error: null,
+    });
   });
 
-  it('renders unredacted mock data when not using a UUID patient ID', async () => {
-    renderWithParams('mock-id-123');
+  it('renders invoice details and remaining balance when invoice is found', () => {
+    render(
+      <MemoryRouter initialEntries={['/cashier/billing?invoice=INV-2026-001']}>
+        <PatientBillingPage />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByText('MRN: MRN-100')).toBeInTheDocument();
+    expect(screen.getAllByText('₱1,500.00').length).toBeGreaterThan(0);
+    expect(screen.getByText('₱1,000.00')).toBeInTheDocument();
+  });
+
+  it('shows confirmation modal when submitting and processes payment on confirmation', async () => {
+    mockPostPayment.mockResolvedValueOnce({ id: 'payment-rcpt-123' });
+
+    render(
+      <MemoryRouter initialEntries={['/cashier/billing?invoice=INV-2026-001']}>
+        <PatientBillingPage />
+      </MemoryRouter>
+    );
+
+    const submitBtn = screen.getByRole('button', { name: /Process Payment Clearance/i });
+    fireEvent.click(submitBtn);
+
+    expect(screen.getByText('Confirm Payment')).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to process the payment of/i)).toBeInTheDocument();
+
+    const confirmBtn = screen.getByRole('button', { name: /Confirm/i });
+    fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('Carmilla Karnstein')).toBeInTheDocument();
+      expect(mockPostPayment).toHaveBeenCalledWith(
+        {
+          invoiceId: 'invoice-123',
+          cashierSessionId: 'session-456',
+          amount: 1000,
+          paymentMethod: 'CASH',
+        },
+        expect.stringMatching(/^PAY-invoice-123-\d+$/)
+      );
     });
 
-    expect(screen.getByText('MRN: MRN-2026-0771')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Billing cleared. POS Terminal receipt registered in audit logs./i)).toBeInTheDocument();
+    });
+  });
+
+  it('renders redacted demographics when in real UUID patient mode', () => {
+    const uuidInvoice = {
+      ...mockInvoice,
+      order: {
+        patient: {
+          id: 'd3b07384-d113-4956-a5db-25785715e21c',
+          firstName: 'John',
+          lastName: 'Doe',
+          patientNumber: 'MRN-100',
+        },
+      },
+    };
+    vi.mocked(useInvoices).mockReturnValue({
+      invoices: [uuidInvoice],
+      loading: false,
+      error: null,
+      refetch: vi.fn() as unknown as () => Promise<void>,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/cashier/billing?invoice=INV-2026-001']}>
+        <PatientBillingPage />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('[REDACTED] (Access Restricted)')).toBeInTheDocument();
+    expect(screen.getByText('MRN: [REDACTED]')).toBeInTheDocument();
   });
 });

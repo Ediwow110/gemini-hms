@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { billingFrontendService, InvoiceDto, ActiveSessionDto } from '../services/billing-frontend.service';
+import { billingFrontendService, InvoiceDto, ActiveSessionDto, OpenSessionDto, CloseSessionDto, CreatePaymentDto } from '../services/billing-frontend.service';
 
 export function useInvoices() {
   const [invoices, setInvoices] = useState<InvoiceDto[]>([]);
@@ -27,19 +27,75 @@ export function useInvoices() {
 export function useActiveSession() {
   const [session, setSession] = useState<ActiveSessionDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await billingFrontendService.getActiveSession();
       setSession(res);
     } catch {
-      // silently fail
+      setSession(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const openSession = async (dto: OpenSessionDto) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const newSession = await billingFrontendService.openSession(dto);
+      setSession(newSession);
+      return newSession;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to open session';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const closeSession = async (id: string, dto: CloseSessionDto) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await billingFrontendService.closeSession(id, dto);
+      setSession(null);
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to close session';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { fetch(); }, [fetch]);
-  return { session, loading, refetch: fetch };
+  return { session, loading, error, refetch: fetch, openSession, closeSession };
 }
+
+export function useCreatePayment() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const postPayment = async (dto: CreatePaymentDto, idempotencyKey: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await billingFrontendService.postPayment(dto, idempotencyKey);
+      return res;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to post payment';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { postPayment, loading, error };
+}
+
