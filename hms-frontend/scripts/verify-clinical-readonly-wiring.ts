@@ -368,6 +368,7 @@ for (const file of allPortalFiles) {
   const isValidatedResultsPage = path.basename(file) === 'ValidatedResultsPage.tsx';
   const isResultReleasePage = path.basename(file) === 'ResultReleasePage.tsx';
   const isSpecimenReceivingPage = path.basename(file) === 'SpecimenReceivingPage.tsx';
+  const isCriticalResultsPage = path.basename(file) === 'CriticalResultsPage.tsx';
   const isInstallationJobsPage = path.basename(file) === 'InstallationJobsPage.tsx';
   const isCatalogManagementPage = path.basename(file) === 'CatalogManagementPage.tsx';
   const isMarketplaceAdmin = path.basename(file) === 'ListingApprovalQueue.tsx';
@@ -375,7 +376,7 @@ for (const file of allPortalFiles) {
   const hasStandardMutation = content.includes('useMutation') || /apiClient\.(post|put|patch|delete)/i.test(content);       
   const hasCustomMutation = content.includes('useSaveVitals') || content.includes('useMarkVitalsEnteredInError') || content.includes('useSaveTriage') || content.includes('useMarkTriageEnteredInError') || content.includes('useSaveDraftSOAP') || content.includes('useSignSOAP') || content.includes('useCreateClinicalOrder') || content.includes('useCancelClinicalOrder') || content.includes('useReceiveLabOrder') || content.includes('useSaveDraftLabResult') || content.includes('useValidateLabResult') || content.includes('useReleaseLabResult');
 
-  if ((hasStandardMutation && !isCatalogManagementPage && !isMarketplaceAdmin && !isInstallationJobsPage && !isResultReleasePage && !isSpecimenReceivingPage) || (!isVitalsPage && !isTriagePage && !isDoctorSOAPEditor && !isDoctorEMRPage && !isDoctorOrdersPanel && !isLabOrdersPage && !isResultEncodingPage && !isResultValidationPage && !isValidatedResultsPage && !isResultReleasePage && !isSpecimenReceivingPage && hasCustomMutation)) {
+  if ((hasStandardMutation && !isCatalogManagementPage && !isMarketplaceAdmin && !isInstallationJobsPage && !isResultReleasePage && !isSpecimenReceivingPage && !isCriticalResultsPage) || (!isVitalsPage && !isTriagePage && !isDoctorSOAPEditor && !isDoctorEMRPage && !isDoctorOrdersPanel && !isLabOrdersPage && !isResultEncodingPage && !isResultValidationPage && !isValidatedResultsPage && !isResultReleasePage && !isSpecimenReceivingPage && !isCriticalResultsPage && hasCustomMutation)) {
     reportError(`Target 15: File ${path.basename(file)} contains unauthorized mutating backend writes.`);
     portalMutations = true;
   }

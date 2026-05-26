@@ -210,4 +210,147 @@ describe('LabService — Phase 4D additions', () => {
       ).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe('getCriticalResults', () => {
+    it('should return critical results scoped to tenant/branch', async () => {
+      const mockCritical = { ...mockResult, isCritical: true, criticalStatus: 'OPEN' };
+      prisma.labResult.findMany.mockResolvedValue([mockCritical]);
+      const result = await service.getCriticalResults(mockTenantId, mockBranchId);
+      expect(result).toHaveLength(1);
+      expect(result[0].isCritical).toBe(true);
+      expect(result[0].criticalStatus).toBe('OPEN');
+      expect(prisma.labResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            isCritical: true,
+            order: expect.objectContaining({ tenantId: mockTenantId, branchId: mockBranchId }),
+          }),
+        }),
+      );
+    });
+
+    it('should filter by criticalStatus when provided', async () => {
+      const mockCritical = { ...mockResult, isCritical: true, criticalStatus: 'ACKNOWLEDGED' };
+      prisma.labResult.findMany.mockResolvedValue([mockCritical]);
+      const result = await service.getCriticalResults(mockTenantId, mockBranchId, 'ACKNOWLEDGED');
+      expect(result).toHaveLength(1);
+      expect(result[0].criticalStatus).toBe('ACKNOWLEDGED');
+    });
+
+    it('should return empty array when no critical results', async () => {
+      prisma.labResult.findMany.mockResolvedValue([]);
+      const result = await service.getCriticalResults(mockTenantId, mockBranchId);
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('markResultAsCritical', () => {
+    it('should mark an APPROVED result as critical', async () => {
+      prisma.labResult.findFirst.mockResolvedValue(mockResult);
+      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+      prisma.notificationOutbox.create.mockResolvedValue({});
+      prisma.labResult.findMany.mockResolvedValue([{ ...mockResult, isCritical: true, criticalStatus: 'OPEN' }]);
+
+      const result = await service.markResultAsCritical(mockTenantId, mockUserId, mockBranchId, mockResultId);
+      expect(prisma.labResult.updateMany).toHaveBeenCalled();
+      expect(prisma.notificationOutbox.create).toHaveBeenCalled();
+      expect(prisma.labResult.findMany).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException if result is not APPROVED or RELEASED', async () => {
+      prisma.labResult.findFirst.mockResolvedValue({ ...mockResult, status: 'ENCODED' });
+      await expect(
+        service.markResultAsCritical(mockTenantId, mockUserId, mockBranchId, mockResultId),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw NotFoundException when result not found', async () => {
+      prisma.labResult.findFirst.mockRejectedValue(new NotFoundException());
+      await expect(
+        service.markResultAsCritical(mockTenantId, mockUserId, mockBranchId, 'nonexistent'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('acknowledgeCriticalResult', () => {
+    const criticalResult = { ...mockResult, isCritical: true, criticalStatus: 'OPEN' };
+
+    it('should acknowledge an OPEN critical result', async () => {
+      prisma.labResult.findFirst.mockResolvedValue(criticalResult);
+      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+      prisma.labResult.findMany.mockResolvedValue([{ ...criticalResult, criticalStatus: 'ACKNOWLEDGED' }]);
+
+      const result = await service.acknowledgeCriticalResult(mockTenantId, mockUserId, mockBranchId, mockResultId);
+      expect(prisma.labResult.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            criticalStatus: 'ACKNOWLEDGED',
+            criticalAcknowledgedById: mockUserId,
+          }),
+        }),
+      );
+      expect(result[0].criticalStatus).toBe('ACKNOWLEDGED');
+    });
+
+    it('should throw BadRequestException if result is not critical', async () => {
+      prisma.labResult.findFirst.mockResolvedValue({ ...mockResult, isCritical: false });
+      await expect(
+        service.acknowledgeCriticalResult(mockTenantId, mockUserId, mockBranchId, mockResultId),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw ConflictException if already resolved', async () => {
+      prisma.labResult.findFirst.mockResolvedValue({ ...criticalResult, criticalStatus: 'RESOLVED' });
+      await expect(
+        service.acknowledgeCriticalResult(mockTenantId, mockUserId, mockBranchId, mockResultId),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('escalateCriticalResult', () => {
+    const criticalResult = { ...mockResult, isCritical: true, criticalStatus: 'OPEN' };
+
+    it('should escalate an OPEN critical result', async () => {
+      prisma.labResult.findFirst.mockResolvedValue(criticalResult);
+      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+      prisma.labResult.findMany.mockResolvedValue([{ ...criticalResult, criticalStatus: 'ESCALATED' }]);
+
+      const result = await service.escalateCriticalResult(mockTenantId, mockUserId, mockBranchId, mockResultId, 'Physician not reachable');
+      expect(result[0].criticalStatus).toBe('ESCALATED');
+    });
+
+    it('should throw BadRequestException if result is not critical', async () => {
+      prisma.labResult.findFirst.mockResolvedValue({ ...mockResult, isCritical: false });
+      await expect(
+        service.escalateCriticalResult(mockTenantId, mockUserId, mockBranchId, mockResultId, 'notes'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw ConflictException if already resolved', async () => {
+      prisma.labResult.findFirst.mockResolvedValue({ ...criticalResult, criticalStatus: 'RESOLVED' });
+      await expect(
+        service.escalateCriticalResult(mockTenantId, mockUserId, mockBranchId, mockResultId, 'notes'),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('resolveCriticalResult', () => {
+    const criticalResult = { ...mockResult, isCritical: true, criticalStatus: 'ACKNOWLEDGED' };
+
+    it('should resolve an ACKNOWLEDGED critical result', async () => {
+      prisma.labResult.findFirst.mockResolvedValue(criticalResult);
+      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+      prisma.labResult.findMany.mockResolvedValue([{ ...criticalResult, criticalStatus: 'RESOLVED' }]);
+
+      const result = await service.resolveCriticalResult(mockTenantId, mockUserId, mockBranchId, mockResultId, 'Physician contacted, action taken');
+      expect(result[0].criticalStatus).toBe('RESOLVED');
+    });
+
+    it('should throw BadRequestException if not critical', async () => {
+      prisma.labResult.findFirst.mockResolvedValue({ ...mockResult, isCritical: false });
+      await expect(
+        service.resolveCriticalResult(mockTenantId, mockUserId, mockBranchId, mockResultId),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
 });

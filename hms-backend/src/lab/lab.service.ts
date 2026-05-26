@@ -515,4 +515,258 @@ export class LabService {
       testNames: r.order.clinicalItems.map((ci) => ci.itemName),
     }));
   }
+
+  // ──── Phase 4E: Critical Results ────
+
+  async getCriticalResults(
+    tenantId: string,
+    branchId: string,
+    status?: string,
+  ) {
+    const whereClause: any = {
+      isCritical: true,
+      order: { tenantId, branchId },
+    };
+
+    if (status && ['OPEN', 'ACKNOWLEDGED', 'ESCALATED', 'RESOLVED'].includes(status)) {
+      whereClause.criticalStatus = status;
+    }
+
+    const results = await this.prisma.labResult.findMany({
+      where: whereClause,
+      include: {
+        order: {
+          include: {
+            patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+            clinicalItems: { select: { itemName: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return results.map((r) => ({
+      id: r.id,
+      orderId: r.orderId,
+      orderNumber: r.order.orderNumber,
+      patientId: r.order.patientId,
+      patientName: `${r.order.patient.firstName} ${r.order.patient.lastName}`,
+      patientMrn: r.order.patient.patientNumber,
+      testNames: r.order.clinicalItems.map((ci) => ci.itemName),
+      results: r.results,
+      status: r.status,
+      isCritical: r.isCritical,
+      criticalStatus: r.criticalStatus,
+      criticalAcknowledgedAt: r.criticalAcknowledgedAt?.toISOString() || null,
+      criticalAcknowledgedById: r.criticalAcknowledgedById,
+      criticalEscalatedAt: r.criticalEscalatedAt?.toISOString() || null,
+      criticalEscalatedById: r.criticalEscalatedById,
+      criticalEscalationNotes: r.criticalEscalationNotes,
+      criticalResolvedAt: r.criticalResolvedAt?.toISOString() || null,
+      criticalResolvedById: r.criticalResolvedById,
+      criticalResolvedNotes: r.criticalResolvedNotes,
+      encodedAt: r.encodedAt?.toISOString() || null,
+      validatedAt: r.validatedAt?.toISOString() || null,
+      releasedAt: r.releasedAt?.toISOString() || null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  }
+
+  async markResultAsCritical(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    resultId: string,
+    reason?: string,
+  ) {
+    const result = await this.findOne(tenantId, branchId, resultId);
+
+    if (result.status !== 'APPROVED' && result.status !== 'RELEASED') {
+      throw new BadRequestException(
+        'Only APPROVED or RELEASED results can be marked as critical',
+      );
+    }
+
+    const updated = await this.prisma.labResult.updateMany({
+      where: { id: resultId, order: { tenantId, branchId } },
+      data: {
+        isCritical: true,
+        criticalStatus: 'OPEN',
+      },
+    });
+
+    if (updated.count === 0) {
+      throw new NotFoundException('Lab result not found');
+    }
+
+    // Create notification outbox entry for critical result
+    await this.prisma.notificationOutbox.create({
+      data: {
+        recipientId: result.order.patientId,
+        type: 'CRITICAL_RESULT',
+        payload: JSON.stringify({
+          resultId,
+          orderId: result.orderId,
+          reason: reason || null,
+        }),
+        scheduledAt: new Date(),
+      },
+    });
+
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: 'LAB_RESULT_MARKED_CRITICAL',
+        recordType: 'LabResult',
+        recordId: resultId,
+        oldValues: { isCritical: false },
+        newValues: { isCritical: true, criticalStatus: 'OPEN', reason: reason || null },
+      },
+      undefined,
+      branchId,
+    );
+
+    return this.getCriticalResults(tenantId, branchId);
+  }
+
+  async acknowledgeCriticalResult(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    resultId: string,
+    notes?: string,
+  ) {
+    const result = await this.findOne(tenantId, branchId, resultId);
+
+    if (!result.isCritical) {
+      throw new BadRequestException('Result is not marked as critical');
+    }
+
+    if (result.criticalStatus === 'RESOLVED') {
+      throw new ConflictException('Critical result is already resolved');
+    }
+
+    const updated = await this.prisma.labResult.updateMany({
+      where: { id: resultId, order: { tenantId, branchId } },
+      data: {
+        criticalStatus: 'ACKNOWLEDGED',
+        criticalAcknowledgedAt: new Date(),
+        criticalAcknowledgedById: userId,
+        criticalEscalationNotes: notes || null,
+      },
+    });
+
+    if (updated.count === 0) {
+      throw new NotFoundException('Lab result not found');
+    }
+
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: 'CRITICAL_RESULT_ACKNOWLEDGED',
+        recordType: 'LabResult',
+        recordId: resultId,
+        oldValues: { criticalStatus: result.criticalStatus },
+        newValues: { criticalStatus: 'ACKNOWLEDGED', acknowledgedAt: new Date().toISOString() },
+      },
+      undefined,
+      branchId,
+    );
+
+    return this.getCriticalResults(tenantId, branchId);
+  }
+
+  async escalateCriticalResult(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    resultId: string,
+    notes: string,
+  ) {
+    const result = await this.findOne(tenantId, branchId, resultId);
+
+    if (!result.isCritical) {
+      throw new BadRequestException('Result is not marked as critical');
+    }
+
+    if (result.criticalStatus === 'RESOLVED') {
+      throw new ConflictException('Critical result is already resolved');
+    }
+
+    const updated = await this.prisma.labResult.updateMany({
+      where: { id: resultId, order: { tenantId, branchId } },
+      data: {
+        criticalStatus: 'ESCALATED',
+        criticalEscalatedAt: new Date(),
+        criticalEscalatedById: userId,
+        criticalEscalationNotes: notes,
+      },
+    });
+
+    if (updated.count === 0) {
+      throw new NotFoundException('Lab result not found');
+    }
+
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: 'CRITICAL_RESULT_ESCALATED',
+        recordType: 'LabResult',
+        recordId: resultId,
+        oldValues: { criticalStatus: result.criticalStatus },
+        newValues: { criticalStatus: 'ESCALATED', notes },
+      },
+      undefined,
+      branchId,
+    );
+
+    return this.getCriticalResults(tenantId, branchId);
+  }
+
+  async resolveCriticalResult(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    resultId: string,
+    notes?: string,
+  ) {
+    const result = await this.findOne(tenantId, branchId, resultId);
+
+    if (!result.isCritical) {
+      throw new BadRequestException('Result is not marked as critical');
+    }
+
+    const updated = await this.prisma.labResult.updateMany({
+      where: { id: resultId, order: { tenantId, branchId } },
+      data: {
+        criticalStatus: 'RESOLVED',
+        criticalResolvedAt: new Date(),
+        criticalResolvedById: userId,
+        criticalResolvedNotes: notes || null,
+      },
+    });
+
+    if (updated.count === 0) {
+      throw new NotFoundException('Lab result not found');
+    }
+
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: 'CRITICAL_RESULT_RESOLVED',
+        recordType: 'LabResult',
+        recordId: resultId,
+        oldValues: { criticalStatus: result.criticalStatus },
+        newValues: { criticalStatus: 'RESOLVED' },
+      },
+      undefined,
+      branchId,
+    );
+
+    return this.getCriticalResults(tenantId, branchId);
+  }
 }
