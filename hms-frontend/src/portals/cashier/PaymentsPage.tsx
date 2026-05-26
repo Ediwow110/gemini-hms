@@ -133,10 +133,11 @@ export const PaymentsPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
-                        onClick={() => alert(`Reprinting receipt ${rcp.id} in mock PDF format...`)}
-                        className="btn border border-slate-200 hover:bg-slate-50 px-3.5 py-1.5 text-[11px] font-bold rounded-xl shadow-sm transition-all flex items-center gap-1 ml-auto"
+                        disabled
+                        className="btn border border-slate-200 text-slate-400 px-3.5 py-1.5 text-[11px] font-bold rounded-xl shadow-sm flex items-center gap-1 ml-auto cursor-not-allowed"
+                        title="Receipt printing is simulated — no physical receipt is generated"
                       >
-                        <Printer className="h-3.5 w-3.5" /> Print
+                        <Printer className="h-3.5 w-3.5" /> Print (Simulated)
                       </button>
                     </td>
                   </tr>
