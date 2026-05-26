@@ -72,3 +72,39 @@ export class AcknowledgeCriticalDto {
 export class EscalateCriticalDto {
   notes!: string;
 }
+
+// ──── Phase 4F: Turnaround Time Metrics ────
+
+export class TurnaroundMetricDto {
+  label!: string;
+  field!: string;
+  count!: number;
+  averageMinutes!: number | null;
+  minMinutes!: number | null;
+  maxMinutes!: number | null;
+  missingTimestampCount!: number;
+}
+
+export class TurnaroundDetailRowDto {
+  resultId!: string;
+  orderId!: string;
+  orderNumber!: string;
+  patientName!: string;
+  testNames?: string[];
+  status!: string;
+  orderCreatedAt?: string | null;
+  specimenReceivedAt?: string | null;
+  encodedAt?: string | null;
+  validatedAt?: string | null;
+  releasedAt?: string | null;
+  specimenToReleaseMinutes?: number | null;
+  orderToReleaseMinutes?: number | null;
+}
+
+export class TurnaroundSummaryDto {
+  totalResults!: number;
+  releasedCount!: number;
+  pendingCount!: number;
+  metrics!: TurnaroundMetricDto[];
+  detailRows!: TurnaroundDetailRowDto[];
+}
