@@ -15,6 +15,7 @@ import {
 import { PageHeader } from '../../components/ui/page-header';
 import { TriagePriorityBadge, TriagePriorityLevel } from './components/TriagePriorityBadge';
 import { useClinicalDashboardSummary, useClinicalWorkQueue } from '../../hooks/use-clinical-workflow';
+import { useNursingTasks } from '../../hooks/use-nursing-tasks';
 import { format } from 'date-fns';
 import axios from 'axios';
 
@@ -29,8 +30,11 @@ export const NurseDashboard = () => {
 
   const { data: summary, isLoading: isSummaryLoading, error: summaryError } = useClinicalDashboardSummary();
   const { data: queueData, isLoading: isQueueLoading, error: queueError } = useClinicalWorkQueue();
+  const { tasks: nursingTasks, isLoading: isNursingLoading } = useNursingTasks();
 
-  const isLoading = isSummaryLoading || isQueueLoading;
+  const realTaskCount = nursingTasks.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length;
+
+  const isLoading = isSummaryLoading || isQueueLoading || isNursingLoading;
   const errorObj = summaryError || queueError;
 
   if (errorObj) {
@@ -67,7 +71,7 @@ export const NurseDashboard = () => {
     { label: 'Waiting for Vitals', count: summary?.pendingTriage ?? 0, icon: Activity, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
     { label: 'Critical Vitals Alerts', count: 0, icon: AlertOctagon, color: 'text-rose-600 bg-rose-50 border-rose-100' },
     { label: 'Specimens to Collect', count: queueData?.filter(q => q.serviceType === 'LABORATORY' && q.status !== 'COMPLETED').length ?? 0, icon: FlaskConical, color: 'text-violet-600 bg-violet-50 border-violet-100' },
-    { label: 'Pending Nursing Tasks', count: summary?.activePatients ?? 0, icon: CheckSquare, color: 'text-amber-600 bg-amber-50 border-amber-100' },
+    { label: 'Pending Nursing Tasks', count: realTaskCount, icon: CheckSquare, color: 'text-amber-600 bg-amber-50 border-amber-100' },
     { label: 'Patients Ready for Doctor', count: summary?.waitingForDoctor ?? 0, icon: Heart, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
   ];
 
@@ -96,9 +100,9 @@ export const NurseDashboard = () => {
       <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
         <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Nurse Dashboard (WIP/Mock)</h5>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Nurse Dashboard (Partial — Real task counts)</h5>
           <p className="font-medium mt-0.5">
-            The Dashboard metrics (Critical Alerts) and Nursing Task integration are currently running in demo mode with simulated data.
+            Nursing task board, vitals recording, and triage queue use real API data. Critical vitals alerts, care plans, MAR, and staff scheduling remain out of scope.
           </p>
         </div>
       </div>

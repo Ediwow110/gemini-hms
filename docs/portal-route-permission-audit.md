@@ -56,8 +56,9 @@ This document provides a comprehensive mapping of frontend portals, their routes
 - **All mock pages have visible WIP banners, disabled unsafe actions, and clear explanations of missing backend support.
 
 ### Nurse Portal
-- **Real API-backed**: Dashboard metrics (useClinicalDashboardSummary), Work queue (useClinicalWorkQueue), Triage queue (triages patients), Vitals capture (POST vitals)
-- **WIP/Mock (Visible Banner)**: Nurse Dashboard (real queue metrics shown, but nurse assignments, schedule, and notifications are mock), Tasks Page (no backend "Nursing Task" model exists — all task status change buttons disabled with visible WIP banner)
+- **Real API-backed**: Dashboard metrics (useClinicalDashboardSummary), Work queue (useClinicalWorkQueue), Triage queue (triages patients), Vitals capture (POST vitals), Nursing Task Board (GET/POST/PATCH /api/v1/nursing/tasks with full lifecycle: create, start, complete, cancel, reopen)
+- **Partial (Phase 4C)**: Nurse Dashboard shows real task counts from API but critical vitals alerts and staff scheduling remain WIP. Task Board is fully API-backed with tenant/branch isolation, RBAC, and audit logging.
+- **Out of scope / WIP**: Care plans, medication administration record (MAR), staff scheduling, full nursing workflow engine, clinical decision support.
 - **All mock pages have visible WIP banners, disabled unsafe actions, and clear explanations of missing backend support.
 
 ### Lab Portal
