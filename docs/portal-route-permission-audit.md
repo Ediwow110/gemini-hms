@@ -14,7 +14,7 @@ This document provides a comprehensive mapping of frontend portals, their routes
 | **Patient** | `/patient` | `PatientDashboard` | Patient | `permission='patient.portal.view_own'` | `patient.portal.view_own` | `patient@hospital.com` | Partial (Real patient portal API for profile, lab results, prescriptions, invoices) |
 | **Cashier** | `/cashier` | `CashierDashboard` | Cashier | `allowedRoles=['Cashier']` | `billing.invoice.view`, `billing.payment.create` | `cashier@hospital.com` | Partial (Real invoice, payment, and session APIs; refunds/HMO/reconciliation mock) |
 | **Med-Tech** | `/lab` | `LabDashboard` | Med-Tech | `permission='lab.result.view'` | `lab.result.encode`, `lab.result.view`, `lab.critical.view`, `lab.critical.acknowledge` | `medtech@hospital.com` | Partial (Real dashboard, specimen receiving, critical results, result release, turnaround) |
-| **Pharmacist** | `/pharmacy` | `PharmacyHub` | Pharmacist | `permission='inventory.stock.dispense'` | `inventory.stock.dispense` | `pharmacist@hospital.com` | Real (Sprint 2A — real prescription queue and dispense) |
+| **Pharmacist** | `/pharmacy` | `PharmacyHub` | Pharmacist | `permission='inventory.stock.dispense'` | `inventory.stock.dispense`, `pharmacy.stockmovement.view` | `pharmacist@hospital.com` | Real (Sprint 2A + 2B — prescription queue, dispense, stock movements, low-stock alerts) |
 | **Supplier** | `/supplier` | `SupplierDashboard` | Supplier | `allowedRoles=['Supplier']` | `marketplace.supplier.manage_listing` | `supplier@hospital.com` | Real |
 | **Procurement** | `/procurement` | `ProcurementDashboard` | Procurement Officer | `permission='procurement.request.view'` | `procurement.*` | `procurement@hospital.com` | Real |
 | **Procurement Requests** | `/procurement/purchase-requests` | `PurchaseRequestsPage` | Procurement Officer | `permission='procurement.request.view'` | `procurement.request.*` | `procurement@hospital.com` | Real |
@@ -71,8 +71,9 @@ This document provides a comprehensive mapping of frontend portals, their routes
 - **All mock pages have visible WIP banners, disabled unsafe actions where applicable, and clear explanations of missing backend support.
 
 ### Pharmacy Portal
-- **Real API-backed**: Prescription queue (GET /api/v1/pharmacy/prescriptions), Drug catalog (GET /api/v1/pharmacy/drugs), Dispense (POST /api/v1/pharmacy/prescriptions/:id/dispense)
-- **Status**: Fully Real (Sprint 2A implementation)
+- **Real API-backed**: Prescription queue (GET /api/v1/pharmacy/prescriptions), Drug catalog (GET /api/v1/pharmacy/drugs), Dispense (POST /api/v1/pharmacy/prescriptions/:id/dispense), Stock adjustment (PATCH /api/v1/inventory/stock/:id/adjust), Stock movement log (GET /api/v1/inventory/items/:id/logs), Low-stock alerts (GET /api/v1/inventory/alerts/low-stock)
+- **Permissions added**: pharmacy.stockmovement.view assigned to Pharmacist role
+- **Status**: Real (Sprint 2A + 2B implementation)
 
 ### Cashier / Billing Portal
 - **Real API-backed**: Invoice list (GET /api/v1/billing/invoices), Active session (GET /api/v1/billing/sessions/active), Session opening/closing (POST /api/v1/billing/sessions/open, PATCH /api/v1/billing/sessions/:id/close), Payment recording (POST /api/v1/billing/payments)

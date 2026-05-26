@@ -54,6 +54,31 @@ export interface DrugStockDto {
   unit: string;
 }
 
+export interface StockLogDto {
+  id: string;
+  inventoryItemId: string;
+  type: string; // IN, OUT, ADJUSTMENT, RETURN
+  quantity: number;
+  previousStock: number;
+  newStock: number;
+  referenceType?: string;
+  referenceId?: string;
+  remarks?: string;
+  createdAt: string;
+}
+
+export interface LowStockAlertDto {
+  id: string;
+  inventoryItemId: string;
+  quantity: number;
+  reorderLevel: number;
+  inventoryItem: {
+    name: string;
+    sku?: string;
+    unit: string;
+  };
+}
+
 export const pharmacyService = {
   getPrescriptionQueue: async (
     status?: string,
@@ -79,6 +104,34 @@ export const pharmacyService = {
     const response: AxiosResponse<DrugStockDto[]> = await apiClient.get(
       '/v1/pharmacy/drugs',
     );
+    return response.data;
+  },
+
+  // ──── Sprint 2B additions ────
+
+  getStockMovements: async (itemId: string): Promise<StockLogDto[]> => {
+    const response: AxiosResponse<StockLogDto[]> = await apiClient.get(
+      `/v1/inventory/items/${itemId}/logs`,
+    );
+    return response.data;
+  },
+
+  getLowStockAlerts: async (): Promise<LowStockAlertDto[]> => {
+    const response: AxiosResponse<LowStockAlertDto[]> = await apiClient.get(
+      '/v1/inventory/alerts/low-stock',
+    );
+    return response.data;
+  },
+
+  adjustStock: async (
+    itemId: string,
+    newQuantity: number,
+    reason: string,
+  ): Promise<unknown> => {
+    const response = await apiClient.patch(`/v1/inventory/stock/${itemId}/adjust`, {
+      newQuantity,
+      reason,
+    });
     return response.data;
   },
 };
