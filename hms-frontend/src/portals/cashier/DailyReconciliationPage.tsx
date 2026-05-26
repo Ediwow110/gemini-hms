@@ -37,13 +37,13 @@ export const DailyReconciliationPage = () => {
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       
-      {/* Sandbox Warning Banner */}
+      {/* WIP Banner */}
       <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
         <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Demonstration Sandbox Shell</h5>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Daily Reconciliation (WIP)</h5>
           <p className="font-medium mt-0.5">
-            This end-of-day reconciliation screen runs in local sandbox memory. Shift logs are simulated.
+            End-of-day reconciliation is simulated. Actual cashier session closing, variance logging, and shift audit posting are not yet wired to the backend.
           </p>
         </div>
       </div>
