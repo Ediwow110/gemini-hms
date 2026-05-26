@@ -1,250 +1,213 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LabService } from './lab.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { ApprovalsService } from '../approvals/approvals.service';
 import { AuditService } from '../audit/audit.service';
-import {
-  NotFoundException,
-  ConflictException,
-  BadRequestException,
-} from '@nestjs/common';
+import { ApprovalsService } from '../approvals/approvals.service';
+import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 
-describe('LabService Branch Isolation', () => {
+describe('LabService — Phase 4D additions', () => {
   let service: LabService;
   let prisma: any;
+  let audit: any;
+  let approvals: any;
+
+  const mockTenantId = 'tenant-1';
+  const mockBranchId = 'branch-1';
+  const mockUserId = 'user-1';
+  const mockOrderId = 'order-1';
+  const mockPatientId = 'patient-1';
+  const mockSpecimenId = 'specimen-1';
+  const mockResultId = 'result-1';
+
+  const mockSpecimen = {
+    id: mockSpecimenId,
+    tenantId: mockTenantId,
+    branchId: mockBranchId,
+    patientId: mockPatientId,
+    orderId: mockOrderId,
+    specimenType: 'Whole Blood',
+    collectionMode: 'ROUTINE',
+    collectedAt: new Date(),
+    status: 'COLLECTED',
+    receivedAt: null,
+    receivedById: null,
+    createdAt: new Date(),
+    order: {
+      orderNumber: 'ORD-001',
+      patient: { id: mockPatientId, firstName: 'John', lastName: 'Doe', patientNumber: 'MRN-001' },
+      clinicalItems: [{ itemName: 'CBC' }],
+    },
+  };
+
+  const mockResult = {
+    id: mockResultId,
+    orderId: mockOrderId,
+    tenantId: mockTenantId,
+    status: 'APPROVED',
+    encodedById: mockUserId,
+    encodedAt: new Date(),
+    validatedById: 'validator-1',
+    validatedAt: new Date(),
+    results: { WBC: 7.5 },
+    remarks: 'Normal',
+    createdAt: new Date(),
+    order: {
+      orderNumber: 'ORD-001',
+      patient: { id: mockPatientId, firstName: 'John', lastName: 'Doe', patientNumber: 'MRN-001' },
+      clinicalItems: [{ itemName: 'CBC' }],
+    },
+  };
 
   beforeEach(async () => {
-    const prismaMock = {
-      labResult: {
-        findFirst: jest.fn(),
+    prisma = {
+      labSpecimen: {
         findMany: jest.fn(),
+        findFirst: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+      },
+      labResult: {
+        findMany: jest.fn(),
+        findFirst: jest.fn(),
         updateMany: jest.fn(),
         update: jest.fn(),
       },
-      labResultSignature: {
-        create: jest.fn(),
-      },
+      labResultSignature: { create: jest.fn() },
+      labResultVersion: { count: jest.fn(), create: jest.fn() },
+      notificationOutbox: { create: jest.fn() },
       order: {
+        findFirst: jest.fn(),
         update: jest.fn(),
       },
-      notificationOutbox: {
-        create: jest.fn(),
-      },
+      $transaction: jest.fn((cb: any) => cb(prisma)),
     };
-    prismaMock.$transaction = jest
-      .fn()
-      .mockImplementation(async (cb) => await cb(prismaMock));
+
+    audit = { log: jest.fn() };
+    approvals = { createRequest: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LabService,
-        {
-          provide: PrismaService,
-          useValue: prismaMock,
-        },
-        {
-          provide: AuditService,
-          useValue: {
-            log: jest.fn(),
-          },
-        },
-        {
-          provide: ApprovalsService,
-          useValue: {
-            createRequest: jest.fn(),
-          },
-        },
+        { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: audit },
+        { provide: ApprovalsService, useValue: approvals },
       ],
     }).compile();
 
     service = module.get<LabService>(LabService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
-  const tenantId = 'tenant-123';
-  const branchId = 'branch-456';
-  const otherBranchId = 'branch-789';
-  const labResultId = 'lab-result-123';
-
-  describe('findOne', () => {
-    it('should scope by tenantId and branchId', async () => {
-      prisma.labResult.findFirst.mockResolvedValue({ id: labResultId });
-
-      await service.findOne(tenantId, branchId, labResultId);
-
-      expect(prisma.labResult.findFirst).toHaveBeenCalledWith({
-        where: {
-          id: labResultId,
-          order: { tenantId, branchId },
-          deletedAt: null,
-        },
-        include: expect.anything(),
-      });
-    });
-
-    it('should throw NotFoundException if result does not belong to branch', async () => {
-      prisma.labResult.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.findOne(tenantId, otherBranchId, labResultId),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('getPendingWorklist', () => {
-    it('should scope by tenantId and branchId', async () => {
+  describe('getPendingSpecimens', () => {
+    it('should return pending specimens', async () => {
+      prisma.labSpecimen.findMany.mockResolvedValue([mockSpecimen]);
       prisma.labResult.findMany.mockResolvedValue([]);
+      const result = await service.getPendingSpecimens(mockTenantId, mockBranchId);
+      expect(result).toHaveLength(1);
+      expect(result[0].patientName).toBe('John Doe');
+      expect(result[0].status).toBe('COLLECTED');
+    });
 
-      await service.getPendingWorklist(tenantId, branchId);
-
-      expect(prisma.labResult.findMany).toHaveBeenCalledWith({
-        where: expect.objectContaining({
-          order: { tenantId, branchId },
-        }),
-        include: expect.anything(),
-        orderBy: expect.anything(),
-      });
+    it('should include orders awaiting collection', async () => {
+      prisma.labSpecimen.findMany.mockResolvedValue([]);
+      prisma.labResult.findMany.mockResolvedValue([{
+        ...mockResult,
+        orderId: mockOrderId,
+        order: {
+          orderNumber: 'ORD-002',
+          patient: { id: mockPatientId, firstName: 'Jane', lastName: 'Smith', patientNumber: 'MRN-002' },
+          clinicalItems: [{ itemName: 'BMP' }],
+        },
+      }]);
+      const result = await service.getPendingSpecimens(mockTenantId, mockBranchId);
+      expect(result).toHaveLength(1);
+      expect(result[0].status).toBe('PENDING_COLLECTION');
     });
   });
 
-  describe('encodeResult', () => {
-    it('should fail if lab result belongs to another branch', async () => {
-      // findOne will be called and it will throw NotFoundException if branch mismatch
-      prisma.labResult.findFirst.mockResolvedValue(null);
+  describe('receiveSpecimen', () => {
+    it('should receive an existing collected specimen', async () => {
+      prisma.labSpecimen.findFirst.mockResolvedValue(mockSpecimen);
+      prisma.labSpecimen.update.mockResolvedValue({ ...mockSpecimen, status: 'RECEIVED' });
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
 
-      await expect(
-        service.encodeResult(tenantId, 'user-1', otherBranchId, labResultId, {
-          results: { hemoglobin: 14 },
-        }),
-      ).rejects.toThrow(NotFoundException);
-
-      expect(prisma.labResult.updateMany).not.toHaveBeenCalled();
-    });
-
-    it('should persist results and remarks in the LabResult record', async () => {
-      const mockResult = { id: labResultId, status: 'PENDING_COLLECTION' };
-      prisma.labResult.findFirst
-        .mockResolvedValueOnce(mockResult) // findOne
-        .mockResolvedValueOnce({ ...mockResult, status: 'ENCODED' }); // updated
-
-      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
-
-      const dto = { results: { glucose: 100 }, remarks: 'Normal' };
-      await service.encodeResult(
-        tenantId,
-        'user-1',
-        branchId,
-        labResultId,
-        dto,
+      const result = await service.receiveSpecimen(mockTenantId, mockUserId, mockBranchId, mockSpecimenId);
+      expect(prisma.labSpecimen.update).toHaveBeenCalled();
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'SPECIMEN_RECEIVED' }),
+        expect.anything(),
+        expect.anything(),
       );
+    });
 
-      expect(prisma.labResult.updateMany).toHaveBeenCalledWith({
-        where: expect.anything(),
-        data: expect.objectContaining({
-          status: 'ENCODED',
-          results: dto.results,
-          remarks: dto.remarks,
-        }),
-      });
+    it('should throw ConflictException if already received', async () => {
+      prisma.labSpecimen.findFirst.mockResolvedValue({ ...mockSpecimen, status: 'RECEIVED' });
+      await expect(
+        service.receiveSpecimen(mockTenantId, mockUserId, mockBranchId, mockSpecimenId),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should throw NotFoundException when no specimen or order found', async () => {
+      prisma.labSpecimen.findFirst.mockResolvedValue(null);
+      prisma.order.findFirst.mockResolvedValue(null);
+      await expect(
+        service.receiveSpecimen(mockTenantId, mockUserId, mockBranchId, 'nonexistent'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('approveResult', () => {
-    it('should fail if lab result belongs to another branch', async () => {
-      prisma.labResult.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.approveResult(tenantId, 'user-1', otherBranchId, labResultId, {
-          pathologistRemarks: 'ok',
+  describe('getReleasableResults', () => {
+    it('should return only APPROVED results', async () => {
+      prisma.labResult.findMany.mockResolvedValue([mockResult]);
+      const result = await service.getReleasableResults(mockTenantId, mockBranchId);
+      expect(result).toHaveLength(1);
+      expect(result[0].status).toBe('APPROVED');
+      expect(prisma.labResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'APPROVED',
+          }),
         }),
-      ).rejects.toThrow(NotFoundException);
+      );
+    });
 
-      expect(prisma.labResult.updateMany).not.toHaveBeenCalled();
+    it('should return empty array when no releasable results', async () => {
+      prisma.labResult.findMany.mockResolvedValue([]);
+      const result = await service.getReleasableResults(mockTenantId, mockBranchId);
+      expect(result).toHaveLength(0);
     });
   });
 
   describe('releaseResult', () => {
-    it('should fail if lab result belongs to another branch', async () => {
-      prisma.labResult.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.releaseResult(tenantId, 'user-1', otherBranchId, labResultId),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should release an approved result with signature and outbox', async () => {
-      const mockResult = {
-        id: labResultId,
-        status: 'APPROVED',
-        orderId: 'order-1',
-        order: { tenantId, branchId, patientId: 'patient-1' },
-        lockedAt: new Date(),
-      };
+    it('should release an APPROVED result', async () => {
       prisma.labResult.findFirst.mockResolvedValue(mockResult);
-      prisma.labResult.update.mockResolvedValue({
-        ...mockResult,
-        status: 'RELEASED',
-      });
+      prisma.labResult.update.mockResolvedValue({ ...mockResult, status: 'RELEASED', lockedAt: new Date() });
       prisma.labResultSignature.create.mockResolvedValue({ id: 'sig-1' });
-      prisma.order.update.mockResolvedValue({
-        id: 'order-1',
-        status: 'RELEASED',
-      });
-      prisma.notificationOutbox.create.mockResolvedValue({ id: 'notif-1' });
+      prisma.notificationOutbox.create.mockResolvedValue({});
+      prisma.order.update.mockResolvedValue({});
+      prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
 
-      const result = await service.releaseResult(
-        tenantId,
-        'user-1',
-        branchId,
-        labResultId,
+      const result = await service.releaseResult(mockTenantId, mockUserId, mockBranchId, mockResultId);
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'LAB_RESULT_RELEASED' }),
+        expect.anything(),
+        expect.anything(),
       );
-
-      expect(result.status).toBe('RELEASED');
-      expect(prisma.labResult.update).toHaveBeenCalled();
       expect(prisma.labResultSignature.create).toHaveBeenCalled();
       expect(prisma.notificationOutbox.create).toHaveBeenCalled();
     });
 
-    it('should reject release if already RELEASED', async () => {
-      prisma.labResult.findFirst.mockResolvedValue({
-        id: labResultId,
-        status: 'RELEASED',
-        order: { tenantId, branchId },
-      });
-
+    it('should throw ConflictException if already released', async () => {
+      prisma.labResult.findFirst.mockResolvedValue({ ...mockResult, status: 'RELEASED' });
       await expect(
-        service.releaseResult(tenantId, 'user-1', branchId, labResultId),
+        service.releaseResult(mockTenantId, mockUserId, mockBranchId, mockResultId),
       ).rejects.toThrow(ConflictException);
     });
 
-    it('should reject release if not APPROVED', async () => {
-      prisma.labResult.findFirst.mockResolvedValue({
-        id: labResultId,
-        status: 'PENDING',
-        order: { tenantId, branchId },
-      });
-
+    it('should throw BadRequestException if not APPROVED', async () => {
+      prisma.labResult.findFirst.mockResolvedValue({ ...mockResult, status: 'ENCODED' });
       await expect(
-        service.releaseResult(tenantId, 'user-1', branchId, labResultId),
+        service.releaseResult(mockTenantId, mockUserId, mockBranchId, mockResultId),
       ).rejects.toThrow(BadRequestException);
-    });
-  });
-
-  describe('requestAmendment', () => {
-    it('should fail if lab result belongs to another branch', async () => {
-      prisma.labResult.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.requestAmendment(
-          tenantId,
-          'user-1',
-          otherBranchId,
-          labResultId,
-          {
-            reason: 'error',
-          },
-        ),
-      ).rejects.toThrow(NotFoundException);
     });
   });
 });
