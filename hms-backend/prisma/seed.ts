@@ -90,6 +90,7 @@ async function main() {
     { name: 'lab.result.release', scope: 'tenant/branch/department', riskLevel: 'HIGH' },
     { name: 'lab.result.view', scope: 'tenant/branch/department', riskLevel: 'LOW' },
     { name: 'lab.result.amend.request', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+    { name: 'lab.specimen.receive', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'catalog.service.view', scope: 'tenant', riskLevel: 'LOW' },
     { name: 'catalog.service.create', scope: 'tenant', riskLevel: 'MEDIUM' },
     { name: 'catalog.service.update', scope: 'tenant', riskLevel: 'MEDIUM' },
@@ -258,6 +259,7 @@ async function main() {
     ],
     'Med-Tech': [
       'patient.view', 'lab.result.view', 'lab.result.encode',
+      'lab.specimen.receive',
       'inventory.item.view', 'queue.view'
     ],
     'Doctor': [

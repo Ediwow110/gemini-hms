@@ -322,4 +322,197 @@ export class LabService {
       orderBy: { createdAt: 'asc' },
     });
   }
+
+  // ──── Phase 4D: Specimen Receiving ────
+
+  async getPendingSpecimens(tenantId: string, branchId: string) {
+    // Find lab specimens that need receiving (collected but not yet received)
+    // Also find orders with lab results awaiting specimen collection
+    const specimens = await this.prisma.labSpecimen.findMany({
+      where: {
+        tenantId,
+        branchId,
+        status: { in: ['COLLECTED', 'PENDING'] },
+      },
+      include: {
+        order: {
+          include: {
+            patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+            clinicalItems: { select: { itemName: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Also find orders with lab results that have no specimen yet
+    const ordersWithResults = await this.prisma.labResult.findMany({
+      where: {
+        order: { tenantId, branchId, labSpecimen: null },
+        status: 'PENDING_COLLECTION',
+      },
+      include: {
+        order: {
+          include: {
+            patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+            clinicalItems: { select: { itemName: true } },
+          },
+        },
+      },
+    });
+
+    return [
+      ...specimens.map((s) => ({
+        id: s.id,
+        orderId: s.orderId,
+        orderNumber: s.order.orderNumber,
+        patientId: s.patientId,
+        patientName: `${s.order.patient.firstName} ${s.order.patient.lastName}`,
+        patientMrn: s.order.patient.patientNumber,
+        specimenType: s.specimenType,
+        collectionMode: s.collectionMode,
+        collectedAt: s.collectedAt?.toISOString() || null,
+        status: s.status,
+        createdAt: s.createdAt.toISOString(),
+        testNames: s.order.clinicalItems.map((ci) => ci.itemName),
+      })),
+      ...ordersWithResults.map((lr) => ({
+        id: lr.orderId,
+        orderId: lr.orderId,
+        orderNumber: lr.order.orderNumber,
+        patientId: lr.order.patientId,
+        patientName: `${lr.order.patient.firstName} ${lr.order.patient.lastName}`,
+        patientMrn: lr.order.patient.patientNumber,
+        specimenType: 'Pending',
+        collectionMode: 'N/A',
+        collectedAt: null,
+        status: 'PENDING_COLLECTION',
+        createdAt: lr.createdAt.toISOString(),
+        testNames: lr.order.clinicalItems.map((ci) => ci.itemName),
+      })),
+    ];
+  }
+
+  async receiveSpecimen(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    specimenIdOrOrderId: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      // Find existing specimen or order to create one
+      let specimen = await tx.labSpecimen.findFirst({
+        where: {
+          OR: [
+            { id: specimenIdOrOrderId },
+            { orderId: specimenIdOrOrderId },
+          ],
+          tenantId,
+          branchId,
+        },
+      });
+
+      if (specimen) {
+        if (specimen.status === 'RECEIVED') {
+          throw new ConflictException('Specimen already received');
+        }
+        const updated = await tx.labSpecimen.update({
+          where: { id: specimen.id },
+          data: {
+            status: 'RECEIVED',
+            receivedAt: new Date(),
+            receivedById: userId,
+          },
+        });
+        await this.audit.log(
+          {
+            tenantId,
+            userId,
+            eventKey: 'SPECIMEN_RECEIVED',
+            recordType: 'LabSpecimen',
+            recordId: updated.id,
+            oldValues: { status: specimen.status },
+            newValues: { status: 'RECEIVED' },
+          },
+          tx,
+          branchId,
+        );
+        return updated;
+      }
+
+      // No specimen exists yet — create one and mark received
+      const order = await tx.order.findFirst({
+        where: { id: specimenIdOrOrderId, tenantId, branchId },
+      });
+      if (!order) {
+        throw new NotFoundException('Order not found for specimen receiving');
+      }
+
+      const created = await tx.labSpecimen.create({
+        data: {
+          tenantId,
+          branchId,
+          patientId: order.patientId,
+          orderId: order.id,
+          specimenType: 'Unknown',
+          status: 'RECEIVED',
+          receivedAt: new Date(),
+          receivedById: userId,
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'SPECIMEN_RECEIVED',
+          recordType: 'LabSpecimen',
+          recordId: created.id,
+          newValues: { status: 'RECEIVED', orderId: order.id },
+        },
+        tx,
+        branchId,
+      );
+
+      return created;
+    });
+  }
+
+  // ──── Phase 4D: Releasable Results ────
+
+  async getReleasableResults(tenantId: string, branchId: string) {
+    const results = await this.prisma.labResult.findMany({
+      where: {
+        order: { tenantId, branchId },
+        status: 'APPROVED',
+      },
+      include: {
+        order: {
+          include: {
+            patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+            clinicalItems: { select: { itemName: true } },
+          },
+        },
+      },
+      orderBy: { validatedAt: 'asc' },
+    });
+
+    return results.map((r) => ({
+      id: r.id,
+      orderId: r.orderId,
+      orderNumber: r.order.orderNumber,
+      patientId: r.order.patientId,
+      patientName: `${r.order.patient.firstName} ${r.order.patient.lastName}`,
+      patientMrn: r.order.patient.patientNumber,
+      status: r.status,
+      encodedById: r.encodedById,
+      encodedAt: r.encodedAt?.toISOString() || null,
+      validatedById: r.validatedById,
+      validatedAt: r.validatedAt?.toISOString() || null,
+      results: r.results,
+      remarks: r.remarks,
+      createdAt: r.createdAt.toISOString(),
+      testNames: r.order.clinicalItems.map((ci) => ci.itemName),
+    }));
+  }
 }

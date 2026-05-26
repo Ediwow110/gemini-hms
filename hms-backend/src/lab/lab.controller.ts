@@ -20,6 +20,7 @@ import { BranchGuard } from '../auth/guards/branch.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 import { SelfApprovalGuard } from '../common/guards/self-approval.guard';
+import { PendingSpecimenDto, ReleasableResultDto, ReleaseResultResponseDto } from './dto/lab-responses.dto';
 
 @UseGuards(PermissionsGuard, BranchGuard)
 @Controller('api/v1/lab')
@@ -85,6 +86,42 @@ export class LabController {
     @Param('id') id: string,
   ) {
     return this.labService.releaseResult(tenantId, userId, branchId, id);
+  }
+
+  // ──── Phase 4D: Specimen Receiving ────
+
+  @Get('specimens/pending')
+  @RequirePermissions('lab.result.view')
+  @RequireBranchContext()
+  async getPendingSpecimens(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+  ): Promise<PendingSpecimenDto[]> {
+    return this.labService.getPendingSpecimens(tenantId, branchId);
+  }
+
+  @Patch('specimens/:id/receive')
+  @RequirePermissions('lab.specimen.receive')
+  @RequireBranchContext()
+  async receiveSpecimen(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') id: string,
+  ) {
+    return this.labService.receiveSpecimen(tenantId, userId, branchId, id);
+  }
+
+  // ──── Phase 4D: Releasable Results ────
+
+  @Get('results/releasable')
+  @RequirePermissions('lab.result.view')
+  @RequireBranchContext()
+  async getReleasableResults(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+  ): Promise<ReleasableResultDto[]> {
+    return this.labService.getReleasableResults(tenantId, branchId);
   }
 
   @Post('results/:id/amend')
