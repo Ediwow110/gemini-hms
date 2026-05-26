@@ -61,10 +61,35 @@ async function bootstrap() {
       credentials: true,
     });
   } else {
-    const devOrigin =
-      process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:5173';
+    const configuredDevOrigins = (
+      process.env.CORS_ALLOWED_ORIGINS ||
+      'http://localhost:5173,http://127.0.0.1:5173'
+    )
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+
     app.enableCors({
-      origin: devOrigin.split(',').map((o) => o.trim()),
+      origin: (
+        origin: string | undefined,
+        callback: (err: Error | null, allow?: boolean) => void,
+      ) => {
+        if (!origin) {
+          // Allow non-browser tools (curl/postman) in local development
+          return callback(null, true);
+        }
+
+        const isConfiguredOrigin = configuredDevOrigins.includes(origin);
+        const isLocalDevOrigin =
+          /^http:\/\/localhost:\d+$/.test(origin) ||
+          /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
+
+        if (isConfiguredOrigin || isLocalDevOrigin) {
+          return callback(null, true);
+        }
+
+        return callback(null, false);
+      },
       credentials: true,
     });
   }
