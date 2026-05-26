@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ChevronRight, FileText } from 'lucide-react';
+import { Search, ChevronRight, FileText, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
 
 interface PatientRecord {
@@ -30,6 +30,17 @@ export const DoctorPatientsPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Mock/WIP Warning Banner */}
+      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
+        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+        <div>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Patient Directory (WIP/Mock)</h5>
+          <p className="font-medium mt-0.5">
+            This directory is currently running in demo mode with simulated patient records. Integration with the production patient repository is pending.
+          </p>
+        </div>
+      </div>
+
       <PageHeader 
         title="Patient Directory" 
         description="Search global medical records and browse active clinical profile summaries." 

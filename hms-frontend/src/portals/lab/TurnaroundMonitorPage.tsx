@@ -60,6 +60,17 @@ export const TurnaroundMonitorPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Mock/WIP Warning Banner */}
+      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
+        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+        <div>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">LIS Turnaround Time Console (WIP/Mock)</h5>
+          <p className="font-medium mt-0.5">
+            This SLA monitoring dashboard is currently presenting simulated turnaround time metrics. Real-time integration with the LIS batch processor and automated TAT tracking is pending.
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <PageHeader 
           title="LIS Turnaround Time (TAT) & SLA Console" 

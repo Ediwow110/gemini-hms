@@ -30,10 +30,12 @@ export const DoctorDashboard = () => {
     { label: 'Pending Lab Results', count: summary.pendingLabResults, icon: FlaskConical, color: 'text-violet-600 bg-violet-50 border-violet-100' },
   ] : [];
 
+  // Mock critical results for UI layout testing only
   const criticalResults = [
     { id: 'CRIT-01', patient: 'Arthur Pendleton', test: 'Serum Potassium', value: '6.2 mEq/L (Critical High)', time: '20 mins ago' },
   ];
 
+  // Mock schedule for UI layout testing only
   const schedule = [
     { time: '12:00 PM', event: 'Department Clinical Meeting' },
     { time: '02:00 PM', event: 'Telehealth Consult: Patient Robert Walton' },
@@ -75,13 +77,13 @@ export const DoctorDashboard = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       
-      {/* Sandbox Warning Banner */}
+      {/* Mock/WIP Warning Banner */}
       <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
         <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Demonstration Sandbox Shell</h5>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Doctor Dashboard (WIP/Mock)</h5>
           <p className="font-medium mt-0.5">
-            This clinical workspace runs in local sandbox memory. Patient vitals, EMR documentation, SOAP notes, prescriptions, and orders are simulated in-memory for UI evaluation. No actual health records are persisted, and no medical actions are committed.
+            The dashboard widgets (Critical Alerts, Schedule) are currently running in demo mode with simulated data. Real physician scheduling and critical notification integration is not yet active.
           </p>
         </div>
       </div>
@@ -222,7 +224,7 @@ export const DoctorDashboard = () => {
                     Released: <strong className="text-rose-700">{alert.value}</strong> for {alert.test}.
                   </p>
                   <button 
-                    onClick={() => navigate('/doctor/emr?patientId=P-102')}
+                    onClick={() => navigate(`/doctor/emr?patientId=P-102`)}
                     className="w-full text-center bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold py-1.5 rounded-lg border border-rose-100 transition-colors"
                   >
                     Open Patient Chart

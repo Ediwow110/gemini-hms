@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pill, Plus, Trash2 } from 'lucide-react';
+import { Pill, Plus, Trash2, AlertTriangle } from 'lucide-react';
 
 interface Prescription {
   id: string;
@@ -51,7 +51,18 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescript
   };
 
   return (
-    <div data-patient-id={patientId} className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4">
+    <div className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4">
+      {/* Mock/WIP Warning Banner */}
+      <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex gap-2 text-xs text-amber-800">
+        <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+        <div>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">E-Prescription (WIP/Mock)</h5>
+          <p className="font-medium mt-0.5">
+            Medication ordering is currently running in demo mode. No actual prescriptions are sent to pharmacy or recorded in the medical record.
+          </p>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase flex items-center gap-2">
@@ -115,7 +126,8 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescript
             />
             <button
               type="submit"
-              className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-1.5 flex items-center gap-1.5 flex-shrink-0"
+              disabled={true}
+              className="btn bg-slate-200 text-slate-500 text-xs px-3.5 py-1.5 flex items-center gap-1.5 cursor-not-allowed"
             >
               <Plus className="h-3.5 w-3.5" /> Add
             </button>
@@ -166,3 +178,4 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescript
     </div>
   );
 };
+export default DoctorPrescriptionPanel;

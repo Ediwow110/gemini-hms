@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
@@ -26,8 +25,8 @@ export const LabDashboard = () => {
 
   const { data: queueData, isLoading, error } = useClinicalWorkQueue();
 
-  // Critical results mock data
-  const [criticals, setCriticals] = useState<CriticalResultItem[]>([
+  // Mock critical results for UI layout testing only
+  const criticals: CriticalResultItem[] = [
     {
       id: 'CRIT-01',
       patientName: 'Arthur Pendleton',
@@ -41,43 +40,11 @@ export const LabDashboard = () => {
       reportedAt: '15 mins ago',
       isNotified: false
     }
-  ]);
-
-  const handleAcknowledgeCritical = (id: string) => {
-    setCriticals(criticals.map(c => c.id === id ? { ...c, isNotified: true, notifiedTime: 'Just now by Lab Tech' } : c));
-  };
-
-  if (error) {
-    const isForbidden = axios.isAxiosError(error) && (error.response?.status === 403 || error.response?.status === 401);
-    return (
-      <div className="p-8 text-center space-y-4 animate-fade-in">
-        <div className="mx-auto w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-          <AlertTriangle className="h-8 w-8" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-800">
-          {isForbidden ? 'Access Restricted' : 'Connection Error'}
-        </h2>
-        <p className="text-slate-500 max-w-md mx-auto">
-          {isForbidden 
-            ? 'You do not have permission to view the laboratory dashboard. Please contact your administrator.' 
-            : 'Failed to connect to the clinical service. Please check your network connection or try again later.'}
-        </p>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="p-8 text-center space-y-4 animate-fade-in">
-        <div className="animate-spin mx-auto w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
-        <p className="text-slate-500 font-medium tracking-wide animate-pulse">Loading LIS Dashboard...</p>
-      </div>
-    );
-  }
-
-  const labQueue = queueData?.filter(item => item.serviceType === 'LABORATORY') || [];
+  ];
 
   // Metrics derived from active laboratory worklist queue
+  const labQueue = queueData?.filter(item => item.serviceType === 'LABORATORY') || [];
+
   const metrics = [
     { label: 'New LIS Orders', count: labQueue.filter(q => q.status === 'WAITING').length, icon: Inbox, color: 'text-blue-600 bg-blue-50 border-blue-105' },
     { label: 'Specimens Collected', count: labQueue.filter(q => q.status === 'CALLING').length, icon: FlaskConical, color: 'text-amber-600 bg-amber-50 border-amber-105' },
@@ -109,20 +76,48 @@ export const LabDashboard = () => {
     };
   });
 
-  // Turnaround statistics
+  // Mock turnaround statistics for UI layout testing only
   const tatMetrics: TurnaroundTimeData[] = [
     { testName: 'Complete Blood Count (CBC)', targetMinutes: 60, averageMinutes: 42, complianceRate: 0.982, totalTests: 45, overdueCount: 0 },
     { testName: 'Basic Metabolic Panel (BMP)', targetMinutes: 90, averageMinutes: 74, complianceRate: 0.941, totalTests: 28, overdueCount: 1 },
   ];
 
+  if (error) {
+    const isForbidden = axios.isAxiosError(error) && (error.response?.status === 403 || error.response?.status === 401);
+    return (
+      <div className="p-8 text-center space-y-4 animate-fade-in">
+        <div className="mx-auto w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
+          <AlertTriangle className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-800">
+          {isForbidden ? 'Access Restricted' : 'Connection Error'}
+        </h2>
+        <p className="text-slate-500 max-w-md mx-auto">
+          {isForbidden 
+            ? 'You do not have permission to view the laboratory dashboard. Please contact your administrator if you believe this is an error.' 
+            : 'Failed to connect to the clinical service. Please check your network connection or try again later.'}
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center space-y-4 animate-fade-in">
+        <div className="animate-spin mx-auto w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <p className="text-slate-500 font-medium tracking-wide animate-pulse">Loading LIS Dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       
-      {/* Sandbox Warning Banner */}
+      {/* Mock/WIP Warning Banner */}
       <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
         <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Demonstration Sandbox Shell</h5>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Laboratory Information System (WIP/Mock)</h5>
           <p className="font-medium mt-0.5">
             This LIS laboratory workspace runs in local sandbox memory. Specimen tracking, result entries, QA validation checks, and release workflows simulate local state only. No clinical lab values are written to production databases or released to actual patient records.
           </p>
@@ -135,7 +130,6 @@ export const LabDashboard = () => {
           description="Lab technician workspace for tracking specimens, encoding diagnostics, validating assays, and releasing critical clinical results." 
         />
         
-        {/* Safe Sandbox Warning Banner */}
         <div className="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-150 px-3.5 py-1.5 rounded-xl uppercase tracking-wider select-none">
           Demo Mode: Working with simulated LIS records
         </div>
@@ -161,20 +155,18 @@ export const LabDashboard = () => {
 
       {/* Grid Layout: Main queue, alerts, and quick actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         {/* Left Columns: Specimen Worklist & Critical Alerts */}
         <div className="lg:col-span-2 space-y-6">
           <SpecimenWorkQueue specimens={specimens} limit={3} />
           
           <CriticalResultPanel 
             items={criticals} 
-            onAcknowledge={handleAcknowledgeCritical} 
+            onAcknowledge={() => {}} // Mock acknowledgment
           />
         </div>
 
         {/* Right Column: Turnaround time & Quick Actions */}
         <div className="space-y-6">
-          
           {/* Quick Actions Panel */}
           <div className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4 rounded-2xl">
             <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3">
@@ -239,7 +231,7 @@ export const LabDashboard = () => {
             </div>
           </div>
 
-          {/* Turnaround Time Monitor Widget */}
+          {/* Turnaround time widget */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-800 text-xs tracking-wider uppercase flex items-center gap-1.5">

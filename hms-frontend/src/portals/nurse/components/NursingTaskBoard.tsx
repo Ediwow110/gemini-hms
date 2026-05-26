@@ -14,12 +14,14 @@ export interface NursingTask {
 interface NursingTaskBoardProps {
   initialTasks: NursingTask[];
   onTaskUpdate?: (task: NursingTask) => void;
+  isMock?: boolean;
 }
 
-export const NursingTaskBoard = ({ initialTasks, onTaskUpdate }: NursingTaskBoardProps) => {
+export const NursingTaskBoard = ({ initialTasks, onTaskUpdate, isMock }: NursingTaskBoardProps) => {
   const [tasks, setTasks] = useState<NursingTask[]>(initialTasks);
 
   const handleStatusChange = (taskId: string, newStatus: 'todo' | 'in_progress' | 'done') => {
+    if (isMock) return;
     const updated = tasks.map(task => {
       if (task.id === taskId) {
         const nextTask = { ...task, status: newStatus };
@@ -88,7 +90,8 @@ export const NursingTaskBoard = ({ initialTasks, onTaskUpdate }: NursingTaskBoar
                   {status === 'todo' && (
                     <button
                       onClick={() => handleStatusChange(task.id, 'in_progress')}
-                      className="text-[10px] font-extrabold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 px-2.5 py-1 rounded-lg border border-indigo-100 flex items-center gap-1 transition-colors"
+                      disabled={isMock}
+                      className="text-[10px] font-extrabold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 px-2.5 py-1 rounded-lg border border-indigo-100 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Play className="h-3 w-3" /> Start
                     </button>
@@ -97,13 +100,15 @@ export const NursingTaskBoard = ({ initialTasks, onTaskUpdate }: NursingTaskBoar
                     <>
                       <button
                         onClick={() => handleStatusChange(task.id, 'todo')}
-                        className="text-[10px] font-extrabold text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 flex items-center gap-1 transition-colors"
+                        disabled={isMock}
+                        className="text-[10px] font-extrabold text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <RefreshCw className="h-3 w-3" /> Revert
                       </button>
                       <button
                         onClick={() => handleStatusChange(task.id, 'done')}
-                        className="text-[10px] font-extrabold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-100 flex items-center gap-1 transition-colors"
+                        disabled={isMock}
+                        className="text-[10px] font-extrabold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-100 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <CheckCircle2 className="h-3 w-3" /> Complete
                       </button>
@@ -112,7 +117,8 @@ export const NursingTaskBoard = ({ initialTasks, onTaskUpdate }: NursingTaskBoar
                   {status === 'done' && (
                     <button
                       onClick={() => handleStatusChange(task.id, 'in_progress')}
-                      className="text-[10px] font-extrabold text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-150 flex items-center gap-1 transition-colors"
+                      disabled={isMock}
+                      className="text-[10px] font-extrabold text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-150 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <RefreshCw className="h-3 w-3" /> Redo
                     </button>

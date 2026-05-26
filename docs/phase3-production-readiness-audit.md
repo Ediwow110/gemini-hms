@@ -76,9 +76,9 @@
 ---
 
 ## 7. Mock/WIP Inventory
-- **EMR Page SOAP Editor**: The editor component is wired, but full historical charting remains WIP/Mock.
-- **Nurse Tasks**: Nurse dashboard utilizes the central patient queue, but the dedicated nurse tasks sub-module is WIP.
-- **Lab Portal**: Specimen receiving is a shell page. Turnaround time monitor displays mock metrics.
+- **Doctor Portal (Phase 4B cleanup)**: SOAP Editor is Real. Doctor Dashboard, Patients Page, and Prescription Panel are now explicitly labeled WIP/Mock with visible amber warning banners, disabled Add/Submit buttons, and clear explanations of missing backend support.
+- **Nurse Portal (Phase 4B cleanup)**: Vitals and Triage are Real. Nurse Dashboard and Tasks Page are now explicitly labeled WIP/Mock with visible banners. The NursingTaskBoard component accepts an `isMock` prop that disables all task status change buttons.
+- **Lab Portal (Phase 4B cleanup)**: Result Encoding, Validation, Validated Results, and Released Results are Real. LabOrdersPage displays real queue data but patient demographics are redacted as `[REDACTED]` (no hardcoded overrides). Lab Dashboard, Specimen Receiving, Result Release, Critical Results, and Turnaround Monitor are now explicitly labeled WIP/Mock with visible amber warning banners, disabled unsafe actions where applicable, and clear explanations of missing backend support.
 - **Cashier Payments**: Invoice list is Real, but refund/void approval requests and HMO integration use mock mockups.
 - **IT Support & Compliance**: System health logs use mock JSON feeds. HIPAA breach alerting triggers mock emails.
 - **Out of Scope**: FHIR/HL7, payment gateway settlement, and automated clinical decisions remain out of scope and do not block staging.
