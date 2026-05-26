@@ -96,13 +96,13 @@ export const NurseDashboard = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       
-      {/* Mock/WIP Warning Banner */}
+      {/* WIP Banner */}
       <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
         <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Nurse Dashboard (Partial — Real task counts)</h5>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Nurse Portal (Real — Advanced nursing workflow WIP)</h5>
           <p className="font-medium mt-0.5">
-            Nursing task board, vitals recording, and triage queue use real API data. Critical vitals alerts, care plans, MAR, and staff scheduling remain out of scope.
+            Task board, vitals recording, and triage queue use real API data. Critical vitals alerts, care plans, MAR, staff scheduling, and patient acuity scoring remain out of scope.
           </p>
         </div>
       </div>

@@ -2,10 +2,15 @@ import { useState, useCallback } from 'react';
 import { PageHeader } from '../../components/ui/page-header';
 import { NursingTaskBoard } from './components/NursingTaskBoard';
 import { useNursingTasks } from '../../hooks/use-nursing-tasks';
-import { Plus, X } from 'lucide-react';
-import type { CreateNurseTaskPayload } from '../../services/nursing.service';
+import { Plus, X, Filter } from 'lucide-react';
+import type { CreateNurseTaskPayload, QueryNurseTaskParams } from '../../services/nursing.service';
 
 export const NurseTasksPage = () => {
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const queryParams: QueryNurseTaskParams | undefined = statusFilter
+    ? { status: statusFilter as QueryNurseTaskParams['status'] }
+    : undefined;
+
   const {
     tasks,
     isLoading,
@@ -15,7 +20,7 @@ export const NurseTasksPage = () => {
     cancelTask,
     reopenTask,
     createTask,
-  } = useNursingTasks();
+  } = useNursingTasks(queryParams);
 
   const [isPending, setIsPending] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -94,13 +99,29 @@ export const NurseTasksPage = () => {
           title="Nursing Daily Worklist"
           description="Monitor, organize, and complete operational nursing assignments and stat orders requested by physicians."
         />
-        <button
-          onClick={() => setShowCreateModal(true)}
-          disabled={isPending}
-          className="btn bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-extrabold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" /> New Task
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+            <Filter className="h-3.5 w-3.5 text-slate-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-transparent text-xs font-semibold text-slate-600 focus:outline-none"
+            >
+              <option value="">All Statuses</option>
+              <option value="OPEN">Open</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            disabled={isPending}
+            className="btn bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-extrabold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" /> New Task
+          </button>
+        </div>
       </div>
 
       <NursingTaskBoard
