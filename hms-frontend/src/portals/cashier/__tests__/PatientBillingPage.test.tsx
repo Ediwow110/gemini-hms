@@ -53,7 +53,7 @@ describe('PatientBillingPage Runtime Tests', () => {
       invoices: [mockInvoice],
       loading: false,
       error: null,
-      refetch: vi.fn() as any,
+      refetch: vi.fn() as unknown as () => Promise<void>,
     });
     vi.mocked(useActiveSession).mockReturnValue({
       session: mockSession,
