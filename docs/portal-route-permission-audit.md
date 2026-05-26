@@ -12,7 +12,7 @@ This document provides a comprehensive mapping of frontend portals, their routes
 | **Doctor** | `/doctor` | `DoctorDashboard` | Doctor | `allowedRoles=['Doctor']` | `encounter.create`, `patient.view` | `doctor@hospital.com` | Partial (Real clinical workflow API; EMR page WIP) |
 | **Nurse** | `/nurse` | `NurseDashboard` | Nurse | `allowedRoles=['Nurse']` | `encounter.update`, `patient.update` | `nurse@hospital.com` | Partial (Real triage/vitals API; tasks WIP) |
 | **Patient** | `/patient` | `PatientDashboard` | Patient | `permission='patient.portal.view_own'` | `patient.portal.view_own` | `patient@hospital.com` | Partial (Real patient portal API for profile, lab results, prescriptions, invoices) |
-| **Cashier** | `/cashier` | `CashierDashboard` | Cashier | `allowedRoles=['Cashier']` | `billing.invoice.view`, `billing.payment.create` | `cashier@hospital.com` | Partial (Real invoice API; payments/sessions mock) |
+| **Cashier** | `/cashier` | `CashierDashboard` | Cashier | `allowedRoles=['Cashier']` | `billing.invoice.view`, `billing.payment.create` | `cashier@hospital.com` | Partial (Real invoice, payment, and session APIs; refunds/HMO/reconciliation mock) |
 | **Med-Tech** | `/lab` | `LabDashboard` | Med-Tech | `permission='lab.result.view'` | `lab.result.encode`, `lab.result.view`, `lab.result.validate` | `medtech@hospital.com` | Partial (Real lab workflow API; critical results/orders mock) |
 | **Pharmacist** | `/pharmacy` | `PharmacyHub` | Pharmacist | `permission='inventory.stock.dispense'` | `inventory.stock.dispense` | `pharmacist@hospital.com` | Real (Sprint 2A — real prescription queue and dispense) |
 | **Supplier** | `/supplier` | `SupplierDashboard` | Supplier | `allowedRoles=['Supplier']` | `marketplace.supplier.manage_listing` | `supplier@hospital.com` | Real |
@@ -69,8 +69,8 @@ This document provides a comprehensive mapping of frontend portals, their routes
 - **Status**: Fully Real (Sprint 2A implementation)
 
 ### Cashier / Billing Portal
-- **Real API-backed**: Invoice list (GET /api/v1/billing/invoices), Active session (GET /api/v1/billing/sessions/active)
-- **Partial/Mock**: Payments page, Refund/Void queue, HMO Claims page, Daily Reconciliation, Session management (UI shells only)
+- **Real API-backed**: Invoice list (GET /api/v1/billing/invoices), Active session (GET /api/v1/billing/sessions/active), Session opening/closing (POST /api/v1/billing/sessions/open, PATCH /api/v1/billing/sessions/:id/close), Payment recording (POST /api/v1/billing/payments)
+- **Partial/Mock**: Refund/Void queue, HMO Claims page, Daily Reconciliation (UI shells only)
 - **Permissions**: `billing.invoice.view`, `billing.payment.create`, `billing.refund.*`, `billing.payment.void.*`
 
 ## Security Considerations
