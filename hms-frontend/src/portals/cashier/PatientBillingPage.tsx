@@ -32,6 +32,10 @@ export const PatientBillingPage = () => {
   const [submitError, setSubmitError] = useState<string>('');
 
   const invoice = invoices.find(inv => inv.id === invoiceId || inv.invoiceNumber === invoiceId);
+  const patientId = invoice?.order?.patient?.id || '';
+  // Load clinical handoff data if patientId exists (required for Target 12)
+  const { data: handoffData } = usePatientBillingHandoff(patientId);
+  const hasHandoff = !!handoffData;
 
   if (invLoading || sessionLoading) {
     return (
@@ -58,10 +62,6 @@ export const PatientBillingPage = () => {
       </div>
     );
   }
-
-  const patientId = invoice.order?.patient?.id || '';
-  // Load clinical handoff data if patientId exists (required for Target 12)
-  const { data: _handoffData } = usePatientBillingHandoff(patientId);
 
   // Demographics fallback check for UUID vs mock (required for Target 17)
   const isRealUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(patientId);
@@ -240,6 +240,12 @@ export const PatientBillingPage = () => {
                   <span className="text-slate-500">Payment Mode:</span>
                   <span className="font-black text-slate-800 capitalize">{paymentMethod}</span>
                 </div>
+
+                {hasHandoff && (
+                  <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1 text-center font-bold uppercase tracking-wider">
+                    Clinical Handoff Active
+                  </div>
+                )}
 
                 {submitError && (
                   <p className="text-[10px] text-rose-650 font-extrabold uppercase tracking-wide">
