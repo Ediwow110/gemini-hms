@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/page-header';
 import { Search, FileText, HelpCircle } from 'lucide-react';
 import { useInvoices } from '../../hooks/use-billing';
 
 export const InvoicesPage = () => {
+  const navigate = useNavigate();
   const { invoices, loading, error, refetch } = useInvoices();
   const [search, setSearch] = useState('');
 
@@ -79,8 +81,11 @@ export const InvoicesPage = () => {
                     <td className="px-6 py-4 font-mono text-slate-500">{Number(inv.paidAmount).toLocaleString()} ₱</td>
                     <td className="px-6 py-4 text-slate-500">{new Date(inv.createdAt).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-center">
-                      <button className="border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer">
-                        <FileText className="h-3.5 w-3.5 inline mr-1" /> View
+                      <button
+                        onClick={() => navigate(`/cashier/billing?invoice=${inv.id}`)}
+                        className="border border-slate-200 hover:bg-slate-50 text-slate-655 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer"
+                      >
+                        <FileText className="h-3.5 w-3.5 inline mr-1" /> Pay
                       </button>
                     </td>
                   </tr>

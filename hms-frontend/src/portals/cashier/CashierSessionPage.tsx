@@ -1,81 +1,92 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { PageHeader } from '../../components/ui/page-header';
-import { Play, LogOut, Scale, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Play, LogOut, Scale, ShieldCheck } from 'lucide-react';
+import { useActiveSession } from '../../hooks/use-billing';
+import { useUser } from '../../hooks/use-user';
 
-export const CashierSessionPage = () => {
-  const [session, setSession] = useState<{
-    id: string;
-    cashierName: string;
-    status: 'Active' | 'Closed';
-    startedAt: string;
-    startingCash: number;
-    expectedCash: number;
-    actualCash: number;
-  } | null>({
-    id: 'SESS-2026-0521',
-    cashierName: 'Mark Santos',
-    status: 'Active',
-    startedAt: 'Today, 08:00 AM',
-    startingCash: 5000,
-    expectedCash: 23450,
-    actualCash: 23450,
-  });
+export const CashierSessionPage: React.FC = () => {
+  const user = useUser();
+  const { session, loading, error, refetch, openSession, closeSession } = useActiveSession();
 
-  const [openingCash, setOpeningCash] = useState<string>('5000');
-  const [actualCash, setActualCash] = useState<string>('23450');
+  const [openingBalance, setOpeningBalance] = useState<string>('5000');
+  const [actualClosingBalance, setActualClosingBalance] = useState<string>('');
   const [remarks, setRemarks] = useState<string>('');
-  const [error, setError] = useState<string>('');
+  const [submitError, setSubmitError] = useState<string>('');
 
-  const handleOpenSession = (e: React.FormEvent) => {
+  const cashPayments = session?.payments
+    ?.filter((p) => p.paymentMethod === 'CASH' && p.status === 'POSTED')
+    ?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+
+  const expectedCash = Number(session?.openingBalance || 0) + cashPayments;
+
+  const handleOpenSession = async (e: React.FormEvent) => {
     e.preventDefault();
-    const floatAmount = parseFloat(openingCash) || 0;
-    setSession({
-      id: `SESS-2026-05${Math.floor(Math.random() * 90) + 10}`,
-      cashierName: 'Mark Santos',
-      status: 'Active',
-      startedAt: 'Today, Just Now',
-      startingCash: floatAmount,
-      expectedCash: floatAmount,
-      actualCash: floatAmount,
-    });
-    alert('Cash drawer session opened successfully.');
+    setSubmitError('');
+    if (!user?.branchId) {
+      setSubmitError('Active branch context is required to open a session.');
+      return;
+    }
+    try {
+      await openSession({
+        branchId: user.branchId,
+        openingBalance: parseFloat(openingBalance) || 0,
+      });
+      refetch();
+    } catch (err) {
+      setSubmitError((err as Error).message || 'Failed to open session');
+    }
   };
 
-  const handleCloseSession = (e: React.FormEvent) => {
+  const handleCloseSession = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
     if (!session) return;
 
-    const actualFloat = parseFloat(actualCash) || 0;
-    const variance = actualFloat - session.expectedCash;
-
-    if (variance !== 0 && !remarks.trim()) {
-      setError('Remarks are strictly required when there is a cash drawer variance.');
+    const actual = parseFloat(actualClosingBalance);
+    if (isNaN(actual)) {
+      setSubmitError('Please enter a valid actual closing balance.');
       return;
     }
 
-    setError('');
-    setSession(null);
-    alert('Session successfully reconciled and closed. Drawer logs archived.');
+    const variance = actual - expectedCash;
+    if (variance !== 0 && !remarks.trim()) {
+      setSubmitError('Remarks are strictly required when there is a cash drawer variance.');
+      return;
+    }
+
+    try {
+      await closeSession(session.id, {
+        actualClosingBalance: actual,
+        remarks: remarks.trim() || undefined,
+      });
+      setActualClosingBalance('');
+      setRemarks('');
+      refetch();
+    } catch (err) {
+      setSubmitError((err as Error).message || 'Failed to close session');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-xs text-slate-400">
+        Loading cashier session status...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
-      
-      {/* Sandbox Warning Banner */}
-      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
-        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Demonstration Sandbox Shell</h5>
-          <p className="font-medium mt-0.5">
-            This cash drawer manager simulates opening and closing sessions in local memory.
-          </p>
-        </div>
-      </div>
-
       <PageHeader 
         title="POS Teller Drawer Console" 
         description="Monitor current cash-in-drawer starting floats, reconcile drawer balances, and close cashier shifts." 
       />
+
+      {error && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-750 font-bold">
+          {error}
+        </div>
+      )}
 
       {session ? (
         /* Active session details */
@@ -92,12 +103,8 @@ export const CashierSessionPage = () => {
                 <span className="font-mono font-bold text-slate-800">{session.id}</span>
               </div>
               <div className="flex justify-between font-semibold border-b border-slate-50 pb-1.5">
-                <span className="text-slate-500">Cashier:</span>
-                <span className="font-bold text-slate-850">{session.cashierName}</span>
-              </div>
-              <div className="flex justify-between font-semibold border-b border-slate-50 pb-1.5">
                 <span className="text-slate-500">Shift Started:</span>
-                <span className="font-bold text-slate-800">{session.startedAt}</span>
+                <span className="font-bold text-slate-800">{new Date(session.openedAt).toLocaleTimeString()}</span>
               </div>
               <div className="flex justify-between font-bold pt-1">
                 <span className="text-slate-900">Current Status:</span>
@@ -116,15 +123,15 @@ export const CashierSessionPage = () => {
             <div className="space-y-2.5 text-xs font-semibold">
               <div className="flex justify-between border-b border-slate-50 pb-1.5">
                 <span className="text-slate-500">Starting Drawer:</span>
-                <span className="font-mono text-slate-800">₱{session.startingCash.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="font-mono text-slate-800">₱{Number(session.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between border-b border-slate-50 pb-1.5">
-                <span className="text-slate-500">Expected Total:</span>
-                <span className="font-mono text-slate-850">₱{session.expectedCash.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="text-slate-500">CASH Payments:</span>
+                <span className="font-mono text-slate-850">₱{cashPayments.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between font-bold pt-1.5 text-sm">
                 <span className="text-slate-900">Expected Balance:</span>
-                <span className="font-mono text-slate-900">₱{session.expectedCash.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="font-mono text-slate-900">₱{expectedCash.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>
@@ -139,15 +146,16 @@ export const CashierSessionPage = () => {
                   <label className="text-[10px] font-black text-slate-450 uppercase block">Actual Counted Cash</label>
                   <input
                     type="number"
-                    value={actualCash}
-                    onChange={(e) => setActualCash(e.target.value)}
+                    value={actualClosingBalance}
+                    onChange={(e) => setActualClosingBalance(e.target.value)}
                     className="input font-mono font-bold text-slate-800 text-sm py-2 bg-slate-50 border border-slate-200 rounded-xl w-full"
                     step="0.01"
+                    required
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-450 uppercase block">Variance Remarks</label>
+                  <label className="text-[10px] font-black text-slate-455 uppercase block">Variance Remarks</label>
                   <textarea
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
@@ -156,9 +164,9 @@ export const CashierSessionPage = () => {
                   />
                 </div>
 
-                {error && (
-                  <p className="text-[10px] text-rose-600 font-extrabold uppercase tracking-wide animate-pulse">
-                    {error}
+                {submitError && (
+                  <p className="text-[10px] text-rose-600 font-extrabold uppercase tracking-wide">
+                    {submitError}
                   </p>
                 )}
 
@@ -182,19 +190,27 @@ export const CashierSessionPage = () => {
           </h4>
           <form onSubmit={handleOpenSession} className="space-y-4 text-xs font-semibold text-slate-650">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-450 uppercase block">Starting Drawer Float (₱)</label>
+              <label className="text-[10px] font-black text-slate-455 uppercase block">Starting Drawer Float (₱)</label>
               <input
                 type="number"
-                value={openingCash}
-                onChange={(e) => setOpeningCash(e.target.value)}
+                value={openingBalance}
+                onChange={(e) => setOpeningBalance(e.target.value)}
                 placeholder="5,000.00"
                 className="input font-mono font-bold text-slate-800 text-sm py-2 bg-slate-50 border border-slate-200 rounded-xl w-full"
                 step="0.01"
+                required
               />
             </div>
             <div className="p-3 bg-indigo-50/50 border border-indigo-150/60 rounded-2xl text-[11px] text-slate-550 leading-relaxed font-semibold">
               Opening float defines starting cash in physical drawer. Opening shift triggers security audit logs for tracking teller drawer variance.
             </div>
+
+            {submitError && (
+              <p className="text-[10px] text-rose-600 font-extrabold uppercase tracking-wide">
+                {submitError}
+              </p>
+            )}
+
             <button
               type="submit"
               className="btn btn-primary text-xs font-black py-2.5 rounded-xl w-full flex items-center justify-center gap-1.5"
