@@ -8,11 +8,12 @@ export const MarketplaceShellNotice: React.FC = () => {
         <ShieldAlert className="h-5 w-5 text-blue-600" />
       </div>
       <div>
-        <h4 className="text-sm font-black text-blue-900 tracking-tight">Marketplace Buyer Sandbox</h4>
+        <h4 className="text-sm font-black text-blue-900 tracking-tight">Marketplace (WIP)</h4>
         <p className="text-xs text-blue-700 font-medium leading-relaxed mt-0.5">
-          This buyer portal is a <strong>functional prototype shell</strong>. Product listings, quotes, and order tracking 
-          are mock-generated for demonstration purposes. No real procurement actions (ordering, payment, stock reservation) 
-          are performed in this phase.
+          <strong>Real data:</strong> Supplier listings, RFQ responses, orders (supplier-side).
+        </p>
+        <p className="text-xs text-blue-700 font-medium leading-relaxed mt-0.5">
+          <strong>In development:</strong> Buyer cart/checkout, product catalog browsing, order tracking, and service tickets.
         </p>
       </div>
     </div>
