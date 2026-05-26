@@ -10,6 +10,10 @@ vi.mock('../../../hooks/use-billing', () => ({
   useCreatePayment: vi.fn(),
 }));
 
+vi.mock('../../../hooks/use-clinical-workflow', () => ({
+  usePatientBillingHandoff: () => ({ data: null, loading: false }),
+}));
+
 vi.mock('../../../hooks/use-user', () => ({
   useUser: () => ({
     id: 'cashier-1',
@@ -116,5 +120,34 @@ describe('PatientBillingPage Runtime Tests', () => {
     await waitFor(() => {
       expect(screen.getByText(/Billing cleared. POS Terminal receipt registered in audit logs./i)).toBeInTheDocument();
     });
+  });
+
+  it('renders redacted demographics when in real UUID patient mode', () => {
+    const uuidInvoice = {
+      ...mockInvoice,
+      order: {
+        patient: {
+          id: 'd3b07384-d113-4956-a5db-25785715e21c',
+          firstName: 'John',
+          lastName: 'Doe',
+          patientNumber: 'MRN-100',
+        },
+      },
+    };
+    vi.mocked(useInvoices).mockReturnValue({
+      invoices: [uuidInvoice],
+      loading: false,
+      error: null,
+      refetch: vi.fn() as unknown as () => Promise<void>,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/cashier/billing?invoice=INV-2026-001']}>
+        <PatientBillingPage />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('[REDACTED] (Access Restricted)')).toBeInTheDocument();
+    expect(screen.getByText('MRN: [REDACTED]')).toBeInTheDocument();
   });
 });

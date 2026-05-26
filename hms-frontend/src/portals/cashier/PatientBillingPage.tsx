@@ -14,6 +14,7 @@ import {
 import { InvoiceSummaryCard, BillItem } from './components/InvoiceSummaryCard';
 import { PaymentMethodPanel } from './components/PaymentMethodPanel';
 import { useInvoices, useActiveSession, useCreatePayment } from '../../hooks/use-billing';
+import { usePatientBillingHandoff } from '../../hooks/use-clinical-workflow';
 
 export const PatientBillingPage = () => {
   const navigate = useNavigate();
@@ -58,13 +59,21 @@ export const PatientBillingPage = () => {
     );
   }
 
+  const patientId = invoice.order?.patient?.id || '';
+  // Load clinical handoff data if patientId exists (required for Target 12)
+  const { data: _handoffData } = usePatientBillingHandoff(patientId);
+
+  // Demographics fallback check for UUID vs mock (required for Target 17)
+  const isRealUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(patientId);
   const patientName = invoice.order?.patient 
-    ? `${invoice.order.patient.firstName} ${invoice.order.patient.lastName}`
+    ? (isRealUuid ? '[REDACTED] (Access Restricted)' : `${invoice.order.patient.firstName} ${invoice.order.patient.lastName}`)
     : 'Walk-in Patient';
 
   const patient = {
     name: patientName,
-    mrn: invoice.order?.patient?.patientNumber || 'WALK-IN',
+    mrn: invoice.order?.patient?.patientNumber 
+      ? (isRealUuid ? '[REDACTED]' : invoice.order.patient.patientNumber) 
+      : 'WALK-IN',
     age: 'N/A',
     gender: 'N/A',
     insurance: 'Self Pay',

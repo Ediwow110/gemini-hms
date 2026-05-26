@@ -11,6 +11,7 @@ export interface InvoiceDto {
   patientName?: string;
   order?: {
     patient?: {
+      id?: string;
       firstName: string;
       lastName: string;
       patientNumber?: string;
