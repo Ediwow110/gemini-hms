@@ -7,6 +7,7 @@ import {
   Link2,
   Database,
   Terminal,
+  AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ITScopeFilter from './components/ITScopeFilter';
@@ -34,6 +35,14 @@ export const ITSupportDashboard: React.FC = () => {
       </div>
 
       {/* Scope Filter */}
+      {/* WIP Banner */}
+      <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex gap-2 text-xs text-amber-800">
+        <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <h5 className="font-bold uppercase text-[10px] tracking-wider">IT Operations (Partial)</h5>
+          <p className="font-medium mt-0.5">System health, jobs, logs, and backup data are simulated for demonstration. User support ticketing and session management are real.</p>
+        </div>
+      </div>
       <ITScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
 
       {/* Health Metrics Row */}
