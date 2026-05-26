@@ -1,15 +1,8 @@
 import React from 'react';
-import AppointmentSummaryCard, { Appointment } from './components/AppointmentSummaryCard';
 import PatientPortalShellNotice from './components/PatientPortalShellNotice';
-import { Plus } from 'lucide-react';
+import { Calendar, AlertTriangle } from 'lucide-react';
 
 export const PatientAppointmentsPage: React.FC = () => {
-  const mockAppointments: Appointment[] = [
-    { id: '1', doctorName: 'Dr. Gregory House', department: 'Clinical', date: '2026-05-25', time: '10:00 AM', status: 'UPCOMING', type: 'CLINIC' },
-    { id: '2', doctorName: 'Dr. James Wilson', department: 'Oncology', date: '2026-04-12', time: '02:30 PM', status: 'COMPLETED', type: 'TELEHEALTH' },
-    { id: '3', doctorName: 'Dr. Eric Foreman', department: 'Neurology', date: '2026-03-15', time: '09:00 AM', status: 'COMPLETED', type: 'CLINIC' },
-  ];
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -17,17 +10,30 @@ export const PatientAppointmentsPage: React.FC = () => {
           <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             My Appointments
           </h2>
-          <p className="text-xs text-slate-500 font-medium">Schedule and manage your visits with our specialists</p>
+          <p className="text-xs text-slate-500 font-medium">Schedule and manage your visits</p>
         </div>
-        <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md cursor-pointer">
-          <Plus className="h-4 w-4" /> Book New Appointment
-        </button>
       </div>
 
       <PatientPortalShellNotice />
 
-      <div className="grid grid-cols-1 gap-6">
-        <AppointmentSummaryCard appointments={mockAppointments} />
+      {/* WIP Banner */}
+      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
+        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+        <div>
+          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Appointments (WIP)</h5>
+          <p className="font-medium mt-0.5">
+            Appointment scheduling and management is not yet available. Please contact your clinic directly to book, reschedule, or cancel visits.
+          </p>
+        </div>
+      </div>
+
+      {/* Empty state placeholder */}
+      <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-slate-400 space-y-3">
+        <Calendar className="h-10 w-10 mx-auto text-slate-300" />
+        <p className="text-sm font-bold text-slate-600">No appointments available</p>
+        <p className="text-xs text-slate-450 max-w-md mx-auto">
+          Online appointment booking is currently under development. Please call or visit the clinic reception desk to schedule an appointment.
+        </p>
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ This document provides a comprehensive mapping of frontend portals, their routes
 | **Receptionist** | `/queue` | `Queue` | Receptionist | `permission='queue.view'` | `queue.view`, `queue.manage` | `receptionist@hospital.com` | Real |
 | **Doctor** | `/doctor` | `DoctorDashboard` | Doctor | `allowedRoles=['Doctor']` | `encounter.create`, `patient.view` | `doctor@hospital.com` | Partial (Real clinical workflow API; EMR page WIP) |
 | **Nurse** | `/nurse` | `NurseDashboard` | Nurse | `allowedRoles=['Nurse']` | `encounter.update`, `patient.update` | `nurse@hospital.com` | Partial (Real triage/vitals API; tasks WIP) |
-| **Patient** | `/patient` | `PatientDashboard` | Patient | `permission='patient.portal.view_own'` | `patient.portal.view_own` | `patient@hospital.com` | Partial (Real patient portal API for profile, lab results, prescriptions, invoices) |
+| **Patient** | `/patient` | `PatientDashboard` | Patient | `permission='patient.portal.view_own'` | `patient.portal.view_own` | `patient@hospital.com` | Partial (Real: profile, lab results, prescriptions, invoices. WIP: appointments, medical records, messages, online payments) |
 | **Cashier** | `/cashier` | `CashierDashboard` | Cashier | `allowedRoles=['Cashier']` | `billing.invoice.view`, `billing.payment.create` | `cashier@hospital.com` | Partial (Real invoice, payment, and session APIs; refunds/HMO/reconciliation mock) |
 | **Med-Tech** | `/lab` | `LabDashboard` | Med-Tech | `permission='lab.result.view'` | `lab.result.encode`, `lab.result.view`, `lab.critical.view`, `lab.critical.acknowledge` | `medtech@hospital.com` | Partial (Real dashboard, specimen receiving, critical results, result release, turnaround) |
 | **Pharmacist** | `/pharmacy` | `PharmacyHub` | Pharmacist | `permission='inventory.stock.dispense'` | `inventory.stock.dispense`, `pharmacy.stockmovement.view` | `pharmacist@hospital.com` | Real (Sprint 2A + 2B — prescription queue, dispense, stock movements, low-stock alerts) |
@@ -46,9 +46,10 @@ This document provides a comprehensive mapping of frontend portals, their routes
 ## Clinical Portal Status (Phase 2F Hardening)
 
 ### Patient Portal
-- **Real API-backed**: Profile (GET /patient-portal/profile), Lab results (GET /patient-portal/lab-results), Prescriptions (GET /patient-portal/prescriptions), Invoices (GET /patient-portal/invoices)
+- **Real API-backed**: Profile (GET /patient-portal/profile), Lab results (GET /patient-portal/lab-results), Prescriptions (GET /patient-portal/prescriptions), Invoices (GET /patient-portal/invoices — wired with loading/error/empty states)
 - **Partial/Mock**: Appointments, Medical Records, Messages (no backend persistence for these patient-facing flows yet)
 - **Permissions**: `patient.portal.view_own` (frontend only; backend uses PatientJwtGuard)
+- **Phase 21B update**: Billing page now wired to real invoice API; appointments page updated with clear WIP banner; shell notice corrected to accurately describe real vs WIP areas
 
 ### Doctor Portal
 - **Real API-backed**: Dashboard metrics (useClinicalDashboardSummary), Work queue (useClinicalWorkQueue), SOAP Editor (useClinicalWorkflow), Patient directory/list with search (GET /api/v1/patients?search=), Prescription list (GET /api/v1/prescriptions?patientId=), Prescription creation (POST /api/v1/prescriptions with audit)
