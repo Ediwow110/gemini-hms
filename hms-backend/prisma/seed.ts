@@ -168,6 +168,11 @@ async function main() {
     { name: 'hr.employee.manage', scope: 'tenant/branch', riskLevel: 'HIGH' },
     { name: 'hr.payroll.view', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
     { name: 'hr.payroll.manage', scope: 'tenant/branch', riskLevel: 'HIGH' },
+
+    // Nursing Tasks
+    { name: 'nurse.task.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'nurse.task.manage', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+    { name: 'nurse.task.update', scope: 'tenant/branch', riskLevel: 'LOW' },
   ];
 
   console.log('Seeding Permissions...');
@@ -237,7 +242,8 @@ async function main() {
       'approval.request.view', 'approval.request.process',
       'report.export', 'audit.view',
       'encounter.create', 'encounter.view', 'encounter.update',
-      'procurement.supplier.view', 'procurement.request.view', 'procurement.po.view'
+      'procurement.supplier.view', 'procurement.request.view', 'procurement.po.view',
+      'nurse.task.view', 'nurse.task.manage'
     ],
     'Receptionist': [
       'patient.view', 'patient.create', 'patient.update', 
@@ -264,8 +270,9 @@ async function main() {
       'patient.view', 'inventory.item.view', 'inventory.stock.dispense', 'queue.view'
     ],
     'Nurse': [
-      'patient.view', 'patient.update', 'encounter.view', 'encounter.update', 
-      'inventory.item.view', 'queue.view', 'procurement.request.create'
+      'patient.view', 'patient.update', 'encounter.view', 'encounter.update',
+      'inventory.item.view', 'queue.view', 'procurement.request.create',
+      'nurse.task.view', 'nurse.task.update'
     ],
     'Patient': [
       'patient.portal.view_own', 'patient.portal.message', 'patient.portal.appointment.view',

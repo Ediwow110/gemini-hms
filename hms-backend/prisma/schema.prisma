@@ -78,6 +78,7 @@ model Tenant {
   installationJobs            InstallationJob[]
   assets                      Asset[]
   supportTickets              SupportTicket[]
+  nurseTasks                  NurseTask[]
 
   @@map("tenants")
 }
@@ -108,6 +109,7 @@ model Branch {
   labSpecimens     LabSpecimen[]
   rfqs             RFQ[]
   supportTickets   SupportTicket[]
+  nurseTasks       NurseTask[]
 
   @@map("branches")
 }
@@ -156,6 +158,10 @@ model User {
   installationJobs        InstallationJob[]
   ticketsReported         SupportTicket[]       @relation("TicketReporter")
   ticketsAssigned         SupportTicket[]       @relation("TicketAssignee")
+  nurseTasksAssigned      NurseTask[]            @relation("NurseTaskAssigned")
+  nurseTasksCreated       NurseTask[]            @relation("NurseTaskCreated")
+  nurseTasksCompleted     NurseTask[]            @relation("NurseTaskCompleted")
+  nurseTasksCancelled     NurseTask[]            @relation("NurseTaskCancelled")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -475,6 +481,7 @@ model Patient {
   insuranceClaims InsuranceClaim[]
   triageRecords   Triage[]
   labSpecimens    LabSpecimen[]
+  nurseTasks      NurseTask[]
 
   @@unique([tenantId, patientNumber])
   @@map("patients")
@@ -1955,6 +1962,20 @@ enum TicketIssueType {
   OTHER
 }
 
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model SupportTicket {
   id           String          @id @default(uuid()) @db.Uuid
   tenantId     String          @map("tenant_id") @db.Uuid
@@ -2009,4 +2030,42 @@ model MarketplaceListing {
   @@index([tenantId])
   @@index([status])
   @@map("marketplace_listings")
+}
+
+model NurseTask {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  branchId  String @map("branch_id") @db.Uuid
+  patientId String? @map("patient_id") @db.Uuid
+  assignedUserId String? @map("assigned_user_id") @db.Uuid
+  createdById    String @map("created_by_id") @db.Uuid
+
+  title       String @db.VarChar(200)
+  description String? @db.Text
+  priority    TaskPriority @default(MEDIUM)
+  status      TaskStatus @default(OPEN)
+
+  dueAt         DateTime? @map("due_at")
+  completedAt   DateTime? @map("completed_at")
+  completedById String?   @map("completed_by_id") @db.Uuid
+  cancelledAt   DateTime? @map("cancelled_at")
+  cancelledById String?   @map("cancelled_by_id") @db.Uuid
+  cancellationReason String? @map("cancellation_reason") @db.VarChar(500)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  patient    Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  assignedTo User?   @relation("NurseTaskAssigned", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  createdBy  User    @relation("NurseTaskCreated", fields: [createdById], references: [id])
+  completedBy User?  @relation("NurseTaskCompleted", fields: [completedById], references: [id], onDelete: SetNull)
+  cancelledBy User?  @relation("NurseTaskCancelled", fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, branchId, status])
+  @@index([tenantId, assignedUserId, status])
+  @@index([tenantId, patientId])
+  @@index([dueAt])
+  @@map("nurse_tasks")
 }
