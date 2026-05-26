@@ -82,7 +82,7 @@ export const LabOrdersPage = () => {
       accessCode: `LIS-${item.queueNumber}`,
       physician: '[REDACTED]',
       department: '[REDACTED]',
-      billingStatus: 'PENDING_VERIFICATION' as any,
+      billingStatus: 'Prepaid',
       testPanels: [],
       status,
       orderDate: item.timestamp ? format(new Date(item.timestamp), 'yyyy-MM-dd hh:mm a') : 'N/A',

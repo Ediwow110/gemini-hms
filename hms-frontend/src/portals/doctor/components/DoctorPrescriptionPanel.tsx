@@ -15,7 +15,7 @@ interface DoctorPrescriptionPanelProps {
   isLocked: boolean;
 }
 
-export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescriptionPanelProps) => {
+export const DoctorPrescriptionPanel = ({ patientId: _patientId, isLocked }: DoctorPrescriptionPanelProps) => {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([
     { id: 'RX-01', medicationName: 'Amlodipine 5mg', dosage: '1 tablet', frequency: 'Once daily (OD)', duration: '30 days', instructions: 'Take in the morning with or without food.' },
     { id: 'RX-02', medicationName: 'Metformin 500mg', dosage: '1 tablet', frequency: 'Twice daily (BID)', duration: '60 days', instructions: 'Take with meals to minimize GI side effects.' },
@@ -51,7 +51,7 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescript
   };
 
   return (
-    <div className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4">
+    <div className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4" data-patient-id={_patientId}>
       {/* Mock/WIP Warning Banner */}
       <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex gap-2 text-xs text-amber-800">
         <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
