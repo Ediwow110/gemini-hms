@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -166,18 +167,26 @@ export class InventoryService {
       },
     });
 
-    // Atomic Stock Transaction
+    // Atomic Stock Transaction with Optimistic Locking
     return this.prisma.$transaction(async (tx) => {
       const previousStock = stock.quantity;
       const newStock = previousStock + dto.quantity;
 
       const stockUpdate = await tx.branchStock.updateMany({
-        where: { id: stock.id, tenantId, branchId },
-        data: { quantity: newStock },
+        where: { id: stock.id, tenantId, branchId, version: stock.version },
+        data: { quantity: newStock, version: { increment: 1 } },
       });
 
       if (stockUpdate.count === 0) {
-        throw new NotFoundException('Stock not found for this branch');
+        const current = await tx.branchStock.findUnique({
+          where: { id: stock.id },
+        });
+        if (!current) {
+          throw new NotFoundException('Stock not found for this branch');
+        }
+        throw new ConflictException(
+          'version_conflict: Stock was modified by another transaction',
+        );
       }
 
       const updatedStock = await tx.branchStock.findFirst({
@@ -284,18 +293,26 @@ export class InventoryService {
       );
     }
 
-    // Atomic Stock Transaction
+    // Atomic Stock Transaction with Optimistic Locking
     return this.prisma.$transaction(async (tx) => {
       const previousStock = stock.quantity;
       const newStock = previousStock - quantity;
 
       const stockUpdate = await tx.branchStock.updateMany({
-        where: { id: stock.id, tenantId, branchId },
-        data: { quantity: newStock },
+        where: { id: stock.id, tenantId, branchId, version: stock.version },
+        data: { quantity: newStock, version: { increment: 1 } },
       });
 
       if (stockUpdate.count === 0) {
-        throw new NotFoundException('Stock not found for this branch');
+        const current = await tx.branchStock.findUnique({
+          where: { id: stock.id },
+        });
+        if (!current) {
+          throw new NotFoundException('Stock not found for this branch');
+        }
+        throw new ConflictException(
+          'version_conflict: Stock was modified by another transaction',
+        );
       }
 
       const updatedStock = await tx.branchStock.findFirst({
@@ -397,12 +414,20 @@ export class InventoryService {
       const newStock = dto.newQuantity;
 
       const stockUpdate = await tx.branchStock.updateMany({
-        where: { id: stock.id, tenantId, branchId },
-        data: { quantity: newStock },
+        where: { id: stock.id, tenantId, branchId, version: stock.version },
+        data: { quantity: newStock, version: { increment: 1 } },
       });
 
       if (stockUpdate.count === 0) {
-        throw new NotFoundException('Stock not found');
+        const current = await tx.branchStock.findUnique({
+          where: { id: stock.id },
+        });
+        if (!current) {
+          throw new NotFoundException('Stock not found');
+        }
+        throw new ConflictException(
+          'version_conflict: Stock was modified by another transaction',
+        );
       }
 
       // Create stock log for the adjustment

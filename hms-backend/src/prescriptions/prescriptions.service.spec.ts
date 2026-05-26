@@ -79,7 +79,7 @@ describe('PrescriptionsService', () => {
           eventKey: 'PRESCRIPTION_CREATED',
           recordType: 'Prescription',
         }),
-        undefined,
+        expect.any(Object), // tx (Prisma transaction client)
         'branch1',
       );
     });

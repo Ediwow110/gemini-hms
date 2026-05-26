@@ -35,6 +35,7 @@ export class PrescriptionsController {
 
   @Get()
   @RequirePermissions('doctor.prescription.view')
+  @RequireBranchContext()
   findByPatient(
     @GetUser('tenantId') tenantId: string,
     @Query('patientId') patientId: string,
