@@ -158,10 +158,10 @@ model User {
   installationJobs        InstallationJob[]
   ticketsReported         SupportTicket[]       @relation("TicketReporter")
   ticketsAssigned         SupportTicket[]       @relation("TicketAssignee")
-  nurseTasksAssigned      NurseTask[]            @relation("NurseTaskAssigned")
-  nurseTasksCreated       NurseTask[]            @relation("NurseTaskCreated")
-  nurseTasksCompleted     NurseTask[]            @relation("NurseTaskCompleted")
-  nurseTasksCancelled     NurseTask[]            @relation("NurseTaskCancelled")
+  nurseTasksAssigned      NurseTask[]           @relation("NurseTaskAssigned")
+  nurseTasksCreated       NurseTask[]           @relation("NurseTaskCreated")
+  nurseTasksCompleted     NurseTask[]           @relation("NurseTaskCompleted")
+  nurseTasksCancelled     NurseTask[]           @relation("NurseTaskCancelled")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -742,36 +742,48 @@ model IdempotencyRecord {
 }
 
 model LabResult {
-  id             String    @id @default(uuid()) @db.Uuid
-  tenantId       String    @map("tenant_id") @db.Uuid
-  orderId        String    @unique @map("order_id") @db.Uuid
-  status         String    @default("PENDING_COLLECTION")
-  results        Json? // Key-value results snapshot
-  remarks        String? // Clinical remarks
-  approvedById   String?   @map("approved_by_id") @db.Uuid
-  lockedAt       DateTime? @map("locked_at")
-  encodedById    String?   @map("encoded_by_id") @db.Uuid
-  encodedAt      DateTime? @map("encoded_at")
-  validatedById  String?   @map("validated_by_id") @db.Uuid
-  validatedAt    DateTime? @map("validated_at")
-  releasedById   String?   @map("released_by_id") @db.Uuid
-  releasedAt     DateTime? @map("released_at")
-  lastEditedById String?   @map("last_edited_by_id") @db.Uuid
-  lastEditedAt   DateTime? @map("last_edited_at")
-  createdById    String?   @map("created_by_id") @db.Uuid
-  updatedById    String?   @map("updated_by_id") @db.Uuid
-  deletedAt      DateTime? @map("deleted_at")
-  version        Int       @default(0)
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  archivedAt     DateTime? @map("archived_at")
-  archiveReason  String?   @map("archive_reason")
+  id                       String    @id @default(uuid()) @db.Uuid
+  tenantId                 String    @map("tenant_id") @db.Uuid
+  orderId                  String    @unique @map("order_id") @db.Uuid
+  status                   String    @default("PENDING_COLLECTION")
+  results                  Json? // Key-value results snapshot
+  remarks                  String? // Clinical remarks
+  approvedById             String?   @map("approved_by_id") @db.Uuid
+  lockedAt                 DateTime? @map("locked_at")
+  encodedById              String?   @map("encoded_by_id") @db.Uuid
+  encodedAt                DateTime? @map("encoded_at")
+  validatedById            String?   @map("validated_by_id") @db.Uuid
+  validatedAt              DateTime? @map("validated_at")
+  releasedById             String?   @map("released_by_id") @db.Uuid
+  releasedAt               DateTime? @map("released_at")
+  lastEditedById           String?   @map("last_edited_by_id") @db.Uuid
+  lastEditedAt             DateTime? @map("last_edited_at")
+  createdById              String?   @map("created_by_id") @db.Uuid
+  updatedById              String?   @map("updated_by_id") @db.Uuid
+  deletedAt                DateTime? @map("deleted_at")
+  version                  Int       @default(0)
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+  archivedAt               DateTime? @map("archived_at")
+  archiveReason            String?   @map("archive_reason")
+  // Critical result tracking fields
+  isCritical               Boolean   @default(false) @map("is_critical")
+  criticalStatus           String?   @map("critical_status") // OPEN, ACKNOWLEDGED, ESCALATED, RESOLVED
+  criticalAcknowledgedAt   DateTime? @map("critical_acknowledged_at")
+  criticalAcknowledgedById String?   @map("critical_acknowledged_by_id") @db.Uuid
+  criticalEscalatedAt      DateTime? @map("critical_escalated_at")
+  criticalEscalatedById    String?   @map("critical_escalated_by_id") @db.Uuid
+  criticalEscalationNotes  String?   @map("critical_escalation_notes")
+  criticalResolvedAt       DateTime? @map("critical_resolved_at")
+  criticalResolvedById     String?   @map("critical_resolved_by_id") @db.Uuid
+  criticalResolvedNotes    String?   @map("critical_resolved_notes")
 
   tenant    Tenant              @relation(fields: [tenantId], references: [id])
   order     Order               @relation(fields: [orderId], references: [id])
   versions  LabResultVersion[]
   signature LabResultSignature?
 
+  @@index([tenantId, isCritical, criticalStatus])
   @@map("lab_results")
 }
 
@@ -2033,35 +2045,35 @@ model MarketplaceListing {
 }
 
 model NurseTask {
-  id        String @id @default(uuid()) @db.Uuid
-  tenantId  String @map("tenant_id") @db.Uuid
-  branchId  String @map("branch_id") @db.Uuid
-  patientId String? @map("patient_id") @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  tenantId       String  @map("tenant_id") @db.Uuid
+  branchId       String  @map("branch_id") @db.Uuid
+  patientId      String? @map("patient_id") @db.Uuid
   assignedUserId String? @map("assigned_user_id") @db.Uuid
-  createdById    String @map("created_by_id") @db.Uuid
+  createdById    String  @map("created_by_id") @db.Uuid
 
-  title       String @db.VarChar(200)
-  description String? @db.Text
+  title       String       @db.VarChar(200)
+  description String?      @db.Text
   priority    TaskPriority @default(MEDIUM)
-  status      TaskStatus @default(OPEN)
+  status      TaskStatus   @default(OPEN)
 
-  dueAt         DateTime? @map("due_at")
-  completedAt   DateTime? @map("completed_at")
-  completedById String?   @map("completed_by_id") @db.Uuid
-  cancelledAt   DateTime? @map("cancelled_at")
-  cancelledById String?   @map("cancelled_by_id") @db.Uuid
-  cancellationReason String? @map("cancellation_reason") @db.VarChar(500)
+  dueAt              DateTime? @map("due_at")
+  completedAt        DateTime? @map("completed_at")
+  completedById      String?   @map("completed_by_id") @db.Uuid
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancelledById      String?   @map("cancelled_by_id") @db.Uuid
+  cancellationReason String?   @map("cancellation_reason") @db.VarChar(500)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch     Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  patient    Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
-  assignedTo User?   @relation("NurseTaskAssigned", fields: [assignedUserId], references: [id], onDelete: SetNull)
-  createdBy  User    @relation("NurseTaskCreated", fields: [createdById], references: [id])
-  completedBy User?  @relation("NurseTaskCompleted", fields: [completedById], references: [id], onDelete: SetNull)
-  cancelledBy User?  @relation("NurseTaskCancelled", fields: [cancelledById], references: [id], onDelete: SetNull)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  patient     Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  assignedTo  User?    @relation("NurseTaskAssigned", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  createdBy   User     @relation("NurseTaskCreated", fields: [createdById], references: [id])
+  completedBy User?    @relation("NurseTaskCompleted", fields: [completedById], references: [id], onDelete: SetNull)
+  cancelledBy User?    @relation("NurseTaskCancelled", fields: [cancelledById], references: [id], onDelete: SetNull)
 
   @@index([tenantId, branchId, status])
   @@index([tenantId, assignedUserId, status])

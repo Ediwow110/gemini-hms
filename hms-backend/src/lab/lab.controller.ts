@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { LabService } from './lab.service';
@@ -20,7 +21,8 @@ import { BranchGuard } from '../auth/guards/branch.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 import { SelfApprovalGuard } from '../common/guards/self-approval.guard';
-import { PendingSpecimenDto, ReleasableResultDto, ReleaseResultResponseDto } from './dto/lab-responses.dto';
+import { PendingSpecimenDto, ReleasableResultDto, ReleaseResultResponseDto, CriticalResultDto, AcknowledgeCriticalDto, EscalateCriticalDto } from './dto/lab-responses.dto';
+import { MarkCriticalDto } from './dto/mark-critical.dto';
 
 @UseGuards(PermissionsGuard, BranchGuard)
 @Controller('api/v1/lab')
@@ -141,5 +143,71 @@ export class LabController {
       id,
       dto,
     );
+  }
+
+  // ──── Phase 4E: Critical Results ────
+
+  @Get('critical-results')
+  @RequirePermissions('lab.critical.view')
+  @RequireBranchContext()
+  async getCriticalResults(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+    @GetUser('userId') _userId: string,
+    @Query('status') status?: string,
+  ): Promise<CriticalResultDto[]> {
+    return this.labService.getCriticalResults(tenantId, branchId, status);
+  }
+
+  @Patch('results/:id/mark-critical')
+  @RequirePermissions('lab.critical.escalate')
+  @RequireBranchContext()
+  async markResultAsCritical(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') id: string,
+    @Body() dto: MarkCriticalDto,
+  ): Promise<CriticalResultDto[]> {
+    return this.labService.markResultAsCritical(tenantId, userId, branchId, id, dto.reason);
+  }
+
+  @Patch('critical-results/:id/acknowledge')
+  @RequirePermissions('lab.critical.acknowledge')
+  @RequireBranchContext()
+  async acknowledgeCriticalResult(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') id: string,
+    @Body() dto: AcknowledgeCriticalDto,
+  ): Promise<CriticalResultDto[]> {
+    return this.labService.acknowledgeCriticalResult(tenantId, userId, branchId, id, dto.notes);
+  }
+
+  @Patch('critical-results/:id/escalate')
+  @RequirePermissions('lab.critical.escalate')
+  @RequireBranchContext()
+  async escalateCriticalResult(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') id: string,
+    @Body() dto: EscalateCriticalDto,
+  ): Promise<CriticalResultDto[]> {
+    return this.labService.escalateCriticalResult(tenantId, userId, branchId, id, dto.notes);
+  }
+
+  @Patch('critical-results/:id/resolve')
+  @RequirePermissions('lab.critical.acknowledge')
+  @RequireBranchContext()
+  async resolveCriticalResult(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') id: string,
+    @Body() dto: AcknowledgeCriticalDto,
+  ): Promise<CriticalResultDto[]> {
+    return this.labService.resolveCriticalResult(tenantId, userId, branchId, id, dto.notes);
   }
 }

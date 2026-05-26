@@ -13,7 +13,7 @@ This document provides a comprehensive mapping of frontend portals, their routes
 | **Nurse** | `/nurse` | `NurseDashboard` | Nurse | `allowedRoles=['Nurse']` | `encounter.update`, `patient.update` | `nurse@hospital.com` | Partial (Real triage/vitals API; tasks WIP) |
 | **Patient** | `/patient` | `PatientDashboard` | Patient | `permission='patient.portal.view_own'` | `patient.portal.view_own` | `patient@hospital.com` | Partial (Real patient portal API for profile, lab results, prescriptions, invoices) |
 | **Cashier** | `/cashier` | `CashierDashboard` | Cashier | `allowedRoles=['Cashier']` | `billing.invoice.view`, `billing.payment.create` | `cashier@hospital.com` | Partial (Real invoice, payment, and session APIs; refunds/HMO/reconciliation mock) |
-| **Med-Tech** | `/lab` | `LabDashboard` | Med-Tech | `permission='lab.result.view'` | `lab.result.encode`, `lab.result.view`, `lab.result.validate` | `medtech@hospital.com` | Partial (Real lab workflow API; critical results/orders mock) |
+| **Med-Tech** | `/lab` | `LabDashboard` | Med-Tech | `permission='lab.result.view'` | `lab.result.encode`, `lab.result.view`, `lab.critical.view`, `lab.critical.acknowledge` | `medtech@hospital.com` | Partial (Real lab workflow API; critical results real; TAT mock) |
 | **Pharmacist** | `/pharmacy` | `PharmacyHub` | Pharmacist | `permission='inventory.stock.dispense'` | `inventory.stock.dispense` | `pharmacist@hospital.com` | Real (Sprint 2A — real prescription queue and dispense) |
 | **Supplier** | `/supplier` | `SupplierDashboard` | Supplier | `allowedRoles=['Supplier']` | `marketplace.supplier.manage_listing` | `supplier@hospital.com` | Real |
 | **Procurement** | `/procurement` | `ProcurementDashboard` | Procurement Officer | `permission='procurement.request.view'` | `procurement.*` | `procurement@hospital.com` | Real |
@@ -65,7 +65,8 @@ This document provides a comprehensive mapping of frontend portals, their routes
 - **Real API-backed**: Dashboard metrics from work queue, Result encoding (useClinicalWorkflow), Result validation (useClinicalWorkflow), Validated results list, Released results list
 - **Partial/WIP**: LabOrdersPage (displays real queue data but patient demographics are redacted — `[REDACTED]` shown instead of hardcoded values)
 - **Real (Phase 4D)**: Specimen Receiving (GET/PATCH /api/v1/lab/specimens/pending and /receive with real API, RBAC, audit logging), Result Release (uses existing POST /api/v1/lab/results/:id/release with releasable results list at GET /api/v1/lab/results/releasable)
-- **WIP/Mock (Visible Banner)**: Lab Dashboard (real queue metrics preserved; mock specimens, TAT, and criticals widgets labeled), Critical Results (simulated panic alert registry), Turnaround Time Monitor (simulated SLA metrics)
+- **Real (Phase 4E)**: Critical Results (GET /api/v1/lab/critical-results, PATCH acknowledge/escalate/resolve, PATCH /api/v1/lab/results/:id/mark-critical — all with RBAC, audit logging, notification outbox)
+- **WIP/Mock (Visible Banner)**: Lab Dashboard (real queue metrics preserved; mock specimens, TAT, and criticals widgets labeled), Turnaround Time Monitor (simulated SLA metrics)
 - **All mock pages have visible WIP banners, disabled unsafe actions where applicable, and clear explanations of missing backend support.
 
 ### Pharmacy Portal

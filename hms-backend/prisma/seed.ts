@@ -91,6 +91,9 @@ async function main() {
     { name: 'lab.result.view', scope: 'tenant/branch/department', riskLevel: 'LOW' },
     { name: 'lab.result.amend.request', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
     { name: 'lab.specimen.receive', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'lab.critical.view', scope: 'tenant/branch', riskLevel: 'HIGH' },
+    { name: 'lab.critical.acknowledge', scope: 'tenant/branch', riskLevel: 'HIGH' },
+    { name: 'lab.critical.escalate', scope: 'tenant/branch', riskLevel: 'CRITICAL' },
     { name: 'catalog.service.view', scope: 'tenant', riskLevel: 'LOW' },
     { name: 'catalog.service.create', scope: 'tenant', riskLevel: 'MEDIUM' },
     { name: 'catalog.service.update', scope: 'tenant', riskLevel: 'MEDIUM' },
@@ -244,7 +247,8 @@ async function main() {
       'report.export', 'audit.view',
       'encounter.create', 'encounter.view', 'encounter.update',
       'procurement.supplier.view', 'procurement.request.view', 'procurement.po.view',
-      'nurse.task.view', 'nurse.task.manage'
+      'nurse.task.view', 'nurse.task.manage',
+      'lab.critical.view', 'lab.critical.acknowledge', 'lab.critical.escalate'
     ],
     'Receptionist': [
       'patient.view', 'patient.create', 'patient.update', 
@@ -260,13 +264,15 @@ async function main() {
     'Med-Tech': [
       'patient.view', 'lab.result.view', 'lab.result.encode',
       'lab.specimen.receive',
+      'lab.critical.view', 'lab.critical.acknowledge',
       'inventory.item.view', 'queue.view'
     ],
     'Doctor': [
       'patient.view', 'lab.result.view', 'lab.result.approve', 'lab.result.release',
       'inventory.item.view',
       'encounter.create', 'encounter.view', 'encounter.update', 'queue.view',
-      'procurement.request.create'
+      'procurement.request.create',
+      'lab.critical.view'
     ],
     'Pharmacist': [
       'patient.view', 'inventory.item.view', 'inventory.stock.dispense', 'queue.view'

@@ -36,6 +36,33 @@ export interface ReleasableResultDto {
   testNames?: string[];
 }
 
+export interface CriticalResultDto {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  patientId: string;
+  patientName: string;
+  patientMrn: string;
+  testNames?: string[];
+  results?: Record<string, unknown>;
+  status: string;
+  isCritical: boolean;
+  criticalStatus: string | null;
+  criticalAcknowledgedAt?: string | null;
+  criticalAcknowledgedById?: string | null;
+  criticalAcknowledgedByName?: string | null;
+  criticalEscalatedAt?: string | null;
+  criticalEscalatedById?: string | null;
+  criticalEscalationNotes?: string | null;
+  criticalResolvedAt?: string | null;
+  criticalResolvedById?: string | null;
+  criticalResolvedNotes?: string | null;
+  encodedAt?: string | null;
+  validatedAt?: string | null;
+  releasedAt?: string | null;
+  createdAt: string;
+}
+
 // ──── Service ────
 
 export const labService = {
@@ -58,6 +85,42 @@ export const labService = {
     const response: AxiosResponse<ReleasableResultDto[]> = await apiClient.get(
       '/v1/lab/results/releasable',
     );
+    return response.data;
+  },
+
+  // ──── Phase 4E: Critical Results ────
+
+  /** Fetch critical results */
+  getCriticalResults: async (status?: string): Promise<CriticalResultDto[]> => {
+    const params = status ? { status } : {};
+    const response: AxiosResponse<CriticalResultDto[]> = await apiClient.get(
+      '/v1/lab/critical-results',
+      { params },
+    );
+    return response.data;
+  },
+
+  /** Mark a result as critical */
+  markResultAsCritical: async (id: string, isCritical: boolean, reason?: string): Promise<CriticalResultDto[]> => {
+    const response = await apiClient.patch(`/v1/lab/results/${id}/mark-critical`, { isCritical, reason });
+    return response.data;
+  },
+
+  /** Acknowledge a critical result */
+  acknowledgeCriticalResult: async (id: string, notes?: string): Promise<CriticalResultDto[]> => {
+    const response = await apiClient.patch(`/v1/lab/critical-results/${id}/acknowledge`, { notes });
+    return response.data;
+  },
+
+  /** Escalate a critical result */
+  escalateCriticalResult: async (id: string, notes: string): Promise<CriticalResultDto[]> => {
+    const response = await apiClient.patch(`/v1/lab/critical-results/${id}/escalate`, { notes });
+    return response.data;
+  },
+
+  /** Resolve a critical result */
+  resolveCriticalResult: async (id: string, notes?: string): Promise<CriticalResultDto[]> => {
+    const response = await apiClient.patch(`/v1/lab/critical-results/${id}/resolve`, { notes });
     return response.data;
   },
 };
