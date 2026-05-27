@@ -450,6 +450,103 @@ async function main() {
     });
   }
 
+  // 6a. Seed deterministic Patient Portal account and minimal eligible prescription workflow data.
+  console.log('Seeding Demo Patient Portal Account...');
+  const portalPatient = await prisma.patient.upsert({
+    where: {
+      tenantId_patientNumber: {
+        tenantId: tenant.id,
+        patientNumber: 'DEMO-PATIENT-001',
+      },
+    },
+    update: {
+      firstName: '[DEMO] Portal',
+      lastName: 'Patient',
+      status: 'ACTIVE',
+    },
+    create: {
+      tenantId: tenant.id,
+      patientNumber: 'DEMO-PATIENT-001',
+      firstName: '[DEMO] Portal',
+      lastName: 'Patient',
+      dob: new Date('1990-01-01T00:00:00.000Z'),
+      status: 'ACTIVE',
+    },
+  });
+
+  await prisma.patientUser.upsert({
+    where: {
+      tenantId_email: {
+        tenantId: tenant.id,
+        email: 'patient@hospital.com',
+      },
+    },
+    update: {
+      patientId: portalPatient.id,
+      passwordHash,
+      status: 'ACTIVE',
+    },
+    create: {
+      tenantId: tenant.id,
+      patientId: portalPatient.id,
+      email: 'patient@hospital.com',
+      passwordHash,
+      status: 'ACTIVE',
+    },
+  });
+
+  const doctorUser = await prisma.user.findUniqueOrThrow({
+    where: {
+      tenantId_email: {
+        tenantId: tenant.id,
+        email: 'doctor@hospital.com',
+      },
+    },
+  });
+
+  const portalEncounter = await prisma.encounter.upsert({
+    where: { id: '00000000-0000-0000-0000-00000000e001' },
+    update: { status: 'OPEN' },
+    create: {
+      id: '00000000-0000-0000-0000-00000000e001',
+      tenantId: tenant.id,
+      branchId: branch.id,
+      patientId: portalPatient.id,
+      attendingId: doctorUser.id,
+      doctorId: doctorUser.id,
+      chiefComplaint: '[DEMO] Portal medication refill eligibility',
+      type: 'OUTPATIENT',
+      status: 'OPEN',
+      createdBy: doctorUser.id,
+      updatedBy: doctorUser.id,
+    },
+  });
+
+  await prisma.prescription.upsert({
+    where: { id: '00000000-0000-0000-0000-0000000000f1' },
+    update: {
+      status: 'ACTIVE',
+      patientId: portalPatient.id,
+      encounterId: portalEncounter.id,
+      prescribedById: doctorUser.id,
+    },
+    create: {
+      id: '00000000-0000-0000-0000-0000000000f1',
+      tenantId: tenant.id,
+      branchId: branch.id,
+      encounterId: portalEncounter.id,
+      prescribedById: doctorUser.id,
+      patientId: portalPatient.id,
+      medicationName: '[DEMO] Amoxicillin',
+      dosage: '500mg',
+      frequency: 'Every 8 hours',
+      duration: '7 days',
+      notes: '[DEMO] Browser runtime QA seed prescription',
+      status: 'ACTIVE',
+      createdById: doctorUser.id,
+    },
+  });
+
   // 7. Seed Lab Test Catalog
   console.warn('WARNING: Lab test catalog entries contain demo/reference ranges only.');
   console.log('Seeding Lab Test Catalog...');

@@ -12,7 +12,7 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import * as crypto from 'crypto';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -151,6 +151,7 @@ export class AuthController {
     };
   }
 
+  @SkipThrottle({ auth: true, sensitive: true, default: true })
   @Get('me')
   async getMe(@GetUser() user: RequestUser) {
     const res = await this.authService.getMe(user.userId!, user.tenantId);

@@ -6,6 +6,8 @@ import { Eye, EyeOff, LogIn, Loader2, UserCircle2, ChevronRight, ShieldCheck, Bu
 import { apiClient } from "../../lib/api";
 import { useNavigate } from "react-router-dom";
 import { getSafePortalPath, isKnownPortalPath } from "../../app/role-portal-resolver";
+import { useAuth } from "../../hooks/use-user";
+import { patientPortalService } from "../../services/patient-portal.service";
 interface Branch {
   id: string;
   name: string;
@@ -45,13 +47,15 @@ export const LoginForm = () => {
   const [mfaCode, setMfaCode] = useState("");
 
   const navigate = useNavigate();
+  const { refetchUser } = useAuth();
 
-  const handleSuccessfulAuth = (user: { defaultPortalPath?: string; roles?: string[] }) => {
+  const handleSuccessfulAuth = async (user: { defaultPortalPath?: string; roles?: string[] }) => {
     const path = getSafePortalPath(user?.defaultPortalPath, user?.roles || []);
     if (!isKnownPortalPath(path)) {
       setError("Authenticated, but no portal is assigned to your role. Contact administrator.");
       return;
     }
+    await refetchUser();
     navigate(path, { replace: true });
   };
 
@@ -93,7 +97,10 @@ export const LoginForm = () => {
         const branchesRes = await apiClient.get("/v1/auth/branches");
         setAvailableBranches(branchesRes.data);
       } else {
-        handleSuccessfulAuth(response.data.user);
+        if (response.data.user?.roles?.includes("Patient")) {
+          await patientPortalService.login(data);
+        }
+        await handleSuccessfulAuth(response.data.user);
       }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { status?: number; data?: { message?: string; mfaToken?: string } } };
@@ -129,7 +136,7 @@ export const LoginForm = () => {
         setAvailableBranches(branchesRes.data);
         setShowMfaInput(false);
       } else {
-        handleSuccessfulAuth(response.data.user);
+        await handleSuccessfulAuth(response.data.user);
       }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { message?: string } } };
@@ -143,7 +150,7 @@ export const LoginForm = () => {
     setIsLoading(true);
     try {
       const response = await apiClient.post("/v1/auth/select-branch", { branchId });
-      handleSuccessfulAuth(response.data.user);
+      await handleSuccessfulAuth(response.data.user);
     } catch {
       setError("Failed to select branch. Please try again.");
     } finally {

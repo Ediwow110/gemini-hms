@@ -89,7 +89,17 @@ export interface MedicalRecordRequest {
   createdAt: string;
 }
 
+export interface PatientPortalLoginInput {
+  tenantCode: string;
+  email: string;
+  password: string;
+}
+
 export class PatientPortalService {
+  async login(input: PatientPortalLoginInput): Promise<void> {
+    await patientApi.post('/auth/login', input);
+  }
+
   async getProfile(): Promise<PatientProfile> {
     const res = await patientApi.get('/profile');
     return res.data;
