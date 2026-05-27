@@ -14,6 +14,7 @@ import { PageHeader } from "../../components/ui/page-header";
 import { MetricCard } from "../../components/ui/metric-card";
 import { AlertCard } from "../../components/ui/alert-card";
 import { useUser } from "../../hooks/use-user";
+import { useNavigate } from "react-router-dom";
 
 const STATUS_COLORS: Record<string, string> = {
   amber: "bg-amber-100 text-amber-700",
