@@ -73,6 +73,17 @@ describe('Cashier Reconciliation (e2e)', () => {
     await seedUser(prisma, tenantId, 'recon@hms.local');
   });
 
+  beforeEach(() => {
+    MockJwtAuthGuard.user = {
+      userId: userId,
+      tenantId: tenantId,
+      branchId: branchId,
+      roles: ['Super Admin'],
+      permissions: ['*'],
+      email: 'recon@hms.local',
+    };
+  });
+
   it('should reconcile cashier session totals', async () => {
     // 1. Open Session
     const openRes = await request(app.getHttpServer())

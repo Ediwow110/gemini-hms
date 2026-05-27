@@ -64,11 +64,6 @@ function setAuthCookies(
   }
   if (result.sessionId) {
     res.cookie('session_id', result.sessionId, REFRESH_COOKIE_OPTIONS(isProd));
-    res.cookie(
-      'user_id',
-      result.user?.id || userId || '',
-      REFRESH_COOKIE_OPTIONS(isProd),
-    );
   }
   const csrfToken = crypto.randomBytes(32).toString('hex');
   res.cookie('csrf_token', csrfToken, CSRF_COOKIE_OPTIONS(isProd));
@@ -79,7 +74,6 @@ function clearAuthCookies(res: Response): void {
   res.clearCookie('refresh_token', { path: '/api/v1/auth/refresh' });
   res.clearCookie('csrf_token', { path: '/' });
   res.clearCookie('session_id', { path: '/api/v1/auth/refresh' });
-  res.clearCookie('user_id', { path: '/api/v1/auth/refresh' });
 }
 
 @Controller('api/v1/auth')
@@ -174,16 +168,21 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: any) {
+    const csrfCookie = req.cookies?.csrf_token;
+    const csrfHeader = req.headers['x-csrf-token'];
+
+    if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+      throw new ForbiddenException('Invalid CSRF token');
+    }
+
     const refreshToken = req.cookies?.refresh_token;
     const sessionId = req.cookies?.session_id;
-    const userId = req.cookies?.user_id;
 
-    if (!refreshToken || !sessionId || !userId) {
+    if (!refreshToken || !sessionId) {
       throw new UnauthorizedException('Missing refresh credentials');
     }
 
     const result = await this.authService.refreshTokens(
-      userId,
       sessionId,
       refreshToken,
     );

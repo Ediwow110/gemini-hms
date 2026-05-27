@@ -56,12 +56,23 @@ describe('Advanced Analytics Module (e2e)', () => {
     });
   });
 
+  beforeEach(() => {
+    MockJwtAuthGuard.user = {
+      userId: '11111111-1111-4111-8111-111111111111',
+      tenantId: tenantId,
+      email: 'test@hms.local',
+      roles: ['Super Admin'],
+      permissions: ['*'],
+      branchId: '123e4567-e89b-12d3-a456-426614174001',
+    };
+  });
+
   it('should prevent unauthorized role from accessing analytics/revenue', async () => {
     MockJwtAuthGuard.user = {
       userId: '11111111-1111-4111-8111-111111111111',
       tenantId: tenantId,
       email: 'nurse@hospital.com',
-      roles: ['NURSE'], // Unauthorized role
+      roles: ['Nurse'], // Unauthorized role
       permissions: [],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
@@ -71,12 +82,12 @@ describe('Advanced Analytics Module (e2e)', () => {
       .expect(403);
   });
 
-  it('should allow ANALYST role to get revenue stats', async () => {
+  it('should allow Compliance Officer role to get revenue stats', async () => {
     MockJwtAuthGuard.user = {
       userId: '11111111-1111-4111-8111-111111111112',
       tenantId: tenantId,
       email: 'analyst@hospital.com',
-      roles: ['ANALYST'], // Authorized role
+      roles: ['Compliance Officer'], // Authorized role
       permissions: [],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
@@ -107,12 +118,12 @@ describe('Advanced Analytics Module (e2e)', () => {
       });
   });
 
-  it('should allow ANALYST role to get bed occupancy rate', async () => {
+  it('should allow Compliance Officer role to get bed occupancy rate', async () => {
     MockJwtAuthGuard.user = {
       userId: '11111111-1111-4111-8111-111111111112',
       tenantId: tenantId,
       email: 'analyst@hospital.com',
-      roles: ['ANALYST'],
+      roles: ['Compliance Officer'],
       permissions: [],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
@@ -128,12 +139,12 @@ describe('Advanced Analytics Module (e2e)', () => {
       });
   });
 
-  it('should allow ANALYST role to get average patient wait time', async () => {
+  it('should allow Compliance Officer role to get average patient wait time', async () => {
     MockJwtAuthGuard.user = {
       userId: '11111111-1111-4111-8111-111111111112',
       tenantId: tenantId,
       email: 'analyst@hospital.com',
-      roles: ['ANALYST'],
+      roles: ['Compliance Officer'],
       permissions: [],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
@@ -146,12 +157,12 @@ describe('Advanced Analytics Module (e2e)', () => {
       });
   });
 
-  it('should allow ANALYST role to get insurance claim approval/rejection rate', async () => {
+  it('should allow Compliance Officer role to get insurance claim approval/rejection rate', async () => {
     MockJwtAuthGuard.user = {
       userId: '11111111-1111-4111-8111-111111111112',
       tenantId: tenantId,
       email: 'analyst@hospital.com',
-      roles: ['ANALYST'],
+      roles: ['Compliance Officer'],
       permissions: [],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };

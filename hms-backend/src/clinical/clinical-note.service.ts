@@ -30,7 +30,7 @@ export class ClinicalNoteService {
   ) {
     try {
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: encounterId, tenantId },
+        where: { id: encounterId, tenantId, branchId },
       });
 
       if (!encounter) {
@@ -93,6 +93,7 @@ export class ClinicalNoteService {
     userId: string,
     noteId: string,
     dto: UpdateClinicalNoteDto,
+    branchId?: string,
   ) {
     try {
       const note = await this.prisma.clinicalNote.findFirst({
@@ -109,12 +110,15 @@ export class ClinicalNoteService {
         );
       }
 
-      // Check if associated encounter is still open
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: note.encounterId, tenantId },
+        where: { id: note.encounterId, tenantId, branchId },
       });
 
-      if (encounter && encounter.status !== EncounterStatus.OPEN) {
+      if (!encounter) {
+        throw new NotFoundException('Clinical note not found');
+      }
+
+      if (encounter.status !== EncounterStatus.OPEN) {
         throw new ConflictException(
           'clinical_encounter_not_open: Cannot edit clinical notes of a closed or cancelled encounter',
         );
@@ -156,7 +160,7 @@ export class ClinicalNoteService {
             },
           },
           tx,
-          encounter?.branchId,
+          encounter.branchId,
         );
 
         return updated;
@@ -173,7 +177,12 @@ export class ClinicalNoteService {
     }
   }
 
-  async lockNote(tenantId: string, userId: string, noteId: string) {
+  async lockNote(
+    tenantId: string,
+    userId: string,
+    noteId: string,
+    branchId?: string,
+  ) {
     try {
       const note = await this.prisma.clinicalNote.findFirst({
         where: { id: noteId, tenantId },
@@ -190,8 +199,12 @@ export class ClinicalNoteService {
       }
 
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: note.encounterId, tenantId },
+        where: { id: note.encounterId, tenantId, branchId },
       });
+
+      if (!encounter) {
+        throw new NotFoundException('Clinical note not found');
+      }
 
       return await this.prisma.$transaction(async (tx) => {
         const locked = await tx.clinicalNote.update({
@@ -216,7 +229,7 @@ export class ClinicalNoteService {
             },
           },
           tx,
-          encounter?.branchId,
+          encounter.branchId,
         );
 
         return locked;

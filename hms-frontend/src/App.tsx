@@ -291,6 +291,19 @@ const router = createBrowserRouter([
           { path: 'claims', element: <PermissionRoute permission="billing.claim.view"><LazyPage><ClaimsDashboard /></LazyPage></PermissionRoute> },
           { path: 'admin/patient-merges', element: <PermissionRoute permission="admin.role.change"><LazyPage><PatientMergeRequests /></LazyPage></PermissionRoute> },
           
+          // Branch Admin routes
+          { path: 'branch-admin', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin/staff', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin/departments', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin/rooms', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin/schedules', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin/services', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin/equipment', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin/inventory-rules', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin/billing-rules', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin/queue-settings', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin/approvals', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+
           // SuperAdmin Portal
           { path: 'admin', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><SuperAdminDashboard /></LazyPage></PermissionRoute> },
           { path: 'admin/tenants', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><TenantsPage /></LazyPage></PermissionRoute> },

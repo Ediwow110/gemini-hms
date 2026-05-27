@@ -43,13 +43,13 @@ export class SessionService {
     sessionId: string,
     oldRtPlain: string,
     newRtHash: string,
-  ): Promise<Session> {
+  ): Promise<{ rotated: boolean; reason: string; session: Session | null }> {
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
     });
 
     if (!session || session.expiresAt < new Date()) {
-      throw new UnauthorizedException('Session expired or not found');
+      return { rotated: false, reason: 'expired_or_not_found', session: null };
     }
 
     const isValid = await bcrypt.compare(oldRtPlain, session.refreshTokenHash);
@@ -59,7 +59,7 @@ export class SessionService {
       const isLeewayValid =
         Date.now() - session.lastRotatedAt.getTime() < 30000;
       if (isLeewayValid) {
-        return session; // Replay within leeway: return existing state
+        return { rotated: false, reason: 'replay_within_leeway', session };
       }
 
       // 2. REAL BREACH: RT reused after 30s
@@ -72,17 +72,19 @@ export class SessionService {
         recordId: sessionId,
         newValues: { reason: 'REFRESH_TOKEN_REUSE_DETECTED' },
       });
-      throw new UnauthorizedException('Session compromised and revoked');
+      return { rotated: false, reason: 'revoked', session: null };
     }
 
     // 3. SUCCESSFUL ROTATION
-    return this.prisma.session.update({
+    const updatedSession = await this.prisma.session.update({
       where: { id: sessionId },
       data: {
         refreshTokenHash: newRtHash,
         lastRotatedAt: new Date(),
       },
     });
+
+    return { rotated: true, reason: 'rotated', session: updatedSession };
   }
 
   async findById(sessionId: string): Promise<Session | null> {

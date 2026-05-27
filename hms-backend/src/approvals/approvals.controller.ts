@@ -16,30 +16,47 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { SelfApprovalGuard } from '../common/guards/self-approval.guard';
+import { BranchGuard } from '../auth/guards/branch.guard';
+import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 
-@UseGuards(PermissionsGuard)
+@UseGuards(PermissionsGuard, BranchGuard)
 @Controller('api/v1/approvals')
 export class ApprovalsController {
   constructor(private readonly approvalsService: ApprovalsService) {}
 
   @Post()
   @RequirePermissions('approval.request.create')
+  @RequireBranchContext()
   create(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Body() dto: CreateApprovalRequestDto,
   ) {
-    return this.approvalsService.createRequest(tenantId, userId, dto);
+    return this.approvalsService.createRequest(tenantId, userId, {
+      ...dto,
+      branchId,
+    });
   }
 
   @Get()
   @RequirePermissions('approval.request.view')
-  findAll(@GetUser('tenantId') tenantId: string) {
-    return this.approvalsService.getRequests(tenantId);
+  @RequireBranchContext()
+  findAll(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string | undefined,
+    @GetUser('roles') roles: string[] | undefined,
+  ) {
+    return this.approvalsService.getRequests(
+      tenantId,
+      branchId,
+      roles?.includes('Super Admin') ?? false,
+    );
   }
 
   @Patch(':id/approve')
   @RequirePermissions('approval.request.process')
+  @RequireBranchContext()
   @UseGuards(SelfApprovalGuard)
   approve(
     @GetUser('tenantId') tenantId: string,
@@ -60,6 +77,7 @@ export class ApprovalsController {
 
   @Patch(':id/reject')
   @RequirePermissions('approval.request.process')
+  @RequireBranchContext()
   reject(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,

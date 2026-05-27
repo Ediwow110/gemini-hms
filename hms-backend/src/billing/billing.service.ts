@@ -542,6 +542,7 @@ export class BillingService {
           riskLevel: dto.amount > 1000 ? 'HIGH' : 'MEDIUM',
           recordId: payment.id,
           reason: dto.reason,
+          branchId,
           details: {
             action: REVERSAL_TYPE.REFUND,
             paymentId: payment.id,
@@ -650,6 +651,7 @@ export class BillingService {
           riskLevel: 'HIGH',
           recordId: payment.id,
           reason: dto.reason,
+          branchId,
           details: {
             action: REVERSAL_TYPE.VOID,
             paymentId: payment.id,
@@ -750,9 +752,11 @@ export class BillingService {
     userId: string,
     branchId: string,
     reversalId: string,
+    tx?: Prisma.TransactionClient,
   ) {
+    const db = tx || this.prisma;
     // 1. Fetch the reversal and verify basic eligibility
-    const reversal = await this.prisma.paymentReversal.findFirst({
+    const reversal = await db.paymentReversal.findFirst({
       where: {
         id: reversalId,
         tenantId,
@@ -779,7 +783,7 @@ export class BillingService {
     }
 
     // 2. Verify Approval status
-    const approvalRequest = await this.prisma.approvalRequest.findFirst({
+    const approvalRequest = await db.approvalRequest.findFirst({
       where: { id: reversal.approvalRequestId, tenantId },
     });
 
@@ -800,7 +804,7 @@ export class BillingService {
     }
 
     // 3. Fetch and verify Payment & Invoice
-    const payment = await this.prisma.payment.findFirst({
+    const payment = await db.payment.findFirst({
       where: {
         id: reversal.paymentId,
         cashierSession: { tenantId, branchId },
@@ -819,7 +823,7 @@ export class BillingService {
       );
     }
 
-    const invoice = await this.prisma.invoice.findFirst({
+    const invoice = await db.invoice.findFirst({
       where: {
         id: reversal.invoiceId,
         order: { tenantId, branchId },
@@ -833,9 +837,9 @@ export class BillingService {
     }
 
     // 4. Transactional Mutation
-    return this.prisma.$transaction(async (tx) => {
+    const applyMutation = async (activeTx: Prisma.TransactionClient) => {
       // 4.1 Lock parent Payment row to serialize concurrent operations on this payment
-      const lockResult = await tx.payment.updateMany({
+      const lockResult = await activeTx.payment.updateMany({
         where: { id: payment.id, status: 'POSTED' },
         data: { updatedAt: new Date() },
       });
@@ -847,7 +851,7 @@ export class BillingService {
       }
 
       // 4.2 Re-read Invoice inside the transaction (fresh paidAmount after any concurrent modifications)
-      const currentInvoice = await tx.invoice.findFirst({
+      const currentInvoice = await activeTx.invoice.findFirst({
         where: { id: invoice.id, order: { tenantId, branchId } },
       });
       if (!currentInvoice) {
@@ -857,7 +861,7 @@ export class BillingService {
       }
 
       // 4.3 Atomically claim the reversal (status guard prevents double-processing)
-      const updateResult = await tx.paymentReversal.updateMany({
+      const updateResult = await activeTx.paymentReversal.updateMany({
         where: {
           id: reversalId,
           tenantId,
@@ -878,7 +882,7 @@ export class BillingService {
       }
 
       // Check if any other VOID is APPLIED or PENDING for this payment
-      const otherVoid = await tx.paymentReversal.findFirst({
+      const otherVoid = await activeTx.paymentReversal.findFirst({
         where: {
           paymentId: payment.id,
           type: REVERSAL_TYPE.VOID,
@@ -894,7 +898,7 @@ export class BillingService {
       }
 
       // Check if any REFUND is APPLIED or PENDING for this payment
-      const refundReversal = await tx.paymentReversal.findFirst({
+      const refundReversal = await activeTx.paymentReversal.findFirst({
         where: {
           paymentId: payment.id,
           type: REVERSAL_TYPE.REFUND,
@@ -929,7 +933,7 @@ export class BillingService {
       const beforeInvoiceStatus = currentInvoice.status;
 
       // Update Invoice
-      const invoiceUpdate = await tx.invoice.updateMany({
+      const invoiceUpdate = await activeTx.invoice.updateMany({
         where: { id: invoice.id, order: { tenantId, branchId } },
         data: {
           paidAmount: afterPaidAmount,
@@ -943,7 +947,7 @@ export class BillingService {
         );
       }
 
-      const updatedInvoice = await tx.invoice.findFirst({
+      const updatedInvoice = await activeTx.invoice.findFirst({
         where: { id: invoice.id, order: { tenantId, branchId } },
       });
 
@@ -954,7 +958,7 @@ export class BillingService {
       }
 
       // Mark payment as VOIDED
-      const paymentVoided = await tx.payment.updateMany({
+      const paymentVoided = await activeTx.payment.updateMany({
         where: {
           id: payment.id,
           status: 'POSTED',
@@ -969,7 +973,7 @@ export class BillingService {
         );
       }
 
-      await tx.paymentVoid.create({
+      await activeTx.paymentVoid.create({
         data: {
           paymentId: payment.id,
           approvalId: approvalRequest.id,
@@ -978,7 +982,7 @@ export class BillingService {
         },
       });
 
-      await tx.cashierLedgerEntry.create({
+      await activeTx.cashierLedgerEntry.create({
         data: {
           cashierSessionId: payment.cashierSessionId,
           type: 'VOID',
@@ -999,11 +1003,11 @@ export class BillingService {
           referenceId: reversal.id,
           description: `Void applied for Payment #${payment.receiptNumber} (Invoice #${invoice.invoiceNumber})`,
         },
-        tx,
+        activeTx,
       );
 
       // Mark approval request as APPLIED (post-approval execution)
-      const appliedApproval = await tx.approvalRequest.updateMany({
+      const appliedApproval = await activeTx.approvalRequest.updateMany({
         where: {
           id: approvalRequest.id,
           tenantId,
@@ -1047,7 +1051,7 @@ export class BillingService {
             paymentStatus: 'VOIDED',
           },
         },
-        tx,
+        activeTx,
         branchId,
       );
 
@@ -1055,7 +1059,13 @@ export class BillingService {
         reversal: { ...reversal, status: REVERSAL_STATUS.APPLIED },
         invoice: updatedInvoice,
       };
-    });
+    };
+
+    if (tx) {
+      return applyMutation(tx);
+    }
+
+    return this.prisma.$transaction(applyMutation);
   }
 
   async applyRefund(
@@ -1063,9 +1073,11 @@ export class BillingService {
     userId: string,
     branchId: string,
     reversalId: string,
+    tx?: Prisma.TransactionClient,
   ) {
+    const db = tx || this.prisma;
     // 1. Fetch the reversal and verify basic eligibility
-    const reversal = await this.prisma.paymentReversal.findFirst({
+    const reversal = await db.paymentReversal.findFirst({
       where: {
         id: reversalId,
         tenantId,
@@ -1092,7 +1104,7 @@ export class BillingService {
     }
 
     // 2. Verify Approval status
-    const approvalRequest = await this.prisma.approvalRequest.findFirst({
+    const approvalRequest = await db.approvalRequest.findFirst({
       where: { id: reversal.approvalRequestId, tenantId },
     });
 
@@ -1113,7 +1125,7 @@ export class BillingService {
     }
 
     // 3. Fetch and verify Payment & Invoice
-    const payment = await this.prisma.payment.findFirst({
+    const payment = await db.payment.findFirst({
       where: {
         id: reversal.paymentId,
         cashierSession: { tenantId, branchId },
@@ -1132,7 +1144,7 @@ export class BillingService {
       );
     }
 
-    const invoice = await this.prisma.invoice.findFirst({
+    const invoice = await db.invoice.findFirst({
       where: {
         id: reversal.invoiceId,
         order: { tenantId, branchId },
@@ -1146,11 +1158,11 @@ export class BillingService {
     }
 
     // 4. Transactional Mutation
-    return this.prisma.$transaction(async (tx) => {
+    const applyMutation = async (activeTx: Prisma.TransactionClient) => {
       // 4.1 Lock parent Payment row to serialize concurrent refunds on the same payment
-      // Using tx.payment.updateMany so that Prisma routes through the transaction connection
+      // Using activeTx.payment.updateMany so that Prisma routes through the transaction connection
       // and PostgreSQL acquires a row-level lock that blocks concurrent transactions.
-      const lockResult = await tx.payment.updateMany({
+      const lockResult = await activeTx.payment.updateMany({
         where: { id: payment.id, status: 'POSTED' },
         data: { updatedAt: new Date() },
       });
@@ -1162,7 +1174,7 @@ export class BillingService {
       }
 
       // 4.2 Re-read Invoice inside the transaction (fresh paidAmount after any concurrent modifications)
-      const currentInvoice = await tx.invoice.findFirst({
+      const currentInvoice = await activeTx.invoice.findFirst({
         where: { id: invoice.id, order: { tenantId, branchId } },
       });
       if (!currentInvoice) {
@@ -1172,7 +1184,7 @@ export class BillingService {
       }
 
       // 4.3 Atomically claim the reversal (status guard prevents double-processing)
-      const updateResult = await tx.paymentReversal.updateMany({
+      const updateResult = await activeTx.paymentReversal.updateMany({
         where: {
           id: reversalId,
           tenantId,
@@ -1193,7 +1205,7 @@ export class BillingService {
       }
 
       // Check if any VOID has already been applied or is pending for this payment
-      const voidReversal = await tx.paymentReversal.findFirst({
+      const voidReversal = await activeTx.paymentReversal.findFirst({
         where: {
           paymentId: payment.id,
           type: REVERSAL_TYPE.VOID,
@@ -1208,7 +1220,7 @@ export class BillingService {
       }
 
       // Recalculate currently applied refunds to verify remaining balance
-      const appliedRefunds = await tx.paymentReversal.findMany({
+      const appliedRefunds = await activeTx.paymentReversal.findMany({
         where: {
           paymentId: payment.id,
           type: REVERSAL_TYPE.REFUND,
@@ -1255,7 +1267,7 @@ export class BillingService {
       const beforeInvoiceStatus = currentInvoice.status;
 
       // Update Invoice
-      const invoiceUpdate = await tx.invoice.updateMany({
+      const invoiceUpdate = await activeTx.invoice.updateMany({
         where: { id: invoice.id, order: { tenantId, branchId } },
         data: {
           paidAmount: afterPaidAmount,
@@ -1269,7 +1281,7 @@ export class BillingService {
         );
       }
 
-      const updatedInvoice = await tx.invoice.findFirst({
+      const updatedInvoice = await activeTx.invoice.findFirst({
         where: { id: invoice.id, order: { tenantId, branchId } },
       });
 
@@ -1279,7 +1291,7 @@ export class BillingService {
         );
       }
 
-      const refundRecord = await tx.refund.create({
+      const refundRecord = await activeTx.refund.create({
         data: {
           invoiceId: invoice.id,
           paymentId: payment.id,
@@ -1290,7 +1302,7 @@ export class BillingService {
         },
       });
 
-      await tx.cashierLedgerEntry.create({
+      await activeTx.cashierLedgerEntry.create({
         data: {
           cashierSessionId: payment.cashierSessionId,
           type: 'REFUND',
@@ -1311,10 +1323,10 @@ export class BillingService {
           referenceId: reversal.id,
           description: `Refund applied for Payment #${payment.receiptNumber} (Invoice #${invoice.invoiceNumber})`,
         },
-        tx,
+        activeTx,
       );
 
-      const appliedApproval = await tx.approvalRequest.updateMany({
+      const appliedApproval = await activeTx.approvalRequest.updateMany({
         where: {
           id: approvalRequest.id,
           tenantId,
@@ -1350,7 +1362,7 @@ export class BillingService {
             refundAmount: refundAmount.toString(),
           },
         },
-        tx,
+        activeTx,
         branchId,
       );
 
@@ -1358,7 +1370,13 @@ export class BillingService {
         reversal: { ...reversal, status: REVERSAL_STATUS.APPLIED },
         invoice: updatedInvoice,
       };
-    });
+    };
+
+    if (tx) {
+      return applyMutation(tx);
+    }
+
+    return this.prisma.$transaction(applyMutation);
   }
 
   // --- Cashier Session Management ---
@@ -1559,15 +1577,19 @@ export class BillingService {
     if (!reversal) {
       throw new NotFoundException('Payment reversal request not found');
     }
-    await this.approvals.processRequest(
-      tenantId,
-      userId,
-      reversal.approvalRequestId,
-      'APPROVED',
-      { remarks: dto.remarks },
-      branchId,
-    );
-    return this.applyVoid(tenantId, userId, branchId, reversalId);
+
+    return this.prisma.$transaction(async (tx) => {
+      await this.approvals.processRequest(
+        tenantId,
+        userId,
+        reversal.approvalRequestId,
+        'APPROVED',
+        { remarks: dto.remarks },
+        branchId,
+        tx,
+      );
+      return this.applyVoid(tenantId, userId, branchId, reversalId, tx);
+    });
   }
 
   async rejectVoid(
@@ -1610,15 +1632,19 @@ export class BillingService {
     if (!reversal) {
       throw new NotFoundException('Payment reversal request not found');
     }
-    await this.approvals.processRequest(
-      tenantId,
-      userId,
-      reversal.approvalRequestId,
-      'APPROVED',
-      { remarks: dto.remarks },
-      branchId,
-    );
-    return this.applyRefund(tenantId, userId, branchId, reversalId);
+
+    return this.prisma.$transaction(async (tx) => {
+      await this.approvals.processRequest(
+        tenantId,
+        userId,
+        reversal.approvalRequestId,
+        'APPROVED',
+        { remarks: dto.remarks },
+        branchId,
+        tx,
+      );
+      return this.applyRefund(tenantId, userId, branchId, reversalId, tx);
+    });
   }
 
   async rejectRefund(

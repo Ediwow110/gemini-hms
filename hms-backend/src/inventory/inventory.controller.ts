@@ -15,9 +15,9 @@ import {
   ReceiveStockDto,
   UpdateInventoryItemDto,
   AdjustStockDto,
+  DispenseStockDto,
   InventoryStatus,
 } from './dto/inventory.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { BranchGuard } from '../auth/guards/branch.guard';
@@ -111,16 +111,15 @@ export class InventoryController {
     @GetUser('branchId') branchId: string,
     @GetUser('userId') userId: string,
     @Param('id') id: string,
-    @Body('quantity') quantity: number,
-    @Body('orderId') orderId?: string,
+    @Body() dto: DispenseStockDto,
   ) {
     return this.inventoryService.dispenseItem(
       tenantId,
       branchId,
       userId,
       id,
-      quantity,
-      orderId,
+      dto.quantity,
+      dto.orderId,
     );
   }
 
@@ -135,7 +134,7 @@ export class InventoryController {
   }
 
   @Patch('stock/:id/adjust')
-  @RequirePermissions('inventory.stock.dispense')
+  @RequirePermissions('inventory.adjust.approve')
   @RequireBranchContext()
   adjustStock(
     @GetUser('tenantId') tenantId: string,
@@ -144,6 +143,12 @@ export class InventoryController {
     @Param('id') id: string,
     @Body() dto: AdjustStockDto,
   ) {
-    return this.inventoryService.adjustStock(tenantId, branchId, userId, id, dto);
+    return this.inventoryService.adjustStock(
+      tenantId,
+      branchId,
+      userId,
+      id,
+      dto,
+    );
   }
 }

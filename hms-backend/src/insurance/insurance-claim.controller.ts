@@ -14,7 +14,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 
 @Controller('insurance/claims')
 @UseGuards(RolesGuard)
-@Roles('Admin', 'Finance')
+@Roles('Super Admin', 'Branch Admin', 'Cashier')
 export class InsuranceClaimController {
   constructor(private readonly claimService: InsuranceClaimService) {}
 

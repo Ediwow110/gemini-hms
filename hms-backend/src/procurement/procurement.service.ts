@@ -6,28 +6,27 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NumberingService } from '../numbering/numbering.service';
 import {
   CreateSupplierDto,
   CreatePurchaseRequestDto,
   CreatePurchaseOrderDto,
   ReceivePurchaseOrderDto,
 } from './dto/procurement.dto';
+import type { RequestUser } from '../common/types/authenticated-request.type';
 
 @Injectable()
 export class ProcurementService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private numbering: NumberingService,
   ) {}
 
-  async createSupplier(
-    tenantId: string,
-    userId: string,
-    dto: CreateSupplierDto,
-  ) {
+  async createSupplier(user: RequestUser, dto: CreateSupplierDto) {
     const supplier = await this.prisma.supplier.create({
       data: {
-        tenantId,
+        tenantId: user.tenantId,
         name: dto.name,
         contactName: dto.contactName || null,
         contactEmail: dto.contactEmail || null,
@@ -38,8 +37,8 @@ export class ProcurementService {
     });
 
     await this.audit.log({
-      tenantId,
-      userId,
+      tenantId: user.tenantId,
+      userId: user.userId!,
       eventKey: 'SUPPLIER_CREATED',
       recordType: 'Supplier',
       recordId: supplier.id,
@@ -50,81 +49,114 @@ export class ProcurementService {
   }
 
   async createPurchaseRequest(
-    tenantId: string,
-    userId: string,
+    user: RequestUser,
     dto: CreatePurchaseRequestDto,
   ) {
+    if (
+      !user.roles?.includes('Super Admin') &&
+      user.branchId !== dto.branchId
+    ) {
+      throw new ForbiddenException(
+        'Cannot create purchase request for a different branch',
+      );
+    }
+
     const pr = await this.prisma.purchaseRequest.create({
       data: {
-        tenantId,
+        tenantId: user.tenantId,
         branchId: dto.branchId,
-        requestedById: userId,
+        requestedById: user.userId!,
         items: dto.items as any,
         status: 'SUBMITTED',
         reason: dto.reason || null,
       },
     });
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'PURCHASE_REQUEST_CREATED',
-      recordType: 'PurchaseRequest',
-      recordId: pr.id,
-      newValues: pr,
-    });
+    await this.audit.log(
+      {
+        tenantId: user.tenantId,
+        userId: user.userId!,
+        eventKey: 'PURCHASE_REQUEST_CREATED',
+        recordType: 'PurchaseRequest',
+        recordId: pr.id,
+        newValues: pr,
+      },
+      undefined,
+      dto.branchId,
+    );
 
     return pr;
   }
 
-  async approvePurchaseRequest(
-    tenantId: string,
-    userId: string,
-    requestId: string,
-  ) {
+  async approvePurchaseRequest(user: RequestUser, requestId: string) {
     const pr = await this.prisma.purchaseRequest.findFirst({
-      where: { id: requestId, tenantId },
+      where: { id: requestId, tenantId: user.tenantId },
     });
 
     if (!pr) {
       throw new NotFoundException('Purchase request not found');
     }
 
-    if (pr.requestedById === userId) {
+    if (!user.roles?.includes('Super Admin') && user.branchId !== pr.branchId) {
+      throw new ForbiddenException(
+        'Cannot approve purchase request for a different branch',
+      );
+    }
+
+    if (pr.requestedById === user.userId) {
       throw new ForbiddenException('Cannot self-approve purchase request');
+    }
+
+    if (pr.status !== 'SUBMITTED') {
+      throw new BadRequestException(
+        'Can only approve SUBMITTED purchase requests',
+      );
     }
 
     const updated = await this.prisma.purchaseRequest.update({
       where: { id: requestId },
       data: {
         status: 'APPROVED',
-        approvedById: userId,
+        approvedById: user.userId,
       },
     });
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'PURCHASE_REQUEST_APPROVED',
-      recordType: 'PurchaseRequest',
-      recordId: requestId,
-      newValues: updated,
-    });
+    await this.audit.log(
+      {
+        tenantId: user.tenantId,
+        userId: user.userId!,
+        eventKey: 'PURCHASE_REQUEST_APPROVED',
+        recordType: 'PurchaseRequest',
+        recordId: requestId,
+        newValues: updated,
+      },
+      undefined,
+      pr.branchId,
+    );
 
     return updated;
   }
 
-  async createPurchaseOrder(
-    tenantId: string,
-    userId: string,
-    dto: CreatePurchaseOrderDto,
-  ) {
+  async createPurchaseOrder(user: RequestUser, dto: CreatePurchaseOrderDto) {
+    if (
+      !user.roles?.includes('Super Admin') &&
+      user.branchId !== dto.branchId
+    ) {
+      throw new ForbiddenException(
+        'Cannot create purchase order for a different branch',
+      );
+    }
+
     const pr = await this.prisma.purchaseRequest.findFirst({
-      where: { id: dto.purchaseRequestId, tenantId },
+      where: {
+        id: dto.purchaseRequestId,
+        tenantId: user.tenantId,
+        branchId: dto.branchId,
+      },
     });
 
     if (!pr) {
-      throw new NotFoundException('Purchase request not found');
+      throw new NotFoundException('Purchase request not found in this branch');
     }
 
     if (pr.status !== 'APPROVED') {
@@ -133,15 +165,25 @@ export class ProcurementService {
       );
     }
 
-    const count = await this.prisma.purchaseOrder.count({
-      where: { tenantId },
+    const supplier = await this.prisma.supplier.findFirst({
+      where: { id: dto.supplierId, tenantId: user.tenantId },
     });
-    const orderNumber = `PO-${(count + 1).toString().padStart(6, '0')}`;
+
+    if (!supplier || supplier.status !== 'ACTIVE') {
+      throw new BadRequestException('Invalid or inactive supplier');
+    }
 
     return await this.prisma.$transaction(async (tx) => {
+      const orderNumber = await this.numbering.generateNumber(
+        user.tenantId,
+        'PURCHASE_ORDER',
+        dto.branchId,
+        tx,
+      );
+
       const po = await tx.purchaseOrder.create({
         data: {
-          tenantId,
+          tenantId: user.tenantId,
           branchId: dto.branchId,
           supplierId: dto.supplierId,
           purchaseRequestId: dto.purchaseRequestId,
@@ -157,14 +199,15 @@ export class ProcurementService {
 
       await this.audit.log(
         {
-          tenantId,
-          userId,
+          tenantId: user.tenantId,
+          userId: user.userId!,
           eventKey: 'PURCHASE_ORDER_CREATED',
           recordType: 'PurchaseOrder',
           recordId: po.id,
           newValues: po,
         },
         tx,
+        dto.branchId,
       );
 
       return po;
@@ -172,26 +215,50 @@ export class ProcurementService {
   }
 
   async receivePurchaseOrder(
-    tenantId: string,
-    userId: string,
+    user: RequestUser,
     purchaseOrderId: string,
     dto: ReceivePurchaseOrderDto,
   ) {
     const po = await this.prisma.purchaseOrder.findFirst({
-      where: { id: purchaseOrderId, tenantId },
+      where: { id: purchaseOrderId, tenantId: user.tenantId },
     });
 
     if (!po) {
       throw new NotFoundException('Purchase order not found');
     }
 
+    if (!user.roles?.includes('Super Admin') && user.branchId !== po.branchId) {
+      throw new ForbiddenException(
+        'Cannot receive purchase order for a different branch',
+      );
+    }
+
+    if (po.status === 'RECEIVED') {
+      throw new BadRequestException('Purchase order is already received');
+    }
+
+    if (po.status !== 'SENT') {
+      throw new BadRequestException(
+        'Only SENT purchase orders can be received',
+      );
+    }
+
     return await this.prisma.$transaction(async (tx) => {
+      // Re-fetch with row lock to prevent double receive
+      const lockedPo = await tx.purchaseOrder.findFirst({
+        where: { id: purchaseOrderId },
+      });
+
+      if (!lockedPo || lockedPo.status === 'RECEIVED') {
+        throw new BadRequestException('Purchase order is already received');
+      }
+
       const receiving = await tx.receivingRecord.create({
         data: {
-          tenantId,
+          tenantId: user.tenantId,
           branchId: po.branchId,
           purchaseOrderId,
-          receivedById: userId,
+          receivedById: user.userId!,
           notes: dto.notes || null,
         },
       });
@@ -203,14 +270,15 @@ export class ProcurementService {
 
       await this.audit.log(
         {
-          tenantId,
-          userId,
+          tenantId: user.tenantId,
+          userId: user.userId!,
           eventKey: 'PURCHASE_ORDER_RECEIVED',
           recordType: 'PurchaseOrder',
           recordId: purchaseOrderId,
           newValues: updatedPo,
         },
         tx,
+        po.branchId,
       );
 
       return receiving;

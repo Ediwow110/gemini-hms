@@ -110,9 +110,13 @@ export class EncountersService {
     });
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, id: string, branchId?: string) {
     const encounter = await this.prisma.encounter.findFirst({
-      where: { id, tenantId },
+      where: {
+        id,
+        tenantId,
+        branchId,
+      },
       include: {
         patient: true,
         branch: true,
@@ -131,9 +135,10 @@ export class EncountersService {
     userId: string,
     id: string,
     dto: UpdateEncounterDto,
+    branchId?: string,
   ) {
     try {
-      const existing = await this.findOne(tenantId, id);
+      const existing = await this.findOne(tenantId, id, branchId);
 
       return await this.prisma.$transaction(async (tx) => {
         const updated = await tx.encounter.update({

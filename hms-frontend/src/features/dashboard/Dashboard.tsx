@@ -36,8 +36,49 @@ const getGreeting = () => {
   return "Good evening";
 };
 
+import { useUser } from "../../hooks/use-user";
+import { useEffect } from "react";
+
 export const Dashboard = () => {
   const navigate = useNavigate();
+  const user = useUser();
+
+  useEffect(() => {
+    if (user?.roles) {
+      if (user.roles.includes('Super Admin')) {
+        navigate('/admin', { replace: true });
+      } else if (user.roles.includes('Branch Admin')) {
+        navigate('/branch-admin', { replace: true });
+      } else if (user.roles.includes('Marketplace Admin')) {
+        navigate('/marketplace-admin', { replace: true });
+      } else if (user.roles.includes('Patient')) {
+        navigate('/patient', { replace: true });
+      } else if (user.roles.includes('Doctor')) {
+        navigate('/doctor', { replace: true });
+      } else if (user.roles.includes('Nurse')) {
+        navigate('/nurse', { replace: true });
+      } else if (user.roles.includes('Lab Technician')) {
+        navigate('/lab', { replace: true });
+      } else if (user.roles.includes('Cashier') || user.roles.includes('Finance')) {
+        navigate('/cashier', { replace: true });
+      } else if (user.roles.includes('Pharmacist')) {
+        navigate('/pharmacy', { replace: true });
+      } else if (user.roles.includes('Compliance Officer')) {
+        navigate('/compliance', { replace: true });
+      } else if (user.roles.includes('IT Support')) {
+        navigate('/it', { replace: true });
+      } else if (user.roles.includes('HR Manager')) {
+        navigate('/hr', { replace: true });
+      } else if (user.roles.includes('Procurement Manager') || user.roles.includes('Procurement Agent')) {
+        navigate('/procurement', { replace: true });
+      } else if (user.roles.includes('Supplier') || user.roles.includes('Supplier Admin') || user.roles.includes('Marketplace Supplier')) {
+        navigate('/supplier', { replace: true });
+      } else if (user.roles.includes('Marketplace Buyer') || user.roles.includes('Customer')) {
+        navigate('/marketplace', { replace: true });
+      }
+    }
+  }, [user, navigate]);
+
   return (
     <div className="space-y-8">
       {/* Greeting Header */}

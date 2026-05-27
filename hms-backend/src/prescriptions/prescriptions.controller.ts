@@ -1,15 +1,6 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { PrescriptionsService } from './prescriptions.service';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { BranchGuard } from '../auth/guards/branch.guard';
@@ -38,11 +29,18 @@ export class PrescriptionsController {
   @RequireBranchContext()
   findByPatient(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string | undefined,
+    @GetUser('roles') roles: string[] | undefined,
     @Query('patientId') patientId: string,
   ) {
     if (!patientId) {
       return [];
     }
-    return this.prescriptionsService.findByPatient(tenantId, patientId);
+    return this.prescriptionsService.findByPatient(
+      tenantId,
+      patientId,
+      branchId,
+      roles?.includes('Super Admin') ?? false,
+    );
   }
 }

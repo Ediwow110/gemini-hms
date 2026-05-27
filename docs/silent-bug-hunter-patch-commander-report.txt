@@ -1,0 +1,1575 @@
+# Silent Bug Hunter + Patch Commander Report — gemini-hms
+
+## Executive verdict
+The repository is **not production-safe**. Confirmed P0/P1 defects remain in auth/session safety, branch isolation, stock integrity, claims/procurement trust boundaries, clinical data exposure, lab auditability, role enforcement, and deployment/runtime wiring.
+
+## Scope inspected
+Inspected:
+- `hms-backend/src/auth/*`
+- `hms-backend/src/encounters/*`
+- `hms-backend/src/emr/*`
+- `hms-backend/src/clinical/*`
+- `hms-backend/src/prescriptions/*`
+- `hms-backend/src/approvals/*`
+- `hms-backend/src/pharmacy/*`
+- `hms-backend/src/inventory/*`
+- `hms-backend/src/lab/*`
+- `hms-backend/src/nursing/*`
+- `hms-backend/src/claims/*`
+- `hms-backend/src/insurance/*`
+- `hms-backend/src/ledger/*`
+- `hms-backend/src/procurement/*`
+- `hms-backend/src/it-support/*`
+- `hms-backend/prisma/schema.prisma`
+- `hms-backend/prisma/seed.ts`
+- `docker-compose.yml`
+- `docker-compose.prod.yml`
+- `.github/workflows/*`
+- `hms-backend/scripts/remote-deploy.sh`
+- `hms-frontend/src/features/auth/LoginForm.tsx`
+- `hms-frontend/src/lib/api.ts`
+- `hms-frontend/src/services/patient-portal.service.ts`
+- `hms-frontend/Dockerfile`
+- `hms-frontend/nginx.conf`
+- frontend/backend role-route vocabulary surface
+- tracked coverage artifacts
+
+Repo-wide scan performed for:
+- `@Controller`
+- `@UseGuards`
+- `@RequireBranchContext`
+- `@Public`
+- primitive `@Body('...')`
+- role-string drift vs seeded roles
+
+Not fully inspected line-by-line:
+- `hms-foundational-core/*`
+- `temp_repo_hms/*`
+- `k8s/*`
+- `observability/*`
+- `load-tests/*`
+- large UI-only feature files not implicated in auth/data integrity
+
+## Baseline findings verification
+
+| Baseline Bug | Status: Confirmed / Rejected / Modified / Needs Runtime Confirmation | Reason |
+|---|---|---|
+| BUG-5 MFA enforcement misses real privileged seeded roles | Confirmed | Hard-coded sensitive-role list still omits seeded privileged roles like `HR Manager`, `IT Support`, `Compliance Officer`. |
+| BUG-6 Encounter/EMR/clinical cross-branch access | Confirmed | Controllers still miss `BranchGuard` and services still use tenant-only lookups for branch-bound records. |
+| BUG-7 Patient prescription query leaks cross-branch prescriptions | Confirmed | Controller still passes only `tenantId` + `patientId`; service still omits `branchId`. |
+| BUG-8 Approval request listing leaks cross-branch requests | Confirmed | List path still filters only by `tenantId`. |
+| BUG-9 Pharmacy dispense and stock deduction do not share one transaction | Confirmed | Pharmacy opens outer transaction; inventory still opens its own independent transaction. |
+| BUG-10 Manual inventory dispense allows negative quantity | Confirmed | Primitive `@Body('quantity')` remains and service arithmetic still allows stock increase via negative dispense. |
+| BUG-11 Low-stock alert dedupe suppresses alerts across branches | Confirmed | Notification dedupe query still lacks branch scope. |
+| BUG-12 Lab mutations commit without transactional audit | Confirmed | Encode/approve/critical-result methods still mutate first and audit outside tx. |
+| BUG-13 Lab result version not used for optimistic locking | Confirmed | `LabResult.version` exists; service updates ignore it. |
+| BUG-14 Production login form ships admin/demo defaults | Confirmed | Hard-coded default tenant/email/password still present outside dev gating. |
+| BUG-15 Frontend container cannot reach backend APIs or patient portal | Confirmed | Default `localhost` API, no runtime injection, no nginx proxy remain. |
+| BUG-16 Deploy workflow / prod compose / remote deploy mismatch | Modified | Confirmed and broader than stated: workflow copies too little, wrong working-dir assumptions, wrong env path, wrong container name, no frontend deployment. |
+| BUG-17 Patient duplicate prevention race | Confirmed | Still read-before-write only; no DB/business invariant. |
+| BUG-18 Coverage artifacts committed | Confirmed | Tracked coverage files remain in git. |
+| BUG-19 Clinical workflow read APIs leak cross-branch PHI/billing | Confirmed | Multiple read paths still omit branch checks/filters. |
+| BUG-20 Nursing task detail/update/state-transition endpoints lack branch isolation | Confirmed | Tenant-only lookups remain for get/update/transition paths. |
+| BUG-21 Claims module leaks cross-branch claim data and trusts client financial/reference inputs | Confirmed | Claim list is tenant-wide and create path still trusts client IDs/amount. |
+| BUG-22 Stock adjustment endpoint authorized by ordinary dispense permission | Confirmed | Route still uses `inventory.stock.dispense`; dedicated adjustment permissions exist but are unused. |
+| BUG-23 Role vocabulary drift breaks real lab and cashier workflows | Confirmed | Seed uses `Med-Tech`; clinical workflow uses `Lab Technician`; controller/policy mismatch for `Cashier` remains. |
+| BUG-24 Insurance and ledger routes require nonexistent roles; tests hide it with fake roles | Confirmed | Controllers still require `Admin`/`Finance`; seed still lacks those roles; tests still inject fake roles. |
+| BUG-25 Procurement routes trust client branch/reference/price data and omit branch validation | Confirmed | Controller still lacks branch guard; service still trusts client branchId/items and uses race-prone PO numbering. |
+| SUSPECT-1 Patient registry may violate branch isolation policy | Needs Runtime Confirmation | Model remains tenant-wide; intended business rule still not explicit in inspected code. |
+| SUSPECT-2 Combined reversal approval endpoints may leave APPROVED-but-unapplied reversals | Needs Runtime Confirmation | Split approval/apply flow remains; operator recovery path not proven. |
+
+## Confirmed bugs
+
+### BUG-1: Tracked runtime config ships known secrets and auth-hardening bypass
+Severity: P0
+Status: Confirmed
+Files:
+- `docker-compose.yml`
+- `docker-compose.prod.yml`
+
+Evidence:
+- `docker-compose.yml` contains:
+  - hard-coded `DATABASE_URL`
+  - hard-coded `JWT_SECRET`
+  - hard-coded `MASTER_MFA_KEY`
+  - `DISABLE_AUTH_VERIFICATION: "true"`
+- `docker-compose.prod.yml` still ships default prod DB fallbacks:
+  - `${DB_USER:-hms_prod_user}`
+  - `${DB_PASSWORD:-hms_secure_pass}`
+  - `${DB_NAME:-gemini_hms_prod}`
+
+Failure mode:
+A tracked runnable environment uses known credentials and can disable MFA verification.
+
+Impact:
+Production-footgun: secret exposure and privileged auth weakening.
+
+Reproduction idea:
+Run `docker compose up` from tracked files and authenticate as a sensitive role.
+
+Precise fix:
+Remove hard-coded secrets/default prod creds from tracked compose files. Remove non-test MFA bypass flags. Fail closed if bypass flags appear outside test.
+
+Regression test:
+CI guard that fails on tracked `DISABLE_AUTH_VERIFICATION=true`, hard-coded JWT/MFA secrets, or default prod DB passwords.
+
+---
+
+### BUG-2: Refresh-token race returns a new plaintext refresh token whose hash was never stored
+Severity: P1
+Status: Confirmed
+Files:
+- `hms-backend/src/auth/session.service.ts`
+- `hms-backend/src/auth/auth.service.ts`
+
+Evidence:
+- `SessionService.rotateRefreshToken()` returns existing session during 30s leeway when bcrypt compare fails.
+- `AuthService.refreshTokens()` always generates `newRtPlain/newRtHash` and returns `generateTokenPair(..., newRtPlain)` regardless of whether DB hash rotated.
+
+Failure mode:
+Concurrent refresh can hand a client a brand-new refresh token that is not the persisted valid token.
+
+Impact:
+Session corruption, random logout, broken multi-tab refresh behavior.
+
+Reproduction idea:
+Login once, fire two refresh requests in parallel, keep the slower response token, then refresh again later.
+
+Precise fix:
+Return structured rotation result (`rotated` vs `replay-within-leeway`). Only return a new plaintext token if its hash was stored.
+
+Regression test:
+Concurrent refresh E2E proving no response returns an unsaved refresh token.
+
+---
+
+### BUG-3: Branch context is lost after refresh
+Severity: P1
+Status: Confirmed
+Files:
+- `hms-backend/prisma/schema.prisma`
+- `hms-backend/src/auth/auth.service.ts`
+
+Evidence:
+- `Session` model has no `branchId`.
+- `selectBranch()` issues branch-bound tokens.
+- `refreshTokens()` regenerates tokens without branchId.
+- `generateTokenPair()` only includes branchId when explicitly passed.
+
+Failure mode:
+After branch selection, access-token refresh drops branch context.
+
+Impact:
+Branch-bound flows break after refresh and other branch-isolation bugs become easier to hit.
+
+Reproduction idea:
+Login → select branch → call a branch-bound endpoint → refresh → call it again.
+
+Precise fix:
+Persist branch context in session or a validated related record and reissue it during refresh.
+
+Regression test:
+E2E asserting branchId survives refresh and branch-bound routes still succeed.
+
+---
+
+### BUG-4: Refresh endpoint trusts client cookie identity and is excluded from app CSRF policy
+Severity: P1
+Status: Confirmed
+Files:
+- `hms-backend/src/auth/auth.controller.ts`
+- `hms-backend/src/auth/guards/csrf.guard.ts`
+
+Evidence:
+- `POST /api/v1/auth/refresh` is marked `@Public()`.
+- It reads `refresh_token`, `session_id`, and `user_id` from cookies.
+- Global `CsrfGuard` skips all `@Public()` handlers.
+
+Failure mode:
+Refresh is outside the server CSRF model and consumes client cookie identity hints instead of deriving identity from the validated session.
+
+Impact:
+Broken session-security invariant. `SameSite=Strict` reduces classic browser CSRF, but server trust boundaries are still wrong.
+
+Reproduction idea:
+Tamper `user_id` cookie and compare behavior against actual session ownership; verify refresh works without CSRF header while other unsafe endpoints do not.
+
+Precise fix:
+Use a dedicated refresh guard/path. Validate refresh by session ownership and stored hash only. Remove `user_id` cookie as an identity source.
+
+Regression test:
+Refresh without the proper refresh guard/CSRF policy fails; tampered `user_id` cookie has no effect.
+
+---
+
+### BUG-5: MFA enforcement misses real privileged seeded roles
+Severity: P1
+Status: Confirmed
+Files:
+- `hms-backend/src/auth/auth.service.ts`
+- `hms-backend/src/auth/guards/mfa.guard.ts`
+- `hms-backend/prisma/seed.ts`
+
+Evidence:
+- Sensitive-role list is hard-coded to `Super Admin`, `Branch Admin`, `Doctor`, `Cashier`, `HR`, `Finance`.
+- Seeded privileged roles include `HR Manager`, `IT Support`, `Compliance Officer`.
+
+Failure mode:
+Privileged seeded roles bypass MFA because their exact role names are absent from the allowlist.
+
+Impact:
+Approval/audit/compliance workflows can run without MFA.
+
+Reproduction idea:
+Disable auth bypass flags, login as `HR Manager`, verify no MFA challenge.
+
+Precise fix:
+Drive MFA from permission/role risk metadata, not fragile role-name string matching.
+
+Regression test:
+E2E auth tests for every privileged seeded role that should require MFA.
+
+---
+
+### BUG-6: Encounter/EMR/clinical endpoints allow cross-branch access because branch enforcement is incomplete
+Severity: P0
+Status: Confirmed
+Files:
+- `hms-backend/src/encounters/encounters.controller.ts`
+- `hms-backend/src/encounters/encounters.service.ts`
+- `hms-backend/src/emr/encounter.controller.ts`
+- `hms-backend/src/emr/encounter.service.ts`
+- `hms-backend/src/clinical/clinical.controller.ts`
+- `hms-backend/src/clinical/encounter.service.ts`
+- `hms-backend/src/clinical/clinical-note.service.ts`
+- `hms-backend/src/clinical/prescription.service.ts`
+- `hms-backend/src/clinical/referral.service.ts`
+- `hms-backend/src/clinical/diagnosis.service.ts`
+
+Evidence:
+- `encounters.controller.ts` and `emr/encounter.controller.ts` use `@RequireBranchContext()` without `BranchGuard`.
+- `clinical.controller.ts` uses `RolesGuard` only.
+- Services use tenant-only lookups for branch-bound records:
+  - encounter read/update paths
+  - note create/update/lock
+  - prescription get/cancel
+  - referral get/status
+  - diagnosis remove
+
+Failure mode:
+A branch-scoped user can fetch or mutate another branch’s encounter/clinical records by UUID or by omitting branch filters.
+
+Impact:
+Cross-branch clinical data breach and clinical record mutation.
+
+Reproduction idea:
+Create encounter/note/prescription/referral data in branch B and access it using a branch A user with same tenant permissions.
+
+Precise fix:
+Add `BranchGuard` to branch-bound controllers and enforce tenant+branch filters inside every service read/write.
+
+Regression test:
+Cross-branch negative tests for encounter/EMR/clinical fetch and mutation routes.
+
+---
+
+### BUG-7: Patient prescription query still leaks prescriptions across branches
+Severity: P0
+Status: Confirmed
+Files:
+- `hms-backend/src/prescriptions/prescriptions.controller.ts`
+- `hms-backend/src/prescriptions/prescriptions.service.ts`
+
+Evidence:
+- Controller requires branch context but passes only `tenantId` + `patientId`.
+- Service filters only by `tenantId`, `patientId`, `deletedAt`.
+
+Failure mode:
+Branch-bound users can fetch same-patient prescriptions from all branches.
+
+Impact:
+Cross-branch medication history leakage.
+
+Reproduction idea:
+Create same-patient prescriptions in two branches; query from one branch user.
+
+Precise fix:
+Pass `branchId` into `findByPatient()` and filter by branch unless an explicit tenant-wide policy exists.
+
+Regression test:
+Branch A user only receives branch A prescriptions.
+
+---
+
+### BUG-8: Approval request listing leaks cross-branch financial and operational requests
+Severity: P0
+Status: Confirmed
+Files:
+- `hms-backend/src/approvals/approvals.controller.ts`
+- `hms-backend/src/approvals/approvals.service.ts`
+- `hms-backend/prisma/seed.ts`
+
+Evidence:
+- Approval list controller passes only `tenantId`.
+- `ApprovalsService.getRequests()` filters only `{ tenantId }`.
+- Branch validation exists later in `processRequest()` via request details branch metadata.
+- `Branch Admin` is seeded with approval view/process permissions.
+
+Failure mode:
+Branch admins can list approval requests from other branches even though processing later checks branch.
+
+Impact:
+Cross-branch exposure of refund/void/operational approval data.
+
+Reproduction idea:
+Create branch A and branch B approval requests and list them as a branch A admin.
+
+Precise fix:
+Store branch scope explicitly on approval requests and enforce branch filtering in list queries.
+
+Regression test:
+Branch-scoped negative tests for approval list endpoint.
+
+---
+
+### BUG-9: Prescription dispense and stock deduction do not share one transaction
+Severity: P0
+Status: Confirmed
+Files:
+- `hms-backend/src/pharmacy/pharmacy.service.ts`
+- `hms-backend/src/inventory/inventory.service.ts`
+
+Evidence:
+- Pharmacy wraps prescription update and audit in one transaction.
+- It calls `inventoryService.dispenseItem(...)`.
+- Inventory opens a second independent transaction inside `dispenseItem()`.
+
+Failure mode:
+Inventory deduction can commit even if the outer prescription transaction fails later.
+
+Impact:
+Prescription status/audit and stock can diverge.
+
+Reproduction idea:
+Force an outer failure after `dispenseItem()` succeeds.
+
+Precise fix:
+Accept a Prisma transaction client in inventory mutations and use a single transaction boundary.
+
+Regression test:
+Simulated post-stock failure must roll back both prescription and stock.
+
+---
+
+### BUG-10: Manual inventory dispense endpoint allows negative quantity and turns dispense into stock increase
+Severity: P0
+Status: Confirmed
+Files:
+- `hms-backend/src/inventory/inventory.controller.ts`
+- `hms-backend/src/inventory/inventory.service.ts`
+
+Evidence:
+- Route reads primitive `@Body('quantity')`.
+- Service checks only `stock.quantity < quantity`, then computes `newStock = previousStock - quantity`.
+
+Failure mode:
+`quantity = -5` passes and increases stock.
+
+Impact:
+Direct stock corruption through public API.
+
+Reproduction idea:
+`POST /api/v1/inventory/items/:id/dispense` with `{ "quantity": -5 }`.
+
+Precise fix:
+Use a validated DTO for dispense input, enforce numeric finite positive quantity in controller and service.
+
+Regression test:
+Negative/zero/non-numeric quantity must 400 with unchanged stock.
+
+---
+
+### BUG-11: Low-stock alert dedupe is tenant-wide and suppresses alerts for other branches
+Severity: P2
+Status: Confirmed
+Files:
+- `hms-backend/src/inventory/inventory.service.ts`
+
+Evidence:
+- Notification dedupe query uses `tenantId`, `status: 'PENDING'`, and message content/SKU only.
+
+Failure mode:
+A pending alert in branch A suppresses a legitimate alert in branch B for the same SKU.
+
+Impact:
+Missed reorder alerts.
+
+Reproduction idea:
+Trigger low-stock for same SKU in two branches.
+
+Precise fix:
+Dedupe by `tenantId + branchId + inventoryItemId + alertType`.
+
+Regression test:
+Two branches with same SKU still generate separate alerts.
+
+---
+
+### BUG-12: Lab encode/approve/critical-result mutations commit without transactional audit
+Severity: P1
+Status: Confirmed
+Files:
+- `hms-backend/src/lab/lab.service.ts`
+
+Evidence:
+- `encodeResult()` mutates DB then audits with `tx=undefined`.
+- `approveResult()` mutates DB then audits with `tx=undefined`.
+- Critical-result methods do the same.
+
+Failure mode:
+Audit failure after a successful mutation leaves regulated lab state changed without audit record.
+
+Impact:
+Medico-legal audit gap in regulated workflow.
+
+Reproduction idea:
+Mock `audit.log()` to throw during encode/approve/critical-result transitions.
+
+Precise fix:
+Wrap mutation and audit in one Prisma transaction and pass `tx` to `audit.log()`.
+
+Regression test:
+Audit failure must leave lab state unchanged.
+
+---
+
+### BUG-13: `LabResult.version` exists but lab mutations do not use optimistic locking
+Severity: P1
+Status: Confirmed
+Files:
+- `hms-backend/prisma/schema.prisma`
+- `hms-backend/src/lab/lab.service.ts`
+
+Evidence:
+- `LabResult.version` exists in schema.
+- Service updates ignore version for encode/approve/critical transitions.
+
+Failure mode:
+Concurrent edits silently overwrite each other.
+
+Impact:
+Clinical result loss / last-write-wins behavior.
+
+Reproduction idea:
+Run concurrent encode/approve requests with different payloads.
+
+Precise fix:
+Add version to DTOs and update using optimistic locking with 409 conflict on stale writes.
+
+Regression test:
+Parallel lab mutation test where stale writer fails.
+
+---
+
+### BUG-14: Production login form still ships hard-coded admin/demo defaults
+Severity: P2
+Status: Confirmed
+Files:
+- `hms-frontend/src/features/auth/LoginForm.tsx`
+
+Evidence:
+- Demo identities are bundled.
+- Default values always include:
+  - `Central Hospital (Main Branch)`
+  - `admin@hospital.com`
+  - `Admin@123`
+- Only demo selector visibility is dev-gated.
+
+Failure mode:
+Production login renders prefilled admin/demo credentials.
+
+Impact:
+Misleading runtime behavior and unsafe auth surface.
+
+Reproduction idea:
+Build frontend for production and load the login page.
+
+Precise fix:
+Remove prod defaults and gate demo content behind compile-time flag.
+
+Regression test:
+Production artifact scan proving those strings do not ship.
+
+---
+
+### BUG-15: Production frontend container cannot reach backend APIs or patient portal routes
+Severity: P1
+Status: Confirmed
+Files:
+- `hms-frontend/src/lib/api.ts`
+- `hms-frontend/src/services/patient-portal.service.ts`
+- `hms-frontend/Dockerfile`
+- `hms-frontend/nginx.conf`
+
+Evidence:
+- API client defaults to `http://localhost:3000/api`.
+- Patient portal client uses relative `/patient-portal`.
+- Dockerfile does not inject runtime/build API URL.
+- nginx has no `/api` or `/patient-portal` proxy.
+
+Failure mode:
+Browser-localhost resolves to the client machine, not the backend. Relative patient portal paths also fail without proxying.
+
+Impact:
+Frontend container cannot authenticate or call backend APIs in real deployment.
+
+Reproduction idea:
+Run frontend container from another browser host and attempt login/patient portal access.
+
+Precise fix:
+Inject a real API origin or proxy `/api` and `/patient-portal` through nginx.
+
+Regression test:
+Containerized smoke test: login and patient portal requests succeed without localhost assumptions.
+
+---
+
+### BUG-16: Deploy workflow, prod compose, and remote deploy script are mutually incompatible
+Severity: P1
+Status: Confirmed
+Files:
+- `.github/workflows/deploy.yml`
+- `docker-compose.prod.yml`
+- `hms-backend/scripts/remote-deploy.sh`
+- `hms-backend/src/auth/mfa.service.ts`
+
+Evidence:
+- Deploy workflow copies only `docker-compose.prod.yml` and `remote-deploy.sh` to `/tmp`.
+- Script does not `cd` into a repo checkout, writes `hms-backend/.env.production`, and uses relative compose/build paths.
+- Prod compose expects `./hms-backend` build context, loads root `.env`, and deploys only `api`.
+- Backend requires `MASTER_MFA_KEY`, but compose does not pass it.
+- Script waits for/executed against hard-coded container `hms-login-design-backend-1` while compose service is `api`.
+
+Failure mode:
+Deployment does not provide the code tree or correct env path and targets the wrong container.
+
+Impact:
+Remote deployment path is broken and unreliable.
+
+Reproduction idea:
+Run the documented deploy workflow against a clean host.
+
+Precise fix:
+Deploy from a real checkout, align env-file usage, inject all required envs, fix service/container naming, and include frontend deployment if this is the intended prod stack.
+
+Regression test:
+CI dry-run: compose config + full stack boot + backend/frontend smoke.
+
+---
+
+### BUG-17: Patient duplicate prevention is race-prone and lacks a real invariant
+Severity: P2
+Status: Confirmed
+Files:
+- `hms-backend/src/patients/patients.service.ts`
+- `hms-backend/prisma/schema.prisma`
+
+Evidence:
+- Duplicate detection is read-before-write on `(firstName, lastName, dob)`.
+- Schema only guarantees unique `(tenantId, patientNumber)`.
+
+Failure mode:
+Concurrent creates can both pass duplicate check.
+
+Impact:
+Duplicate patient charts and fragmented history.
+
+Reproduction idea:
+Send two concurrent create-patient requests with same demographics.
+
+Precise fix:
+Use a DB-backed duplicate invariant or serialized duplicate-claim workflow.
+
+Regression test:
+Concurrent-create test proving only one wins.
+
+---
+
+### BUG-18: Coverage artifacts are committed
+Severity: P3
+Status: Confirmed
+Files:
+- `hms-backend/coverage/*`
+
+Evidence:
+- Tracked files include `clover.xml`, `coverage-final.json`, `lcov.info`, and HTML report output.
+
+Failure mode:
+Generated files pollute diffs and mislead review.
+
+Impact:
+Repo hygiene/noise issue.
+
+Reproduction idea:
+`git ls-files | rg '^hms-backend/coverage/'`
+
+Precise fix:
+Delete tracked coverage output and add ignore rules.
+
+Regression test:
+CI fails if coverage artifacts are committed.
+
+---
+
+### BUG-19: Clinical workflow read APIs leak cross-branch PHI and billing data
+Severity: P0
+Status: Confirmed
+Files:
+- `hms-backend/src/clinical/clinical-workflow.controller.ts`
+- `hms-backend/src/clinical/clinical-workflow.service.ts`
+- `hms-backend/src/clinical/clinical-workflow.policy.ts`
+
+Evidence:
+- Policy says clinical staff must be branch-scoped.
+- Controller exposes branch-role patient reads for summary, vitals, orders, lab results, prescriptions, and billing handoff.
+- Service methods for those reads do not apply branch checks/filters.
+- `getEncounters()` does branch-filter, proving inconsistent enforcement.
+
+Failure mode:
+A branch-bound clinician can read another branch’s vitals, triage, orders, lab-result metadata, prescriptions, and billing handoff by patient ID.
+
+Impact:
+Cross-branch PHI and billing leakage.
+
+Reproduction idea:
+Use a branch A doctor/nurse/cashier against a patient whose activity exists in branch B.
+
+Precise fix:
+Apply branch authorization/filtering to every clinical-workflow read path, not just some.
+
+Regression test:
+Cross-branch negative tests for each read endpoint.
+
+---
+
+### BUG-20: Nursing task detail/update/state-transition endpoints lack branch isolation
+Severity: P1
+Status: Confirmed
+Files:
+- `hms-backend/src/nursing/nursing.controller.ts`
+- `hms-backend/src/nursing/nursing.service.ts`
+
+Evidence:
+- `GET /:id`, `PATCH /:id`, `PATCH /:id/start`, `complete`, `cancel`, `reopen` all exist.
+- Service lookups for those paths use tenant-only filters.
+- `listTasks()` is branch-scoped, proving intended behavior differs.
+
+Failure mode:
+A nurse or branch admin can fetch or mutate another branch’s task by UUID.
+
+Impact:
+Cross-branch operational/patient-task exposure and mutation.
+
+Reproduction idea:
+Create task in branch B; fetch/update/transition it using branch A user.
+
+Precise fix:
+Enforce branch authorization on task detail and mutation paths.
+
+Regression test:
+Cross-branch negative tests for get/update/start/complete/cancel/reopen.
+
+---
+
+### BUG-21: Claims module leaks cross-branch claim data and trusts client financial/reference inputs
+Severity: P0
+Status: Confirmed
+Files:
+- `hms-backend/src/claims/claims.controller.ts`
+- `hms-backend/src/claims/claims.service.ts`
+- `hms-backend/src/claims/dto/claims.dto.ts`
+- `hms-backend/prisma/seed.ts`
+
+Evidence:
+- Claim permissions are seeded as `tenant/branch` scoped.
+- Branch Admin and Cashier have claim access.
+- Controller passes only tenant context for list/create.
+- Claim list returns all tenant claims with invoice→order→patient data.
+- Create path trusts client `hmoPartnerId`, `invoiceId`, `amountClaimed`, `loaNumber` without validating branch ownership or deriving protected amounts.
+
+Failure mode:
+Branch users can read claims across branches and create claims using client-selected invoice/partner/amount facts.
+
+Impact:
+Cross-branch financial/PHI leakage and fraudulent/inconsistent claims.
+
+Reproduction idea:
+Create claims tied to different branches and list as a branch user; create a claim for another branch’s invoice with arbitrary amount.
+
+Precise fix:
+Add branch scoping to claim read/write path, validate invoice/partner ownership server-side, and derive/validate claim amount server-side.
+
+Regression test:
+Cross-branch negative tests and server-derived amount tests.
+
+---
+
+### BUG-22: Inventory stock adjustment endpoint is authorized by ordinary dispense permission
+Severity: P0
+Status: Confirmed
+Files:
+- `hms-backend/src/inventory/inventory.controller.ts`
+- `hms-backend/src/inventory/inventory.service.ts`
+- `hms-backend/prisma/seed.ts`
+
+Evidence:
+- Seed defines `inventory.adjust.request` and `inventory.adjust.approve`.
+- Route still uses `@RequirePermissions('inventory.stock.dispense')`.
+- `adjustStock()` directly sets arbitrary new quantity.
+- `Pharmacist` is granted `inventory.stock.dispense`.
+
+Failure mode:
+Dispense-capable users can arbitrarily rewrite stock levels.
+
+Impact:
+Unauthorized stock correction and inventory corruption.
+
+Reproduction idea:
+Login as Pharmacist and call `PATCH /api/v1/inventory/stock/:id/adjust`.
+
+Precise fix:
+Protect adjustment with dedicated adjustment permission(s) and maker-checker if policy requires it.
+
+Regression test:
+Dispense-only users must be forbidden from stock-adjust route.
+
+---
+
+### BUG-23: Role vocabulary drift breaks real lab and cashier workflows
+Severity: P1
+Status: Confirmed
+Files:
+- `hms-backend/prisma/seed.ts`
+- `hms-backend/src/clinical/clinical-workflow.controller.ts`
+- `hms-backend/src/clinical/clinical-workflow.policy.ts`
+- `hms-frontend/src/app/portal-registry.ts`
+
+Evidence:
+- Seeded lab role is `Med-Tech`.
+- Frontend portal registry routes `Med-Tech` to `/lab`.
+- Clinical workflow controller/policy use `Lab Technician`.
+- Controller allows `Cashier` on some clinical-workflow reads, but policy denies non-clinical roles except `Patient`.
+
+Failure mode:
+Seeded lab users are blocked from workflow routes; cashier access is contradictory between controller and service.
+
+Impact:
+Real lab users and some cashier workflows break in production.
+
+Reproduction idea:
+Login as seeded `medtech@hospital.com` and call workflow lab routes; login as Cashier and call patient lab-result or billing-handoff workflow endpoints.
+
+Precise fix:
+Adopt one canonical role vocabulary and align controller, policy, seed, and frontend route metadata.
+
+Regression test:
+Real seeded-role E2E authz tests for `Med-Tech` and `Cashier`.
+
+---
+
+### BUG-24: Insurance and ledger routes require nonexistent roles, and tests hide the problem with fake roles
+Severity: P2
+Status: Confirmed
+Files:
+- `hms-backend/src/insurance/insurance-claim.controller.ts`
+- `hms-backend/src/ledger/ledger.controller.ts`
+- `hms-backend/prisma/seed.ts`
+- `hms-backend/test/insurance-claims.e2e-spec.ts`
+
+Evidence:
+- Both controllers require `Admin` / `Finance`.
+- Seeded roles do not include `Admin` or `Finance`.
+- E2E tests inject fake `Finance` and `Admin` roles directly.
+
+Failure mode:
+Real seeded users cannot access these routes, but tests still pass.
+
+Impact:
+Dead production routes hidden by false-green tests.
+
+Reproduction idea:
+Seed normally and attempt access with real roles only.
+
+Precise fix:
+Seed real supported roles and permissions or retarget controllers to real roles already in the system.
+
+Regression test:
+Authz E2E must use only seeded real roles.
+
+---
+
+### BUG-25: Procurement routes trust client branch/reference/price data and omit required branch validation
+Severity: P1
+Status: Confirmed
+Files:
+- `hms-backend/src/procurement/procurement.controller.ts`
+- `hms-backend/src/procurement/procurement.service.ts`
+- `hms-backend/src/procurement/dto/procurement.dto.ts`
+- `hms-backend/prisma/seed.ts`
+
+Evidence:
+- Procurement permissions are seeded as `tenant/branch` scoped.
+- Controller uses `PermissionsGuard` only; no `BranchGuard`.
+- DTO requires client `branchId` and line-item `unitPrice`.
+- Service stores client `branchId` and raw `items`.
+- Approval/receiving paths load by `{ id, tenantId }` only.
+- PO numbering uses `count()+1`.
+
+Failure mode:
+Branch-scoped users can target arbitrary branches, client price data becomes source of truth, references are not ownership-validated, and concurrent PO creation is race-prone.
+
+Impact:
+Cross-branch procurement mutation, budget misstatement, mixed-reference corruption, duplicate-number collisions.
+
+Reproduction idea:
+Create PR for another branch by sending its UUID; concurrently create POs and observe numbering race.
+
+Precise fix:
+Derive branch from authenticated context, validate supplier/request ownership and branch match, stop trusting client price as authoritative procurement fact, and use a real numbering/sequence strategy.
+
+Regression test:
+Cross-branch procurement negatives, reference-ownership tests, concurrent PO numbering tests.
+
+---
+
+### BUG-26: Additional backend routes use nonexistent role names, creating dead or unreachable production paths
+Severity: P2
+Status: Confirmed
+Files:
+- `hms-backend/src/analytics/analytics.controller.ts`
+- `hms-backend/src/sla-alerts/sla-alerts.controller.ts`
+- `hms-backend/src/hr/hr.controller.ts`
+- `hms-backend/src/referral-partners/referral-partners.controller.ts`
+- `hms-backend/prisma/seed.ts`
+
+Evidence:
+- Seeded roles do not include `ANALYST`, `Analyst`, `Branch Manager`, or `Staff`.
+- Controllers still require those names:
+  - analytics: `ANALYST` / `Analyst`
+  - SLA alerts: `ANALYST` / `Analyst`
+  - HR: `Branch Manager`
+  - referral partners: `Staff`
+
+Failure mode:
+Routes guarded by nonexistent roles are unreachable to real seeded users.
+
+Impact:
+Dead production routes and silent authorization mismatch.
+
+Reproduction idea:
+Seed DB normally and attempt access using only real seeded roles.
+
+Precise fix:
+Replace nonexistent roles with canonical seeded roles or seed the missing roles with explicit permissions if truly intended.
+
+Regression test:
+Seeded-role authz tests for analytics, SLA alerts, HR, and referral endpoints.
+
+## Suspected bugs / needs runtime confirmation
+
+### SUSPECT-1: Patient registry may violate branch isolation policy
+Why suspected:
+Patient records are tenant-scoped and patient APIs are tenant-wide.
+
+Evidence available:
+- Patient model lacks branch relation.
+- Patient services/controllers filter by tenant, not branch.
+
+Evidence missing:
+Explicit business/security policy stating whether patient MPI is intentionally tenant-wide.
+
+How to confirm:
+Run cross-branch patient access tests and verify intended product policy.
+
+Likely fix if confirmed:
+Add patient branch-visibility model/rules and enforce them across patient queries.
+
+---
+
+### SUSPECT-2: Combined reversal approval endpoints may leave APPROVED-but-unapplied reversals on partial failure
+Why suspected:
+`approveVoid()` / `approveRefund()` approve first, apply second.
+
+Evidence available:
+Approval and application are separate service calls and separate transactions.
+
+Evidence missing:
+Proof that the explicit recovery path (`applyReversal`) is operator-visible, monitored, and safe after failure.
+
+How to confirm:
+Force apply failure after approval succeeds and inspect persisted state, operator visibility, and retry behavior.
+
+Likely fix if confirmed:
+Make combined approve+apply atomic or add a durable executor/retry workflow.
+
+## Rejected baseline claims
+- Claim: Pharmacy `tenantId` fallback in dispense path creates a real branch-isolation exploit.
+- Why rejected:
+  The fallback expression is poor, but `Prescription.branchId` is required and non-super-admin dispensing still checks `prescription.branchId !== effectiveBranchId`.
+- Evidence:
+  `hms-backend/prisma/schema.prisma` requires `Prescription.branchId`; `hms-backend/src/pharmacy/pharmacy.service.ts` enforces branch match.
+
+- Claim: Lab release’s raw `update({ where: { id } })` is a confirmed current cross-tenant exploit.
+- Why rejected:
+  The pattern is brittle, but the inspected flow scopes/fetches the result first and current repository evidence did not prove an active exploit from that statement alone.
+- Evidence:
+  Scoped result lookup and scoped transaction flow remain in `hms-backend/src/lab/lab.service.ts`.
+
+## Patch plan
+
+### TASK-P0-1: Remove tracked secrets and non-test auth bypass flags
+Files to edit:
+- `docker-compose.yml`
+- `docker-compose.prod.yml`
+- `.github/workflows/*` if any workflow relies on insecure defaults
+
+Exact intended change:
+- Remove hard-coded DB/JWT/MFA secrets.
+- Remove `DISABLE_AUTH_VERIFICATION` from tracked non-test runtime.
+- Remove default prod DB credential fallbacks or fail closed when unset.
+
+Tests to add/update:
+- CI guard script for tracked secrets/bypass flags.
+- Secret scan step in CI.
+
+Risk of regression:
+- Medium: local compose startup will require explicit env injection.
+
+Dependencies/blockers:
+- None.
+
+---
+
+### TASK-P0-2: Enforce branch isolation across encounters/EMR/clinical modules
+Files to edit:
+- `hms-backend/src/encounters/encounters.controller.ts`
+- `hms-backend/src/encounters/encounters.service.ts`
+- `hms-backend/src/emr/encounter.controller.ts`
+- `hms-backend/src/emr/encounter.service.ts`
+- `hms-backend/src/clinical/clinical.controller.ts`
+- `hms-backend/src/clinical/encounter.service.ts`
+- `hms-backend/src/clinical/clinical-note.service.ts`
+- `hms-backend/src/clinical/prescription.service.ts`
+- `hms-backend/src/clinical/referral.service.ts`
+- `hms-backend/src/clinical/diagnosis.service.ts`
+
+Exact intended change:
+- Add `BranchGuard` wherever `@RequireBranchContext()` is used.
+- Pass authenticated `branchId` into service methods.
+- Change tenant-only lookups to tenant+branch lookups for branch-bound users.
+- Preserve super-admin escape hatch only where explicitly intended.
+
+Tests to add/update:
+- Cross-branch negative tests for every fetch and mutation route in these modules.
+
+Risk of regression:
+- High: clinical paths are broad and branch behavior must remain correct for super-admin.
+
+Dependencies/blockers:
+- Should land before or alongside prescription and clinical-workflow scoping fixes.
+
+---
+
+### TASK-P0-3: Fix cross-branch prescription leakage
+Files to edit:
+- `hms-backend/src/prescriptions/prescriptions.controller.ts`
+- `hms-backend/src/prescriptions/prescriptions.service.ts`
+
+Exact intended change:
+- Pass `branchId` from controller to service.
+- Filter `findByPatient()` by branch for branch-bound users.
+
+Tests to add/update:
+- Branch A vs branch B prescription query negative tests.
+
+Risk of regression:
+- Low.
+
+Dependencies/blockers:
+- None beyond branch isolation conventions.
+
+---
+
+### TASK-P0-4: Fix approval request branch scoping in list path
+Files to edit:
+- `hms-backend/src/approvals/approvals.controller.ts`
+- `hms-backend/src/approvals/approvals.service.ts`
+- `hms-backend/prisma/schema.prisma` if adding explicit `branchId`
+- new Prisma migration if schema changes
+
+Exact intended change:
+- Add explicit branch scope to approval requests or derive it reliably.
+- Filter list queries by caller branch unless super-admin/explicit tenant-wide policy applies.
+
+Tests to add/update:
+- Cross-branch approval list negative test.
+- Approval creation/process tests preserving branch scope.
+
+Risk of regression:
+- Medium: existing approval data may need backfill if schema changes.
+
+Dependencies/blockers:
+- If schema column added, requires migration.
+
+---
+
+### TASK-P0-5: Make pharmacy dispense and inventory deduction atomic; validate dispense input
+Files to edit:
+- `hms-backend/src/pharmacy/pharmacy.service.ts`
+- `hms-backend/src/inventory/inventory.service.ts`
+- `hms-backend/src/inventory/inventory.controller.ts`
+- `hms-backend/src/inventory/dto/inventory.dto.ts`
+
+Exact intended change:
+- Introduce validated dispense DTO with positive finite quantity.
+- Refactor inventory dispense to accept optional transaction client.
+- Run prescription state change, stock change, stock log, low-stock alert, and audit in one tx.
+
+Tests to add/update:
+- Negative quantity/zero/non-numeric dispense tests.
+- Forced outer failure rollback test proving no partial stock commit.
+- Existing pharmacy dispense tests updated for shared tx path.
+
+Risk of regression:
+- High: inventory/pharmacy correctness and locking behavior change together.
+
+Dependencies/blockers:
+- None.
+
+---
+
+### TASK-P0-6: Fix clinical-workflow cross-branch read leakage
+Files to edit:
+- `hms-backend/src/clinical/clinical-workflow.service.ts`
+- `hms-backend/src/clinical/clinical-workflow.policy.ts`
+- `hms-backend/src/clinical/clinical-workflow.controller.ts` if route-role/policy alignment changes
+
+Exact intended change:
+- Add branch checks/filters to summary, vitals, triage, orders, lab results, prescriptions, billing handoff read paths.
+- Keep super-admin tenant-wide behavior only where explicitly intended.
+
+Tests to add/update:
+- Cross-branch negative tests for each clinical-workflow read route.
+
+Risk of regression:
+- High: broad patient portal/staff read paths may change output shape/visibility.
+
+Dependencies/blockers:
+- Should align with TASK-P1-6 role taxonomy fix.
+
+---
+
+### TASK-P0-7: Fix claims branch scoping and trusted financial/reference inputs
+Files to edit:
+- `hms-backend/src/claims/claims.controller.ts`
+- `hms-backend/src/claims/claims.service.ts`
+- `hms-backend/src/claims/dto/claims.dto.ts`
+- `hms-backend/prisma/schema.prisma` if explicit branch indexing/model changes are needed
+- migration if schema changes
+
+Exact intended change:
+- Add branch-aware list/create behavior.
+- Validate invoice and HMO partner belong to tenant/branch.
+- Derive or strictly validate claim amount against server-side invoice facts.
+- Prevent cross-branch claim reads for branch-bound users.
+
+Tests to add/update:
+- Cross-branch claim list/create negative tests.
+- Create-claim tests proving foreign invoice/hmo IDs fail.
+- Amount integrity tests.
+
+Risk of regression:
+- High: claims behavior will tighten and may invalidate permissive current tests.
+
+Dependencies/blockers:
+- Must align with seeded permission scope semantics.
+
+---
+
+### TASK-P0-8: Protect stock adjustment with proper permission/workflow
+Files to edit:
+- `hms-backend/src/inventory/inventory.controller.ts`
+- `hms-backend/src/inventory/inventory.service.ts`
+- possibly approvals/inventory modules if maker-checker is required
+
+Exact intended change:
+- Replace `inventory.stock.dispense` guard on stock-adjust route with adjustment-specific permission(s).
+- If required by policy, split request vs approve/apply instead of direct arbitrary set.
+
+Tests to add/update:
+- Authz test proving dispense-only users cannot adjust stock.
+- Adjustment permission happy-path test.
+- If maker-checker added, approval workflow tests.
+
+Risk of regression:
+- Medium: users currently relying on improper access will be blocked.
+
+Dependencies/blockers:
+- If maker-checker added, may depend on approval/inventory design decision.
+
+---
+
+### TASK-P1-1: Repair refresh flow invariants
+Files to edit:
+- `hms-backend/src/auth/auth.controller.ts`
+- `hms-backend/src/auth/auth.service.ts`
+- `hms-backend/src/auth/session.service.ts`
+- `hms-backend/prisma/schema.prisma`
+- migration for session branch context if added
+
+Exact intended change:
+- Stop trusting `user_id` cookie.
+- Preserve branch context through refresh.
+- Return a new plaintext refresh token only when stored.
+- Rework refresh guard/CSRF policy for refresh route.
+
+Tests to add/update:
+- Concurrent refresh test.
+- Branch-preservation refresh test.
+- Tampered-cookie refresh test.
+- Refresh guard/CSRF behavior test.
+
+Risk of regression:
+- High: auth/session cookies and refresh semantics change.
+
+Dependencies/blockers:
+- Session schema migration if `branchId` is persisted.
+
+---
+
+### TASK-P1-2: Drive MFA requirement from canonical privilege/risk metadata
+Files to edit:
+- `hms-backend/src/auth/auth.service.ts`
+- `hms-backend/src/auth/guards/mfa.guard.ts`
+- `hms-backend/prisma/seed.ts`
+- any permission-risk utility introduced
+
+Exact intended change:
+- Replace hard-coded sensitive-role allowlist with permission/role risk-based decision.
+- Cover seeded privileged roles automatically.
+
+Tests to add/update:
+- MFA authz tests for all privileged seeded roles.
+
+Risk of regression:
+- Medium: more users may correctly require MFA.
+
+Dependencies/blockers:
+- Best done after or with canonical role/permission cleanup.
+
+---
+
+### TASK-P1-3: Make lab mutations transactional and optimistic-lock protected
+Files to edit:
+- `hms-backend/src/lab/lab.service.ts`
+- lab DTOs
+- possibly response DTOs
+- tests/specs
+
+Exact intended change:
+- Wrap encode/approve/critical-result mutations and audit in one tx.
+- Add version fields to DTOs and enforce optimistic locking.
+
+Tests to add/update:
+- Audit-failure rollback tests.
+- Parallel stale-write conflict tests.
+
+Risk of regression:
+- High: regulated workflow behavior changes and clients may need to send version.
+
+Dependencies/blockers:
+- API contract change for versioned mutations.
+
+---
+
+### TASK-P1-4: Enforce branch isolation on nursing task detail/mutation paths
+Files to edit:
+- `hms-backend/src/nursing/nursing.service.ts`
+- `hms-backend/src/nursing/nursing.controller.ts` if any route contract changes
+
+Exact intended change:
+- Add branch checks for get/update/start/complete/cancel/reopen.
+- Keep super-admin behavior explicit.
+
+Tests to add/update:
+- Cross-branch nursing task negative tests.
+
+Risk of regression:
+- Medium.
+
+Dependencies/blockers:
+- None.
+
+---
+
+### TASK-P1-5: Fix procurement trust boundaries and PO numbering race
+Files to edit:
+- `hms-backend/src/procurement/procurement.controller.ts`
+- `hms-backend/src/procurement/procurement.service.ts`
+- `hms-backend/src/procurement/dto/procurement.dto.ts`
+- possibly numbering service/schema if PO numbering moved there
+
+Exact intended change:
+- Add branch enforcement.
+- Derive branch from authenticated user where appropriate.
+- Validate supplier/request ownership and branch match.
+- Remove client price as authoritative procurement fact or snapshot it from validated catalog.
+- Replace `count()+1` PO numbering with numbering service/sequence.
+
+Tests to add/update:
+- Cross-branch procurement negative tests.
+- Foreign reference rejection tests.
+- Concurrent PO numbering test.
+
+Risk of regression:
+- High: procurement contracts and numbering change.
+
+Dependencies/blockers:
+- May depend on numbering service extension/migration.
+
+---
+
+### TASK-P1-6: Fix canonical role vocabulary drift
+Files to edit:
+- `hms-backend/prisma/seed.ts`
+- `hms-backend/src/clinical/clinical-workflow.controller.ts`
+- `hms-backend/src/clinical/clinical-workflow.policy.ts`
+- `hms-backend/src/insurance/insurance-claim.controller.ts`
+- `hms-backend/src/ledger/ledger.controller.ts`
+- `hms-backend/src/analytics/analytics.controller.ts`
+- `hms-backend/src/sla-alerts/sla-alerts.controller.ts`
+- `hms-backend/src/hr/hr.controller.ts`
+- `hms-backend/src/referral-partners/referral-partners.controller.ts`
+- frontend role route metadata where applicable
+- affected tests
+
+Exact intended change:
+- Choose one canonical set of role names.
+- Replace nonexistent roles in controllers/routes/tests or explicitly seed them if truly intended.
+- Align `Med-Tech` vs `Lab Technician`.
+- Resolve Cashier mismatch between controller annotations and clinical workflow policy.
+
+Tests to add/update:
+- Seeded-role authz E2E for affected modules.
+- Role consistency test comparing seed vs backend/frontend usage.
+
+Risk of regression:
+- High: many routes/tests depend on current inconsistent strings.
+
+Dependencies/blockers:
+- Should be coordinated with MFA and clinical-workflow fixes.
+
+---
+
+### TASK-P1-7: Repair production frontend/backend runtime wiring
+Files to edit:
+- `hms-frontend/src/lib/api.ts`
+- `hms-frontend/src/services/patient-portal.service.ts`
+- `hms-frontend/Dockerfile`
+- `hms-frontend/nginx.conf`
+
+Exact intended change:
+- Stop defaulting browser API traffic to client-localhost in production.
+- Provide runtime/build API origin or nginx proxy for `/api` and `/patient-portal`.
+
+Tests to add/update:
+- Containerized frontend smoke test for login and patient portal routes.
+
+Risk of regression:
+- Medium.
+
+Dependencies/blockers:
+- Should align with actual deployment topology decision.
+
+---
+
+### TASK-P1-8: Repair deploy workflow / prod compose / remote deploy path
+Files to edit:
+- `.github/workflows/deploy.yml`
+- `docker-compose.prod.yml`
+- `hms-backend/scripts/remote-deploy.sh`
+
+Exact intended change:
+- Use a real repo checkout on the target host.
+- Align env-file path with what compose actually reads.
+- Inject all required envs including `MASTER_MFA_KEY`.
+- Stop hard-coding wrong container name.
+- Add frontend service if prod compose is meant to deploy full app.
+
+Tests to add/update:
+- CI dry-run for compose config/build.
+- End-to-end deploy smoke on isolated runner/host.
+
+Risk of regression:
+- High: deployment path is currently broken and will materially change.
+
+Dependencies/blockers:
+- Should align with TASK-P1-7 runtime topology.
+
+---
+
+### TASK-P2-1: Remove production login defaults/demo leakage
+Files to edit:
+- `hms-frontend/src/features/auth/LoginForm.tsx`
+
+Exact intended change:
+- Remove prod default tenant/email/password.
+- Gate demo identities with compile-time demo flag.
+
+Tests to add/update:
+- Production bundle string scan test.
+
+Risk of regression:
+- Low.
+
+Dependencies/blockers:
+- None.
+
+---
+
+### TASK-P2-2: Add real duplicate-prevention strategy for patients
+Files to edit:
+- `hms-backend/src/patients/patients.service.ts`
+- `hms-backend/prisma/schema.prisma`
+- migration if schema changes
+
+Exact intended change:
+- Replace read-before-write duplicate blocking with DB-backed invariant or serialized duplicate review workflow.
+
+Tests to add/update:
+- Concurrent patient-create race test.
+
+Risk of regression:
+- Medium.
+
+Dependencies/blockers:
+- Product decision needed if soft-duplicate review is preferred over hard block.
+
+---
+
+### TASK-P2-3: Decide patient MPI branch policy and implement if needed
+Files to edit:
+- patient model/services/controllers as needed
+- docs/tests
+
+Exact intended change:
+- Make patient visibility policy explicit.
+- If branch-limited, add branch visibility model and enforcement.
+
+Tests to add/update:
+- Policy-driven cross-branch patient access tests.
+
+Risk of regression:
+- High if policy changes from tenant-wide to branch-bound.
+
+Dependencies/blockers:
+- Requires explicit business decision.
+
+---
+
+### TASK-P2-4: Replace false-green fake-role tests with real seeded-role authz coverage
+Files to edit:
+- `hms-backend/test/insurance-claims.e2e-spec.ts`
+- any other tests injecting nonexistent roles
+- possibly auth test helpers
+
+Exact intended change:
+- Stop using nonexistent role strings in tests.
+- Use only roles seeded by the repository or explicitly test canonical replacements.
+
+Tests to add/update:
+- Real seeded-role authz E2E for insurance/ledger and other affected modules.
+
+Risk of regression:
+- Low to Medium; some currently green tests will fail correctly.
+
+Dependencies/blockers:
+- Depends on TASK-P1-6 canonical role decision.
+
+---
+
+### TASK-P2-5: Prove or repair approve-then-apply reversal recovery
+Files to edit:
+- `hms-backend/src/billing/billing.service.ts`
+- possibly approvals/reversal execution path
+
+Exact intended change:
+- Either prove durable recovery is intentional and observable, or make combined approve+apply atomic/durable.
+
+Tests to add/update:
+- Forced partial-failure reversal approval/apply test.
+
+Risk of regression:
+- Medium.
+
+Dependencies/blockers:
+- Requires desired operational recovery model.
+
+---
+
+### TASK-P3-1: Remove tracked coverage artifacts
+Files to edit:
+- delete `hms-backend/coverage/*`
+- update `.gitignore`
+
+Exact intended change:
+- Remove generated coverage files from git and ignore them.
+
+Tests to add/update:
+- Repo hygiene CI guard.
+
+Risk of regression:
+- Low.
+
+Dependencies/blockers:
+- None.
+
+## Security and production invariants
+- No tracked runtime config may contain real/default secrets or auth-bypass flags.
+- Refresh identity must come from validated session ownership, not client cookie hints.
+- Refresh rotation must be atomic and must never return an unsaved refresh token.
+- Branch context must survive refresh.
+- Every branch-scoped endpoint must enforce branch isolation in controller and service/query layers.
+- Clinical and financial reads are not exempt from branch isolation.
+- Claims, procurement, stock, billing, and lab mutations must not trust client-supplied branch, actor, amount, price, or status as source of truth.
+- Stock adjustment requires adjustment-specific authorization, not ordinary dispense rights.
+- Clinical/lab/stock/financial mutations and their audits must commit atomically.
+- Versioned regulated workflows must use optimistic locking.
+- Role names must come from one canonical vocabulary shared across seed, backend, frontend, and tests.
+- Deployment workflows must be reproducible from repository code and explicit env injection.
+
+## Missing tests
+
+### Auth/session
+- Concurrent refresh unsaved-token race
+- Refresh preserves branchId
+- Refresh ignores tampered `user_id` cookie
+- Refresh guard/CSRF behavior
+- MFA-required tests for all privileged seeded roles
+
+### Tenant/branch isolation
+- Encounters cross-branch negatives
+- EMR encounter cross-branch negatives
+- Clinical service cross-branch negatives
+- Prescription query cross-branch negatives
+- Approval list cross-branch negatives
+- Clinical-workflow read cross-branch negatives
+- Nursing task detail/mutation cross-branch negatives
+- Claims cross-branch negatives
+- Procurement cross-branch negatives
+
+### Billing/ledger
+- Approve-then-apply reversal partial-failure test
+- Real seeded-role authz for insurance/ledger routes
+
+### Inventory/pharmacy
+- Negative/zero/non-numeric manual dispense tests
+- Shared-transaction rollback test for pharmacy dispense
+- Branch-specific low-stock dedupe test
+- Stock-adjust authz test for dispense-only role
+
+### Lab/clinical
+- Audit-failure rollback for encode/approve/critical-result transitions
+- Parallel stale-write/version-conflict tests
+- Seeded `Med-Tech` authz tests
+- Cashier clinical-workflow access tests
+- Cross-branch workflow read tests
+
+### Frontend routing/API
+- Production build scan for login default leakage
+- Frontend container smoke test without localhost assumption
+- Patient portal production proxy smoke
+- Role-vocabulary consistency check across seed/backend/frontend
+
+### Deployment/CI
+- `docker compose -f docker-compose.prod.yml config`
+- Full prod-compose boot smoke
+- Remote deploy dry-run from clean remote directory
+- Secret/bypass flag scan
+- Coverage-artifact guard
+- Frontend deployment smoke
+
+## Final merge/deploy gate
+
+### Backend
+```bash
+cd hms-backend
+npx prisma validate
+npx prisma generate
+npm run lint
+npm run build
+npm run test
+npm run test:e2e -- --runInBand
+```
+
+### Frontend
+```bash
+cd hms-frontend
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
+### Repository safety guards
+```bash
+cd ..
+git ls-files | rg '^hms-backend/coverage/' && exit 1 || true
+rg -n 'DISABLE_AUTH_VERIFICATION:\s*"true"|super-secret-key|super-secret-mfa-key|hms_secure_pass' docker-compose*.yml .github/workflows
+```
+
+### Deployment/config validation
+```bash
+docker compose -f docker-compose.prod.yml config
+docker compose -f docker-compose.prod.yml build
+```
+
+### Required smoke tests before merge/deploy
+1. Auth/session
+   - login
+   - MFA for real privileged seeded role
+   - branch select
+   - refresh
+   - branch-bound endpoint still works after refresh
+
+2. Isolation
+   - branch A user denied branch B data for:
+     - encounters
+     - EMR/clinical
+     - prescriptions
+     - approvals
+     - nursing tasks
+     - claims
+     - procurement
+     - clinical-workflow reads
+
+3. Inventory/pharmacy
+   - negative manual dispense rejected
+   - stock-adjust route forbidden for dispense-only role
+   - forced pharmacy outer failure rolls back stock + prescription together
+
+4. Lab
+   - audit failure rolls back encode/approve/critical-result mutation
+   - concurrent lab mutation returns 409 on stale writer
+
+5. Claims/procurement
+   - claim creation rejects foreign branch invoice/partner and invalid amount
+   - procurement cannot target foreign branch/references
+   - concurrent PO creation does not duplicate order numbers
+
+6. Frontend/runtime
+   - production login form has no hard-coded admin/demo defaults
+   - frontend container login works without browser-localhost API assumptions
+   - `/patient-portal` resolves in production topology
+
+No merge or deployment recommendation is valid until all P0/P1 issues above are fixed in code and verified by tests.

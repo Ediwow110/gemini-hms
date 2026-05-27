@@ -98,17 +98,43 @@ describe('EncountersService', () => {
   });
 
   describe('findAll', () => {
-    it('should return list of encounters scoped by tenant', async () => {
-      const encounters = [{ id: 'enc-1', tenantId }];
+    it('should return list of encounters scoped by tenant and branch', async () => {
+      const encounters = [{ id: 'enc-1', tenantId, branchId }];
       prisma.encounter.findMany.mockResolvedValue(encounters);
 
-      const result = await service.findAll(tenantId);
+      const result = await service.findAll(tenantId, branchId);
       expect(result).toEqual(encounters);
       expect(prisma.encounter.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ tenantId }),
+          where: expect.objectContaining({ tenantId, branchId }),
         }),
       );
+    });
+  });
+
+  describe('findOne', () => {
+    it('should enforce branch scope on encounter reads', async () => {
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: 'enc-1',
+        tenantId,
+        branchId,
+      });
+
+      await service.findOne(tenantId, 'enc-1', branchId);
+
+      expect(prisma.encounter.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'enc-1', tenantId, branchId },
+        }),
+      );
+    });
+
+    it('should throw NotFoundException for cross-branch reads', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.findOne(tenantId, 'enc-1', branchId),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -129,11 +155,22 @@ describe('EncountersService', () => {
       prisma.encounter.findFirst.mockResolvedValue(existingEncounter);
       prisma.encounter.update.mockResolvedValue(updatedEncounter);
 
-      const result = await service.update(tenantId, userId, encounterId, {
-        status: EncounterStatus.FINISHED,
-      });
+      const result = await service.update(
+        tenantId,
+        userId,
+        encounterId,
+        {
+          status: EncounterStatus.FINISHED,
+        },
+        branchId,
+      );
 
       expect(result.status).toBe(EncounterStatus.FINISHED);
+      expect(prisma.encounter.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: encounterId, tenantId, branchId },
+        }),
+      );
       expect(prisma.encounter.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({

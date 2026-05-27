@@ -96,7 +96,7 @@ async function run() {
 
   for (let i = 0; i < totalRequests; i++) {
     promises.push(
-      authService.refreshTokens(user.id, session.id, initialRtPlain)
+      authService.refreshTokens(session.id, initialRtPlain)
         .then(res => ({ success: true, data: res }))
         .catch(err => ({ success: false, error: err.message || err }))
     );

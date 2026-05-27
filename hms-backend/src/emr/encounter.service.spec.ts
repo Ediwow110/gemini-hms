@@ -138,21 +138,21 @@ describe('EncounterService', () => {
   });
 
   describe('findOne', () => {
-    it('should return encounter with tenant scope', async () => {
+    it('should return encounter with tenant + branch scope', async () => {
       prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
-      const result = await service.findOne(tenantId, encounterId);
+      const result = await service.findOne(tenantId, encounterId, branchId);
       expect(result.id).toBe(encounterId);
       expect(prisma.encounter.findFirst).toHaveBeenCalledWith({
-        where: { id: encounterId, tenantId },
+        where: { id: encounterId, tenantId, branchId },
         include: expect.any(Object),
       });
     });
 
-    it('should throw NotFoundException for cross-tenant leakage', async () => {
+    it('should throw NotFoundException for cross-branch leakage', async () => {
       prisma.encounter.findFirst.mockResolvedValue(null);
-      await expect(service.findOne(otherTenantId, encounterId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.findOne(tenantId, encounterId, branchId),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -297,6 +297,7 @@ describe('EncounterService', () => {
         userId,
         encounterId,
         EncounterStatus.FINISHED,
+        branchId,
       );
 
       expect(result.status).toBe(EncounterStatus.FINISHED);
@@ -320,6 +321,7 @@ describe('EncounterService', () => {
           userId,
           encounterId,
           EncounterStatus.FINISHED,
+          branchId,
         ),
       ).rejects.toThrow('Audit failure');
     });

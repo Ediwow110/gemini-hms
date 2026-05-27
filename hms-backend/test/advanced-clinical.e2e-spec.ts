@@ -52,6 +52,17 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
     });
   });
 
+  beforeEach(() => {
+    MockJwtAuthGuard.user = {
+      userId: '11111111-1111-4111-8111-111111111111',
+      tenantId: tenantId,
+      email: 'admin@hms.local',
+      roles: ['Super Admin'],
+      permissions: ['*'],
+      branchId: '123e4567-e89b-12d3-a456-426614174001',
+    };
+  });
+
   it('should prevent unauthorized role from accessing advanced clinical features (403)', async () => {
     MockJwtAuthGuard.user = {
       userId: '11111111-1111-4111-8111-111111111111',

@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateInventoryItemDto,
@@ -20,6 +21,14 @@ export class InventoryService {
     private prisma: PrismaService,
     private audit: AuditService,
   ) {}
+
+  private assertPositiveQuantity(quantity: number) {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      throw new BadRequestException(
+        'validation_error: quantity_must_be_a_positive_number',
+      );
+    }
+  }
 
   async createItem(
     tenantId: string,
@@ -271,8 +280,12 @@ export class InventoryService {
     id: string,
     quantity: number,
     orderId?: string,
+    tx?: Prisma.TransactionClient,
   ) {
-    const stock = await this.prisma.branchStock.findUnique({
+    this.assertPositiveQuantity(quantity);
+
+    const db = tx || this.prisma;
+    const stock = await db.branchStock.findUnique({
       where: {
         tenantId_branchId_inventoryItemId: {
           tenantId,
@@ -286,25 +299,23 @@ export class InventoryService {
       throw new NotFoundException('Stock not found for this branch');
     }
 
-    // Guardrail (Section 15): Insufficient stock
     if (stock.quantity < quantity) {
       throw new BadRequestException(
         `insufficient_stock: Only ${stock.quantity} available`,
       );
     }
 
-    // Atomic Stock Transaction with Optimistic Locking
-    return this.prisma.$transaction(async (tx) => {
+    const applyDispense = async (activeTx: Prisma.TransactionClient) => {
       const previousStock = stock.quantity;
       const newStock = previousStock - quantity;
 
-      const stockUpdate = await tx.branchStock.updateMany({
+      const stockUpdate = await activeTx.branchStock.updateMany({
         where: { id: stock.id, tenantId, branchId, version: stock.version },
         data: { quantity: newStock, version: { increment: 1 } },
       });
 
       if (stockUpdate.count === 0) {
-        const current = await tx.branchStock.findUnique({
+        const current = await activeTx.branchStock.findUnique({
           where: { id: stock.id },
         });
         if (!current) {
@@ -315,7 +326,7 @@ export class InventoryService {
         );
       }
 
-      const updatedStock = await tx.branchStock.findFirst({
+      const updatedStock = await activeTx.branchStock.findFirst({
         where: { id: stock.id, tenantId, branchId },
       });
 
@@ -323,14 +334,13 @@ export class InventoryService {
         throw new NotFoundException('Stock not found for this branch');
       }
 
-      // 2. Insert Stock Log (Traceability)
-      const log = await tx.stockLog.create({
+      const log = await activeTx.stockLog.create({
         data: {
           tenantId,
           branchId,
           inventoryItemId: id,
           type: 'OUT',
-          quantity: quantity,
+          quantity,
           previousStock,
           newStock,
           referenceType: 'DISPENSING',
@@ -339,35 +349,33 @@ export class InventoryService {
         },
       });
 
-      // 3. Trigger Low-Stock Notification if crossing threshold
       if (
         newStock <= updatedStock.reorderLevel &&
         previousStock > updatedStock.reorderLevel
       ) {
-        const item = await tx.inventoryItem.findUnique({ where: { id } });
-        const existingAlert = await tx.notification.findFirst({
+        const item = await activeTx.inventoryItem.findUnique({ where: { id } });
+        const existingAlert = await activeTx.notification.findFirst({
           where: {
             tenantId,
             status: 'PENDING',
-            content: { contains: `(SKU: ${item?.sku})` },
+            content: { contains: `(SKU: ${item?.sku}) in Branch ${branchId}` },
           },
         });
 
         if (!existingAlert) {
-          await tx.notification.create({
+          await activeTx.notification.create({
             data: {
               tenantId,
               type: 'IN_APP',
               recipient: 'ROLE:Pharmacist',
               subject: 'LOW STOCK ALERT: ' + item?.name,
-              content: `Item ${item?.name} (SKU: ${item?.sku}) has fallen to ${newStock}. Reorder level is ${updatedStock.reorderLevel}.`,
+              content: `Item ${item?.name} (SKU: ${item?.sku}) in Branch ${branchId} has fallen to ${newStock}. Reorder level is ${updatedStock.reorderLevel}.`,
               status: 'PENDING',
             },
           });
         }
       }
 
-      // 4. Log System Audit
       await this.audit.log(
         {
           tenantId,
@@ -377,12 +385,18 @@ export class InventoryService {
           recordId: id,
           newValues: { log, updatedStock },
         },
-        tx,
+        activeTx,
         branchId,
       );
 
       return updatedStock;
-    });
+    };
+
+    if (tx) {
+      return applyDispense(tx);
+    }
+
+    return this.prisma.$transaction(applyDispense);
   }
 
   async getLowStockAlerts(tenantId: string, branchId: string) {
@@ -391,7 +405,7 @@ export class InventoryService {
       include: { inventoryItem: true },
       orderBy: { quantity: 'asc' },
     });
-    return branchStocks.filter(bs => bs.quantity <= bs.reorderLevel);
+    return branchStocks.filter((bs) => bs.quantity <= bs.reorderLevel);
   }
 
   async adjustStock(
@@ -401,6 +415,12 @@ export class InventoryService {
     id: string,
     dto: AdjustStockDto,
   ) {
+    if (!dto.reason?.trim()) {
+      throw new BadRequestException(
+        'validation_error: adjustment_reason_is_required',
+      );
+    }
+
     const stock = await this.prisma.branchStock.findFirst({
       where: { inventoryItemId: id, tenantId, branchId },
     });

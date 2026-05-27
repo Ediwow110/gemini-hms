@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { InventoryService } from './inventory.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -146,6 +151,38 @@ describe('InventoryService', () => {
     });
   });
 
+  describe('dispense validation', () => {
+    it('rejects negative quantity before touching stock', async () => {
+      await expect(
+        service.dispenseItem('tenant1', 'branch1', 'user1', 'item-1', -5),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.branchStock.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('rejects zero quantity before touching stock', async () => {
+      await expect(
+        service.dispenseItem('tenant1', 'branch1', 'user1', 'item-1', 0),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.branchStock.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('rejects non-finite quantity before touching stock', async () => {
+      await expect(
+        service.dispenseItem(
+          'tenant1',
+          'branch1',
+          'user1',
+          'item-1',
+          Number.NaN,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.branchStock.findUnique).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Alerts', () => {
     it('should not create an alert if stock remains above reorder level', async () => {
       prisma.branchStock.findUnique.mockResolvedValue({
@@ -265,7 +302,10 @@ describe('InventoryService', () => {
           branchId: 'branch1',
           version: 1,
         },
-        data: expect.objectContaining({ quantity: 10, version: { increment: 1 } }),
+        data: expect.objectContaining({
+          quantity: 10,
+          version: { increment: 1 },
+        }),
       });
       expect(prisma.stockLog.create).not.toHaveBeenCalled();
     });
@@ -299,6 +339,56 @@ describe('InventoryService', () => {
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'STOCK_RECEIVED' }),
         expect.anything(),
+        'branch1',
+      );
+    });
+
+    it('dispenseItem uses provided transaction client without opening a nested transaction', async () => {
+      const tx = {
+        branchStock: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'bs-1',
+            quantity: 10,
+            reorderLevel: 5,
+            version: 1,
+          }),
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'bs-1',
+            quantity: 8,
+            reorderLevel: 5,
+            version: 2,
+          }),
+        },
+        stockLog: { create: jest.fn().mockResolvedValue({ id: 'log-1' }) },
+        inventoryItem: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'item-1',
+            sku: 'SKU1',
+            name: 'Test',
+          }),
+        },
+        notification: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: jest.fn(),
+        },
+      } as unknown as Prisma.TransactionClient;
+
+      await service.dispenseItem(
+        'tenant1',
+        'branch1',
+        'user1',
+        'item-1',
+        2,
+        'order-1',
+        tx,
+      );
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(tx.branchStock.updateMany).toHaveBeenCalled();
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'STOCK_DISPENSED' }),
+        tx,
         'branch1',
       );
     });
@@ -345,14 +435,17 @@ describe('InventoryService', () => {
       prisma.branchStock.updateMany.mockResolvedValue({ count: 1 });
       prisma.stockLog.create.mockResolvedValue({});
 
-      const result = await service.adjustStock('tenant1', 'branch1', 'user1', 'item-1', {
+      await service.adjustStock('tenant1', 'branch1', 'user1', 'item-1', {
         newQuantity: 25,
         reason: 'Physical inventory count correction',
       });
 
       expect(prisma.branchStock.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ quantity: 25, version: { increment: 1 } }),
+          data: expect.objectContaining({
+            quantity: 25,
+            version: { increment: 1 },
+          }),
         }),
       );
       expect(prisma.stockLog.create).toHaveBeenCalledWith(
@@ -383,7 +476,10 @@ describe('InventoryService', () => {
     it('should throw ConflictException if stock version mismatch', async () => {
       prisma.branchStock.findFirst.mockResolvedValue(mockBranchStock);
       prisma.branchStock.updateMany.mockResolvedValue({ count: 0 });
-      prisma.branchStock.findUnique.mockResolvedValue({ ...mockBranchStock, version: 2 });
+      prisma.branchStock.findUnique.mockResolvedValue({
+        ...mockBranchStock,
+        version: 2,
+      });
 
       await expect(
         service.adjustStock('tenant1', 'branch1', 'user1', 'item-1', {
@@ -391,6 +487,17 @@ describe('InventoryService', () => {
           reason: 'Correction',
         }),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('should reject blank adjustment reasons', async () => {
+      await expect(
+        service.adjustStock('tenant1', 'branch1', 'user1', 'item-1', {
+          newQuantity: 20,
+          reason: '   ',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.branchStock.findFirst).not.toHaveBeenCalled();
     });
   });
 });

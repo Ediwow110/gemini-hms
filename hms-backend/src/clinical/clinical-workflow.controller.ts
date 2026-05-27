@@ -53,7 +53,7 @@ export class ClinicalWorkflowController {
   constructor(private readonly workflowService: ClinicalWorkflowService) {}
 
   @Get('work-queue')
-  @Roles('Doctor', 'Nurse', 'Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Doctor', 'Nurse', 'Med-Tech', 'Branch Admin', 'Super Admin')
   async getWorkQueue(
     @GetUser() user: RequestUser,
     @Query('branchId') branchId?: string,
@@ -72,7 +72,7 @@ export class ClinicalWorkflowController {
   @Roles(
     'Doctor',
     'Nurse',
-    'Lab Technician',
+    'Med-Tech',
     'Branch Admin',
     'Super Admin',
     'Patient',
@@ -107,7 +107,7 @@ export class ClinicalWorkflowController {
   }
 
   @Get('patients/:patientId/orders')
-  @Roles('Doctor', 'Nurse', 'Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Doctor', 'Nurse', 'Med-Tech', 'Branch Admin', 'Super Admin')
   async getOrders(
     @Param('patientId') patientId: string,
     @GetUser() user: RequestUser,
@@ -119,7 +119,7 @@ export class ClinicalWorkflowController {
   @Roles(
     'Doctor',
     'Nurse',
-    'Lab Technician',
+    'Med-Tech',
     'Cashier',
     'Branch Admin',
     'Super Admin',
@@ -301,7 +301,7 @@ export class ClinicalWorkflowController {
   }
 
   @Post('patients/:patientId/orders/:orderId/receive-lab')
-  @Roles('Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Med-Tech', 'Branch Admin', 'Super Admin')
   async receiveLabOrder(
     @Param('patientId') patientId: string,
     @Param('orderId') orderId: string,
@@ -318,7 +318,7 @@ export class ClinicalWorkflowController {
   }
 
   @Post('patients/:patientId/orders/:orderId/draft-lab-result')
-  @Roles('Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Med-Tech', 'Branch Admin', 'Super Admin')
   async saveDraftLabResult(
     @Param('patientId') patientId: string,
     @Param('orderId') orderId: string,
@@ -335,7 +335,7 @@ export class ClinicalWorkflowController {
   }
 
   @Post('patients/:patientId/orders/:orderId/validate-lab-result')
-  @Roles('Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Med-Tech', 'Branch Admin', 'Super Admin')
   async validateLabResult(
     @Param('patientId') patientId: string,
     @Param('orderId') orderId: string,
@@ -369,7 +369,7 @@ export class ClinicalWorkflowController {
   }
 
   @Get('lab/validated-results')
-  @Roles('Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Med-Tech', 'Branch Admin', 'Super Admin')
   async getValidatedResults(
     @GetUser() user: RequestUser,
   ): Promise<ValidatedResultSummaryDto[]> {
@@ -381,7 +381,7 @@ export class ClinicalWorkflowController {
   }
 
   @Get('lab/released-results')
-  @Roles('Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Med-Tech', 'Branch Admin', 'Super Admin')
   async getReleasedResults(
     @GetUser() user: RequestUser,
   ): Promise<ReleasedResultQueueDto[]> {
@@ -393,7 +393,7 @@ export class ClinicalWorkflowController {
   }
 
   @Get('patients/:patientId/orders/:orderId/released-lab-result')
-  @Roles('Doctor', 'Nurse', 'Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Doctor', 'Nurse', 'Med-Tech', 'Branch Admin', 'Super Admin')
   async getReleasedLabResultDetail(
     @Param('patientId') patientId: string,
     @Param('orderId') orderId: string,
@@ -408,7 +408,7 @@ export class ClinicalWorkflowController {
   }
 
   @Get('lab/orders/:orderId/parameter-definitions')
-  @Roles('Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Med-Tech', 'Branch Admin', 'Super Admin')
   async getParameterDefinitions(
     @Param('orderId') orderId: string,
     @GetUser() user: RequestUser,
@@ -422,7 +422,7 @@ export class ClinicalWorkflowController {
   }
 
   @Get('patients/:patientId/orders/:orderId/lab-draft-context')
-  @Roles('Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Med-Tech', 'Branch Admin', 'Super Admin')
   async getLabDraftEncodingContext(
     @Param('patientId') patientId: string,
     @Param('orderId') orderId: string,
@@ -452,7 +452,7 @@ export class ClinicalWorkflowController {
   }
 
   @Get('lab/test-definitions')
-  @Roles('Doctor', 'Nurse', 'Lab Technician', 'Branch Admin', 'Super Admin')
+  @Roles('Doctor', 'Nurse', 'Med-Tech', 'Branch Admin', 'Super Admin')
   async getLabTestDefinitions(
     @GetUser() user: RequestUser,
   ): Promise<LabTestDefinitionSummaryDto[]> {

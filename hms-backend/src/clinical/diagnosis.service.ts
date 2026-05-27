@@ -27,7 +27,7 @@ export class DiagnosisService {
   ) {
     try {
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: encounterId, tenantId },
+        where: { id: encounterId, tenantId, branchId },
       });
 
       if (!encounter) {
@@ -41,7 +41,6 @@ export class DiagnosisService {
       }
 
       return await this.prisma.$transaction(async (tx) => {
-        // Find or dynamically create ICD-10 Code to be highly resilient
         let icd10 = await tx.icd10Code.findUnique({
           where: { code: dto.icd10Code },
         });
@@ -107,10 +106,11 @@ export class DiagnosisService {
     encounterId: string,
     diagnosisId: string,
     reason?: string,
+    branchId?: string,
   ) {
     try {
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: encounterId, tenantId },
+        where: { id: encounterId, tenantId, branchId },
       });
 
       if (!encounter) {

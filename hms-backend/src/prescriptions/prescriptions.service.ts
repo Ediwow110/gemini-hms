@@ -26,7 +26,12 @@ export class PrescriptionsService {
 
     // Verify encounter exists and belongs to patient
     const encounter = await this.prisma.encounter.findFirst({
-      where: { id: dto.encounterId, patientId: dto.patientId, tenantId },
+      where: {
+        id: dto.encounterId,
+        patientId: dto.patientId,
+        tenantId,
+        branchId,
+      },
     });
     if (!encounter) {
       throw new NotFoundException('Encounter not found for this patient');
@@ -75,11 +80,14 @@ export class PrescriptionsService {
   async findByPatient(
     tenantId: string,
     patientId: string,
+    branchId?: string,
+    isSuperAdmin = false,
   ) {
     return this.prisma.prescription.findMany({
       where: {
         tenantId,
         patientId,
+        branchId: isSuperAdmin ? undefined : branchId,
         deletedAt: null,
       },
       orderBy: { createdAt: 'desc' },

@@ -51,8 +51,17 @@ describe('PrescriptionsService', () => {
 
   describe('create', () => {
     it('should create a prescription and audit log', async () => {
-      prisma.patient.findFirst.mockResolvedValue({ id: 'patient-uuid', tenantId: 'tenant1', status: 'ACTIVE' });
-      prisma.encounter.findFirst.mockResolvedValue({ id: 'encounter-uuid', patientId: 'patient-uuid', tenantId: 'tenant1' });
+      prisma.patient.findFirst.mockResolvedValue({
+        id: 'patient-uuid',
+        tenantId: 'tenant1',
+        status: 'ACTIVE',
+      });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: 'encounter-uuid',
+        patientId: 'patient-uuid',
+        tenantId: 'tenant1',
+        branchId: 'branch1',
+      });
       prisma.prescription.create.mockResolvedValue({
         id: 'rx-uuid',
         ...mockCreateDto,
@@ -63,8 +72,16 @@ describe('PrescriptionsService', () => {
         createdAt: new Date(),
       });
 
-      const result = await service.create('tenant1', 'branch1', 'doctor-uuid', mockCreateDto);
+      await service.create('tenant1', 'branch1', 'doctor-uuid', mockCreateDto);
 
+      expect(prisma.encounter.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: 'encounter-uuid',
+          patientId: 'patient-uuid',
+          tenantId: 'tenant1',
+          branchId: 'branch1',
+        },
+      });
       expect(prisma.prescription.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -93,7 +110,10 @@ describe('PrescriptionsService', () => {
     });
 
     it('should throw NotFoundException if encounter not found for patient', async () => {
-      prisma.patient.findFirst.mockResolvedValue({ id: 'patient-uuid', tenantId: 'tenant1' });
+      prisma.patient.findFirst.mockResolvedValue({
+        id: 'patient-uuid',
+        tenantId: 'tenant1',
+      });
       prisma.encounter.findFirst.mockResolvedValue(null);
 
       await expect(
@@ -103,20 +123,37 @@ describe('PrescriptionsService', () => {
   });
 
   describe('findByPatient', () => {
-    it('should return prescriptions for a patient', async () => {
+    it('should return branch-scoped prescriptions for a patient', async () => {
       const mockPrescriptions = [
-        { id: 'rx-1', medicationName: 'Metformin', tenantId: 'tenant1', patientId: 'patient-uuid' },
-        { id: 'rx-2', medicationName: 'Amlodipine', tenantId: 'tenant1', patientId: 'patient-uuid' },
+        {
+          id: 'rx-1',
+          medicationName: 'Metformin',
+          tenantId: 'tenant1',
+          patientId: 'patient-uuid',
+          branchId: 'branch1',
+        },
+        {
+          id: 'rx-2',
+          medicationName: 'Amlodipine',
+          tenantId: 'tenant1',
+          patientId: 'patient-uuid',
+          branchId: 'branch1',
+        },
       ];
       prisma.prescription.findMany.mockResolvedValue(mockPrescriptions);
 
-      const result = await service.findByPatient('tenant1', 'patient-uuid');
+      const result = await service.findByPatient(
+        'tenant1',
+        'patient-uuid',
+        'branch1',
+      );
 
       expect(prisma.prescription.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             tenantId: 'tenant1',
             patientId: 'patient-uuid',
+            branchId: 'branch1',
             deletedAt: null,
           }),
         }),
@@ -124,10 +161,31 @@ describe('PrescriptionsService', () => {
       expect(result).toEqual(mockPrescriptions);
     });
 
+    it('should omit branch filter for Super Admin lookups', async () => {
+      prisma.prescription.findMany.mockResolvedValue([]);
+
+      await service.findByPatient('tenant1', 'patient-uuid', undefined, true);
+
+      expect(prisma.prescription.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: 'tenant1',
+            patientId: 'patient-uuid',
+            branchId: undefined,
+            deletedAt: null,
+          }),
+        }),
+      );
+    });
+
     it('should return empty array when no prescriptions exist', async () => {
       prisma.prescription.findMany.mockResolvedValue([]);
 
-      const result = await service.findByPatient('tenant1', 'patient-uuid');
+      const result = await service.findByPatient(
+        'tenant1',
+        'patient-uuid',
+        'branch1',
+      );
 
       expect(result).toEqual([]);
     });

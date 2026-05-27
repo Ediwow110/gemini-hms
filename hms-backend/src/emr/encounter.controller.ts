@@ -19,9 +19,10 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
+import { BranchGuard } from '../auth/guards/branch.guard';
 
 @Controller('emr/encounters')
-@UseGuards(PermissionsGuard)
+@UseGuards(PermissionsGuard, BranchGuard)
 export class EncounterController {
   constructor(private readonly encounterService: EncounterService) {}
 
@@ -39,26 +40,37 @@ export class EncounterController {
 
   @Patch(':id/status')
   @RequirePermissions('encounter.update')
+  @RequireBranchContext()
   async updateStatus(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') id: string,
     @Body() dto: UpdateEncounterStatusDto,
   ) {
-    return this.encounterService.updateStatus(tenantId, userId, id, dto.status);
+    return this.encounterService.updateStatus(
+      tenantId,
+      userId,
+      id,
+      dto.status,
+      branchId,
+    );
   }
 
   @Get(':id')
   @RequirePermissions('encounter.view')
+  @RequireBranchContext()
   async findOne(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') id: string,
   ) {
-    return this.encounterService.findOne(tenantId, id);
+    return this.encounterService.findOne(tenantId, id, branchId);
   }
 
   @Post(':id/vitals')
   @RequirePermissions('encounter.update')
+  @RequireBranchContext()
   async addVitals(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -77,6 +89,7 @@ export class EncounterController {
 
   @Post(':id/diagnoses')
   @RequirePermissions('encounter.update')
+  @RequireBranchContext()
   async addDiagnosis(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -95,6 +108,7 @@ export class EncounterController {
 
   @Post(':id/notes')
   @RequirePermissions('clinical_note.create')
+  @RequireBranchContext()
   async addNote(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,

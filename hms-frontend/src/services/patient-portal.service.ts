@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace('/api/v1', '/patient-portal').replace('/api', '/patient-portal');
+  }
+  return import.meta.env.PROD ? '/patient-portal' : '/patient-portal';
+};
+
 const patientApi = axios.create({
-  baseURL: '/patient-portal',
+  baseURL: getBaseUrl(),
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });

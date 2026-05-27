@@ -17,6 +17,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
+import { BranchGuard } from '../auth/guards/branch.guard';
 import {
   CreateEncounterDto,
   CreateClinicalNoteDto,
@@ -28,7 +29,7 @@ import {
 } from './dto/clinical.dto';
 
 @Controller('clinical')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, BranchGuard)
 export class ClinicalController {
   constructor(
     private readonly encounterService: EncounterService,
@@ -57,21 +58,25 @@ export class ClinicalController {
 
   @Get('encounters/:id')
   @Roles('Doctor', 'Super Admin', 'Branch Admin', 'Receptionist', 'Nurse')
+  @RequireBranchContext()
   async getEncounter(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') id: string,
   ) {
-    return this.encounterService.getEncounter(tenantId, id);
+    return this.encounterService.getEncounter(tenantId, id, branchId);
   }
 
   @Patch('encounters/:id/close')
   @Roles('Doctor', 'Super Admin', 'Branch Admin')
+  @RequireBranchContext()
   async closeEncounter(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') id: string,
   ) {
-    return this.encounterService.closeEncounter(tenantId, userId, id);
+    return this.encounterService.closeEncounter(tenantId, userId, id, branchId);
   }
 
   @Post('encounters/:id/notes')
@@ -95,23 +100,27 @@ export class ClinicalController {
 
   @Patch('notes/:id')
   @Roles('Doctor', 'Super Admin', 'Branch Admin')
+  @RequireBranchContext()
   async updateNote(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') noteId: string,
     @Body() dto: UpdateClinicalNoteDto,
   ) {
-    return this.noteService.updateNote(tenantId, userId, noteId, dto);
+    return this.noteService.updateNote(tenantId, userId, noteId, dto, branchId);
   }
 
   @Post('notes/:id/lock')
   @Roles('Doctor', 'Super Admin', 'Branch Admin')
+  @RequireBranchContext()
   async lockNote(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') noteId: string,
   ) {
-    return this.noteService.lockNote(tenantId, userId, noteId);
+    return this.noteService.lockNote(tenantId, userId, noteId, branchId);
   }
 
   @Post('encounters/:id/diagnoses')
@@ -135,9 +144,11 @@ export class ClinicalController {
 
   @Delete('encounters/:encounterId/diagnoses/:diagnosisId')
   @Roles('Doctor', 'Super Admin', 'Branch Admin')
+  @RequireBranchContext()
   async removeDiagnosis(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('encounterId') encounterId: string,
     @Param('diagnosisId') diagnosisId: string,
   ) {
@@ -146,6 +157,8 @@ export class ClinicalController {
       userId,
       encounterId,
       diagnosisId,
+      undefined,
+      branchId,
     );
   }
 
@@ -179,21 +192,30 @@ export class ClinicalController {
 
   @Get('prescriptions/:id')
   @Roles('Doctor', 'Super Admin', 'Branch Admin', 'Nurse')
+  @RequireBranchContext()
   async getPrescription(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') id: string,
   ) {
-    return this.prescriptionService.getPrescription(tenantId, id);
+    return this.prescriptionService.getPrescription(tenantId, id, branchId);
   }
 
   @Patch('prescriptions/:id/cancel')
   @Roles('Doctor', 'Super Admin', 'Branch Admin')
+  @RequireBranchContext()
   async cancelPrescription(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') id: string,
   ) {
-    return this.prescriptionService.cancelPrescription(tenantId, userId, id);
+    return this.prescriptionService.cancelPrescription(
+      tenantId,
+      userId,
+      id,
+      branchId,
+    );
   }
 
   @Post('encounters/:id/referrals')
@@ -217,21 +239,31 @@ export class ClinicalController {
 
   @Get('referrals/:id')
   @Roles('Doctor', 'Super Admin', 'Branch Admin', 'Nurse')
+  @RequireBranchContext()
   async getReferral(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') id: string,
   ) {
-    return this.referralService.getReferral(tenantId, id);
+    return this.referralService.getReferral(tenantId, id, branchId);
   }
 
   @Patch('referrals/:id/status')
   @Roles('Doctor', 'Super Admin', 'Branch Admin')
+  @RequireBranchContext()
   async updateReferralStatus(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string | undefined,
     @Param('id') id: string,
     @Body() dto: UpdateReferralStatusDto,
   ) {
-    return this.referralService.updateReferralStatus(tenantId, userId, id, dto);
+    return this.referralService.updateReferralStatus(
+      tenantId,
+      userId,
+      id,
+      dto,
+      branchId,
+    );
   }
 }

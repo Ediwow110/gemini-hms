@@ -220,6 +220,7 @@ export class PharmacyService {
         dto.inventoryItemId,
         dto.quantity,
         prescriptionId,
+        tx,
       );
 
       await this.audit.log(

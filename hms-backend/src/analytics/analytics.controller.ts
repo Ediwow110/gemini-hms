@@ -10,31 +10,31 @@ export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('revenue')
-  @Roles('Super Admin', 'Branch Admin', 'ANALYST', 'Analyst')
+  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
   async getRevenue(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getRevenue(tenantId);
   }
 
   @Get('diagnoses')
-  @Roles('Super Admin', 'Branch Admin', 'ANALYST', 'Analyst')
+  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
   async getTopDiagnoses(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getTopDiagnoses(tenantId);
   }
 
   @Get('occupancy')
-  @Roles('Super Admin', 'Branch Admin', 'ANALYST', 'Analyst')
+  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
   async getBedOccupancy(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getBedOccupancy(tenantId);
   }
 
   @Get('wait-time')
-  @Roles('Super Admin', 'Branch Admin', 'ANALYST', 'Analyst')
+  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
   async getWaitTime(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getWaitTime(tenantId);
   }
 
   @Get('claim-rate')
-  @Roles('Super Admin', 'Branch Admin', 'ANALYST', 'Analyst')
+  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
   async getClaimRate(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getClaimRate(tenantId);
   }

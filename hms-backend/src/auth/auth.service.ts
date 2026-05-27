@@ -154,9 +154,27 @@ export class AuthService {
 
   async login(user: AuthenticatedUser, ua?: string, ip?: string) {
     const roles = this.getActiveRoleNames(user.userRoles);
-    const isSensitive = roles.some((role) =>
-      this.SENSITIVE_ROLES.includes(role),
-    );
+    const activeRoleIds = user.userRoles
+      .filter(
+        (userRole) =>
+          userRole.status === 'ACTIVE' &&
+          userRole.role.status === 'ACTIVE' &&
+          userRole.role.archivedAt === null,
+      )
+      .map((ur) => ur.role.id);
+
+    let isSensitive = false;
+    if (activeRoleIds.length > 0) {
+      const sensitivePermissions = await this.prisma.rolePermission.findFirst({
+        where: {
+          roleId: { in: activeRoleIds },
+          permission: {
+            riskLevel: { in: ['HIGH', 'PRIVILEGED', 'CRITICAL'] },
+          },
+        },
+      });
+      isSensitive = !!sensitivePermissions;
+    }
 
     // 1. Create session regardless (stateful tracking)
     const initialRtPlain = crypto.randomUUID();
@@ -297,6 +315,11 @@ export class AuthService {
       expiresAt,
     );
 
+    await this.prisma.session.update({
+      where: { id: session.id },
+      data: { branchId },
+    });
+
     await this.sessionService.markMfaVerified(session.id);
 
     return this.generateTokenPair(
@@ -308,25 +331,47 @@ export class AuthService {
     );
   }
 
-  async refreshTokens(userId: string, sessionId: string, refreshToken: string) {
+  async refreshTokens(sessionId: string, refreshToken: string) {
     const newRtPlain = crypto.randomUUID();
     const newRtHash = await bcrypt.hash(newRtPlain, 10);
 
-    const session = await this.sessionService.rotateRefreshToken(
+    const result = await this.sessionService.rotateRefreshToken(
       sessionId,
       refreshToken,
       newRtHash,
     );
 
+    if (!result.session) {
+      throw new UnauthorizedException('Session expired, not found, or revoked');
+    }
+
+    if (!result.rotated) {
+      if (result.reason === 'replay_within_leeway') {
+        throw new UnauthorizedException({
+          message: 'Token already rotated',
+          retry: true,
+        });
+      }
+      throw new UnauthorizedException();
+    }
+
+    const session = result.session;
+
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: session.userId },
       include: { userRoles: { include: { role: true } } },
     });
 
     if (!user) throw new UnauthorizedException();
     const roles = this.getActiveRoleNames(user.userRoles);
 
-    return this.generateTokenPair(user as any, roles, session.id, newRtPlain);
+    return this.generateTokenPair(
+      user as any,
+      roles,
+      session.id,
+      newRtPlain,
+      session.branchId || undefined,
+    );
   }
 
   async getUserBranches(userId: string, tenantId: string) {

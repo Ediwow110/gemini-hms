@@ -6,6 +6,7 @@ import {
   IsNumber,
   Min,
   IsEnum,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -32,6 +33,7 @@ class OrderItemDto {
    * Accepted for backward compatibility if needed, but the server will
    * ALWAYS fetch the trusted price from the catalog/inventory.
    */
+  @IsOptional()
   @IsNumber()
   @Min(0)
   price?: number;

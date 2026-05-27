@@ -10,13 +10,13 @@ export class SlaAlertsController {
   constructor(private readonly slaAlertsService: SlaAlertsService) {}
 
   @Get()
-  @Roles('Super Admin', 'Branch Admin', 'ANALYST', 'Analyst')
+  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
   async getActiveAlerts(@GetUser('tenantId') tenantId: string) {
     return this.slaAlertsService.getActiveAlerts(tenantId);
   }
 
   @Patch(':id/acknowledge')
-  @Roles('Super Admin', 'Branch Admin', 'ANALYST', 'Analyst')
+  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
   async acknowledgeAlert(
     @Param('id') id: string,
     @GetUser('tenantId') tenantId: string,

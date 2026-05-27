@@ -84,11 +84,22 @@ export class ReceiveStockDto {
   supplierName?: string;
 }
 
+export class DispenseStockDto {
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(1)
+  quantity!: number;
+
+  @IsString()
+  @IsOptional()
+  orderId?: string;
+}
+
 export class AdjustStockDto {
-  @IsNumber()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
   @Min(0)
   newQuantity!: number;
 
   @IsString()
+  @IsNotEmpty()
   reason!: string;
 }

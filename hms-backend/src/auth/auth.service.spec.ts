@@ -20,6 +20,8 @@ describe('AuthService', () => {
     user: { findFirst: jest.Mock; findUnique: jest.Mock; update: jest.Mock };
     userBranch: { findMany: jest.Mock; findFirst: jest.Mock };
     userRole: { findMany: jest.Mock };
+    rolePermission: { findFirst: jest.Mock };
+    session: { update: jest.Mock };
     $transaction: jest.Mock;
   };
   let jwtService: { sign: jest.Mock };
@@ -45,6 +47,12 @@ describe('AuthService', () => {
             },
             userRole: {
               findMany: jest.fn(),
+            },
+            rolePermission: {
+              findFirst: jest.fn().mockResolvedValue(null),
+            },
+            session: {
+              update: jest.fn().mockResolvedValue(undefined),
             },
             $transaction: jest.fn(async (cb) => cb({})),
           },
@@ -137,6 +145,11 @@ describe('AuthService', () => {
           },
         ],
       };
+
+      prisma.rolePermission.findFirst.mockResolvedValueOnce({
+        roleId: 'role-123',
+        permissionId: 'perm-123',
+      });
 
       const result = await service.login(sensitiveUser);
 

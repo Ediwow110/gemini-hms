@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { PermissionsGuard } from './permissions.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { RequestUser } from '../../common/types/authenticated-request.type';
+import { InventoryController } from '../../inventory/inventory.controller';
 
 /**
  * Build a minimal mock RequestUser.
@@ -18,10 +19,14 @@ function buildUser(overrides: Partial<RequestUser> = {}): RequestUser {
 /**
  * Build a mock ExecutionContext that returns the given user (or undefined).
  */
-function buildContext(user: RequestUser | undefined): ExecutionContext {
+function buildContext(
+  user: RequestUser | undefined,
+  handler?: (...args: never[]) => unknown,
+  targetClass?: new (...args: never[]) => unknown,
+): ExecutionContext {
   return {
-    getHandler: jest.fn(),
-    getClass: jest.fn(),
+    getHandler: jest.fn().mockReturnValue(handler),
+    getClass: jest.fn().mockReturnValue(targetClass),
     switchToHttp: () => ({
       getRequest: () => ({ user }),
       getResponse: jest.fn(),
@@ -221,6 +226,32 @@ describe('PermissionsGuard', () => {
   });
 
   // ─── ForbiddenException payload shape ─────────────────────────────
+
+  it('should reject dispense-only users from stock adjustment route', async () => {
+    const ctx = buildContext(
+      buildUser({ userId: 'user-uuid-123', tenantId: 'tenant-uuid-456' }),
+      InventoryController.prototype.adjustStock,
+      InventoryController,
+    );
+    findManyMock.mockResolvedValue(
+      buildPrismaResult(['inventory.stock.dispense']),
+    );
+
+    await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('should allow users with inventory.adjust.approve on stock adjustment route', async () => {
+    const ctx = buildContext(
+      buildUser({ userId: 'user-uuid-123', tenantId: 'tenant-uuid-456' }),
+      InventoryController.prototype.adjustStock,
+      InventoryController,
+    );
+    findManyMock.mockResolvedValue(
+      buildPrismaResult(['inventory.adjust.approve']),
+    );
+
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+  });
 
   it('should include permission_denied message in ForbiddenException', async () => {
     jest

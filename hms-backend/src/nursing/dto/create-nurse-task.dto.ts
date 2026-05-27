@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsEnum, IsUUID, MinLength, MaxLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsUUID,
+  MinLength,
+  MaxLength,
+} from 'class-validator';
 import { TaskPriority } from '@prisma/client';
 
 export class CreateNurseTaskDto {

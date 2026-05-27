@@ -36,7 +36,14 @@ export class ReferralPartnersController {
   }
 
   @Get('referrers/:id')
-  @Roles('Super Admin', 'Branch Admin', 'Doctor', 'Nurse', 'Staff')
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'Doctor',
+    'Nurse',
+    'Receptionist',
+    'HR Staff',
+  )
   getReferrerById(
     @GetUser('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -45,7 +52,14 @@ export class ReferralPartnersController {
   }
 
   @Post('records')
-  @Roles('Super Admin', 'Branch Admin', 'Doctor', 'Nurse', 'Staff')
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'Doctor',
+    'Nurse',
+    'Receptionist',
+    'HR Staff',
+  )
   createReferralRecord(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -59,7 +73,14 @@ export class ReferralPartnersController {
   }
 
   @Get('records')
-  @Roles('Super Admin', 'Branch Admin', 'Doctor', 'Nurse', 'Staff')
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'Doctor',
+    'Nurse',
+    'Receptionist',
+    'HR Staff',
+  )
   getReferralRecords(
     @GetUser('tenantId') tenantId: string,
     @Query('referrerId') referrerId?: string,
