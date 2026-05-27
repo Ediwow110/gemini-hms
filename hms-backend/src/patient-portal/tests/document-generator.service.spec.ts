@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DocumentGeneratorService } from '../services/document-generator.service';
 
+import { EventEmitter } from 'events';
+
 // Mock PDFKit since it may not be installed yet.
 // { virtual: true } allows Jest to create the mock even when the module
 // cannot be resolved from node_modules.
 jest.mock(
   'pdfkit',
   () => {
-    const { EventEmitter } = require('events');
-
     const MockPDFDocument = jest.fn().mockImplementation(() => {
       const emitter = new EventEmitter();
       const instance = Object.assign(emitter, {
