@@ -1,12 +1,30 @@
 import { LoginForm } from "../features/auth/LoginForm";
 import { Hospital, ShieldCheck } from "lucide-react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../hooks/use-user";
+import { getSafePortalPath } from "./role-portal-resolver";
 
 export const LoginPage = () => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (user) {
+    const destination = getSafePortalPath(user.defaultPortalPath, user.roles);
+    return <Navigate to={destination === '/' ? '/unauthorized' : destination} replace />;
+  }
+
   return (
     <div className="min-h-screen relative flex items-center justify-center lg:justify-end overflow-hidden p-4 lg:p-16">
       {/* Background Image */}
       <div 
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-[20s] ease-linear hover:scale-105"
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-[20s] ease-linear hover:scale-105 bg-slate-900"
         style={{ backgroundImage: "url('/hospital-bg.png')" }}
       />
       

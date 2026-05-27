@@ -15,13 +15,14 @@ export interface UserState {
 export interface AuthContextType {
   user: UserState | null;
   isLoading: boolean;
-  logout: () => void;
+  authError?: any;
   refetchUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({ 
   user: null,
   isLoading: true,
+  authError: null,
   logout: () => {},
   refetchUser: async () => {},
 });
@@ -67,6 +68,21 @@ export const usePermissions = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<any>(null);
+
+  const logDiagnostics = (phase: string, error: any) => {
+    if (import.meta.env.DEV) {
+      console.error("[Auth Diagnostics]", {
+        phase,
+        endpoint: "/v1/auth/me",
+        status: error?.response?.status,
+        message: error?.response?.data?.message || error?.message,
+        apiBaseUrl: apiClient.defaults.baseURL,
+        hasAccessCookie: document.cookie.includes('access_token'),
+        timestamp: new Date().toISOString()
+      });
+    }
+  };
 
   const logout = useCallback(() => {
     apiClient.post('/v1/auth/logout').catch(() => {});
@@ -78,8 +94,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await apiClient.get('/v1/auth/me');
       setUser(response.data);
-    } catch {
+      setAuthError(null);
+    } catch (error) {
       setUser(null);
+      setAuthError(error);
+      logDiagnostics('refetch', error);
     } finally {
       setIsLoading(false);
     }
@@ -93,10 +112,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const response = await apiClient.get('/v1/auth/me');
         if (mounted) {
           setUser(response.data);
+          setAuthError(null);
         }
-      } catch {
+      } catch (error) {
         if (mounted) {
           setUser(null);
+          setAuthError(error);
+          logDiagnostics('bootstrap', error);
         }
       } finally {
         if (mounted) {
@@ -114,7 +136,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (error.response?.status === 401) {
           if (mounted) {
             setUser(null);
+            // Avoid infinite loop if already null
           }
+        } else if (error.response?.status !== 200) {
+           logDiagnostics('interceptor', error);
         }
         return Promise.reject(error);
       }
@@ -127,7 +152,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, logout, refetchUser: fetchUser }}>
+    <AuthContext.Provider value={{ user, isLoading, authError, logout, refetchUser: fetchUser }}>
       {children}
     </AuthContext.Provider>
   );

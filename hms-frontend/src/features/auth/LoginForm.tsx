@@ -4,8 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormData } from "./login-schema";
 import { Eye, EyeOff, LogIn, Loader2, UserCircle2, ChevronRight, ShieldCheck, Building2 } from "lucide-react";
 import { apiClient } from "../../lib/api";
-import { getDefaultPortalPath } from "../../app/portal-registry";
-
+import { useNavigate } from "react-router-dom";
+import { getSafePortalPath, isKnownPortalPath } from "../../app/role-portal-resolver";
 interface Branch {
   id: string;
   name: string;
@@ -44,6 +44,17 @@ export const LoginForm = () => {
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
 
+  const navigate = useNavigate();
+
+  const handleSuccessfulAuth = (user: any) => {
+    const path = getSafePortalPath(user?.defaultPortalPath, user?.roles || []);
+    if (!isKnownPortalPath(path)) {
+      setError("Authenticated, but no portal is assigned to your role. Contact administrator.");
+      return;
+    }
+    navigate(path, { replace: true });
+  };
+
   const isDev = import.meta.env.MODE !== 'production';
 
   const {
@@ -78,13 +89,11 @@ export const LoginForm = () => {
         return;
       }
 
-      // Cookies are set by the server; frontend just redirects
-      if (response.data.user?.branchId) {
-        const path = response.data.user?.defaultPortalPath || getDefaultPortalPath(response.data.user?.roles || []);
-        window.location.assign(path);
-      } else {
+      if (response.data.requiresBranchSelection) {
         const branchesRes = await apiClient.get("/v1/auth/branches");
         setAvailableBranches(branchesRes.data);
+      } else {
+        handleSuccessfulAuth(response.data.user);
       }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { status?: number; data?: { message?: string; mfaToken?: string } } };
@@ -115,14 +124,12 @@ export const LoginForm = () => {
         { headers: { Authorization: `Bearer ${mfaToken}` } }
       );
       
-      // Cookies are set by the server; frontend just redirects
-      if (response.data.user?.branchId) {
-        const path = response.data.user?.defaultPortalPath || getDefaultPortalPath(response.data.user?.roles || []);
-        window.location.assign(path);
-      } else {
+      if (response.data.requiresBranchSelection) {
         const branchesRes = await apiClient.get("/v1/auth/branches");
         setAvailableBranches(branchesRes.data);
         setShowMfaInput(false);
+      } else {
+        handleSuccessfulAuth(response.data.user);
       }
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { message?: string } } };
@@ -136,9 +143,7 @@ export const LoginForm = () => {
     setIsLoading(true);
     try {
       const response = await apiClient.post("/v1/auth/select-branch", { branchId });
-      // Cookies are set by the server; frontend just redirects
-      const path = response.data.user?.defaultPortalPath || getDefaultPortalPath(response.data.user?.roles || []);
-      window.location.assign(path);
+      handleSuccessfulAuth(response.data.user);
     } catch {
       setError("Failed to select branch. Please try again.");
     } finally {

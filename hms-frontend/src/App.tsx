@@ -5,10 +5,12 @@ import { LoginPage } from './app/LoginPage';
 import { ProtectedRoute } from './app/ProtectedRoute';
 import { PermissionRoute } from './app/PermissionRoute';
 import { GuardMode } from './app/types';
+import { RouteErrorBoundary } from './app/RouteErrorBoundary';
+import { AuthDiagnosticsPanel } from './components/debug/AuthDiagnosticsPanel';
 import { AuthProvider } from './hooks/use-user';
 
 // Core routes — eagerly loaded (always needed)
-import { Dashboard } from './features/dashboard/Dashboard';
+import { RoleRedirect } from './app/RoleRedirect';
 import { PatientList } from './features/patients/PatientList';
 import { RegisterPatient } from './features/patients/RegisterPatient';
 import { PatientProfile } from './features/patients/PatientProfile';
@@ -237,16 +239,18 @@ const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+    errorElement: <RouteErrorBoundary />,
   },
   {
     path: '/',
     element: <ProtectedRoute />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         path: '/',
         element: <AppShell />,
         children: [
-          { index: true, element: <Dashboard /> },
+          { index: true, element: <RoleRedirect /> },
           { path: 'patients', element: <PermissionRoute permission="patient.view"><PatientList /></PermissionRoute> },
           { path: 'patients/new', element: <PermissionRoute permission="patient.create"><RegisterPatient /></PermissionRoute> },
           { path: 'patients/:id', element: <PermissionRoute permission="patient.view"><PatientProfile /></PermissionRoute> },
@@ -485,6 +489,7 @@ export default function App() {
   return (
     <AuthProvider>
       <RouterProvider router={router} />
+      <AuthDiagnosticsPanel />
     </AuthProvider>
   );
 }

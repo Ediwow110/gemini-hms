@@ -118,6 +118,8 @@ export class AuthController {
     return {
       message: 'Authenticated',
       user: result.user,
+      requiresBranchSelection: result.requiresBranchSelection,
+      availableBranches: result.availableBranches,
     };
   }
 
@@ -144,6 +146,8 @@ export class AuthController {
     return {
       message: 'Branch selected',
       user: (result as any).user,
+      requiresBranchSelection: (result as any).requiresBranchSelection,
+      availableBranches: (result as any).availableBranches,
     };
   }
 
@@ -239,6 +243,8 @@ export class AuthController {
     return {
       message: 'MFA verified',
       user: result.user,
+      requiresBranchSelection: result.requiresBranchSelection,
+      availableBranches: result.availableBranches,
     };
   }
 
@@ -277,6 +283,8 @@ export class AuthController {
     return {
       message: 'MFA verified via recovery code',
       user: result.user,
+      requiresBranchSelection: result.requiresBranchSelection,
+      availableBranches: result.availableBranches,
     };
   }
 }

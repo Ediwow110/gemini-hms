@@ -1,3 +1,4 @@
+import { ROLE_PORTAL_PATHS, ROLE_PRIORITY, getDefaultPortalPath } from './role-portal-resolver';
 import { 
   LayoutDashboard, 
   Users, 
@@ -38,62 +39,8 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-export const PORTAL_PATHS: Record<string, string> = {
-  'Super Admin': '/admin',
-  'Branch Admin': '/',
-  'Receptionist': '/queue',
-  'Cashier': '/cashier',
-  'Med-Tech': '/lab',
-  'Doctor': '/doctor',
-  'Pharmacist': '/pharmacy',
-  'Nurse': '/nurse',
-  'Patient': '/patient',
-  'Supplier': '/supplier',
-  'Procurement Officer': '/procurement',
-  'HR Staff': '/hr',
-  'HR Manager': '/hr',
-  'IT Support': '/it',
-  'Compliance Officer': '/compliance',
-  'Field Technician': '/field-service',
-  'Marketplace Admin': '/marketplace-admin',
-};
-
-const ROLE_PRIORITY: Record<string, number> = {
-  'Super Admin': 100,
-  'Branch Admin': 90,
-  'Procurement Officer': 85,
-  'HR Manager': 80,
-  'Compliance Officer': 75,
-  'Marketplace Admin': 70,
-  'Doctor': 60,
-  'Nurse': 55,
-  'Pharmacist': 50,
-  'Med-Tech': 45,
-  'Cashier': 40,
-  'Receptionist': 35,
-  'IT Support': 30,
-  'Field Technician': 25,
-  'HR Staff': 20,
-  'Supplier': 15,
-  'Patient': 10,
-};
-
-export function getDefaultPortalPath(roles: string[]): string {
-  if (!roles || roles.length === 0) return '/';
-  
-  let bestRole = '';
-  let maxPriority = -1;
-
-  for (const role of roles) {
-    const priority = ROLE_PRIORITY[role] || 0;
-    if (priority > maxPriority) {
-      maxPriority = priority;
-      bestRole = role;
-    }
-  }
-
-  return PORTAL_PATHS[bestRole] || '/';
-}
+export { getDefaultPortalPath, ROLE_PRIORITY };
+export const PORTAL_PATHS = ROLE_PORTAL_PATHS;
 
 export function getNavGroups(roles: string[]): NavGroup[] {
   if (!roles || roles.length === 0) return DEFAULT_NAV_GROUPS;
@@ -137,7 +84,7 @@ export const PORTAL_NAV_CONFIG: Record<string, NavGroup[]> = {
     {
       label: 'Core Operations',
       items: [
-        { label: 'Command Center', to: '/', icon: LayoutDashboard },
+        { label: 'Command Center', to: '/branch-admin', icon: LayoutDashboard },
         { label: 'Patients', to: '/patients', icon: Users, permission: 'patient.view' },
         { label: 'Queue', to: '/queue', icon: ListOrdered, permission: 'queue.view' },
       ],

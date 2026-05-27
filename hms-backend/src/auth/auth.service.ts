@@ -220,7 +220,7 @@ export class AuthService {
 
     // 3. Non-sensitive: auto-verify MFA status in session
     await this.sessionService.markMfaVerified(session.id);
-    return this.generateTokenPair(user, roles, session.id, initialRtPlain);
+    return await this.generateTokenPair(user, roles, session.id, initialRtPlain);
   }
 
   async verifyMfa(userId: string, sessionId: string, code: string) {
@@ -247,7 +247,7 @@ export class AuthService {
 
     await this.sessionService.setInitialRefreshToken(sessionId, newRtHash);
 
-    return this.generateTokenPair(user as any, roles, sessionId, newRtPlain);
+    return await this.generateTokenPair(user as any, roles, sessionId, newRtPlain);
   }
 
   async verifyMfaWithRecoveryCode(
@@ -283,7 +283,7 @@ export class AuthService {
 
     await this.sessionService.setInitialRefreshToken(sessionId, newRtHash);
 
-    return this.generateTokenPair(user as any, roles, sessionId, newRtPlain);
+    return await this.generateTokenPair(user as any, roles, sessionId, newRtPlain);
   }
 
   async selectBranch(userId: string, tenantId: string, branchId: string) {
@@ -322,7 +322,7 @@ export class AuthService {
 
     await this.sessionService.markMfaVerified(session.id);
 
-    return this.generateTokenPair(
+    return await this.generateTokenPair(
       user,
       roles,
       session.id,
@@ -365,7 +365,7 @@ export class AuthService {
     if (!user) throw new UnauthorizedException();
     const roles = this.getActiveRoleNames(user.userRoles);
 
-    return this.generateTokenPair(
+    return await this.generateTokenPair(
       user as any,
       roles,
       session.id,
@@ -385,7 +385,7 @@ export class AuthService {
   private getDefaultPortalPath(roles: string[]): string {
     const portalMap: Record<string, { path: string; priority: number }> = {
       'Super Admin': { path: '/admin', priority: 100 },
-      'Branch Admin': { path: '/', priority: 90 },
+      'Branch Admin': { path: '/branch-admin', priority: 90 },
       'Procurement Officer': { path: '/procurement', priority: 85 },
       'HR Manager': { path: '/hr', priority: 80 },
       'Compliance Officer': { path: '/compliance', priority: 75 },
@@ -471,7 +471,7 @@ export class AuthService {
     await this.sessionService.revokeSession(sessionId);
   }
 
-  private generateTokenPair(
+  private async generateTokenPair(
     user: AuthenticatedUser,
     roles: string[],
     sessionId: string,
@@ -479,6 +479,18 @@ export class AuthService {
     branchId?: string,
   ) {
     const defaultPortalPath = this.getDefaultPortalPath(roles);
+    
+    // Determine branch selection requirement
+    const userBranches = await this.prisma.userBranch.findMany({
+      where: { userId: user.id, tenantId: user.tenantId, isActive: true },
+      include: { branch: { select: { id: true, name: true, code: true } } },
+    });
+    
+    const availableBranches = userBranches.map(ub => ub.branch);
+    
+    // Branch selection is required only when user has multiple eligible branches and no selected branch
+    const requiresBranchSelection = !branchId && availableBranches.length > 1;
+
     const payload = {
       sub: user.id,
       sid: sessionId,
@@ -493,6 +505,8 @@ export class AuthService {
       accessToken: this.jwtService.sign(payload, { expiresIn: '15m' }),
       refreshToken: refreshTokenPlain,
       sessionId,
+      requiresBranchSelection,
+      ...(requiresBranchSelection && { availableBranches }),
       user: {
         id: user.id,
         tenantId: user.tenantId,
