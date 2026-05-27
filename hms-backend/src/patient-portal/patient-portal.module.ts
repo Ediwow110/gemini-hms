@@ -6,11 +6,14 @@ import { PatientPortalService } from './patient-portal.service';
 import { PatientPortalController } from './patient-portal.controller';
 import { PatientJwtGuard } from './guards/patient-jwt.guard';
 import { PatientCsrfGuard } from './guards/patient-csrf.guard';
+import { AuditModule } from '../audit/audit.module';
+import { DocumentGeneratorService } from './services/document-generator.service';
 
 @Module({
   imports: [
     PrismaModule,
     ConfigModule,
+    AuditModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -29,7 +32,7 @@ import { PatientCsrfGuard } from './guards/patient-csrf.guard';
     }),
   ],
   controllers: [PatientPortalController],
-  providers: [PatientPortalService, PatientJwtGuard, PatientCsrfGuard],
+  providers: [PatientPortalService, PatientJwtGuard, PatientCsrfGuard, DocumentGeneratorService],
   exports: [PatientPortalService],
 })
 export class PatientPortalModule {}

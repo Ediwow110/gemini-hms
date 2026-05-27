@@ -1,5 +1,7 @@
-import React from 'react';
-import { CreditCard, Download, Printer } from 'lucide-react';
+import React, { useState } from 'react';
+import { CreditCard, Download, Printer, Loader2 } from 'lucide-react';
+import { patientPortalService } from '../../../services/patient-portal.service';
+import { downloadBlob } from '../../../lib/download-file';
 
 export interface Invoice {
   id: string;
@@ -15,6 +17,21 @@ interface PatientBillingSummaryProps {
 }
 
 export const PatientBillingSummary: React.FC<PatientBillingSummaryProps> = ({ invoices, outstandingBalance }) => {
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownloadInvoice = async (id: string, invoiceNumber: string) => {
+    try {
+      setDownloadingId(id);
+      const blob = await patientPortalService.downloadInvoicePdf(id);
+      await downloadBlob(blob, `invoice-${invoiceNumber.replace(/\s+/g, '-').toLowerCase()}-${id.substring(0, 8)}.pdf`);
+    } catch (error) {
+      console.error('Failed to download invoice:', error);
+      alert('Failed to download invoice. Please try again.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   return (
     <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-4">
       <div className="flex justify-between items-center pb-2 border-b border-slate-100">
@@ -63,12 +80,21 @@ export const PatientBillingSummary: React.FC<PatientBillingSummaryProps> = ({ in
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  disabled
-                  title="Download PDF (WIP - Coming Soon)"
-                  aria-label="Download PDF (WIP - Coming Soon)"
-                  className="p-1.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-400 cursor-not-allowed shadow-sm opacity-50"
+                  onClick={() => handleDownloadInvoice(inv.id, inv.service)}
+                  disabled={downloadingId === inv.id}
+                  title="Download Invoice PDF"
+                  aria-label="Download Invoice PDF"
+                  className={`p-1.5 rounded-lg border border-slate-200 shadow-sm transition-all ${
+                    downloadingId === inv.id 
+                      ? 'bg-slate-50 text-slate-400 cursor-wait' 
+                      : 'bg-white hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 cursor-pointer'
+                  }`}
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  {downloadingId === inv.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
                 </button>
                 <button
                   onClick={() => window.print()}
@@ -85,7 +111,7 @@ export const PatientBillingSummary: React.FC<PatientBillingSummaryProps> = ({ in
       </div>
 
       <div className="bg-slate-100 border border-slate-250 rounded-xl px-3 py-2 text-[10px] text-slate-700 font-semibold leading-relaxed">
-        <strong>Status Notice:</strong> Invoice download and online payments are currently under development (WIP). Please visit the cashier to pay outstanding balances or get print versions of invoices/receipts.
+        <strong>Status Notice:</strong> Online payments are currently under development (WIP). Please visit the cashier to pay outstanding balances. Official invoices can now be downloaded as PDF.
       </div>
     </div>
   );

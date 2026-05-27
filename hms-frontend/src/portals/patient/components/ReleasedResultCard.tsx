@@ -1,5 +1,7 @@
-import React from 'react';
-import { FlaskConical, Download, FileText, CheckCircle2, Printer } from 'lucide-react';
+import React, { useState } from 'react';
+import { FlaskConical, Download, FileText, CheckCircle2, Printer, Loader2 } from 'lucide-react';
+import { patientPortalService } from '../../../services/patient-portal.service';
+import { downloadBlob } from '../../../lib/download-file';
 
 export interface ReleasedResult {
   id: string;
@@ -20,6 +22,21 @@ export const ReleasedResultCard: React.FC<ReleasedResultCardProps> = ({ results 
   // In a production environment, API/Backend enforcement is STRICTLY REQUIRED to prevent 
   // unreleased laboratory data from ever reaching the client-side state.
   const releasedResults = results.filter(r => r.isReleased);
+
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = async (id: string, testName: string) => {
+    try {
+      setDownloadingId(id);
+      const blob = await patientPortalService.downloadLabResultPdf(id);
+      await downloadBlob(blob, `lab-result-${testName.replace(/\s+/g, '-').toLowerCase()}-${id.substring(0, 8)}.pdf`);
+    } catch (error) {
+      console.error('Failed to download lab result:', error);
+      alert('Failed to download lab result. Please try again.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-4">
@@ -62,12 +79,21 @@ export const ReleasedResultCard: React.FC<ReleasedResultCardProps> = ({ results 
                     {result.status}
                   </div>
                   <button
-                    disabled
-                    title="Download PDF (WIP - Coming Soon)"
-                    aria-label="Download PDF (WIP - Coming Soon)"
-                    className="p-1.5 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed shadow-sm opacity-50"
+                    onClick={() => handleDownload(result.id, result.testName)}
+                    disabled={downloadingId === result.id}
+                    title="Download PDF"
+                    aria-label="Download PDF"
+                    className={`p-1.5 rounded-lg border border-slate-200 shadow-sm transition-all ${
+                      downloadingId === result.id 
+                        ? 'bg-slate-50 text-slate-400 cursor-wait' 
+                        : 'bg-white hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 cursor-pointer'
+                    }`}
                   >
-                    <Download className="h-3.5 w-3.5" />
+                    {downloadingId === result.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
                   </button>
                   <button
                     onClick={() => window.print()}
@@ -93,10 +119,6 @@ export const ReleasedResultCard: React.FC<ReleasedResultCardProps> = ({ results 
 
       <div className="bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 text-[10px] text-rose-800 font-bold leading-relaxed">
         <strong>Privacy Note:</strong> Only results verified and released by your physician are displayed here. Preliminary or unreleased lab data is strictly restricted.
-      </div>
-
-      <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-semibold leading-relaxed">
-        <strong>Sandbox Notice:</strong> Download actions are simulated and do not provide real medical documents.
       </div>
     </div>
   );

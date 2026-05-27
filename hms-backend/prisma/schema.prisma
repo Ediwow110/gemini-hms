@@ -79,6 +79,8 @@ model Tenant {
   assets                      Asset[]
   supportTickets              SupportTicket[]
   nurseTasks                  NurseTask[]
+  refillRequests              RefillRequest[]
+  medicalRecordRequests       MedicalRecordRequest[]
 
   @@map("tenants")
 }
@@ -163,6 +165,8 @@ model User {
   nurseTasksCreated       NurseTask[]           @relation("NurseTaskCreated")
   nurseTasksCompleted     NurseTask[]           @relation("NurseTaskCompleted")
   nurseTasksCancelled     NurseTask[]           @relation("NurseTaskCancelled")
+  reviewedRefillRequests       RefillRequest[]         @relation("RefillReviewedBy")
+  reviewedMedicalRecordRequests MedicalRecordRequest[] @relation("MedRecordReviewedBy")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -485,8 +489,10 @@ model Patient {
   portalUser      PatientUser?
   insuranceClaims InsuranceClaim[]
   triageRecords   Triage[]
-  labSpecimens    LabSpecimen[]
-  nurseTasks      NurseTask[]
+  labSpecimens           LabSpecimen[]
+  nurseTasks             NurseTask[]
+  refillRequests         RefillRequest[]
+  medicalRecordRequests  MedicalRecordRequest[]
 
   @@unique([tenantId, patientNumber])
   @@unique([tenantId, normalizedNameDobKey])
@@ -1402,8 +1408,9 @@ model Prescription {
   prescribedBy User      @relation("PrescribedBy", fields: [prescribedById], references: [id])
   dispensedBy  User?     @relation("DispensedBy", fields: [dispensedById], references: [id])
   patient      Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch       Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  refillRequests RefillRequest[]
 
   @@index([tenantId, encounterId])
   @@index([patientId])
@@ -2089,4 +2096,62 @@ model NurseTask {
   @@index([tenantId, patientId])
   @@index([dueAt])
   @@map("nurse_tasks")
+}
+
+model RefillRequest {
+  id              String              @id @default(uuid()) @db.Uuid
+  tenantId        String              @map("tenant_id") @db.Uuid
+  patientId       String              @map("patient_id") @db.Uuid
+  prescriptionId  String              @map("prescription_id") @db.Uuid
+  status          RefillRequestStatus @default(PENDING)
+  reason          String?             @db.VarChar(500)
+  reviewedById    String?             @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?           @map("reviewed_at")
+  reviewNotes     String?             @map("review_notes") @db.VarChar(500)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  reviewedBy   User?        @relation("RefillReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, patientId])
+  @@index([tenantId, status])
+  @@map("refill_requests")
+}
+
+enum RefillRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+model MedicalRecordRequest {
+  id              String                     @id @default(uuid()) @db.Uuid
+  tenantId        String                     @map("tenant_id") @db.Uuid
+  patientId       String                     @map("patient_id") @db.Uuid
+  requestType     String                     @default("FULL_RECORD") @map("request_type") @db.VarChar(50)
+  reason          String?                    @db.VarChar(500)
+  status          MedicalRecordRequestStatus @default(PENDING)
+  reviewedById    String?                    @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?                  @map("reviewed_at")
+  reviewNotes     String?                    @map("review_notes") @db.VarChar(500)
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patient    Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  reviewedBy User?   @relation("MedRecordReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, patientId])
+  @@index([tenantId, status])
+  @@map("medical_record_requests")
+}
+
+enum MedicalRecordRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+  FULFILLED
 }

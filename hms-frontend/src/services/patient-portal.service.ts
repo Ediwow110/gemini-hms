@@ -7,10 +7,26 @@ const getBaseUrl = () => {
   return import.meta.env.PROD ? '/patient-portal' : '/patient-portal';
 };
 
+function getPatientCsrfToken(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)patient_csrf=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 const patientApi = axios.create({
   baseURL: getBaseUrl(),
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
+});
+
+patientApi.interceptors.request.use((config) => {
+  const UNSAFE_METHODS = ['post', 'put', 'patch', 'delete'];
+  if (config.method && UNSAFE_METHODS.includes(config.method.toLowerCase())) {
+    const csrfToken = getPatientCsrfToken();
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
+  }
+  return config;
 });
 
 export interface PatientProfile {
@@ -54,6 +70,24 @@ export interface PatientInvoice {
   createdAt: string;
 }
 
+export interface RefillRequest {
+  id: string;
+  prescriptionId: string;
+  status: string;
+  reason?: string;
+  reviewNotes?: string;
+  createdAt: string;
+}
+
+export interface MedicalRecordRequest {
+  id: string;
+  requestType: string;
+  status: string;
+  reason?: string;
+  reviewNotes?: string;
+  createdAt: string;
+}
+
 export class PatientPortalService {
   async getProfile(): Promise<PatientProfile> {
     const res = await patientApi.get('/profile');
@@ -72,6 +106,46 @@ export class PatientPortalService {
 
   async getInvoices(): Promise<PatientInvoice[]> {
     const res = await patientApi.get('/invoices');
+    return res.data;
+  }
+
+  async downloadLabResultPdf(id: string): Promise<Blob> {
+    const res = await patientApi.get(`/lab-results/${id}/pdf`, { responseType: 'blob' });
+    return res.data;
+  }
+
+  async downloadInvoicePdf(id: string): Promise<Blob> {
+    const res = await patientApi.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
+    return res.data;
+  }
+
+  async downloadReceiptPdf(id: string): Promise<Blob> {
+    const res = await patientApi.get(`/payments/${id}/receipt`, { responseType: 'blob' });
+    return res.data;
+  }
+
+  async downloadPrescriptionPdf(id: string): Promise<Blob> {
+    const res = await patientApi.get(`/prescriptions/${id}/pdf`, { responseType: 'blob' });
+    return res.data;
+  }
+
+  async createRefillRequest(prescriptionId: string, reason?: string): Promise<RefillRequest> {
+    const res = await patientApi.post(`/prescriptions/${prescriptionId}/refill-request`, { reason });
+    return res.data;
+  }
+
+  async getRefillRequests(): Promise<RefillRequest[]> {
+    const res = await patientApi.get('/refill-requests');
+    return res.data;
+  }
+
+  async createMedicalRecordRequest(requestType: string, reason?: string): Promise<MedicalRecordRequest> {
+    const res = await patientApi.post('/medical-record-requests', { requestType, reason });
+    return res.data;
+  }
+
+  async getMedicalRecordRequests(): Promise<MedicalRecordRequest[]> {
+    const res = await patientApi.get('/medical-record-requests');
     return res.data;
   }
 }
