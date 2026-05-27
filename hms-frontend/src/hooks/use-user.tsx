@@ -45,23 +45,16 @@ export const usePermissions = () => {
   const isStaff = () => !!(user && !user.roles.includes('Patient') && !user.roles.includes('Customer'));
 
   const canAccess = (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
-    const isMarketplaceBuyerAction = 
-      opts.zone === 'marketplace' || 
-      (opts.permission && (
-        opts.permission.startsWith('marketplace.buyer') || 
-        opts.permission.startsWith('marketplace.cart') ||
-        opts.permission.startsWith('marketplace.rfq') ||
-        opts.permission.startsWith('marketplace.order')
-      ));
-
-    if (isSuperAdmin) {
-      if (isMarketplaceBuyerAction) {
-        if (opts.allowedRoles && opts.allowedRoles.some(r => hasRole(r))) return true;
-        if (opts.permission && hasPermission(opts.permission)) return true;
-        return false;
-      }
+    if (opts.zone === 'public') {
       return true;
     }
+
+    if (isSuperAdmin) {
+      if (opts.zone === 'staff') {
+        return true;
+      }
+    }
+
     if (opts.permission && hasPermission(opts.permission)) return true;
     if (opts.allowedRoles && opts.allowedRoles.some(r => hasRole(r))) return true;
     if (!opts.allowedRoles && !opts.permission) return true;
