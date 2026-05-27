@@ -27,7 +27,7 @@ export class PrescriptionService {
   ) {
     try {
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: encounterId, tenantId },
+        where: { id: encounterId, tenantId, branchId },
       });
 
       if (!encounter) {
@@ -91,9 +91,13 @@ export class PrescriptionService {
     }
   }
 
-  async getPrescription(tenantId: string, id: string) {
+  async getPrescription(tenantId: string, id: string, branchId?: string) {
     const prescription = await this.prisma.prescription.findFirst({
-      where: { id, tenantId },
+      where: {
+        id,
+        tenantId,
+        branchId,
+      },
       include: {
         patient: {
           select: {
@@ -120,10 +124,19 @@ export class PrescriptionService {
     return prescription;
   }
 
-  async cancelPrescription(tenantId: string, userId: string, id: string) {
+  async cancelPrescription(
+    tenantId: string,
+    userId: string,
+    id: string,
+    branchId?: string,
+  ) {
     try {
       const prescription = await this.prisma.prescription.findFirst({
-        where: { id, tenantId },
+        where: {
+          id,
+          tenantId,
+          branchId,
+        },
       });
 
       if (!prescription) {
@@ -131,7 +144,7 @@ export class PrescriptionService {
       }
 
       if (prescription.status === PrescriptionStatus.CANCELLED) {
-        return prescription; // Idempotent success
+        return prescription;
       }
 
       return await this.prisma.$transaction(async (tx) => {

@@ -49,6 +49,9 @@ describe('PatientsService write isolation', () => {
     prisma.patient.findFirst.mockResolvedValue({
       id: patientId,
       tenantId: otherTenantId,
+      firstName: 'John',
+      lastName: 'Doe',
+      dob: new Date('1990-01-01'),
     });
     prisma.patient.updateMany.mockResolvedValue({ count: 0 });
 
@@ -65,8 +68,20 @@ describe('PatientsService write isolation', () => {
   describe('findAll with search', () => {
     it('should find all patients without search', async () => {
       const mockPatients = [
-        { id: 'p1', firstName: 'John', lastName: 'Doe', patientNumber: 'MRN-001', tenantId },
-        { id: 'p2', firstName: 'Jane', lastName: 'Smith', patientNumber: 'MRN-002', tenantId },
+        {
+          id: 'p1',
+          firstName: 'John',
+          lastName: 'Doe',
+          patientNumber: 'MRN-001',
+          tenantId,
+        },
+        {
+          id: 'p2',
+          firstName: 'Jane',
+          lastName: 'Smith',
+          patientNumber: 'MRN-002',
+          tenantId,
+        },
       ];
       prisma.patient.findMany = jest.fn().mockResolvedValue(mockPatients);
 
@@ -82,7 +97,13 @@ describe('PatientsService write isolation', () => {
 
     it('should search patients by name', async () => {
       prisma.patient.findMany = jest.fn().mockResolvedValue([
-        { id: 'p1', firstName: 'John', lastName: 'Doe', patientNumber: 'MRN-001', tenantId },
+        {
+          id: 'p1',
+          firstName: 'John',
+          lastName: 'Doe',
+          patientNumber: 'MRN-001',
+          tenantId,
+        },
       ]);
 
       const result = await service.findAll(tenantId, 'john');
@@ -92,7 +113,9 @@ describe('PatientsService write isolation', () => {
           where: expect.objectContaining({
             tenantId,
             OR: expect.arrayContaining([
-              expect.objectContaining({ firstName: { contains: 'john', mode: 'insensitive' } }),
+              expect.objectContaining({
+                firstName: { contains: 'john', mode: 'insensitive' },
+              }),
             ]),
           }),
         }),
@@ -102,7 +125,13 @@ describe('PatientsService write isolation', () => {
 
     it('should search patients by patient number', async () => {
       prisma.patient.findMany = jest.fn().mockResolvedValue([
-        { id: 'p1', firstName: 'John', lastName: 'Doe', patientNumber: 'MRN-001', tenantId },
+        {
+          id: 'p1',
+          firstName: 'John',
+          lastName: 'Doe',
+          patientNumber: 'MRN-001',
+          tenantId,
+        },
       ]);
 
       const result = await service.findAll(tenantId, 'MRN-001');

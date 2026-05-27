@@ -111,7 +111,6 @@ export const SalesDashboard: React.FC = () => {
 
   // Trigger fetch when dynamic active filters update
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSalesData();
   }, [fetchSalesData]);
 

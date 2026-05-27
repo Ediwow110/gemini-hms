@@ -9,22 +9,16 @@ echo "🚀 INITIATING CLOUD REFRESH & DEPLOYMENT"
 echo "================================================================================"
 
 # Validate target environment variables
-if [ -z "${DATABASE_URL:-}" ] || [ -z "${JWT_SECRET:-}" ] || [ -z "${MASTER_MFA_KEY:-}" ]; then
+if [ -z "${DATABASE_URL:-}" ] || [ -z "${JWT_SECRET:-}" ] || [ -z "${MASTER_MFA_KEY:-}" ] || [ -z "${DB_USER:-}" ] || [ -z "${DB_PASSWORD:-}" ] || [ -z "${DB_NAME:-}" ]; then
   echo "❌ CRITICAL: Missing mandatory deployment environment variables!"
   exit 1
 fi
 
-# 1. Secure Secret Ingestion
-echo "[CD] Securely writing production secrets..."
-cat <<EOF > hms-backend/.env.production
-DATABASE_URL=${DATABASE_URL}
-JWT_SECRET=${JWT_SECRET}
-MASTER_MFA_KEY=${MASTER_MFA_KEY}
-EOF
-echo "[CD] Production .env.production generated securely."
+echo "[CD] Validating docker-compose configuration..."
+docker compose -f docker-compose.prod.yml config -q || { echo "❌ Invalid compose config"; exit 1; }
 
 # 2. Cluster Refresh
-echo "[CD] Shouting down active production containers..."
+echo "[CD] Shutting down active production containers..."
 docker compose -f docker-compose.prod.yml down --remove-orphans || true
 
 echo "[CD] Rebuilding and mounting multi-container configuration..."
@@ -33,7 +27,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 # Wait for database and backend services to become healthy
 echo "[CD] Waiting for NestJS backend container to report healthy..."
 for i in {1..30}; do
-  if [ "$(docker inspect --format='{{json .State.Health.Status}}' hms-login-design-backend-1)" == "\"healthy\"" ]; then
+  if [ "$(docker compose -f docker-compose.prod.yml ps -q api | xargs -I {} docker inspect --format='{{json .State.Health.Status}}' {})" == "\"healthy\"" ]; then
     echo "🟢 NestJS backend is healthy!"
     break
   fi
@@ -46,11 +40,11 @@ done
 
 # 3. Relational Sync (Prisma Migrations Deployment)
 echo "[CD] Synchronizing database schema with Prisma migrations..."
-docker exec hms-login-design-backend-1 npx prisma migrate deploy
+docker compose -f docker-compose.prod.yml exec -T api npx prisma migrate deploy
 
 # 4. Integrated Post-Deployment Flight Probe
 echo "[CD] Launching Ingress Health Prober within the cloud cluster..."
-if docker exec hms-login-design-backend-1 npx tsx prisma/infrastructure-health-probe.ts --single-run; then
+if docker compose -f docker-compose.prod.yml exec -T api npx tsx prisma/infrastructure-health-probe.ts --single-run; then
   echo "🟢 [FLIGHT_PROBE] Ingress Health check PASSED successfully!"
   echo "================================================================================"
   echo "🎉 CD DEPLOYMENT SWEEP SUCCESSFUL (EXIT 0)"

@@ -39,10 +39,11 @@ describe('MFA Recovery (e2e)', () => {
     process.env.JWT_SECRET =
       'test-secret-key-for-mfa-recovery-e2e-tests-long-enough';
     process.env.MASTER_MFA_KEY = 'master-mfa-key-for-encryption-long-enough';
+    process.env.DISABLE_AUTH_VERIFICATION = 'false';
 
     const moduleRef = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
+        ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
         PrismaModule,
         AuditModule,
         AuthModule,
@@ -84,6 +85,21 @@ describe('MFA Recovery (e2e)', () => {
         tenantId,
         name: 'Super Admin',
         isSystem: true,
+      },
+    });
+
+    const permission = await prisma.permission.create({
+      data: {
+        tenantId,
+        name: 'admin.super.all',
+        riskLevel: 'CRITICAL',
+      },
+    });
+
+    await prisma.rolePermission.create({
+      data: {
+        roleId: role.id,
+        permissionId: permission.id,
       },
     });
 

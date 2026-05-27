@@ -16,7 +16,9 @@ import { TaskStatus } from '@prisma/client';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 
 const TASK_INCLUDE = {
-  patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+  patient: {
+    select: { id: true, firstName: true, lastName: true, patientNumber: true },
+  },
   assignedTo: { select: { id: true, email: true } },
   createdBy: { select: { id: true, email: true } },
   completedBy: { select: { id: true, email: true } },
@@ -74,10 +76,7 @@ export class NursingService {
     const tasks = await this.prisma.nurseTask.findMany({
       where,
       include: TASK_INCLUDE,
-      orderBy: [
-        { priority: 'desc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
     });
 
     return tasks.map((t) => this.mapToDto(t));
@@ -97,6 +96,13 @@ export class NursingService {
 
     if (!task) {
       throw new NotFoundException('Nurse task not found');
+    }
+
+    if (
+      !user.roles?.includes('Super Admin') &&
+      task.branchId !== user.branchId
+    ) {
+      throw new ForbiddenException('access_denied: wrong_branch');
     }
 
     return this.mapToDto(task);
@@ -190,6 +196,13 @@ export class NursingService {
       throw new NotFoundException('Nurse task not found');
     }
 
+    if (
+      !user.roles?.includes('Super Admin') &&
+      existing.branchId !== user.branchId
+    ) {
+      throw new ForbiddenException('access_denied: wrong_branch');
+    }
+
     if (existing.status === 'COMPLETED' || existing.status === 'CANCELLED') {
       throw new BadRequestException(
         `Cannot update a task in ${existing.status.toLowerCase()} status`,
@@ -217,7 +230,9 @@ export class NursingService {
           where: { id: dto.assignedUserId, tenantId },
         });
         if (!assignee) {
-          throw new BadRequestException('Assigned user not found in this tenant');
+          throw new BadRequestException(
+            'Assigned user not found in this tenant',
+          );
         }
       }
       updateData.assignedUserId = dto.assignedUserId || null;
@@ -325,6 +340,13 @@ export class NursingService {
     });
     if (!existing) {
       throw new NotFoundException('Nurse task not found');
+    }
+
+    if (
+      !user.roles?.includes('Super Admin') &&
+      existing.branchId !== user.branchId
+    ) {
+      throw new ForbiddenException('access_denied: wrong_branch');
     }
 
     if (!options.allowedFrom.includes(existing.status)) {

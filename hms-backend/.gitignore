@@ -6,5 +6,6 @@ node_modules
 
 # Build artifacts
 dist/
+coverage/
 *.tsbuildinfo
 backend.log

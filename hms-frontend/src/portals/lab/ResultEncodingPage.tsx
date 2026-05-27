@@ -146,10 +146,8 @@ export const ResultEncodingPage = () => {
       return;
     }
 
-    /* eslint-disable react-hooks/set-state-in-effect */
     setParameters(rows);
     setRemarks(context.draftRemarks || '');
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [context, definitions, catLoading, parameters.length, mergeWithDefinitions]);
 
   const evaluateFlag = (row: ParameterRow): ResultFlag => {

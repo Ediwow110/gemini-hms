@@ -8,7 +8,7 @@ export class MockJwtAuthGuard implements CanActivate {
     userId: TEST_USER_ID,
     tenantId: '123e4567-e89b-12d3-a456-426614174000',
     branchId: '123e4567-e89b-12d3-a456-426614174001',
-    roles: ['admin'],
+    roles: ['Super Admin'],
     permissions: ['*'],
     email: 'test@hms.local',
   };

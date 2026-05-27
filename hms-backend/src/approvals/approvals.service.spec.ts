@@ -158,10 +158,11 @@ describe('ApprovalsService write isolation', () => {
     });
   });
 
-  it('propagates branchId from request details into audit when creating requests', async () => {
+  it('propagates branchId from request details into audit and persisted row when creating requests', async () => {
     prisma.approvalRequest.create.mockResolvedValue({
       id: requestId,
       tenantId,
+      branchId: 'branch-a',
       requesterId: userId,
       type: 'REFUND',
       riskLevel: 'HIGH',
@@ -178,10 +179,45 @@ describe('ApprovalsService write isolation', () => {
       details: { branchId: 'branch-a' },
     });
 
+    expect(prisma.approvalRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ branchId: 'branch-a' }),
+      }),
+    );
     expect(audit.log).toHaveBeenCalledWith(
       expect.objectContaining({ eventKey: 'APPROVAL_REQUESTED' }),
       undefined,
       'branch-a',
+    );
+  });
+
+  it('filters request listings by branch for branch-scoped users', async () => {
+    prisma.approvalRequest.findMany = jest.fn().mockResolvedValue([]);
+
+    await service.getRequests(tenantId, 'branch-a', false);
+
+    expect(prisma.approvalRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          tenantId,
+          branchId: 'branch-a',
+        },
+      }),
+    );
+  });
+
+  it('omits branch filter for Super Admin request listings', async () => {
+    prisma.approvalRequest.findMany = jest.fn().mockResolvedValue([]);
+
+    await service.getRequests(tenantId, undefined, true);
+
+    expect(prisma.approvalRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          tenantId,
+          branchId: undefined,
+        },
+      }),
     );
   });
 });

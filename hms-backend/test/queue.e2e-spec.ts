@@ -56,6 +56,17 @@ describe('Queue Branch Scoping (e2e)', () => {
     MockJwtAuthGuard.user.branchId = branch.id;
   });
 
+  beforeEach(() => {
+    MockJwtAuthGuard.user = {
+      userId: randomUUID(),
+      tenantId: MockJwtAuthGuard.user.tenantId,
+      branchId: MockJwtAuthGuard.user.branchId,
+      roles: ['Cashier'],
+      permissions: ['*'],
+      email: 'staff@hms.local',
+    };
+  });
+
   describe('POST /api/v1/queue/join', () => {
     it('should fail with 403 when DTO.branchId mismatches JWT branchId', async () => {
       return request(app.getHttpServer())

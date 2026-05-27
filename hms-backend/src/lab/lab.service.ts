@@ -43,46 +43,68 @@ export class LabService {
     id: string,
     dto: EncodeLabResultDto,
   ) {
-    const result = await this.findOne(tenantId, branchId, id);
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.labResult.findFirst({
+        where: { id, order: { tenantId, branchId }, deletedAt: null },
+      });
 
-    // Guardrail (Section 15): Cannot edit released results
-    if (result.status === 'RELEASED') {
-      throw new ConflictException(
-        'released_result_immutable: Cannot edit a result that has already been released',
+      if (!result) {
+        throw new NotFoundException('Lab result not found');
+      }
+
+      if (
+        dto.expectedVersion !== undefined &&
+        result.version !== dto.expectedVersion
+      ) {
+        throw new ConflictException('Stale data: version mismatch');
+      }
+
+      // Guardrail (Section 15): Cannot edit released results
+      if (result.status === 'RELEASED') {
+        throw new ConflictException(
+          'released_result_immutable: Cannot edit a result that has already been released',
+        );
+      }
+
+      const updateResult = await tx.labResult.updateMany({
+        where: { id, order: { tenantId, branchId }, version: result.version },
+        data: {
+          status: 'ENCODED',
+          results: dto.results,
+          remarks: dto.remarks,
+          version: { increment: 1 },
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException(
+          'Stale data: version mismatch during update',
+        );
+      }
+
+      const updated = await tx.labResult.findFirst({
+        where: { id, order: { tenantId, branchId } },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'RESULT_ENCODED',
+          recordType: 'LabResult',
+          recordId: id,
+          newValues: {
+            results: dto.results,
+            remarks: dto.remarks,
+            version: result.version + 1,
+          },
+        },
+        tx,
+        branchId,
       );
-    }
 
-    const updateResult = await this.prisma.labResult.updateMany({
-      where: { id, order: { tenantId, branchId } },
-      data: { status: 'ENCODED', results: dto.results, remarks: dto.remarks },
+      return updated;
     });
-
-    if (updateResult.count === 0) {
-      throw new NotFoundException('Lab result not found');
-    }
-
-    const updated = await this.prisma.labResult.findFirst({
-      where: { id, order: { tenantId, branchId } },
-    });
-
-    if (!updated) {
-      throw new NotFoundException('Lab result not found');
-    }
-
-    await this.audit.log(
-      {
-        tenantId,
-        userId,
-        eventKey: 'RESULT_ENCODED',
-        recordType: 'LabResult',
-        recordId: id,
-        newValues: { results: dto.results, remarks: dto.remarks },
-      },
-      undefined,
-      branchId,
-    );
-
-    return updated;
   }
 
   async approveResult(
@@ -92,45 +114,67 @@ export class LabService {
     id: string,
     dto: ApproveLabResultDto,
   ) {
-    const result = await this.findOne(tenantId, branchId, id);
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.labResult.findFirst({
+        where: { id, order: { tenantId, branchId }, deletedAt: null },
+        include: { order: { include: { patient: true } } },
+      });
 
-    if (result.status === 'RELEASED') {
-      throw new ConflictException(
-        'Cannot approve a result that is already released',
+      if (!result) {
+        throw new NotFoundException('Lab result not found');
+      }
+
+      if (
+        dto.expectedVersion !== undefined &&
+        result.version !== dto.expectedVersion
+      ) {
+        throw new ConflictException('Stale data: version mismatch');
+      }
+
+      if (result.status === 'RELEASED') {
+        throw new ConflictException(
+          'Cannot approve a result that is already released',
+        );
+      }
+
+      const updateResult = await tx.labResult.updateMany({
+        where: { id, order: { tenantId, branchId }, version: result.version },
+        data: {
+          status: 'APPROVED',
+          approvedById: userId,
+          version: { increment: 1 },
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException(
+          'Stale data: version mismatch during update',
+        );
+      }
+
+      const updated = await tx.labResult.findFirst({
+        where: { id, order: { tenantId, branchId } },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'RESULT_APPROVED',
+          recordType: 'LabResult',
+          recordId: id,
+          newValues: {
+            approvedBy: userId,
+            remarks: dto.pathologistRemarks,
+            version: result.version + 1,
+          },
+        },
+        tx,
+        branchId,
       );
-    }
 
-    const updateResult = await this.prisma.labResult.updateMany({
-      where: { id, order: { tenantId, branchId } },
-      data: { status: 'APPROVED', approvedById: userId },
+      return updated;
     });
-
-    if (updateResult.count === 0) {
-      throw new NotFoundException('Lab result not found');
-    }
-
-    const updated = await this.prisma.labResult.findFirst({
-      where: { id, order: { tenantId, branchId } },
-    });
-
-    if (!updated) {
-      throw new NotFoundException('Lab result not found');
-    }
-
-    await this.audit.log(
-      {
-        tenantId,
-        userId,
-        eventKey: 'RESULT_APPROVED',
-        recordType: 'LabResult',
-        recordId: id,
-        newValues: { approvedBy: userId, remarks: dto.pathologistRemarks },
-      },
-      undefined,
-      branchId,
-    );
-
-    return updated;
   }
 
   async requestAmendment(
@@ -152,6 +196,7 @@ export class LabService {
       riskLevel: 'CRITICAL',
       recordId: id,
       reason: dto.reason,
+      branchId,
     });
   }
 
@@ -337,7 +382,14 @@ export class LabService {
       include: {
         order: {
           include: {
-            patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+            patient: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                patientNumber: true,
+              },
+            },
             clinicalItems: { select: { itemName: true } },
           },
         },
@@ -354,7 +406,14 @@ export class LabService {
       include: {
         order: {
           include: {
-            patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+            patient: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                patientNumber: true,
+              },
+            },
             clinicalItems: { select: { itemName: true } },
           },
         },
@@ -401,12 +460,9 @@ export class LabService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       // Find existing specimen or order to create one
-      let specimen = await tx.labSpecimen.findFirst({
+      const specimen = await tx.labSpecimen.findFirst({
         where: {
-          OR: [
-            { id: specimenIdOrOrderId },
-            { orderId: specimenIdOrOrderId },
-          ],
+          OR: [{ id: specimenIdOrOrderId }, { orderId: specimenIdOrOrderId }],
           tenantId,
           branchId,
         },
@@ -489,7 +545,14 @@ export class LabService {
       include: {
         order: {
           include: {
-            patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+            patient: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                patientNumber: true,
+              },
+            },
             clinicalItems: { select: { itemName: true } },
           },
         },
@@ -528,7 +591,10 @@ export class LabService {
       order: { tenantId, branchId },
     };
 
-    if (status && ['OPEN', 'ACKNOWLEDGED', 'ESCALATED', 'RESOLVED'].includes(status)) {
+    if (
+      status &&
+      ['OPEN', 'ACKNOWLEDGED', 'ESCALATED', 'RESOLVED'].includes(status)
+    ) {
       whereClause.criticalStatus = status;
     }
 
@@ -537,7 +603,14 @@ export class LabService {
       include: {
         order: {
           include: {
-            patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+            patient: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                patientNumber: true,
+              },
+            },
             clinicalItems: { select: { itemName: true } },
           },
         },
@@ -578,56 +651,82 @@ export class LabService {
     branchId: string,
     resultId: string,
     reason?: string,
+    expectedVersion?: number,
   ) {
-    const result = await this.findOne(tenantId, branchId, resultId);
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.labResult.findFirst({
+        where: { id: resultId, order: { tenantId, branchId }, deletedAt: null },
+        include: { order: true },
+      });
 
-    if (result.status !== 'APPROVED' && result.status !== 'RELEASED') {
-      throw new BadRequestException(
-        'Only APPROVED or RELEASED results can be marked as critical',
+      if (!result) {
+        throw new NotFoundException('Lab result not found');
+      }
+
+      if (expectedVersion !== undefined && result.version !== expectedVersion) {
+        throw new ConflictException('Stale data: version mismatch');
+      }
+
+      if (result.status !== 'APPROVED' && result.status !== 'RELEASED') {
+        throw new BadRequestException(
+          'Only APPROVED or RELEASED results can be marked as critical',
+        );
+      }
+
+      const updated = await tx.labResult.updateMany({
+        where: {
+          id: resultId,
+          order: { tenantId, branchId },
+          version: result.version,
+        },
+        data: {
+          isCritical: true,
+          criticalStatus: 'OPEN',
+          version: { increment: 1 },
+        },
+      });
+
+      if (updated.count === 0) {
+        throw new ConflictException(
+          'Stale data: version mismatch during update',
+        );
+      }
+
+      // Create notification outbox entry for critical result
+      await tx.notificationOutbox.create({
+        data: {
+          recipientId: result.order.patientId,
+          type: 'CRITICAL_RESULT',
+          payload: JSON.stringify({
+            resultId,
+            orderId: result.orderId,
+            reason: reason || null,
+          }),
+          scheduledAt: new Date(),
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'LAB_RESULT_MARKED_CRITICAL',
+          recordType: 'LabResult',
+          recordId: resultId,
+          oldValues: { isCritical: false },
+          newValues: {
+            isCritical: true,
+            criticalStatus: 'OPEN',
+            reason: reason || null,
+            version: result.version + 1,
+          },
+        },
+        tx,
+        branchId,
       );
-    }
 
-    const updated = await this.prisma.labResult.updateMany({
-      where: { id: resultId, order: { tenantId, branchId } },
-      data: {
-        isCritical: true,
-        criticalStatus: 'OPEN',
-      },
+      return this.getCriticalResults(tenantId, branchId);
     });
-
-    if (updated.count === 0) {
-      throw new NotFoundException('Lab result not found');
-    }
-
-    // Create notification outbox entry for critical result
-    await this.prisma.notificationOutbox.create({
-      data: {
-        recipientId: result.order.patientId,
-        type: 'CRITICAL_RESULT',
-        payload: JSON.stringify({
-          resultId,
-          orderId: result.orderId,
-          reason: reason || null,
-        }),
-        scheduledAt: new Date(),
-      },
-    });
-
-    await this.audit.log(
-      {
-        tenantId,
-        userId,
-        eventKey: 'LAB_RESULT_MARKED_CRITICAL',
-        recordType: 'LabResult',
-        recordId: resultId,
-        oldValues: { isCritical: false },
-        newValues: { isCritical: true, criticalStatus: 'OPEN', reason: reason || null },
-      },
-      undefined,
-      branchId,
-    );
-
-    return this.getCriticalResults(tenantId, branchId);
   }
 
   async acknowledgeCriticalResult(
@@ -636,46 +735,70 @@ export class LabService {
     branchId: string,
     resultId: string,
     notes?: string,
+    expectedVersion?: number,
   ) {
-    const result = await this.findOne(tenantId, branchId, resultId);
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.labResult.findFirst({
+        where: { id: resultId, order: { tenantId, branchId }, deletedAt: null },
+      });
 
-    if (!result.isCritical) {
-      throw new BadRequestException('Result is not marked as critical');
-    }
+      if (!result) {
+        throw new NotFoundException('Lab result not found');
+      }
 
-    if (result.criticalStatus === 'RESOLVED') {
-      throw new ConflictException('Critical result is already resolved');
-    }
+      if (expectedVersion !== undefined && result.version !== expectedVersion) {
+        throw new ConflictException('Stale data: version mismatch');
+      }
 
-    const updated = await this.prisma.labResult.updateMany({
-      where: { id: resultId, order: { tenantId, branchId } },
-      data: {
-        criticalStatus: 'ACKNOWLEDGED',
-        criticalAcknowledgedAt: new Date(),
-        criticalAcknowledgedById: userId,
-        criticalEscalationNotes: notes || null,
-      },
+      if (!result.isCritical) {
+        throw new BadRequestException('Result is not marked as critical');
+      }
+
+      if (result.criticalStatus === 'RESOLVED') {
+        throw new ConflictException('Critical result is already resolved');
+      }
+
+      const updated = await tx.labResult.updateMany({
+        where: {
+          id: resultId,
+          order: { tenantId, branchId },
+          version: result.version,
+        },
+        data: {
+          criticalStatus: 'ACKNOWLEDGED',
+          criticalAcknowledgedAt: new Date(),
+          criticalAcknowledgedById: userId,
+          criticalEscalationNotes: notes || null,
+          version: { increment: 1 },
+        },
+      });
+
+      if (updated.count === 0) {
+        throw new ConflictException(
+          'Stale data: version mismatch during update',
+        );
+      }
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'CRITICAL_RESULT_ACKNOWLEDGED',
+          recordType: 'LabResult',
+          recordId: resultId,
+          oldValues: { criticalStatus: result.criticalStatus },
+          newValues: {
+            criticalStatus: 'ACKNOWLEDGED',
+            acknowledgedAt: new Date().toISOString(),
+            version: result.version + 1,
+          },
+        },
+        tx,
+        branchId,
+      );
+
+      return this.getCriticalResults(tenantId, branchId);
     });
-
-    if (updated.count === 0) {
-      throw new NotFoundException('Lab result not found');
-    }
-
-    await this.audit.log(
-      {
-        tenantId,
-        userId,
-        eventKey: 'CRITICAL_RESULT_ACKNOWLEDGED',
-        recordType: 'LabResult',
-        recordId: resultId,
-        oldValues: { criticalStatus: result.criticalStatus },
-        newValues: { criticalStatus: 'ACKNOWLEDGED', acknowledgedAt: new Date().toISOString() },
-      },
-      undefined,
-      branchId,
-    );
-
-    return this.getCriticalResults(tenantId, branchId);
   }
 
   async escalateCriticalResult(
@@ -684,46 +807,70 @@ export class LabService {
     branchId: string,
     resultId: string,
     notes: string,
+    expectedVersion?: number,
   ) {
-    const result = await this.findOne(tenantId, branchId, resultId);
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.labResult.findFirst({
+        where: { id: resultId, order: { tenantId, branchId }, deletedAt: null },
+      });
 
-    if (!result.isCritical) {
-      throw new BadRequestException('Result is not marked as critical');
-    }
+      if (!result) {
+        throw new NotFoundException('Lab result not found');
+      }
 
-    if (result.criticalStatus === 'RESOLVED') {
-      throw new ConflictException('Critical result is already resolved');
-    }
+      if (expectedVersion !== undefined && result.version !== expectedVersion) {
+        throw new ConflictException('Stale data: version mismatch');
+      }
 
-    const updated = await this.prisma.labResult.updateMany({
-      where: { id: resultId, order: { tenantId, branchId } },
-      data: {
-        criticalStatus: 'ESCALATED',
-        criticalEscalatedAt: new Date(),
-        criticalEscalatedById: userId,
-        criticalEscalationNotes: notes,
-      },
+      if (!result.isCritical) {
+        throw new BadRequestException('Result is not marked as critical');
+      }
+
+      if (result.criticalStatus === 'RESOLVED') {
+        throw new ConflictException('Critical result is already resolved');
+      }
+
+      const updated = await tx.labResult.updateMany({
+        where: {
+          id: resultId,
+          order: { tenantId, branchId },
+          version: result.version,
+        },
+        data: {
+          criticalStatus: 'ESCALATED',
+          criticalEscalatedAt: new Date(),
+          criticalEscalatedById: userId,
+          criticalEscalationNotes: notes,
+          version: { increment: 1 },
+        },
+      });
+
+      if (updated.count === 0) {
+        throw new ConflictException(
+          'Stale data: version mismatch during update',
+        );
+      }
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'CRITICAL_RESULT_ESCALATED',
+          recordType: 'LabResult',
+          recordId: resultId,
+          oldValues: { criticalStatus: result.criticalStatus },
+          newValues: {
+            criticalStatus: 'ESCALATED',
+            notes,
+            version: result.version + 1,
+          },
+        },
+        tx,
+        branchId,
+      );
+
+      return this.getCriticalResults(tenantId, branchId);
     });
-
-    if (updated.count === 0) {
-      throw new NotFoundException('Lab result not found');
-    }
-
-    await this.audit.log(
-      {
-        tenantId,
-        userId,
-        eventKey: 'CRITICAL_RESULT_ESCALATED',
-        recordType: 'LabResult',
-        recordId: resultId,
-        oldValues: { criticalStatus: result.criticalStatus },
-        newValues: { criticalStatus: 'ESCALATED', notes },
-      },
-      undefined,
-      branchId,
-    );
-
-    return this.getCriticalResults(tenantId, branchId);
   }
 
   async resolveCriticalResult(
@@ -732,42 +879,65 @@ export class LabService {
     branchId: string,
     resultId: string,
     notes?: string,
+    expectedVersion?: number,
   ) {
-    const result = await this.findOne(tenantId, branchId, resultId);
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.labResult.findFirst({
+        where: { id: resultId, order: { tenantId, branchId }, deletedAt: null },
+      });
 
-    if (!result.isCritical) {
-      throw new BadRequestException('Result is not marked as critical');
-    }
+      if (!result) {
+        throw new NotFoundException('Lab result not found');
+      }
 
-    const updated = await this.prisma.labResult.updateMany({
-      where: { id: resultId, order: { tenantId, branchId } },
-      data: {
-        criticalStatus: 'RESOLVED',
-        criticalResolvedAt: new Date(),
-        criticalResolvedById: userId,
-        criticalResolvedNotes: notes || null,
-      },
+      if (expectedVersion !== undefined && result.version !== expectedVersion) {
+        throw new ConflictException('Stale data: version mismatch');
+      }
+
+      if (!result.isCritical) {
+        throw new BadRequestException('Result is not marked as critical');
+      }
+
+      const updated = await tx.labResult.updateMany({
+        where: {
+          id: resultId,
+          order: { tenantId, branchId },
+          version: result.version,
+        },
+        data: {
+          criticalStatus: 'RESOLVED',
+          criticalResolvedAt: new Date(),
+          criticalResolvedById: userId,
+          criticalResolvedNotes: notes || null,
+          version: { increment: 1 },
+        },
+      });
+
+      if (updated.count === 0) {
+        throw new ConflictException(
+          'Stale data: version mismatch during update',
+        );
+      }
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'CRITICAL_RESULT_RESOLVED',
+          recordType: 'LabResult',
+          recordId: resultId,
+          oldValues: { criticalStatus: result.criticalStatus },
+          newValues: {
+            criticalStatus: 'RESOLVED',
+            version: result.version + 1,
+          },
+        },
+        tx,
+        branchId,
+      );
+
+      return this.getCriticalResults(tenantId, branchId);
     });
-
-    if (updated.count === 0) {
-      throw new NotFoundException('Lab result not found');
-    }
-
-    await this.audit.log(
-      {
-        tenantId,
-        userId,
-        eventKey: 'CRITICAL_RESULT_RESOLVED',
-        recordType: 'LabResult',
-        recordId: resultId,
-        oldValues: { criticalStatus: result.criticalStatus },
-        newValues: { criticalStatus: 'RESOLVED' },
-      },
-      undefined,
-      branchId,
-    );
-
-    return this.getCriticalResults(tenantId, branchId);
   }
 
   // ──── Phase 4F: Turnaround Time Metrics ────
@@ -783,7 +953,14 @@ export class LabService {
         order: {
           include: {
             labSpecimen: { select: { receivedAt: true } },
-            patient: { select: { id: true, firstName: true, lastName: true, patientNumber: true } },
+            patient: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                patientNumber: true,
+              },
+            },
             clinicalItems: { select: { itemName: true } },
           },
         },
@@ -796,7 +973,10 @@ export class LabService {
     const validatedResults = results.filter((r) => r.validatedAt);
 
     // Helper: compute minutes between two dates
-    const minutesDiff = (end?: Date | null, start?: Date | null): number | null => {
+    const minutesDiff = (
+      end?: Date | null,
+      start?: Date | null,
+    ): number | null => {
       if (!end || !start) return null;
       return Math.round((end.getTime() - start.getTime()) / 60000);
     };
@@ -815,14 +995,19 @@ export class LabService {
       maxMinutes: number | null;
       missingTimestampCount: number;
     } => {
-      const validValues = values.filter((v): v is number => v !== null && v >= 0);
+      const validValues = values.filter(
+        (v): v is number => v !== null && v >= 0,
+      );
       return {
         label,
         field,
         count: validValues.length,
-        averageMinutes: validValues.length > 0
-          ? Math.round(validValues.reduce((a, b) => a + b, 0) / validValues.length)
-          : null,
+        averageMinutes:
+          validValues.length > 0
+            ? Math.round(
+                validValues.reduce((a, b) => a + b, 0) / validValues.length,
+              )
+            : null,
         minMinutes: validValues.length > 0 ? Math.min(...validValues) : null,
         maxMinutes: validValues.length > 0 ? Math.max(...validValues) : null,
         missingTimestampCount: values.length - validValues.length,
@@ -863,16 +1048,19 @@ export class LabService {
       testNames: r.order.clinicalItems.map((ci) => ci.itemName),
       status: r.status,
       orderCreatedAt: r.order.createdAt.toISOString(),
-      specimenReceivedAt: r.order.labSpecimen?.receivedAt?.toISOString() || null,
+      specimenReceivedAt:
+        r.order.labSpecimen?.receivedAt?.toISOString() || null,
       encodedAt: r.encodedAt?.toISOString() || null,
       validatedAt: r.validatedAt?.toISOString() || null,
       releasedAt: r.releasedAt?.toISOString() || null,
-      specimenToReleaseMinutes: r.status === 'RELEASED'
-        ? minutesDiff(r.releasedAt, r.order.labSpecimen?.receivedAt)
-        : null,
-      orderToReleaseMinutes: r.status === 'RELEASED'
-        ? minutesDiff(r.releasedAt, r.order.createdAt)
-        : null,
+      specimenToReleaseMinutes:
+        r.status === 'RELEASED'
+          ? minutesDiff(r.releasedAt, r.order.labSpecimen?.receivedAt)
+          : null,
+      orderToReleaseMinutes:
+        r.status === 'RELEASED'
+          ? minutesDiff(r.releasedAt, r.order.createdAt)
+          : null,
     }));
 
     return {
@@ -880,11 +1068,23 @@ export class LabService {
       releasedCount: releasedResults.length,
       pendingCount: results.length - releasedResults.length,
       metrics: [
-        computeMetric('Specimen to Release', 'specimenToRelease', specimenToRelease),
+        computeMetric(
+          'Specimen to Release',
+          'specimenToRelease',
+          specimenToRelease,
+        ),
         computeMetric('Order to Release', 'orderToRelease', orderToRelease),
         computeMetric('Receipt to Encode', 'receiptToEncode', receiptToEncode),
-        computeMetric('Encode to Validate', 'encodeToValidate', encodeToValidate),
-        computeMetric('Validate to Release', 'validateToRelease', validateToRelease),
+        computeMetric(
+          'Encode to Validate',
+          'encodeToValidate',
+          encodeToValidate,
+        ),
+        computeMetric(
+          'Validate to Release',
+          'validateToRelease',
+          validateToRelease,
+        ),
       ],
       detailRows,
     };

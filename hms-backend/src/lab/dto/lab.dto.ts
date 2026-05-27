@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, IsObject, IsOptional } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsObject,
+  IsOptional,
+  IsInt,
+} from 'class-validator';
 
 export class EncodeLabResultDto {
   @IsObject()
@@ -8,12 +14,20 @@ export class EncodeLabResultDto {
   @IsString()
   @IsOptional()
   remarks?: string;
+
+  @IsInt()
+  @IsOptional()
+  expectedVersion?: number;
 }
 
 export class ApproveLabResultDto {
   @IsString()
   @IsOptional()
   pathologistRemarks?: string;
+
+  @IsInt()
+  @IsOptional()
+  expectedVersion?: number;
 }
 
 export class AmendLabResultDto {
@@ -24,4 +38,8 @@ export class AmendLabResultDto {
   @IsString()
   @IsNotEmpty()
   reason: string;
+
+  @IsInt()
+  @IsOptional()
+  expectedVersion?: number;
 }

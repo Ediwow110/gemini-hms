@@ -71,12 +71,23 @@ describe('HIPAA Compliance Automation (e2e)', () => {
     });
   });
 
-  it('should block non-ADMIN from accessing ePHI audits (403)', async () => {
+  beforeEach(() => {
+    MockJwtAuthGuard.user = {
+      userId: '11111111-1111-4111-8111-111111111112',
+      tenantId: tenantId,
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+      permissions: ['*'],
+      branchId: '123e4567-e89b-12d3-a456-426614174001',
+    };
+  });
+
+  it('should block non-Super Admin from accessing ePHI audits (403)', async () => {
     MockJwtAuthGuard.user = {
       userId: '11111111-1111-4111-8111-111111111111',
       tenantId,
       email: 'nurse@hospital.com',
-      roles: ['NURSE'],
+      roles: ['Nurse'],
       permissions: [],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };

@@ -27,7 +27,7 @@ export class ReferralService {
   ) {
     try {
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: encounterId, tenantId },
+        where: { id: encounterId, tenantId, branchId },
       });
 
       if (!encounter) {
@@ -90,9 +90,13 @@ export class ReferralService {
     }
   }
 
-  async getReferral(tenantId: string, id: string) {
+  async getReferral(tenantId: string, id: string, branchId?: string) {
     const referral = await this.prisma.referral.findFirst({
-      where: { id, tenantId },
+      where: {
+        id,
+        tenantId,
+        branchId,
+      },
       include: {
         patient: {
           select: {
@@ -124,10 +128,15 @@ export class ReferralService {
     userId: string,
     id: string,
     dto: UpdateReferralStatusDto,
+    branchId?: string,
   ) {
     try {
       const referral = await this.prisma.referral.findFirst({
-        where: { id, tenantId },
+        where: {
+          id,
+          tenantId,
+          branchId,
+        },
       });
 
       if (!referral) {
@@ -135,13 +144,9 @@ export class ReferralService {
       }
 
       if (referral.status === dto.status) {
-        return referral; // Idempotent success
+        return referral;
       }
 
-      // Enforce valid transitions:
-      // PENDING -> ACCEPTED, CANCELLED
-      // ACCEPTED -> COMPLETED, CANCELLED
-      // COMPLETED / CANCELLED are terminal states
       if (
         referral.status === ReferralStatus.COMPLETED ||
         referral.status === ReferralStatus.CANCELLED

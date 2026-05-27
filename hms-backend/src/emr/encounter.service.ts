@@ -99,9 +99,13 @@ export class EncounterService {
     }
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, id: string, branchId?: string) {
     const encounter = await this.prisma.encounter.findFirst({
-      where: { id, tenantId },
+      where: {
+        id,
+        tenantId,
+        branchId,
+      },
       include: {
         patient: {
           select: {
@@ -124,9 +128,18 @@ export class EncounterService {
     return encounter;
   }
 
-  private async getEncounterLocked(tx: any, tenantId: string, id: string) {
+  private async getEncounterLocked(
+    tx: any,
+    tenantId: string,
+    id: string,
+    branchId?: string,
+  ) {
     const encounter = await tx.encounter.findFirst({
-      where: { id, tenantId },
+      where: {
+        id,
+        tenantId,
+        branchId,
+      },
     });
 
     if (!encounter) {
@@ -151,10 +164,16 @@ export class EncounterService {
     userId: string,
     id: string,
     status: EncounterStatus,
+    branchId?: string,
   ) {
     try {
       return await this.prisma.$transaction(async (tx) => {
-        const encounter = await this.getEncounterLocked(tx, tenantId, id);
+        const encounter = await this.getEncounterLocked(
+          tx,
+          tenantId,
+          id,
+          branchId,
+        );
 
         const updated = await tx.encounter.update({
           where: { id },
@@ -210,6 +229,7 @@ export class EncounterService {
           tx,
           tenantId,
           encounterId,
+          branchId,
         );
         this.assertMutable(encounter);
 
@@ -276,6 +296,7 @@ export class EncounterService {
           tx,
           tenantId,
           encounterId,
+          branchId,
         );
         this.assertMutable(encounter);
 
@@ -337,6 +358,7 @@ export class EncounterService {
           tx,
           tenantId,
           encounterId,
+          branchId,
         );
         this.assertMutable(encounter);
 

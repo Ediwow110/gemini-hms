@@ -13,6 +13,10 @@ import {
 } from './dto/approval.dto';
 
 type ApprovalRequestDetailsInput = Prisma.ApprovalRequestCreateInput['details'];
+type CreateApprovalRequestInput = CreateApprovalRequestDto & {
+  details?: ApprovalRequestDetailsInput;
+  branchId?: string;
+};
 
 @Injectable()
 export class ApprovalsService {
@@ -37,14 +41,16 @@ export class ApprovalsService {
   async createRequest(
     tenantId: string,
     userId: string,
-    dto: CreateApprovalRequestDto & { details?: ApprovalRequestDetailsInput },
+    dto: CreateApprovalRequestInput,
     tx?: Prisma.TransactionClient,
   ) {
     const db = tx || this.prisma;
-    const requestBranchId = this.getRequestBranchId(dto.details);
+    const requestBranchId =
+      dto.branchId ?? this.getRequestBranchId(dto.details);
     const request = await db.approvalRequest.create({
       data: {
         tenantId,
+        branchId: requestBranchId,
         requesterId: userId,
         type: dto.type,
         riskLevel: dto.riskLevel,
@@ -71,9 +77,12 @@ export class ApprovalsService {
     return request;
   }
 
-  async getRequests(tenantId: string) {
+  async getRequests(tenantId: string, branchId?: string, isSuperAdmin = false) {
     return this.prisma.approvalRequest.findMany({
-      where: { tenantId },
+      where: {
+        tenantId,
+        branchId: isSuperAdmin ? undefined : branchId,
+      },
       include: {
         requester: {
           select: {
@@ -93,8 +102,10 @@ export class ApprovalsService {
     action: 'APPROVED' | 'REJECTED',
     dto: ProcessApprovalRequestDto,
     branchId?: string,
+    tx?: Prisma.TransactionClient,
   ) {
-    const request = await this.prisma.approvalRequest.findFirst({
+    const db = tx || this.prisma;
+    const request = await db.approvalRequest.findFirst({
       where: { id, tenantId },
     });
 
@@ -102,7 +113,8 @@ export class ApprovalsService {
       throw new NotFoundException('Approval request not found');
     }
 
-    const requestBranchId = this.getRequestBranchId(request.details);
+    const requestBranchId =
+      request.branchId ?? this.getRequestBranchId(request.details);
 
     if (requestBranchId && requestBranchId !== branchId) {
       throw new NotFoundException('Approval request not found');
@@ -121,9 +133,8 @@ export class ApprovalsService {
       );
     }
 
-    // Process inside a transaction
-    return this.prisma.$transaction(async (tx) => {
-      const updateResult = await tx.approvalRequest.updateMany({
+    const applyUpdate = async (activeTx: Prisma.TransactionClient) => {
+      const updateResult = await activeTx.approvalRequest.updateMany({
         where: {
           id,
           tenantId,
@@ -142,7 +153,7 @@ export class ApprovalsService {
         );
       }
 
-      const updated = await tx.approvalRequest.findFirst({
+      const updated = await activeTx.approvalRequest.findFirst({
         where: { id, tenantId },
       });
 
@@ -160,11 +171,17 @@ export class ApprovalsService {
           oldValues: { status: request.status },
           newValues: updated,
         },
-        tx,
+        activeTx,
         requestBranchId,
       );
 
       return updated;
-    });
+    };
+
+    if (tx) {
+      return applyUpdate(tx);
+    }
+
+    return this.prisma.$transaction(applyUpdate);
   }
 }

@@ -39,12 +39,13 @@ describe('MFA Lifecycle (e2e)', () => {
     process.env.JWT_SECRET =
       'test-secret-key-for-mfa-e2e-tests-that-is-long-enough';
     process.env.MASTER_MFA_KEY = 'master-mfa-key-for-encryption-long-enough';
+    process.env.DISABLE_AUTH_VERIFICATION = 'false';
 
     console.log('Guards:', { JwtAuthGuard, MfaGuard, ThrottlerGuard });
 
     const moduleRef = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
+        ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
         PrismaModule,
         AuditModule,
         AuthModule,
@@ -85,6 +86,21 @@ describe('MFA Lifecycle (e2e)', () => {
         tenantId,
         name: 'Super Admin',
         isSystem: true,
+      },
+    });
+
+    const permission = await prisma.permission.create({
+      data: {
+        tenantId,
+        name: 'admin.super.all',
+        riskLevel: 'CRITICAL',
+      },
+    });
+
+    await prisma.rolePermission.create({
+      data: {
+        roleId: role.id,
+        permissionId: permission.id,
       },
     });
 
@@ -196,6 +212,29 @@ describe('MFA Lifecycle (e2e)', () => {
       // Create Finance Role
       const finRole = await prisma.role.create({
         data: { tenantId, name: 'Finance', isSystem: true },
+      });
+
+      // Add privileged permissions to trigger MFA
+      const hrPerm = await prisma.permission.create({
+        data: {
+          tenantId,
+          name: 'hr.manage',
+          riskLevel: 'HIGH',
+        },
+      });
+      const finPerm = await prisma.permission.create({
+        data: {
+          tenantId,
+          name: 'finance.manage',
+          riskLevel: 'HIGH',
+        },
+      });
+
+      await prisma.rolePermission.createMany({
+        data: [
+          { roleId: hrRole.id, permissionId: hrPerm.id },
+          { roleId: finRole.id, permissionId: finPerm.id },
+        ],
       });
 
       // Create HR User

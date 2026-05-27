@@ -62,6 +62,17 @@ describe('Orders Branch Scoping (e2e)', () => {
     MockJwtAuthGuard.user.branchId = branchId;
   });
 
+  beforeEach(() => {
+    MockJwtAuthGuard.user = {
+      userId: '11111111-1111-4111-8111-111111111111',
+      tenantId: tenantId,
+      branchId: branchId,
+      roles: ['Cashier'],
+      permissions: ['*'],
+      email: 'staff@hms.local',
+    };
+  });
+
   describe('POST /api/v1/orders', () => {
     it('should fail with 403 when DTO.branchId mismatches JWT branchId', async () => {
       return request(app.getHttpServer())
@@ -69,7 +80,13 @@ describe('Orders Branch Scoping (e2e)', () => {
         .send({
           patientId: randomUUID(),
           branchId: randomUUID(), // Mismatch
-          items: [{ name: 'Test', price: 100, quantity: 1 }],
+          items: [
+            {
+              itemType: 'SERVICE',
+              itemId: randomUUID(),
+              quantity: 1,
+            },
+          ],
         })
         .expect(403);
     });

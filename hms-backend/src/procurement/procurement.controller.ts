@@ -17,6 +17,7 @@ import {
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import type { RequestUser } from '../common/types/authenticated-request.type';
 
 @UseGuards(PermissionsGuard)
 @Controller('api/v1/procurement')
@@ -25,57 +26,44 @@ export class ProcurementController {
 
   @Post('suppliers')
   @RequirePermissions('procurement.supplier.manage')
-  createSupplier(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
-    @Body() dto: CreateSupplierDto,
-  ) {
-    return this.procurementService.createSupplier(tenantId, userId, dto);
+  createSupplier(@GetUser() user: RequestUser, @Body() dto: CreateSupplierDto) {
+    return this.procurementService.createSupplier(user, dto);
   }
 
   @Post('purchase-requests')
   @RequirePermissions('procurement.request.create')
   createPurchaseRequest(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
+    @GetUser() user: RequestUser,
     @Body() dto: CreatePurchaseRequestDto,
   ) {
-    return this.procurementService.createPurchaseRequest(tenantId, userId, dto);
+    return this.procurementService.createPurchaseRequest(user, dto);
   }
 
   @Patch('purchase-requests/:id/approve')
   @RequirePermissions('procurement.request.approve')
   approvePurchaseRequest(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
+    @GetUser() user: RequestUser,
     @Param('id') id: string,
   ) {
-    return this.procurementService.approvePurchaseRequest(tenantId, userId, id);
+    return this.procurementService.approvePurchaseRequest(user, id);
   }
 
   @Post('purchase-orders')
   @RequirePermissions('procurement.po.create')
   createPurchaseOrder(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
+    @GetUser() user: RequestUser,
     @Body() dto: CreatePurchaseOrderDto,
   ) {
-    return this.procurementService.createPurchaseOrder(tenantId, userId, dto);
+    return this.procurementService.createPurchaseOrder(user, dto);
   }
 
   @Post('purchase-orders/:id/receive')
   @RequirePermissions('procurement.receiving.post')
   receivePurchaseOrder(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
+    @GetUser() user: RequestUser,
     @Param('id') id: string,
     @Body() dto: ReceivePurchaseOrderDto,
   ) {
-    return this.procurementService.receivePurchaseOrder(
-      tenantId,
-      userId,
-      id,
-      dto,
-    );
+    return this.procurementService.receivePurchaseOrder(user, id, dto);
   }
 }

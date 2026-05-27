@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NursingService } from './nursing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { TaskPriority, TaskStatus } from '@prisma/client';
 
 describe('NursingService', () => {
@@ -43,7 +47,12 @@ describe('NursingService', () => {
     cancellationReason: null,
     createdAt: new Date(),
     updatedAt: new Date(),
-    patient: { id: mockPatientId, firstName: 'John', lastName: 'Doe', patientNumber: 'MRN-001' },
+    patient: {
+      id: mockPatientId,
+      firstName: 'John',
+      lastName: 'Doe',
+      patientNumber: 'MRN-001',
+    },
     assignedTo: null,
     createdBy: { id: mockUserId, email: 'nurse@test.com' },
     completedBy: null,
@@ -85,7 +94,12 @@ describe('NursingService', () => {
   describe('listTasks', () => {
     it('should return tasks scoped to tenant and branch', async () => {
       prisma.nurseTask.findMany.mockResolvedValue([mockTask]);
-      const result = await service.listTasks(mockTenantId, mockBranchId, {}, mockUser);
+      const result = await service.listTasks(
+        mockTenantId,
+        mockBranchId,
+        {},
+        mockUser,
+      );
       expect(result).toHaveLength(1);
       expect(result[0].title).toBe('Test Task');
       expect(prisma.nurseTask.findMany).toHaveBeenCalledWith(
@@ -100,7 +114,12 @@ describe('NursingService', () => {
 
     it('should filter by status when provided', async () => {
       prisma.nurseTask.findMany.mockResolvedValue([]);
-      await service.listTasks(mockTenantId, mockBranchId, { status: TaskStatus.OPEN }, mockUser);
+      await service.listTasks(
+        mockTenantId,
+        mockBranchId,
+        { status: TaskStatus.OPEN },
+        mockUser,
+      );
       expect(prisma.nurseTask.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ status: TaskStatus.OPEN }),
@@ -110,7 +129,12 @@ describe('NursingService', () => {
 
     it('should filter by assignedToMe when true', async () => {
       prisma.nurseTask.findMany.mockResolvedValue([]);
-      await service.listTasks(mockTenantId, mockBranchId, { assignedToMe: true }, mockUser);
+      await service.listTasks(
+        mockTenantId,
+        mockBranchId,
+        { assignedToMe: true },
+        mockUser,
+      );
       expect(prisma.nurseTask.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ assignedUserId: mockUserId }),
@@ -129,7 +153,9 @@ describe('NursingService', () => {
 
     it('should throw NotFoundException when task not found', async () => {
       prisma.nurseTask.findFirst.mockResolvedValue(null);
-      await expect(service.getTask(mockTenantId, mockTaskId, mockUser)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getTask(mockTenantId, mockTaskId, mockUser),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -139,8 +165,18 @@ describe('NursingService', () => {
       prisma.nurseTask.create.mockResolvedValue(mockTask);
       prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
 
-      const dto = { title: 'Test Task', description: 'Test', priority: TaskPriority.HIGH, patientId: mockPatientId };
-      const result = await service.createTask(mockTenantId, mockBranchId, dto, mockUser);
+      const dto = {
+        title: 'Test Task',
+        description: 'Test',
+        priority: TaskPriority.HIGH,
+        patientId: mockPatientId,
+      };
+      const result = await service.createTask(
+        mockTenantId,
+        mockBranchId,
+        dto,
+        mockUser,
+      );
       expect(result.title).toBe('Test Task');
       expect(audit.log).toHaveBeenCalled();
     });
@@ -148,19 +184,28 @@ describe('NursingService', () => {
     it('should throw BadRequestException for invalid patientId', async () => {
       prisma.patient.findFirst.mockResolvedValue(null);
       const dto = { title: 'Test', patientId: 'invalid-patient' };
-      await expect(service.createTask(mockTenantId, mockBranchId, dto, mockUser)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.createTask(mockTenantId, mockBranchId, dto, mockUser),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('task lifecycle transitions', () => {
     beforeEach(() => {
       prisma.nurseTask.findFirst.mockResolvedValue(mockTask);
-      prisma.nurseTask.update.mockResolvedValue({ ...mockTask, status: TaskStatus.IN_PROGRESS });
+      prisma.nurseTask.update.mockResolvedValue({
+        ...mockTask,
+        status: TaskStatus.IN_PROGRESS,
+      });
       prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
     });
 
     it('should start a task (OPEN -> IN_PROGRESS)', async () => {
-      const result = await service.startTask(mockTenantId, mockTaskId, mockUser);
+      const result = await service.startTask(
+        mockTenantId,
+        mockTaskId,
+        mockUser,
+      );
       expect(prisma.nurseTask.update).toHaveBeenCalled();
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'NURSE_TASK_STARTED' }),
@@ -170,13 +215,27 @@ describe('NursingService', () => {
     });
 
     it('should reject invalid transitions', async () => {
-      prisma.nurseTask.findFirst.mockResolvedValue({ ...mockTask, status: TaskStatus.CANCELLED });
-      await expect(service.startTask(mockTenantId, mockTaskId, mockUser)).rejects.toThrow(BadRequestException);
+      prisma.nurseTask.findFirst.mockResolvedValue({
+        ...mockTask,
+        status: TaskStatus.CANCELLED,
+      });
+      await expect(
+        service.startTask(mockTenantId, mockTaskId, mockUser),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should complete a task', async () => {
-      prisma.nurseTask.update.mockResolvedValue({ ...mockTask, status: TaskStatus.COMPLETED, completedAt: new Date(), completedById: mockUserId });
-      const result = await service.completeTask(mockTenantId, mockTaskId, mockUser);
+      prisma.nurseTask.update.mockResolvedValue({
+        ...mockTask,
+        status: TaskStatus.COMPLETED,
+        completedAt: new Date(),
+        completedById: mockUserId,
+      });
+      const result = await service.completeTask(
+        mockTenantId,
+        mockTaskId,
+        mockUser,
+      );
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'NURSE_TASK_COMPLETED' }),
         expect.anything(),
@@ -185,8 +244,16 @@ describe('NursingService', () => {
     });
 
     it('should cancel a task', async () => {
-      prisma.nurseTask.update.mockResolvedValue({ ...mockTask, status: TaskStatus.CANCELLED });
-      const result = await service.cancelTask(mockTenantId, mockTaskId, mockUser, 'Not needed');
+      prisma.nurseTask.update.mockResolvedValue({
+        ...mockTask,
+        status: TaskStatus.CANCELLED,
+      });
+      const result = await service.cancelTask(
+        mockTenantId,
+        mockTaskId,
+        mockUser,
+        'Not needed',
+      );
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'NURSE_TASK_CANCELLED' }),
         expect.anything(),
@@ -195,9 +262,19 @@ describe('NursingService', () => {
     });
 
     it('should reopen a completed task', async () => {
-      prisma.nurseTask.findFirst.mockResolvedValue({ ...mockTask, status: TaskStatus.COMPLETED });
-      prisma.nurseTask.update.mockResolvedValue({ ...mockTask, status: TaskStatus.OPEN });
-      const result = await service.reopenTask(mockTenantId, mockTaskId, mockUser);
+      prisma.nurseTask.findFirst.mockResolvedValue({
+        ...mockTask,
+        status: TaskStatus.COMPLETED,
+      });
+      prisma.nurseTask.update.mockResolvedValue({
+        ...mockTask,
+        status: TaskStatus.OPEN,
+      });
+      const result = await service.reopenTask(
+        mockTenantId,
+        mockTaskId,
+        mockUser,
+      );
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'NURSE_TASK_REOPENED' }),
         expect.anything(),
@@ -209,7 +286,9 @@ describe('NursingService', () => {
   describe('tenant isolation', () => {
     it('should throw ForbiddenException for cross-tenant access', async () => {
       const crossTenantUser = { ...mockUser, tenantId: 'other-tenant' };
-      await expect(service.listTasks(mockTenantId, mockBranchId, {}, crossTenantUser)).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.listTasks(mockTenantId, mockBranchId, {}, crossTenantUser),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

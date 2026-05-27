@@ -110,6 +110,7 @@ model Branch {
   rfqs             RFQ[]
   supportTickets   SupportTicket[]
   nurseTasks       NurseTask[]
+  sessions         Session[]
 
   @@map("branches")
 }
@@ -184,6 +185,7 @@ model Session {
   id               String   @id @default(uuid()) @db.Uuid
   userId           String   @map("user_id") @db.Uuid
   tenantId         String   @map("tenant_id") @db.Uuid
+  branchId         String?  @map("branch_id") @db.Uuid
   refreshTokenHash String   @unique @map("refresh_token_hash")
   isMfaVerified    Boolean  @default(false) @map("is_mfa_verified")
   expiresAt        DateTime @map("expires_at")
@@ -191,10 +193,12 @@ model Session {
   userAgent        String?  @map("user_agent")
   ipAddress        String?  @map("ip_address")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([tenantId])
+  @@index([branchId])
   @@map("sessions")
 }
 
@@ -459,18 +463,19 @@ model Patient {
   id            String    @id @default(uuid()) @db.Uuid
   tenantId      String    @map("tenant_id") @db.Uuid
   patientNumber String    @map("patient_number")
-  firstName     String    @map("first_name")
-  lastName      String    @map("last_name")
-  dob           DateTime  @db.Date
-  status        String    @default("ACTIVE")
-  createdById   String?   @map("created_by_id") @db.Uuid
-  updatedById   String?   @map("updated_by_id") @db.Uuid
-  deletedAt     DateTime? @map("deleted_at")
-  version       Int       @default(0)
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  archivedAt    DateTime? @map("archived_at")
-  archiveReason String?   @map("archive_reason")
+  firstName            String    @map("first_name")
+  lastName             String    @map("last_name")
+  dob                  DateTime  @db.Date
+  normalizedNameDobKey String?   @map("normalized_name_dob_key")
+  status               String    @default("ACTIVE")
+  createdById          String?   @map("created_by_id") @db.Uuid
+  updatedById          String?   @map("updated_by_id") @db.Uuid
+  deletedAt            DateTime? @map("deleted_at")
+  version              Int       @default(0)
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  archivedAt           DateTime? @map("archived_at")
+  archiveReason        String?   @map("archive_reason")
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id])
   orders          Order[]
@@ -484,6 +489,7 @@ model Patient {
   nurseTasks      NurseTask[]
 
   @@unique([tenantId, patientNumber])
+  @@unique([tenantId, normalizedNameDobKey])
   @@map("patients")
 }
 
@@ -1145,6 +1151,7 @@ model RolePermission {
 model ApprovalRequest {
   id          String   @id @default(uuid()) @db.Uuid
   tenantId    String   @map("tenant_id") @db.Uuid
+  branchId    String?  @map("branch_id") @db.Uuid
   requesterId String   @map("requester_id") @db.Uuid
   approverId  String?  @map("approver_id") @db.Uuid
   type        String // e.g. REFUND, ROLE_CHANGE, RESULT_AMENDMENT
@@ -1162,6 +1169,7 @@ model ApprovalRequest {
   approver         User?             @relation("ApprovedApprovals", fields: [approverId], references: [id])
   paymentReversals PaymentReversal[]
 
+  @@index([tenantId, branchId, status])
   @@map("approval_requests")
 }
 

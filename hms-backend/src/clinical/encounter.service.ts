@@ -40,7 +40,6 @@ export class EncounterService {
         );
       }
 
-      // Enforce that doctorId is optional but must exist as active User in tenant if provided
       if (dto.doctorId) {
         const doctor = await this.prisma.user.findFirst({
           where: { id: dto.doctorId, tenantId, status: 'ACTIVE' },
@@ -99,9 +98,13 @@ export class EncounterService {
     }
   }
 
-  async getEncounter(tenantId: string, id: string) {
+  async getEncounter(tenantId: string, id: string, branchId?: string) {
     const encounter = await this.prisma.encounter.findFirst({
-      where: { id, tenantId },
+      where: {
+        id,
+        tenantId,
+        branchId,
+      },
       include: {
         patient: true,
         doctor: {
@@ -129,10 +132,19 @@ export class EncounterService {
     return encounter;
   }
 
-  async closeEncounter(tenantId: string, userId: string, id: string) {
+  async closeEncounter(
+    tenantId: string,
+    userId: string,
+    id: string,
+    branchId?: string,
+  ) {
     try {
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id, tenantId },
+        where: {
+          id,
+          tenantId,
+          branchId,
+        },
       });
 
       if (!encounter) {
@@ -146,7 +158,6 @@ export class EncounterService {
       return await this.prisma.$transaction(async (tx) => {
         const now = new Date();
 
-        // 1. Close the encounter
         const updated = await tx.encounter.update({
           where: { id },
           data: {
@@ -156,7 +167,6 @@ export class EncounterService {
           },
         });
 
-        // 2. Lock all clinical notes belonging to this encounter
         await tx.clinicalNote.updateMany({
           where: {
             encounterId: id,
@@ -169,7 +179,6 @@ export class EncounterService {
           },
         });
 
-        // 3. Log audit event
         await this.audit.log(
           {
             tenantId,

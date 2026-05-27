@@ -68,6 +68,17 @@ describe('HR Management E2E', () => {
     branchId = branch.id;
   });
 
+  beforeEach(() => {
+    MockJwtAuthGuard.user = {
+      userId: '11111111-1111-4111-8111-111111111111',
+      tenantId: tenantId,
+      branchId: branchId,
+      roles: ['Super Admin'],
+      permissions: ['*'],
+      email: 'admin@hms.local',
+    };
+  });
+
   afterAll(async () => {
     await prisma.$disconnect();
     await app.close();
@@ -98,9 +109,9 @@ describe('HR Management E2E', () => {
   });
 
   it('should allow HR Admin to create employee profile', async () => {
-    const hrUserId = await createTestUser();
+    const hrAdminId = await createTestUser();
     MockJwtAuthGuard.user = {
-      userId: hrUserId,
+      userId: hrAdminId,
       tenantId,
       branchId,
       roles: ['HR Manager'],
@@ -197,7 +208,7 @@ describe('HR Management E2E', () => {
       userId: managerUserId,
       tenantId,
       branchId,
-      roles: ['HR Manager'],
+      roles: ['Branch Admin'],
       permissions: ['*'],
       email: 'hradmin2@hms.local',
     };

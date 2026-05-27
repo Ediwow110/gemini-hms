@@ -21,7 +21,15 @@ import { BranchGuard } from '../auth/guards/branch.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 import { SelfApprovalGuard } from '../common/guards/self-approval.guard';
-import { PendingSpecimenDto, ReleasableResultDto, ReleaseResultResponseDto, CriticalResultDto, AcknowledgeCriticalDto, EscalateCriticalDto, TurnaroundSummaryDto } from './dto/lab-responses.dto';
+import {
+  PendingSpecimenDto,
+  ReleasableResultDto,
+  ReleaseResultResponseDto,
+  CriticalResultDto,
+  AcknowledgeCriticalDto,
+  EscalateCriticalDto,
+  TurnaroundSummaryDto,
+} from './dto/lab-responses.dto';
 import { MarkCriticalDto } from './dto/mark-critical.dto';
 
 @UseGuards(PermissionsGuard, BranchGuard)
@@ -169,7 +177,13 @@ export class LabController {
     @Param('id') id: string,
     @Body() dto: MarkCriticalDto,
   ): Promise<CriticalResultDto[]> {
-    return this.labService.markResultAsCritical(tenantId, userId, branchId, id, dto.reason);
+    return this.labService.markResultAsCritical(
+      tenantId,
+      userId,
+      branchId,
+      id,
+      dto.reason,
+    );
   }
 
   @Patch('critical-results/:id/acknowledge')
@@ -182,7 +196,13 @@ export class LabController {
     @Param('id') id: string,
     @Body() dto: AcknowledgeCriticalDto,
   ): Promise<CriticalResultDto[]> {
-    return this.labService.acknowledgeCriticalResult(tenantId, userId, branchId, id, dto.notes);
+    return this.labService.acknowledgeCriticalResult(
+      tenantId,
+      userId,
+      branchId,
+      id,
+      dto.notes,
+    );
   }
 
   @Patch('critical-results/:id/escalate')
@@ -195,7 +215,13 @@ export class LabController {
     @Param('id') id: string,
     @Body() dto: EscalateCriticalDto,
   ): Promise<CriticalResultDto[]> {
-    return this.labService.escalateCriticalResult(tenantId, userId, branchId, id, dto.notes);
+    return this.labService.escalateCriticalResult(
+      tenantId,
+      userId,
+      branchId,
+      id,
+      dto.notes,
+    );
   }
 
   @Patch('critical-results/:id/resolve')
@@ -208,7 +234,13 @@ export class LabController {
     @Param('id') id: string,
     @Body() dto: AcknowledgeCriticalDto,
   ): Promise<CriticalResultDto[]> {
-    return this.labService.resolveCriticalResult(tenantId, userId, branchId, id, dto.notes);
+    return this.labService.resolveCriticalResult(
+      tenantId,
+      userId,
+      branchId,
+      id,
+      dto.notes,
+    );
   }
 
   // ──── Phase 4F: Turnaround Time Metrics ────

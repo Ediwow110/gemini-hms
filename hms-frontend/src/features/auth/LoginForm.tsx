@@ -12,7 +12,7 @@ interface Branch {
   code: string;
 }
 
-const DEMO_ACCOUNTS = [
+const DEMO_ACCOUNTS = import.meta.env.DEV ? [
   { label: "Super Admin", email: "admin@hospital.com", role: "Super Admin" },
   { label: "Branch Admin", email: "branch.admin@hospital.com", role: "Branch Admin" },
   { label: "Receptionist", email: "receptionist@hospital.com", role: "Receptionist" },
@@ -30,7 +30,7 @@ const DEMO_ACCOUNTS = [
   { label: "Compliance", email: "compliance@hospital.com", role: "Compliance Officer" },
   { label: "Field Tech", email: "field.tech@hospital.com", role: "Field Technician" },
   { label: "Marketplace Admin", email: "marketplace.admin@hospital.com", role: "Marketplace Admin" },
-];
+] : [];
 
 export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -53,10 +53,14 @@ export const LoginForm = () => {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
+    defaultValues: isDev ? {
       tenantCode: "Central Hospital (Main Branch)",
       email: "admin@hospital.com",
       password: "Admin@123",
+    } : {
+      tenantCode: "",
+      email: "",
+      password: "",
     },
   });
 

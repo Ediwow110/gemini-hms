@@ -115,6 +115,17 @@ describe('Ledger Double-Entry E2E', () => {
     sessionId = session.id;
   });
 
+  beforeEach(() => {
+    MockJwtAuthGuard.user = {
+      userId: cashierId,
+      tenantId,
+      branchId,
+      roles: ['Super Admin'],
+      permissions: ['*'],
+      email: 'admin@hms.local',
+    };
+  });
+
   afterAll(async () => {
     await prisma.$disconnect();
     await app.close();
@@ -173,7 +184,7 @@ describe('Ledger Double-Entry E2E', () => {
     expect(paymentIdA).toBeDefined();
 
     // Verify double-entry: DEBIT CASH / CREDIT REVENUE
-    MockJwtAuthGuard.user.roles = ['Admin']; // Elevate to Admin to read entries
+    MockJwtAuthGuard.user.roles = ['Super Admin']; // Elevate to Super Admin to read entries
     const paymentLedgerEntries = await request(app.getHttpServer())
       .get(`/ledger/entries?referenceType=PAYMENT&referenceId=${paymentIdA}`)
       .expect(200);
@@ -210,7 +221,7 @@ describe('Ledger Double-Entry E2E', () => {
       userId: supervisorId,
       tenantId,
       branchId,
-      roles: ['Admin'], // Using Admin to approve
+      roles: ['Super Admin'], // Using Super Admin to approve
       permissions: ['*'],
       email: 'admin@hms.local',
     };
@@ -301,7 +312,7 @@ describe('Ledger Double-Entry E2E', () => {
       userId: supervisorId,
       tenantId,
       branchId,
-      roles: ['Admin'],
+      roles: ['Super Admin'],
       permissions: ['*'],
       email: 'admin@hms.local',
     };

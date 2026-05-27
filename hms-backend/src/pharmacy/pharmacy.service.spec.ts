@@ -311,6 +311,7 @@ describe('PharmacyService', () => {
         mockInventoryItemId,
         1,
         mockPrescriptionId,
+        prisma,
       );
       expect(audit.log).toHaveBeenCalled();
     });
@@ -460,6 +461,32 @@ describe('PharmacyService', () => {
           validDto,
         ),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should reject the outer transaction if a later step fails after stock deduction', async () => {
+      prisma.prescription.findFirst.mockResolvedValue(basePrescription);
+      prisma.prescription.updateMany.mockResolvedValue({ count: 1 });
+      inventory.dispenseItem.mockResolvedValue({ quantity: 99 });
+      audit.log.mockRejectedValue(new Error('audit failed'));
+
+      await expect(
+        service.dispenseMedication(
+          mockPrescriptionId,
+          mockTenantId,
+          mockPharmacistUser,
+          validDto,
+        ),
+      ).rejects.toThrow('audit failed');
+
+      expect(inventory.dispenseItem).toHaveBeenCalledWith(
+        mockTenantId,
+        mockBranchId,
+        mockUserId,
+        mockInventoryItemId,
+        1,
+        mockPrescriptionId,
+        prisma,
+      );
     });
   });
 });

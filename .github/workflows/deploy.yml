@@ -125,6 +125,10 @@ jobs:
           DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
           JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
           MASTER_MFA_KEY: ${{ secrets.MASTER_MFA_KEY }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
         run: |
           # Setup SSH keys agent
           mkdir -p ~/.ssh
@@ -133,8 +137,9 @@ jobs:
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
           # Transfer workspace configuration and compose manifests
-          scp -i ~/.ssh/id_rsa -r docker-compose.prod.yml hms-backend/scripts/remote-deploy.sh $SSH_USER@$SSH_HOST:/tmp/
+          ssh -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST "mkdir -p /tmp/app"
+          rsync -avz -e "ssh -i ~/.ssh/id_rsa" --exclude 'node_modules' --exclude '.git' ./hms-backend ./hms-frontend docker-compose.prod.yml $SSH_USER@$SSH_HOST:/tmp/app/
 
           # Execute Remote Deploy Orchestrator cleanly
-          ssh -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST "export DATABASE_URL='$DATABASE_URL'; export JWT_SECRET='$JWT_SECRET'; export MASTER_MFA_KEY='$MASTER_MFA_KEY'; bash /tmp/remote-deploy.sh"
+          ssh -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST "cd /tmp/app && export DB_USER='$DB_USER' DB_PASSWORD='$DB_PASSWORD' DB_NAME='$DB_NAME' CORS_ALLOWED_ORIGINS='$CORS_ALLOWED_ORIGINS' DATABASE_URL='$DATABASE_URL' JWT_SECRET='$JWT_SECRET' MASTER_MFA_KEY='$MASTER_MFA_KEY'; bash ./hms-backend/scripts/remote-deploy.sh"
 

@@ -8,7 +8,7 @@ export interface Employee {
   role: string;
   department: string;
   branch: string;
-  status: 'ACTIVE' | 'LEAVE' | 'SUSPENDED';
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'OFFBOARDED';
   joinedAt: string;
 }
 
@@ -59,8 +59,12 @@ export const EmployeeWorklist: React.FC<EmployeeWorklistProps> = ({ employees })
               <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${
                 emp.status === 'ACTIVE' 
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
-                  : emp.status === 'LEAVE'
+                  : emp.status === 'ON_LEAVE'
                   ? 'bg-amber-50 text-amber-700 border-amber-100'
+                  : emp.status === 'PENDING_APPROVAL'
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-100 animate-pulse'
+                  : emp.status === 'DRAFT'
+                  ? 'bg-slate-100 text-slate-600 border-slate-200'
                   : 'bg-rose-50 text-rose-700 border-rose-100'
               }`}>
                 {emp.status}

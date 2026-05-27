@@ -11,10 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check for committed node_modules
+      - name: Check for committed node_modules and coverage
         run: |
           if git ls-files node_modules | grep -q .; then
             echo "Error: node_modules committed to repository."
+            exit 1
+          fi
+          if git ls-files '*/coverage/*' | grep -q .; then
+            echo "Error: coverage artifacts committed to repository."
             exit 1
           fi
 
@@ -27,6 +31,7 @@ jobs:
           if ! grep -rn 'tenantCode' hms-backend/src/auth/dto/login.dto.ts && ! grep -rn 'tenantId' hms-backend/src/auth/dto/login.dto.ts; then echo "tenantCode/tenantId missing in login.dto.ts" && exit 1; fi
           if ! grep -rn 'role: { tenantId' hms-backend/src/auth/guards/permissions.guard.ts; then echo "tenantId missing in permissions.guard.ts role lookup" && exit 1; fi
           if grep -rn "this.audit.log({" hms-backend/src/inventory/inventory.service.ts | grep -v "tx"; then echo "audit.log without tx found in inventory.service.ts" && exit 1; fi
+          python scripts/check_runtime_config.py
           echo "All hardening guards passed!"
 
   frontend:

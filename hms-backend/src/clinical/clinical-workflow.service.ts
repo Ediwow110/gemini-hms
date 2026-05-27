@@ -53,6 +53,18 @@ export class ClinicalWorkflowService {
     private readonly numbering: NumberingService,
   ) {}
 
+  private getAuthorizedBranchId(user: RequestUser): string | undefined {
+    if (user.roles?.includes('Super Admin')) {
+      return undefined;
+    }
+
+    if (!user.branchId) {
+      throw new ForbiddenException('access_denied: missing_branch_context');
+    }
+
+    return user.branchId;
+  }
+
   async getWorkQueue(
     tenantId: string,
     branchId: string,
@@ -97,29 +109,42 @@ export class ClinicalWorkflowService {
   ): Promise<PatientClinicalSummaryDto | null> {
     ClinicalScopePolicy.authorizeTenant(user, tenantId);
     ClinicalScopePolicy.authorizePatientAccess(user, patientId);
+    const branchId = this.getAuthorizedBranchId(user);
 
     const patient = await this.prisma.patient.findFirst({
       where: { id: patientId, tenantId },
-      include: {
-        _count: {
-          select: {
-            encounters: true,
-            prescriptions: true,
-          },
-        },
-      },
     });
 
     if (!patient) return null;
 
-    // Count pending lab results
-    const pendingLabs = await this.prisma.labResult.count({
-      where: {
-        tenantId,
-        order: { patientId },
-        status: { notIn: ['COMPLETED', 'RELEASED'] },
-      },
-    });
+    const [recentEncounters, activePrescriptions, pendingLabs] =
+      await Promise.all([
+        this.prisma.encounter.count({
+          where: {
+            tenantId,
+            patientId,
+            branchId,
+            archivedAt: null,
+          },
+        }),
+        this.prisma.prescription.count({
+          where: {
+            tenantId,
+            patientId,
+            branchId,
+            deletedAt: null,
+          },
+        }),
+        this.prisma.labResult.count({
+          where: {
+            tenantId,
+            ...(branchId
+              ? { order: { patientId, branchId } }
+              : { order: { patientId } }),
+            status: { notIn: ['COMPLETED', 'RELEASED'] },
+          },
+        }),
+      ]);
 
     return {
       id: patient.id,
@@ -127,8 +152,8 @@ export class ClinicalWorkflowService {
       patientName: `${patient.firstName} ${patient.lastName}`,
       patientNumber: patient.patientNumber,
       dob: patient.dob,
-      recentEncounters: patient._count.encounters,
-      activePrescriptions: patient._count.prescriptions,
+      recentEncounters,
+      activePrescriptions,
       pendingLabResults: pendingLabs,
       status: patient.status,
       timestamp: new Date(),
@@ -200,11 +225,12 @@ export class ClinicalWorkflowService {
   ): Promise<VitalsSummaryDto[]> {
     ClinicalScopePolicy.authorizeTenant(user, tenantId);
     ClinicalScopePolicy.authorizePatientAccess(user, patientId);
+    const branchId = this.getAuthorizedBranchId(user);
 
     const vitals = await this.prisma.vitals.findMany({
       where: {
         tenantId,
-        encounter: { patientId, archivedAt: null },
+        encounter: { patientId, archivedAt: null, branchId },
       },
       orderBy: { createdAt: 'desc' },
       take: 20,
@@ -502,11 +528,13 @@ export class ClinicalWorkflowService {
   ): Promise<TriageSummaryDto[]> {
     ClinicalScopePolicy.authorizeTenant(user, tenantId);
     ClinicalScopePolicy.authorizePatientAccess(user, patientId);
+    const branchId = this.getAuthorizedBranchId(user);
 
     const triageRecords = await this.prisma.triage.findMany({
       where: {
         tenantId,
         patientId,
+        branchId,
       },
       orderBy: { createdAt: 'desc' },
       take: 20,
@@ -607,9 +635,10 @@ export class ClinicalWorkflowService {
   ): Promise<ClinicalOrderSummaryDto[]> {
     ClinicalScopePolicy.authorizeTenant(user, tenantId);
     ClinicalScopePolicy.authorizePatientAccess(user, patientId);
+    const branchId = this.getAuthorizedBranchId(user);
 
     const orders = await this.prisma.order.findMany({
-      where: { patientId, tenantId, deletedAt: null },
+      where: { patientId, tenantId, branchId, deletedAt: null },
       include: {
         _count: { select: { items: true } },
         clinicalItems: {
@@ -656,10 +685,11 @@ export class ClinicalWorkflowService {
   ): Promise<LabResultSummaryDto[]> {
     ClinicalScopePolicy.authorizeTenant(user, tenantId);
     ClinicalScopePolicy.authorizePatientAccess(user, patientId);
+    const branchId = this.getAuthorizedBranchId(user);
 
     const where: any = {
       tenantId,
-      order: { patientId },
+      order: branchId ? { patientId, branchId } : { patientId },
       deletedAt: null,
     };
 
@@ -695,9 +725,10 @@ export class ClinicalWorkflowService {
   ): Promise<PrescriptionSummaryDto[]> {
     ClinicalScopePolicy.authorizeTenant(user, tenantId);
     ClinicalScopePolicy.authorizePatientAccess(user, patientId);
+    const branchId = this.getAuthorizedBranchId(user);
 
     const prescriptions = await this.prisma.prescription.findMany({
-      where: { patientId, tenantId, deletedAt: null },
+      where: { patientId, tenantId, branchId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -725,11 +756,12 @@ export class ClinicalWorkflowService {
   ): Promise<BillingHandoffSummaryDto[]> {
     ClinicalScopePolicy.authorizeTenant(user, tenantId);
     ClinicalScopePolicy.authorizePatientAccess(user, patientId);
+    const branchId = this.getAuthorizedBranchId(user);
 
     const invoices = await this.prisma.invoice.findMany({
       where: {
         tenantId,
-        order: { patientId },
+        order: branchId ? { patientId, branchId } : { patientId },
         deletedAt: null,
       },
       include: { order: true },

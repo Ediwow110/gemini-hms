@@ -138,7 +138,6 @@ export const InstallationChecklist: React.FC = () => {
   }, [selectedJob, selectJob]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchJobs();
   }, [fetchJobs]);
 

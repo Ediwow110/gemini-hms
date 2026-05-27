@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Shield, ShieldAlert, Key, Edit3, UserMinus } from 'lucide-react';
+import { Shield, Key, Edit3, UserMinus } from 'lucide-react';
 import { RoleBadge, UserStatusBadge } from '../../../components/ui/user-badges';
+import { ReasonModal } from '../../../components/ui/approval-modals';
 
 interface UserItem {
   id: string;
@@ -106,39 +107,16 @@ export const UserAccessTable: React.FC<UserAccessTableProps> = ({ users }) => {
       </div>
 
       {activeDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-scale-in relative">
-            <div className="flex gap-3 mb-4">
-              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl h-fit border border-amber-100">
-                <ShieldAlert className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider select-none">
-                  Simulated Action
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Mock governance sandbox execution</p>
-              </div>
-            </div>
-            
-            <div className="space-y-3 text-xs text-slate-600 leading-relaxed border-t border-b border-slate-100 py-4">
-              <p>
-                Requested Action: <strong className="text-slate-800 uppercase font-mono">{activeDialog.type}</strong> for user <strong>{activeDialog.user.name}</strong>.
-              </p>
-              <p className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 font-medium">
-                This is a UI demo shell only. Multi-tenant persistence, user modifications, and role assignments are not processed. No production credential storage or MFA setups are changed.
-              </p>
-            </div>
-
-            <div className="mt-5 flex gap-2">
-              <button 
-                onClick={() => setActiveDialog(null)}
-                className="w-full btn border border-slate-200 hover:bg-slate-50 font-bold py-2 rounded-xl text-slate-700 transition-colors"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReasonModal
+          isOpen={!!activeDialog}
+          title={activeDialog.type === 'edit_role' ? 'Edit User Roles & Scopes' : activeDialog.type === 'reset_mfa' ? 'Reset User Multi-Factor Authentication (MFA)' : 'Change User Account Status'}
+          guidance={`Specify a valid administrative audit reason for performing the "${activeDialog.type}" action on ${activeDialog.user.name}.`}
+          onClose={() => setActiveDialog(null)}
+          onConfirm={(reason) => {
+            alert(`Audit Action Logged: ${activeDialog.type} for ${activeDialog.user.name}. Reason: ${reason}`);
+            setActiveDialog(null);
+          }}
+        />
       )}
     </div>
   );

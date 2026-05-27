@@ -6,7 +6,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 
 @Controller('ledger')
 @UseGuards(RolesGuard)
-@Roles('Admin', 'Finance')
+@Roles('Super Admin', 'Branch Admin', 'Cashier')
 export class LedgerController {
   constructor(private readonly ledgerService: LedgerService) {}
 

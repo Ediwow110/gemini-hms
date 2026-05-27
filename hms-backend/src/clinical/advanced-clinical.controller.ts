@@ -22,7 +22,7 @@ import {
 
 @UseGuards(RolesGuard)
 @Controller('api/v1/clinical')
-@Roles('Super Admin', 'Branch Admin', 'DOCTOR', 'Doctor', 'NURSE', 'Nurse')
+@Roles('Super Admin', 'Branch Admin', 'Doctor', 'Nurse')
 export class AdvancedClinicalController {
   constructor(
     private readonly prisma: PrismaService,

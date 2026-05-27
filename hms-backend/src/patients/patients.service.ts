@@ -27,13 +27,13 @@ export class PatientsService {
         tx,
       );
 
-      // 2. Check for duplicate (Basic check)
+      // 2. Compute normalized duplicate key
+      const normalizedNameDobKey = `${dto.firstName.trim().toLowerCase()}-${dto.lastName.trim().toLowerCase()}-${new Date(dto.dob).toISOString().split('T')[0]}`;
+
       const existing = await tx.patient.findFirst({
         where: {
           tenantId,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          dob: new Date(dto.dob),
+          normalizedNameDobKey,
         },
       });
 
@@ -51,6 +51,7 @@ export class PatientsService {
           firstName: dto.firstName,
           lastName: dto.lastName,
           dob: new Date(dto.dob),
+          normalizedNameDobKey,
           status: 'ACTIVE',
         },
       });
@@ -111,17 +112,32 @@ export class PatientsService {
   ) {
     const existing = await this.findOne(tenantId, id);
 
-    const updateResult = await this.prisma.patient.updateMany({
-      where: { id, tenantId },
-      data: {
-        ...dto,
-        dob: dto.dob ? new Date(dto.dob) : undefined,
-      },
-    });
+    const firstName = dto.firstName ?? existing.firstName;
+    const lastName = dto.lastName ?? existing.lastName;
+    const dob = dto.dob ? new Date(dto.dob) : existing.dob;
+    const normalizedNameDobKey = `${firstName.trim().toLowerCase()}-${lastName.trim().toLowerCase()}-${dob.toISOString().split('T')[0]}`;
 
-    if (updateResult.count === 0) {
-      // No matching record for tenant & id => either not found or out of scope
-      throw new NotFoundException('Patient not found');
+    try {
+      const updateResult = await this.prisma.patient.updateMany({
+        where: { id, tenantId },
+        data: {
+          ...dto,
+          dob: dto.dob ? new Date(dto.dob) : undefined,
+          normalizedNameDobKey,
+        },
+      });
+
+      if (updateResult.count === 0) {
+        // No matching record for tenant & id => either not found or out of scope
+        throw new NotFoundException('Patient not found');
+      }
+    } catch (e: any) {
+      if (e.code === 'P2002') {
+        throw new ConflictException(
+          'A patient with this name and birthdate already exists',
+        );
+      }
+      throw e;
     }
 
     const updated = await this.prisma.patient.findFirst({

@@ -96,20 +96,31 @@ describe('Insurance Claims E2E', () => {
     invoiceId = inv.id;
   });
 
+  beforeEach(() => {
+    MockJwtAuthGuard.user = {
+      userId: '11111111-1111-4111-8111-111111111111',
+      tenantId: tenantId,
+      branchId: branchId,
+      roles: ['Super Admin'],
+      permissions: ['*'],
+      email: 'admin@hms.local',
+    };
+  });
+
   afterAll(async () => {
     await prisma.$disconnect();
     await app.close();
   });
 
   it('should restrict claims operations based on roles', async () => {
-    // 1. Cashier attempts to create claim -> 403
+    // 1. Nurse attempts to create claim -> 403
     MockJwtAuthGuard.user = {
       userId: randomUUID(),
       tenantId,
       branchId,
-      roles: ['Cashier'],
+      roles: ['Nurse'],
       permissions: ['*'],
-      email: 'cashier@hms.local',
+      email: 'nurse@hms.local',
     };
 
     await request(app.getHttpServer())
@@ -122,13 +133,13 @@ describe('Insurance Claims E2E', () => {
       .expect(403);
   });
 
-  it('should allow Finance/Admin to create, submit, and settle claims', async () => {
-    // 2. Finance creates claim for invoice -> 201
+  it('should allow Cashier/Super Admin to create, submit, and settle claims', async () => {
+    // 2. Cashier creates claim for invoice -> 201
     MockJwtAuthGuard.user = {
       userId: randomUUID(),
       tenantId,
       branchId,
-      roles: ['Finance'],
+      roles: ['Cashier'],
       permissions: ['*'],
       email: 'finance@hms.local',
     };
@@ -157,7 +168,7 @@ describe('Insurance Claims E2E', () => {
       })
       .expect(409);
 
-    // 4. Finance submits claim -> status becomes SUBMITTED, claimNumber set
+    // 4. Cashier submits claim -> status becomes SUBMITTED, claimNumber set
     const submitRes = await request(app.getHttpServer())
       .post(`/insurance/claims/${claimId}/submit`)
       .expect(201);
@@ -166,12 +177,12 @@ describe('Insurance Claims E2E', () => {
     expect(submitRes.body.claimNumber).toBeDefined();
     expect(submitRes.body.submittedAt).toBeDefined();
 
-    // 5. Admin updates claim to PAID -> settledAmount set, ledger entry posted
+    // 5. Super Admin updates claim to PAID -> settledAmount set, ledger entry posted
     MockJwtAuthGuard.user = {
       userId: randomUUID(),
       tenantId,
       branchId,
-      roles: ['Admin'],
+      roles: ['Super Admin'],
       permissions: ['*'],
       email: 'admin@hms.local',
     };
