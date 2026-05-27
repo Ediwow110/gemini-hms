@@ -13,6 +13,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
+import { ChartCard, InsightPanel, StatusDonutChart, TrendLineChart } from '../../components/analytics';
+import { labInsights, labStatusBreakdown, labTrendData } from '../../data/analytics/clinicalAnalytics.mock';
 import { SpecimenWorkQueue } from './components/SpecimenWorkQueue';
 import { CriticalResultPanel } from './components/CriticalResultPanel';
 import { TurnaroundTimeCard } from './components/TurnaroundTimeCard';
@@ -160,6 +162,16 @@ export const LabDashboard = () => {
             </button>
           );
         })}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <ChartCard title="Turnaround time trend" description="Sandbox trend overlaid with live TAT summaries when APIs are expanded." height={280}>
+          <TrendLineChart data={labTrendData} title="Lab turnaround time trend" valueLabel="Orders" secondaryLabel="Completed" />
+        </ChartCard>
+        <ChartCard title="Pending vs completed status" description="Decision chart for validation/release queue pressure." height={280}>
+          <StatusDonutChart data={labStatusBreakdown} title="Lab status breakdown" />
+        </ChartCard>
+        <InsightPanel insights={labInsights} title="Lab operations alerts" />
       </div>
 
       {/* Grid Layout: Main queue, alerts, and quick actions */}

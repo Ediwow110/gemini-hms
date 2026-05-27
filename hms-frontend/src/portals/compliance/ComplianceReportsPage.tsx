@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { FileText, Calendar, Download, AlertTriangle, HelpCircle, RefreshCw } from 'lucide-react';
+import { FileText, Calendar, AlertTriangle, HelpCircle, RefreshCw } from 'lucide-react';
 import ComplianceScopeFilter from './components/ComplianceScopeFilter';
+import { ReportExportButton } from '../../components/analytics';
 
 interface ReportStat {
   label: string;
@@ -80,10 +81,6 @@ export const ComplianceReportsPage: React.FC = () => {
             ]
       });
     }, 1200);
-  };
-
-  const triggerExport = () => {
-    alert("Report file exported successfully (Simulated download).");
   };
 
   return (
@@ -193,18 +190,8 @@ export const ComplianceReportsPage: React.FC = () => {
             </div>
             
             <div className="flex gap-2">
-              <button 
-                onClick={triggerExport}
-                className="py-1.5 px-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Download className="h-3.5 w-3.5" /> PDF
-              </button>
-              <button 
-                onClick={triggerExport}
-                className="py-1.5 px-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Download className="h-3.5 w-3.5" /> CSV
-              </button>
+              <ReportExportButton label="PDF export" sensitive requiresReason />
+              <ReportExportButton label="CSV export" sensitive requiresReason />
             </div>
           </div>
 

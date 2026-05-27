@@ -1,7 +1,8 @@
 import React from 'react';
 import ProcurementScopeFilter from './components/ProcurementScopeFilter';
 import { PurchaseOrderTable, PurchaseOrder } from './components/PurchaseOrderTable';
-import { FilePlus, Download } from 'lucide-react';
+import { FilePlus } from 'lucide-react';
+import { ReportExportButton } from '../../components/analytics';
 
 export const PurchaseOrdersPage: React.FC = () => {
   const mockOrders: PurchaseOrder[] = [
@@ -21,11 +22,9 @@ export const PurchaseOrdersPage: React.FC = () => {
           <p className="text-xs text-slate-500 font-medium">Tracking issued orders, delivery status, and financial disbursement authorization</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-all">
-            <Download className="h-4 w-4" /> Export PO Register
-          </button>
-          <button className="btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-indigo-100 transition-all">
-            <FilePlus className="h-4 w-4" /> New PO
+          <ReportExportButton label="Export PO register" sensitive requiresReason />
+          <button type="button" disabled title="PO creation backend workflow is not available from this sandbox page." className="btn cursor-not-allowed bg-slate-100 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-200">
+            <FilePlus className="h-4 w-4" /> New PO WIP
           </button>
         </div>
       </div>

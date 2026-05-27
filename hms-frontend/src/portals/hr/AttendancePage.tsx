@@ -1,6 +1,7 @@
 import React from 'react';
 import HRScopeFilter from './components/HRScopeFilter';
 import { AttendanceSummaryPanel, AttendanceRecord } from './components/AttendanceSummaryPanel';
+import { ReportExportButton } from '../../components/analytics';
 
 export const AttendancePage: React.FC = () => {
   const mockRecords: AttendanceRecord[] = [
@@ -49,9 +50,7 @@ export const AttendancePage: React.FC = () => {
           </div>
           
           <div className="pt-2">
-            <button className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer">
-              Export Monthly Attendance Report
-            </button>
+            <ReportExportButton label="Export monthly attendance" sensitive requiresReason />
           </div>
         </div>
       </div>

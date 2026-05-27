@@ -13,6 +13,7 @@ import {
   Activity
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
+import { AnalyticsMetricCard, InsightPanel } from '../../components/analytics';
 import { TriagePriorityBadge, TriagePriorityLevel } from './components/TriagePriorityBadge';
 import { useClinicalDashboardSummary, useClinicalWorkQueue } from '../../hooks/use-clinical-workflow';
 import { useNursingTasks } from '../../hooks/use-nursing-tasks';
@@ -67,12 +68,12 @@ export const NurseDashboard = () => {
 
   // Derived metrics from summary and queue
   const metrics = [
-    { label: 'Patients for Triage', count: summary?.pendingTriage ?? 0, icon: Users, color: 'text-blue-600 bg-blue-50 border-blue-100' },
-    { label: 'Waiting for Vitals', count: summary?.pendingTriage ?? 0, icon: Activity, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
-    { label: 'Critical Vitals Alerts', count: 0, icon: AlertOctagon, color: 'text-rose-600 bg-rose-50 border-rose-100' },
-    { label: 'Specimens to Collect', count: queueData?.filter(q => q.serviceType === 'LABORATORY' && q.status !== 'COMPLETED').length ?? 0, icon: FlaskConical, color: 'text-violet-600 bg-violet-50 border-violet-100' },
-    { label: 'Pending Nursing Tasks', count: realTaskCount, icon: CheckSquare, color: 'text-amber-600 bg-amber-50 border-amber-100' },
-    { label: 'Patients Ready for Doctor', count: summary?.waitingForDoctor ?? 0, icon: Heart, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
+    { title: 'Patients Assigned', value: summary?.pendingTriage ?? 0, icon: Users, description: 'Active triage queue', severity: 'info' as const, href: '/nurse/triage' },
+    { title: 'Vitals Due', value: summary?.pendingTriage ?? 0, icon: Activity, description: 'Waiting for vitals', severity: 'warning' as const, href: '/nurse/vitals' },
+    { title: 'Critical Vitals', value: 0, icon: AlertOctagon, description: 'Critical vitals alerts WIP', severity: 'success' as const },
+    { title: 'Specimen Queue', value: queueData?.filter(q => q.serviceType === 'LABORATORY' && q.status !== 'COMPLETED').length ?? 0, icon: FlaskConical, description: 'Specimens to collect', severity: 'info' as const, href: '/nurse/specimens' },
+    { title: 'Nursing Tasks', value: realTaskCount, icon: CheckSquare, description: 'Open or in progress', severity: 'warning' as const, href: '/nurse/tasks' },
+    { title: 'Ready for Doctor', value: summary?.waitingForDoctor ?? 0, icon: Heart, description: 'Clinical handoff ready', severity: 'success' as const },
   ];
 
   // Map live queue data for triage (patients with serviceType RECEPTION/CASHIER/DOCTOR or generally the active queue)
@@ -124,22 +125,11 @@ export const NurseDashboard = () => {
       </div>
 
       {/* Grid: High-level KPI summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-        {metrics.map((m, index) => {
-          const Icon = m.icon;
-          return (
-            <div key={index} className="card p-4 flex flex-col justify-between gap-4 bg-white border border-slate-200/80 shadow-sm rounded-2xl">
-              <div className="flex items-center justify-between">
-                <div className={`p-2.5 rounded-xl border ${m.color}`}>
-                  <Icon className="h-4.5 w-4.5" />
-                </div>
-                <span className="text-lg font-black text-slate-800">{m.count}</span>
-              </div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 leading-tight">{m.label}</p>
-            </div>
-          );
-        })}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+        {metrics.map((m) => <AnalyticsMetricCard key={m.title} {...m} />)}
       </div>
+
+      <InsightPanel insights={[{ title: 'Nursing dashboard stays task-first', description: 'Vitals, specimens, handoff, and active task queues remain the primary decision surface; executive charts were intentionally avoided.', severity: 'info', actionLabel: 'Open Tasks', actionTo: '/nurse/tasks' }]} title="Nursing worklist guidance" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Triage & Queue */}

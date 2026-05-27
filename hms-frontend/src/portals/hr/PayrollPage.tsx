@@ -1,7 +1,8 @@
 import React from 'react';
 import HRScopeFilter from './components/HRScopeFilter';
 import { PayrollStatusCard } from './components/PayrollStatusCard';
-import { DollarSign, FileText, Download } from 'lucide-react';
+import { DollarSign, FileText } from 'lucide-react';
+import { ReportExportButton } from '../../components/analytics';
 
 export const PayrollPage: React.FC = () => {
   const mockPayrollCycles = [
@@ -24,11 +25,9 @@ export const PayrollPage: React.FC = () => {
             <strong>Sandbox Notice:</strong> Payroll data is simulated. No real payouts or tax filings occur.
           </div>
           <div className="flex gap-2">
-            <button className="btn bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-all">
-              <Download className="h-4 w-4" /> Export Tax Records
-            </button>
-            <button className="btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-indigo-100 transition-all">
-              <FileText className="h-4 w-4" /> Generate Pay Slips
+            <ReportExportButton label="Export tax records" sensitive requiresReason />
+            <button type="button" disabled title="Payslip generation backend is not available yet." className="btn cursor-not-allowed bg-slate-100 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-200">
+              <FileText className="h-4 w-4" /> Generate Pay Slips WIP
             </button>
           </div>
         </div>

@@ -13,6 +13,8 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
+import { AnalyticsMetricCard, InsightPanel } from '../../components/analytics';
+import { doctorWorklistMetrics } from '../../data/analytics/clinicalAnalytics.mock';
 import { useClinicalDashboardSummary, useClinicalWorkQueue } from '../../hooks/use-clinical-workflow';
 import { format } from 'date-fns';
 import axios from 'axios';
@@ -24,10 +26,10 @@ export const DoctorDashboard = () => {
   const { data: queueData, isLoading: isQueueLoading, error: queueError } = useClinicalWorkQueue();
 
   const metrics = summary ? [
-    { label: 'Patients Waiting', count: summary.waitingForDoctor, icon: Users, color: 'text-blue-600 bg-blue-50 border-blue-100' },
-    { label: 'Active Encounters', count: summary.activePatients, icon: Activity, color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
-    { label: 'Pending Triage', count: summary.pendingTriage, icon: FileText, color: 'text-amber-600 bg-amber-50 border-amber-100' },
-    { label: 'Pending Lab Results', count: summary.pendingLabResults, icon: FlaskConical, color: 'text-violet-600 bg-violet-50 border-violet-100' },
+    { ...doctorWorklistMetrics[0], value: summary.waitingForDoctor, title: 'Assigned Patients Today', description: 'Waiting for doctor from live summary' },
+    { title: 'Active Encounters', value: summary.activePatients, icon: Activity, description: 'Patients currently in encounter', severity: 'info' as const, href: '/doctor/queue' },
+    { title: 'Pending Triage', value: summary.pendingTriage, icon: FileText, description: 'Awaiting nursing intake', severity: 'warning' as const },
+    { title: 'Pending Lab Results', value: summary.pendingLabResults, icon: FlaskConical, description: 'Results to follow up', severity: 'info' as const, href: '/doctor/emr' },
   ] : [];
 
   // Mock critical results for UI layout testing only
@@ -105,22 +107,11 @@ export const DoctorDashboard = () => {
       </div>
 
       {/* Grid: High-level KPI summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((m, index) => {
-          const Icon = m.icon;
-          return (
-            <div key={index} className="card p-4 flex items-center gap-4 bg-white border border-slate-200/80 shadow-sm">
-              <div className={`p-3 rounded-2xl border ${m.color}`}>
-                <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 leading-none mb-1">{m.label}</p>
-                <p className="text-xl font-black text-slate-800">{m.count}</p>
-              </div>
-            </div>
-          );
-        })}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {metrics.map((m) => <AnalyticsMetricCard key={m.title} {...m} />)}
       </div>
+
+      <InsightPanel insights={[{ title: 'Worklist-first dashboard', description: 'Clinical users see queue, critical results, notes, and orders before executive analytics to avoid cognitive overload.', severity: 'info', actionLabel: 'Open Queue', actionTo: '/doctor/queue' }]} title="Clinical worklist guidance" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Queue & Schedule */}

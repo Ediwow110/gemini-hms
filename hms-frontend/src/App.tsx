@@ -44,6 +44,7 @@ const PatientMergeRequests = lazy(() => import('./features/admin/PatientMergeReq
 const CatalogManagementPage = lazy(() => import('./portals/admin/CatalogManagementPage').then(m => ({ default: m.CatalogManagementPage })));
 
 const WIPPage = lazy(() => import('./app/WIPPage').then(m => ({ default: m.WIPPage })));
+const BranchAdminDashboard = lazy(() => import('./portals/branch-admin/BranchAdminDashboard').then(m => ({ default: m.BranchAdminDashboard })));
 
 // SuperAdmin Portal
 const SuperAdminDashboard = lazy(() => import('./portals/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
@@ -292,7 +293,7 @@ const router = createBrowserRouter([
           { path: 'admin/patient-merges', element: <PermissionRoute permission="admin.role.change"><LazyPage><PatientMergeRequests /></LazyPage></PermissionRoute> },
           
           // Branch Admin routes
-          { path: 'branch-admin', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          { path: 'branch-admin', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><BranchAdminDashboard /></LazyPage></PermissionRoute> },
           { path: 'branch-admin/staff', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
           { path: 'branch-admin/departments', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
           { path: 'branch-admin/rooms', element: <PermissionRoute allowedRoles={['Branch Admin']}><LazyPage><WIPPage /></LazyPage></PermissionRoute> },

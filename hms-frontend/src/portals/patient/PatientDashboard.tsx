@@ -16,6 +16,7 @@ import PatientHomeCard from './components/PatientHomeCard';
 import AppointmentSummaryCard from './components/AppointmentSummaryCard';
 import ReleasedResultCard from './components/ReleasedResultCard';
 import PatientPortalShellNotice from './components/PatientPortalShellNotice';
+import { AnalyticsMetricCard, AnalyticsSkeleton, AnalyticsEmptyState } from '../../components/analytics';
 import { usePatientProfile, usePatientLabResults, usePatientPrescriptions } from '../../hooks/use-patient-portal';
 
 export const PatientDashboard: React.FC = () => {
@@ -44,6 +45,16 @@ export const PatientDashboard: React.FC = () => {
     remainingRefills: p.status === 'ACTIVE' ? 1 : 0,
   }));
 
+  const patientActions = [
+    { title: 'Upcoming Appointment', value: 'Book', description: 'Schedule or review visits', icon: Calendar, severity: 'info' as const, href: '/patient/appointments' },
+    { title: 'Latest Lab Result', value: resultsLoading ? '…' : displayResults.length, description: 'Released results only', icon: ShieldCheck, severity: 'success' as const, href: '/patient/lab-results' },
+    { title: 'Active Prescriptions', value: rxLoading ? '…' : displayPrescriptions.length, description: 'Current medication list', icon: Pill, severity: 'info' as const, href: '/patient/prescriptions' },
+    { title: 'Outstanding Balance', value: 'View', description: 'Invoices and receipts', icon: CreditCard, severity: 'warning' as const, href: '/patient/billing' },
+    { title: 'Record Requests', value: 'Open', description: 'Documents and exports', icon: FileText, severity: 'info' as const, href: '/patient/medical-records' },
+  ];
+
+  const isPatientLoading = profileLoading || resultsLoading || rxLoading;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -68,6 +79,16 @@ export const PatientDashboard: React.FC = () => {
       </div>
 
       <PatientPortalShellNotice />
+
+      {isPatientLoading ? (
+        <AnalyticsSkeleton cards={5} charts={0} tableRows={0} />
+      ) : patientActions.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          {patientActions.map(action => <AnalyticsMetricCard key={action.title} {...action} />)}
+        </div>
+      ) : (
+        <AnalyticsEmptyState title="No portal actions available" description="Your care-team actions will appear here when records are available." />
+      )}
 
       {/* Quick Actions Section */}
       <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4">
