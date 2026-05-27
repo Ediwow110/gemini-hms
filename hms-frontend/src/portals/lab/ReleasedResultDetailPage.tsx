@@ -5,7 +5,6 @@ import { format } from 'date-fns';
 import {
   AlertTriangle,
   Loader2,
-  ArrowLeft,
   FlaskConical,
   Clock,
   CheckCircle2,
@@ -97,21 +96,21 @@ export const ReleasedResultDetailPage = () => {
     ? Object.entries(result.results).map(([key, value]) => ({ key, value }))
     : [];
 
+  const breadcrumbs = [
+    { label: "Lab", to: "/lab" },
+    { label: "Released Results", to: "/lab/released" },
+    { label: "Result Detail", current: true }
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/lab/released')}
-          className="btn bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-extrabold px-3 py-2 rounded-xl flex items-center gap-1.5"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back
-        </button>
-        <PageHeader
-          title="Released Lab Result"
-          description="Read-only detail view of a released lab result."
-        />
-      </div>
+      <PageHeader
+        title="Released Lab Result"
+        description="Read-only detail view of a released lab result."
+        backFallback="/lab/released"
+        backLabel="Back to Released"
+        breadcrumbs={breadcrumbs}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

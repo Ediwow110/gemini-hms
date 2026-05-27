@@ -51,8 +51,13 @@ export const ActivePrescriptionCard: React.FC<ActivePrescriptionCardProps> = ({ 
                   <RefreshCw className="h-3 w-3" />
                   {p.remainingRefills} Refills Left
                 </div>
-                <button className="text-[9px] bg-white hover:bg-indigo-50 text-indigo-700 border border-slate-200 rounded-lg px-2 py-1 font-black transition-all cursor-pointer">
-                  Request Refill
+                <button
+                  disabled
+                  title="Request Refill (WIP - Coming Soon)"
+                  aria-label="Request Refill (WIP - Coming Soon)"
+                  className="text-[9px] bg-slate-100 text-slate-400 border border-slate-200 rounded-lg px-2 py-1 font-black cursor-not-allowed opacity-50 shadow-sm"
+                >
+                  Request Refill (WIP)
                 </button>
               </div>
             </div>
@@ -60,8 +65,8 @@ export const ActivePrescriptionCard: React.FC<ActivePrescriptionCardProps> = ({ 
         )}
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-semibold leading-relaxed">
-        <strong>Simulation Notice:</strong> Prescription tracking is mock-only. Refill requests update UI state only and do not notify the pharmacy.
+      <div className="bg-slate-100 border border-slate-250 rounded-xl px-3 py-2 text-[10px] text-slate-700 font-semibold leading-relaxed">
+        <strong>Status Notice:</strong> Prescription refills via the patient portal are currently under development (WIP). Please contact the clinic pharmacy department to request a refill.
       </div>
     </div>
   );

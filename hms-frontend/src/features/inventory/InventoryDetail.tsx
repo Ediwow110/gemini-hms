@@ -10,9 +10,20 @@ const MOCK_ITEM = {
 export const InventoryDetail = () => {
   const [showAdj, setShowAdj] = useState(false);
 
+  const breadcrumbs = [
+    { label: "Inventory", to: "/inventory" },
+    { label: MOCK_ITEM.name, current: true }
+  ];
+
   return (
     <div className="space-y-6 pb-12">
-      <PageHeader title={MOCK_ITEM.name} description={`Code: ${MOCK_ITEM.id} • Branch: ${MOCK_ITEM.branch}`} />
+      <PageHeader 
+        title={MOCK_ITEM.name} 
+        description={`Code: ${MOCK_ITEM.id} • Branch: ${MOCK_ITEM.branch}`} 
+        backFallback="/inventory"
+        backLabel="Back to Inventory"
+        breadcrumbs={breadcrumbs}
+      />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

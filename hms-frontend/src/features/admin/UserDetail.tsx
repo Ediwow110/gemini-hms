@@ -14,9 +14,21 @@ export const UserDetail = () => {
     status: "Active", branch: "Main", phone: "09171234567", department: "Front Desk" 
   };
 
+  const breadcrumbs = [
+    { label: "Admin", to: "/admin" },
+    { label: "Users", to: "/admin/users" },
+    { label: user.name, current: true }
+  ];
+
   return (
     <div className="space-y-6 pb-12">
-      <PageHeader title={user.name} description="Staff profile and account security." />
+      <PageHeader 
+        title={user.name} 
+        description="Staff profile and account security." 
+        backFallback="/admin/users"
+        backLabel="Back to Users"
+        breadcrumbs={breadcrumbs}
+      />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

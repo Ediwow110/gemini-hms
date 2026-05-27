@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlaskConical, Download, FileText, CheckCircle2 } from 'lucide-react';
+import { FlaskConical, Download, FileText, CheckCircle2, Printer } from 'lucide-react';
 
 export interface ReleasedResult {
   id: string;
@@ -61,8 +61,21 @@ export const ReleasedResultCard: React.FC<ReleasedResultCardProps> = ({ results 
                   }`}>
                     {result.status}
                   </div>
-                  <button title="Download PDF" className="p-1.5 bg-white hover:bg-indigo-600 text-slate-400 hover:text-white rounded-lg transition-all border border-slate-200 cursor-pointer shadow-sm">
+                  <button
+                    disabled
+                    title="Download PDF (WIP - Coming Soon)"
+                    aria-label="Download PDF (WIP - Coming Soon)"
+                    className="p-1.5 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed shadow-sm opacity-50"
+                  >
                     <Download className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => window.print()}
+                    title={`Print Lab Result for ${result.testName}`}
+                    aria-label={`Print Lab Result for ${result.testName}`}
+                    className="p-1.5 bg-white hover:bg-indigo-600 text-slate-400 hover:text-white rounded-lg transition-all border border-slate-200 cursor-pointer shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>

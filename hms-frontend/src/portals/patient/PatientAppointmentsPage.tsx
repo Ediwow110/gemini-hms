@@ -28,12 +28,22 @@ export const PatientAppointmentsPage: React.FC = () => {
       </div>
 
       {/* Empty state placeholder */}
-      <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-slate-400 space-y-3">
+      <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-slate-400 space-y-4">
         <Calendar className="h-10 w-10 mx-auto text-slate-300" />
         <p className="text-sm font-bold text-slate-600">No appointments available</p>
         <p className="text-xs text-slate-450 max-w-md mx-auto">
           Online appointment booking is currently under development. Please call or visit the clinic reception desk to schedule an appointment.
         </p>
+        <div className="pt-2">
+          <button
+            disabled
+            title="Book Appointment (WIP - Coming Soon)"
+            aria-label="Book Appointment (WIP - Coming Soon)"
+            className="inline-flex items-center justify-center px-4 py-2 bg-slate-100 text-slate-400 border border-slate-200 rounded-xl text-xs font-bold cursor-not-allowed opacity-50 shadow-sm"
+          >
+            Book Appointment (WIP)
+          </button>
+        </div>
       </div>
     </div>
   );

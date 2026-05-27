@@ -169,4 +169,17 @@ export const labService = {
     );
     return response.data;
   },
+
+  /** Request amendment for a released result */
+  requestAmendment: async (id: string, reason: string): Promise<Record<string, unknown>> => {
+    const response = await apiClient.post(`/v1/lab/results/${id}/amend`, { reason });
+    return response.data;
+  },
+
+  /** Fetch a specific lab result by ID */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getResult: async (id: string): Promise<any> => {
+    const response = await apiClient.get(`/v1/lab/results/${id}`);
+    return response.data;
+  },
 };

@@ -6,9 +6,21 @@ export const RoleDetail = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const modules = ["Patients", "Orders", "Billing", "Laboratory", "Inventory"];
 
+  const breadcrumbs = [
+    { label: "Admin", to: "/admin" },
+    { label: "Roles & Permissions", to: "/admin/roles-permissions" },
+    { label: "Branch Manager", current: true }
+  ];
+
   return (
     <div className="space-y-6 pb-12">
-      <PageHeader title="Role: Branch Manager" description="Manage granular access control for this role." />
+      <PageHeader 
+        title="Role: Branch Manager" 
+        description="Manage granular access control for this role." 
+        backFallback="/admin/roles-permissions"
+        backLabel="Back to Roles"
+        breadcrumbs={breadcrumbs}
+      />
       
       <div className="card overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200">

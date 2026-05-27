@@ -44,15 +44,21 @@ describe('AuthScopeHelper', () => {
 
   describe('assertTenantScope', () => {
     it('should pass if user tenant matches', () => {
-      expect(() => AuthScopeHelper.assertTenantScope(patientUser, 'tenant-1')).not.toThrow();
+      expect(() =>
+        AuthScopeHelper.assertTenantScope(patientUser, 'tenant-1'),
+      ).not.toThrow();
     });
 
     it('should throw ForbiddenException if user tenant mismatches', () => {
-      expect(() => AuthScopeHelper.assertTenantScope(patientUser, 'tenant-2')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertTenantScope(patientUser, 'tenant-2'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should block Super Admin by default on mismatch', () => {
-      expect(() => AuthScopeHelper.assertTenantScope(superAdminUser, 'tenant-other')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertTenantScope(superAdminUser, 'tenant-other'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should allow Super Admin with explicit override', () => {
@@ -67,15 +73,21 @@ describe('AuthScopeHelper', () => {
 
   describe('assertBranchScope', () => {
     it('should pass if user branch matches', () => {
-      expect(() => AuthScopeHelper.assertBranchScope(doctorUser, 'branch-1')).not.toThrow();
+      expect(() =>
+        AuthScopeHelper.assertBranchScope(doctorUser, 'branch-1'),
+      ).not.toThrow();
     });
 
     it('should throw ForbiddenException if user branch mismatches', () => {
-      expect(() => AuthScopeHelper.assertBranchScope(doctorUser, 'branch-2')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertBranchScope(doctorUser, 'branch-2'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should block Super Admin by default on mismatch', () => {
-      expect(() => AuthScopeHelper.assertBranchScope(superAdminUser, 'branch-2')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertBranchScope(superAdminUser, 'branch-2'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should allow Super Admin with explicit override', () => {
@@ -90,15 +102,21 @@ describe('AuthScopeHelper', () => {
 
   describe('assertPatientOwnership', () => {
     it('should allow patient to access own record', () => {
-      expect(() => AuthScopeHelper.assertPatientOwnership(patientUser, 'patient-123')).not.toThrow();
+      expect(() =>
+        AuthScopeHelper.assertPatientOwnership(patientUser, 'patient-123'),
+      ).not.toThrow();
     });
 
     it('should block patient from accessing other record', () => {
-      expect(() => AuthScopeHelper.assertPatientOwnership(patientUser, 'patient-other')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertPatientOwnership(patientUser, 'patient-other'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should block clinical staff (Doctor) by default', () => {
-      expect(() => AuthScopeHelper.assertPatientOwnership(doctorUser, 'patient-123')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertPatientOwnership(doctorUser, 'patient-123'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should allow clinical staff with explicit override options', () => {
@@ -110,7 +128,9 @@ describe('AuthScopeHelper', () => {
     });
 
     it('should block Super Admin by default', () => {
-      expect(() => AuthScopeHelper.assertPatientOwnership(superAdminUser, 'patient-123')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertPatientOwnership(superAdminUser, 'patient-123'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should allow Super Admin with explicit override and reason', () => {
@@ -133,15 +153,21 @@ describe('AuthScopeHelper', () => {
 
   describe('assertSupplierOwnership', () => {
     it('should allow supplier to access own supplierId data', () => {
-      expect(() => AuthScopeHelper.assertSupplierOwnership(supplierUser, 'supplier-1')).not.toThrow();
+      expect(() =>
+        AuthScopeHelper.assertSupplierOwnership(supplierUser, 'supplier-1'),
+      ).not.toThrow();
     });
 
     it('should block supplier from accessing other supplier data', () => {
-      expect(() => AuthScopeHelper.assertSupplierOwnership(supplierUser, 'supplier-other')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertSupplierOwnership(supplierUser, 'supplier-other'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should block Super Admin by default', () => {
-      expect(() => AuthScopeHelper.assertSupplierOwnership(superAdminUser, 'supplier-1')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertSupplierOwnership(superAdminUser, 'supplier-1'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should allow Super Admin with explicit override and reason', () => {
@@ -154,21 +180,29 @@ describe('AuthScopeHelper', () => {
     });
 
     it('should block Branch Admin by default', () => {
-      expect(() => AuthScopeHelper.assertSupplierOwnership(branchAdminUser, 'supplier-1')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertSupplierOwnership(branchAdminUser, 'supplier-1'),
+      ).toThrow(ForbiddenException);
     });
   });
 
   describe('assertBuyerOwnership', () => {
     it('should allow buyer to access own data', () => {
-      expect(() => AuthScopeHelper.assertBuyerOwnership(buyerUser, 'buyer-xyz')).not.toThrow();
+      expect(() =>
+        AuthScopeHelper.assertBuyerOwnership(buyerUser, 'buyer-xyz'),
+      ).not.toThrow();
     });
 
     it('should block buyer from accessing other buyer data', () => {
-      expect(() => AuthScopeHelper.assertBuyerOwnership(buyerUser, 'buyer-other')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertBuyerOwnership(buyerUser, 'buyer-other'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should block Super Admin by default', () => {
-      expect(() => AuthScopeHelper.assertBuyerOwnership(superAdminUser, 'buyer-xyz')).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertBuyerOwnership(superAdminUser, 'buyer-xyz'),
+      ).toThrow(ForbiddenException);
     });
 
     it('should allow Super Admin with explicit override and reason', () => {
@@ -183,34 +217,57 @@ describe('AuthScopeHelper', () => {
 
   describe('assertPermission', () => {
     it('should pass if user has target permission', () => {
-      const permissionUser: RequestUser = { tenantId: 'tenant-1', permissions: ['edit_records'] };
-      expect(() => AuthScopeHelper.assertPermission(permissionUser, 'edit_records')).not.toThrow();
+      const permissionUser: RequestUser = {
+        tenantId: 'tenant-1',
+        permissions: ['edit_records'],
+      };
+      expect(() =>
+        AuthScopeHelper.assertPermission(permissionUser, 'edit_records'),
+      ).not.toThrow();
     });
 
     it('should throw if user lacks target permission', () => {
-      const permissionUser: RequestUser = { tenantId: 'tenant-1', permissions: [] };
-      expect(() => AuthScopeHelper.assertPermission(permissionUser, 'edit_records')).toThrow(ForbiddenException);
+      const permissionUser: RequestUser = {
+        tenantId: 'tenant-1',
+        permissions: [],
+      };
+      expect(() =>
+        AuthScopeHelper.assertPermission(permissionUser, 'edit_records'),
+      ).toThrow(ForbiddenException);
     });
   });
 
   describe('assertAnyRole', () => {
     it('should pass if user has one of target roles', () => {
-      expect(() => AuthScopeHelper.assertAnyRole(doctorUser, ['Doctor', 'Nurse'])).not.toThrow();
+      expect(() =>
+        AuthScopeHelper.assertAnyRole(doctorUser, ['Doctor', 'Nurse']),
+      ).not.toThrow();
     });
 
     it('should throw if user has none of target roles', () => {
-      expect(() => AuthScopeHelper.assertAnyRole(doctorUser, ['Nurse', 'Lab Technician'])).toThrow(ForbiddenException);
+      expect(() =>
+        AuthScopeHelper.assertAnyRole(doctorUser, ['Nurse', 'Lab Technician']),
+      ).toThrow(ForbiddenException);
     });
   });
 
   describe('requireAuditReason', () => {
     it('should pass if reason is provided', () => {
-      expect(() => AuthScopeHelper.requireAuditReason('suspend_user', 'User violated compliance policies')).not.toThrow();
+      expect(() =>
+        AuthScopeHelper.requireAuditReason(
+          'suspend_user',
+          'User violated compliance policies',
+        ),
+      ).not.toThrow();
     });
 
     it('should throw BadRequestException if reason is missing or empty', () => {
-      expect(() => AuthScopeHelper.requireAuditReason('suspend_user', '')).toThrow(BadRequestException);
-      expect(() => AuthScopeHelper.requireAuditReason('suspend_user', '   ')).toThrow(BadRequestException);
+      expect(() =>
+        AuthScopeHelper.requireAuditReason('suspend_user', ''),
+      ).toThrow(BadRequestException);
+      expect(() =>
+        AuthScopeHelper.requireAuditReason('suspend_user', '   '),
+      ).toThrow(BadRequestException);
     });
   });
 });

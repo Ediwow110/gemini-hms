@@ -55,15 +55,21 @@ export const PatientMessageThread: React.FC<PatientMessageThreadProps> = ({ mess
         <div className="relative">
           <input 
             type="text" 
-            placeholder="Type your message here..."
-            className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            disabled
+            placeholder="Messaging is currently disabled (WIP)..."
+            className="w-full pl-4 pr-12 py-3 bg-slate-100 border border-slate-200 rounded-xl text-xs font-medium cursor-not-allowed opacity-60"
           />
-          <button className="absolute right-2 top-1.5 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer">
+          <button 
+            disabled
+            title="Send Message (WIP - Coming Soon)"
+            aria-label="Send Message (WIP - Coming Soon)"
+            className="absolute right-2 top-1.5 p-2 bg-slate-300 text-slate-400 rounded-lg cursor-not-allowed opacity-50"
+          >
             <Send className="h-4 w-4" />
           </button>
         </div>
-        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[9px] text-amber-800 font-semibold text-center">
-          <strong>Shell Notice:</strong> Messaging is simulated. No real care team notifications are sent.
+        <div className="mt-3 bg-slate-100 border border-slate-250 rounded-xl px-3 py-1.5 text-[9px] text-slate-700 font-semibold text-center">
+          <strong>Status Notice:</strong> Secure direct messaging via the patient portal is under development (WIP). Please contact the hospital reception or support hotlines for urgent assistance.
         </div>
       </div>
     </div>
