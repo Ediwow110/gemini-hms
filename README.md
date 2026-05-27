@@ -40,9 +40,14 @@ This repository contains the architectural foundation and core workflows for a s
 
 ## Local Setup
 
+### Quick Setup & Recovery (White Screen Fix)
+If you encounter a "White Screen" or dependency errors, use the setup scripts:
+- **Windows:** Run `.\setup.ps1` in PowerShell.
+- **Linux/macOS:** Run `bash setup.sh`.
+
 ### Backend
 1. `cd hms-backend`
-2. `npm install`
+2. `npm install --include=dev`
 3. Create a `.env` file from the provided `.env.example`:
    ```bash
    cp .env.example .env
