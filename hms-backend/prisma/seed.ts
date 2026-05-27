@@ -65,6 +65,19 @@ async function main() {
   });
   console.log('Branch created:', branch.name);
 
+  // 1c. Create a second demo branch for multi-branch browser QA tests
+  const northBranch = await prisma.branch.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000020' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000020',
+      tenantId: tenant.id,
+      name: '[DEMO] North Branch',
+      code: 'DEMO-NORTH',
+    },
+  });
+  console.log('Demo North Branch created:', northBranch.name);
+
   // 2. Comprehensive Set of Permissions
   const permissionsData = [
     // Existing Foundation
@@ -450,6 +463,59 @@ async function main() {
     });
   }
 
+  // 5b. Seeding demo multi-branch users for branch-selection browser QA
+  // These users are assigned to BOTH branches and will need to select a branch at login.
+  console.log('Seeding Demo Multi-Branch Users...');
+  const multiBranchRoles: { email: string; roleName: string }[] = [
+    { email: 'branch.multi@hospital.com', roleName: 'Branch Admin' },
+    { email: 'doctor.multi@hospital.com', roleName: 'Doctor' },
+    { email: 'cashier.multi@hospital.com', roleName: 'Cashier' },
+  ];
+  for (const mb of multiBranchRoles) {
+    const mbRole = allRoles.find((r) => r.name === mb.roleName);
+    if (!mbRole) continue;
+    const mbUser = await prisma.user.upsert({
+      where: { tenantId_email: { tenantId: tenant.id, email: mb.email } },
+      update: { passwordHash },
+      create: {
+        tenantId: tenant.id,
+        email: mb.email,
+        passwordHash,
+        mfaEnabled: false,
+      },
+    });
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: mbUser.id, roleId: mbRole.id } },
+      update: {},
+      create: { userId: mbUser.id, roleId: mbRole.id },
+    });
+    // Assign to Main Branch
+    await prisma.userBranch.upsert({
+      where: {
+        tenantId_userId_branchId: {
+          tenantId: tenant.id,
+          userId: mbUser.id,
+          branchId: branch.id,
+        },
+      },
+      update: { isActive: true },
+      create: { tenantId: tenant.id, userId: mbUser.id, branchId: branch.id, isActive: true },
+    });
+    // Assign to Demo North Branch
+    await prisma.userBranch.upsert({
+      where: {
+        tenantId_userId_branchId: {
+          tenantId: tenant.id,
+          userId: mbUser.id,
+          branchId: northBranch.id,
+        },
+      },
+      update: { isActive: true },
+      create: { tenantId: tenant.id, userId: mbUser.id, branchId: northBranch.id, isActive: true },
+    });
+    console.log(`  Multi-branch user ${mb.email} assigned to both branches`);
+  }
+
   // 6a. Seed deterministic Patient Portal account and minimal eligible prescription workflow data.
   console.log('Seeding Demo Patient Portal Account...');
   const portalPatient = await prisma.patient.upsert({
@@ -544,6 +610,106 @@ async function main() {
       notes: '[DEMO] Browser runtime QA seed prescription',
       status: 'ACTIVE',
       createdById: doctorUser.id,
+    },
+  });
+
+  // 6b. Seed patient portal document data for browser QA
+  // Order for lab result
+  const portalLabOrder = await prisma.order.upsert({
+    where: { id: '00000000-0000-0000-0000-00000000e002' },
+    update: { status: 'COMPLETED' },
+    create: {
+      id: '00000000-0000-0000-0000-00000000e002',
+      tenantId: tenant.id,
+      branchId: branch.id,
+      patientId: portalPatient.id,
+      orderNumber: 'DEMO-LAB-ORDER-001',
+      status: 'COMPLETED',
+      encounterId: portalEncounter.id,
+      orderType: 'LAB',
+      createdById: doctorUser.id,
+    },
+  });
+  // Released lab result
+  await prisma.labResult.upsert({
+    where: { id: '00000000-0000-0000-0000-0000000000a1' },
+    update: { status: 'RELEASED' },
+    create: {
+      id: '00000000-0000-0000-0000-0000000000a1',
+      tenantId: tenant.id,
+      orderId: portalLabOrder.id,
+      status: 'RELEASED',
+      results: { hemoglobin: '14.2 g/dL', wbc: '6.5 x10^3/uL', glucose: '95 mg/dL' },
+      remarks: '[DEMO] Routine blood panel — all values within normal range',
+      encodedById: doctorUser.id,
+      encodedAt: new Date(),
+      validatedById: doctorUser.id,
+      validatedAt: new Date(),
+      releasedById: doctorUser.id,
+      releasedAt: new Date(),
+      createdById: doctorUser.id,
+    },
+  });
+  // Order + Invoice for billing
+  const portalInvoiceOrder = await prisma.order.upsert({
+    where: { id: '00000000-0000-0000-0000-00000000e003' },
+    update: { status: 'COMPLETED' },
+    create: {
+      id: '00000000-0000-0000-0000-00000000e003',
+      tenantId: tenant.id,
+      branchId: branch.id,
+      patientId: portalPatient.id,
+      orderNumber: 'DEMO-BILL-ORDER-001',
+      status: 'COMPLETED',
+      encounterId: portalEncounter.id,
+      orderType: 'BILLING',
+      createdById: doctorUser.id,
+    },
+  });
+  const portalInvoice = await prisma.invoice.upsert({
+    where: { id: '00000000-0000-0000-0000-0000000000a2' },
+    update: { status: 'ISSUED' },
+    create: {
+      id: '00000000-0000-0000-0000-0000000000a2',
+      tenantId: tenant.id,
+      orderId: portalInvoiceOrder.id,
+      invoiceNumber: 'DEMO-INV-001',
+      totalAmount: 250.00,
+      paidAmount: 250.00,
+      status: 'PAID',
+    },
+  });
+  // Payment with receipt (requires a CashierSession)
+  const cashierUser = await prisma.user.findUniqueOrThrow({
+    where: { tenantId_email: { tenantId: tenant.id, email: 'cashier@hospital.com' } },
+  });
+  const cashierSession = await prisma.cashierSession.upsert({
+    where: { id: '00000000-0000-0000-0000-0000000000b1' },
+    update: { status: 'OPEN' },
+    create: {
+      id: '00000000-0000-0000-0000-0000000000b1',
+      tenantId: tenant.id,
+      branchId: branch.id,
+      userId: cashierUser.id,
+      openingBalance: 0,
+      status: 'OPEN',
+      openedAt: new Date(),
+    },
+  });
+  await prisma.payment.upsert({
+    where: { id: '00000000-0000-0000-0000-0000000000b2' },
+    update: { status: 'POSTED' },
+    create: {
+      id: '00000000-0000-0000-0000-0000000000b2',
+      tenantId: tenant.id,
+      invoiceId: portalInvoice.id,
+      cashierSessionId: cashierSession.id,
+      receiptNumber: 'DEMO-RCPT-001',
+      amount: 250.00,
+      paymentMethod: 'CASH',
+      status: 'POSTED',
+      idempotencyKey: 'DEMO-IDEM-001',
+      createdById: cashierUser.id,
     },
   });
 
