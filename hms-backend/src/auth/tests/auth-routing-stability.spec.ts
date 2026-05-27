@@ -5,15 +5,36 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SessionService } from '../session.service';
 import { MfaService } from '../mfa.service';
 import { AuditService } from '../../audit/audit.service';
-import { UnauthorizedException } from '@nestjs/common';
 
 process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-characters-long';
 
+type MockPrisma = {
+  tenant: { findFirst: jest.Mock };
+  user: { findUnique: jest.Mock; update: jest.Mock };
+  userBranch: { findMany: jest.Mock; findFirst: jest.Mock };
+  userRole: { findMany: jest.Mock };
+  rolePermission: { findFirst: jest.Mock };
+  session: { update: jest.Mock };
+  $transaction: jest.Mock;
+};
+
+type MockJwtService = {
+  sign: jest.Mock;
+};
+
+type MockSessionService = {
+  createSession: jest.Mock;
+  markMfaVerified: jest.Mock;
+  setInitialRefreshToken: jest.Mock;
+  rotateRefreshToken: jest.Mock;
+  revokeSession: jest.Mock;
+};
+
 describe('Auth Routing Stability', () => {
   let service: AuthService;
-  let prisma: any;
-  let jwtService: any;
-  let sessionService: any;
+  let prisma: MockPrisma;
+  let jwtService: MockJwtService;
+  let sessionService: MockSessionService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -24,9 +45,9 @@ describe('Auth Routing Stability', () => {
           useValue: {
             tenant: { findFirst: jest.fn() },
             user: { findUnique: jest.fn(), update: jest.fn() },
-            userBranch: { 
+            userBranch: {
               findMany: jest.fn().mockResolvedValue([]),
-              findFirst: jest.fn().mockResolvedValue({ branchId: 'branch-0' })
+              findFirst: jest.fn().mockResolvedValue({ branchId: 'branch-0' }),
             },
             userRole: { findMany: jest.fn() },
             rolePermission: { findFirst: jest.fn().mockResolvedValue(null) },
@@ -213,14 +234,14 @@ describe('Auth Routing Stability', () => {
       prisma.session.update.mockResolvedValue(undefined);
 
       const result = await service.selectBranch(
-        'session-id',
         'user-123',
+        'tenant-456',
         'branch-0',
-        'mocked-token',
       );
 
-      expect(result.requiresBranchSelection).toBe(false);
-      expect(result.user.defaultPortalPath).toBe('/branch-admin');
+      expect(result).toBeDefined();
+      expect(result!.requiresBranchSelection).toBe(false);
+      expect(result!.user.defaultPortalPath).toBe('/branch-admin');
 
       // JWT should contain branchId
       expect(jwtService.sign).toHaveBeenCalledWith(
