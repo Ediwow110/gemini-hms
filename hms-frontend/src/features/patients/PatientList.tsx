@@ -1,5 +1,6 @@
-import { PlusCircle, Search, Download } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
 import { PageHeader } from "../../components/ui/page-header";
+import { ReportExportButton } from "../../components/analytics";
 import { StatusBadge } from "../../components/ui/status-badge";
 import { useNavigate } from "react-router-dom";
 
@@ -10,43 +11,13 @@ export const PatientList = () => {
     { id: "P002", name: "Jane Smith", age: 32, gender: "F", category: "Inpatient", balance: 150, status: "Unpaid" },
   ];
 
-  const handleExportCSV = () => {
-    const headers = ["ID", "Name", "Age", "Gender", "Category", "Balance", "Status"];
-    const rows = mockPatients.map(p => [
-      p.id,
-      `"${p.name.replace(/"/g, '""')}"`,
-      p.age,
-      p.gender,
-      p.category,
-      p.balance,
-      p.status
-    ]);
-    
-    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    
-    const dateStamp = new Date().toISOString().slice(0, 10);
-    const fileName = `patients_report_${dateStamp}.csv`;
-    
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", fileName);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
         <PageHeader title="Patients" description="Manage and view all registered patients." />
         <div className="flex gap-2">
-          <button onClick={handleExportCSV} className="btn bg-white border border-slate-200 shadow-sm text-slate-600 flex items-center gap-2 px-5 py-2.5 hover:bg-slate-50">
-            <Download className="h-4 w-4" />
-            Export CSV Report
-          </button>
+          <ReportExportButton label="Export patient CSV" sensitive requiresReason />
           <button onClick={() => navigate('/patients/new')} className="btn btn-primary flex items-center gap-2 px-5 py-2.5">
             <PlusCircle className="h-4 w-4" />
             Register Patient

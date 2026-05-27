@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlaskConical, Eye, Download, BadgeAlert } from 'lucide-react';
+import { FlaskConical, Eye, BadgeAlert } from 'lucide-react';
 
 interface DiagnosticResult {
   id: string;
@@ -132,11 +132,12 @@ export const DoctorResultsPanel = ({ patientId }: DoctorResultsPanelProps) => {
                 Close Report
               </button>
               <button
-                onClick={() => alert('PDF copy downloaded.')}
-                className="btn btn-primary bg-indigo-600 text-white text-xs px-4 py-2 flex items-center gap-1.5"
+                type="button"
+                disabled
+                title="Doctor result PDF export endpoint is not available yet."
+                className="btn cursor-not-allowed bg-slate-100 text-slate-400 text-xs px-4 py-2 flex items-center gap-1.5 border border-slate-200"
               >
-                <Download className="h-3.5 w-3.5" />
-                Download PDF
+                Download PDF WIP
               </button>
             </div>
           </div>

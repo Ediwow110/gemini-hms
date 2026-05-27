@@ -1,7 +1,9 @@
 import React from 'react';
 import SupplierShellNotice from './components/SupplierShellNotice';
 import PayoutSummaryCard from './components/PayoutSummaryCard';
-import { History, Download } from 'lucide-react';
+import { History } from 'lucide-react';
+import { ChartCard, ReportExportButton, TrendLineChart } from '../../../components/analytics';
+import { supplierRevenueTrend } from '../../../data/analytics/operationsAnalytics.mock';
 
 export const SupplierPayoutsPage: React.FC = () => {
   return (
@@ -11,12 +13,14 @@ export const SupplierPayoutsPage: React.FC = () => {
           <h2 className="text-xl font-black text-slate-800 tracking-tight">Payout Ledger</h2>
           <p className="text-xs text-slate-500 font-medium">Track your marketplace earnings and settlement history</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-50 transition-all">
-          <Download className="h-4 w-4" /> Download Statement (Shell)
-        </button>
+        <ReportExportButton label="Download statement" sensitive requiresReason />
       </div>
 
       <SupplierShellNotice />
+
+      <ChartCard title="Payout trend" description="Settlement volume trend; export remains disabled until governed financial endpoint exists." height={280}>
+        <TrendLineChart data={supplierRevenueTrend} title="Payout trend" valueLabel="₱M" />
+      </ChartCard>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">
@@ -42,7 +46,7 @@ export const SupplierPayoutsPage: React.FC = () => {
                    <div className="flex items-center gap-8">
                      <p className="text-sm font-black text-slate-900">₱2,450,000</p>
                      <span className="text-[9px] font-black px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-lg uppercase tracking-tight">SUCCESS</span>
-                     <button className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Download Statement (Shell)"><Download className="h-4 w-4" /></button>
+                     <button type="button" disabled className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] font-black text-slate-400" title="Statement export endpoint is not available yet.">Export WIP</button>
                    </div>
                  </div>
                ))}

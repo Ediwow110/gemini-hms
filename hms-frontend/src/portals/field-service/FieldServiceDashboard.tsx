@@ -6,7 +6,8 @@ import TechnicianJobCard from './components/TechnicianJobCard';
 import RouteSummaryPanel from './components/RouteSummaryPanel';
 import OfflineSyncStatusCard from './components/OfflineSyncStatusCard';
 import { apiClient } from '../../lib/api';
-import { Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, Loader2, Truck, WifiOff } from 'lucide-react';
+import { AnalyticsMetricCard, InsightPanel } from '../../components/analytics';
 
 export const FieldServiceDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -53,23 +54,13 @@ export const FieldServiceDashboard: React.FC = () => {
       <FieldServiceShellNotice />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-         <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2 hover:shadow-md transition-all">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Jobs Today</p>
-            <p className="text-3xl font-black text-slate-900">{loading ? '...' : String(allJobs.length).padStart(2, '0')}</p>
-         </div>
-         <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2 hover:shadow-md transition-all">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">In Progress</p>
-            <p className="text-3xl font-black text-indigo-600">{loading ? '...' : String(inProgress).padStart(2, '0')}</p>
-         </div>
-         <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2 hover:shadow-md transition-all">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Completed</p>
-            <p className="text-3xl font-black text-emerald-600">{loading ? '...' : String(completed).padStart(2, '0')}</p>
-         </div>
-         <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2 hover:shadow-md transition-all">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Failed/Late</p>
-            <p className="text-3xl font-black text-rose-600">00</p>
-         </div>
+        <AnalyticsMetricCard title="Jobs Today" value={loading ? '...' : String(allJobs.length).padStart(2, '0')} icon={Truck} description="Live technician job assignments" severity="info" href="/field-service/schedule" />
+        <AnalyticsMetricCard title="In Progress" value={loading ? '...' : String(inProgress).padStart(2, '0')} icon={Clock} description="Jobs currently underway" severity="warning" href="/field-service/deliveries" />
+        <AnalyticsMetricCard title="Completed" value={loading ? '...' : String(completed).padStart(2, '0')} icon={CheckCircle2} description="Completed field work" severity="success" href="/field-service/proof-of-delivery" />
+        <AnalyticsMetricCard title="Offline Sync" value="WIP" icon={WifiOff} description="Queued handovers and offline evidence" severity="warning" href="/field-service/offline-sync" />
       </div>
+
+      <InsightPanel insights={[{ title: 'Field dashboard stays route-first', description: 'Technician jobs and route/offline readiness remain more important than executive charts for mobile users.', severity: 'info', actionLabel: 'Open Schedule', actionTo: '/field-service/schedule' }]} title="Field service insights" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">

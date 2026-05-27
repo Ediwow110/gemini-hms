@@ -7,6 +7,9 @@ import { ReportsAnalyticsPage } from '../../portals/admin/ReportsAnalyticsPage';
 import { HRDashboard } from '../../portals/hr/HRDashboard';
 import { ProcurementDashboard } from '../../portals/procurement/ProcurementDashboard';
 import { MarketplaceAdminDashboard } from '../../portals/marketplace/admin/MarketplaceAdminDashboard';
+import { SupplierDashboard } from '../../portals/marketplace/supplier/SupplierDashboard';
+import { ComplianceDashboard } from '../../portals/compliance/ComplianceDashboard';
+import { ITSupportDashboard } from '../../portals/it-support/ITSupportDashboard';
 import { PatientDashboard } from '../../portals/patient/PatientDashboard';
 
 vi.mock('recharts', () => ({
@@ -30,6 +33,16 @@ vi.mock('../../hooks/use-patient-portal', () => ({
   usePatientProfile: () => ({ profile: { firstName: 'Ava', patientNumber: 'P-100', status: 'ACTIVE' }, loading: false }),
   usePatientLabResults: () => ({ results: [{ id: 'lab-result-1', createdAt: '2026-05-20T00:00:00Z', lockedAt: '2026-05-21T00:00:00Z', remarks: 'Normal' }], loading: false }),
   usePatientPrescriptions: () => ({ prescriptions: [{ id: 'rx-1', medicationName: 'Amoxicillin', dosage: '500mg', frequency: 'BID', status: 'ACTIVE' }], loading: false }),
+}));
+
+vi.mock('../../hooks/use-compliance', () => ({
+  useAuditEvents: () => ({ events: [{ id: 'audit-1', createdAt: '2026-05-21T00:00:00Z', activeRole: 'Compliance Officer', recordType: 'Patient', recordId: 'PAT-1', eventKey: 'PHI_ACCESS' }], loading: false }),
+  useAccessReview: () => ({ report: { staleAccountsCount: 1, privilegeEscalationsCount: 0, complianceStatus: 'NEEDS_ATTENTION' }, loading: false }),
+}));
+
+vi.mock('../../hooks/use-it-support', () => ({
+  useSupportTickets: () => ({ tickets: [{ id: 'ticket-1', reportedBy: { email: 'it@example.com' }, branch: { name: 'Metro' }, issueType: 'LOGIN', summary: 'Cannot login', status: 'OPEN', priority: 'HIGH', createdAt: '2026-05-21T00:00:00Z' }], loading: false }),
+  useTicketStats: () => ({ stats: { open: 1, urgent: 1, inProgress: 0, total: 1 }, loading: false }),
 }));
 
 const renderPage = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
@@ -69,6 +82,27 @@ describe('dashboard intelligence pages', () => {
     expect(screen.getByText('Marketplace Governance Command Center')).toBeInTheDocument();
     expect(screen.getByText('Pending Suppliers')).toBeInTheDocument();
     expect(screen.getByText('Marketplace fraud/SLA insights')).toBeInTheDocument();
+  });
+
+  it('ComplianceDashboard renders governance analytics and drilldown table', () => {
+    renderPage(<ComplianceDashboard />);
+    expect(screen.getByText('Compliance & Governance Workspace')).toBeInTheDocument();
+    expect(screen.getByText('Compliance alerts')).toBeInTheDocument();
+    expect(screen.getByText('Compliance control drilldown table')).toBeInTheDocument();
+  });
+
+  it('ITSupportDashboard renders operations analytics and insights', () => {
+    renderPage(<ITSupportDashboard />);
+    expect(screen.getByText('IT & Infrastructure Support Workspace')).toBeInTheDocument();
+    expect(screen.getByText('IT operations insights')).toBeInTheDocument();
+    expect(screen.getAllByText('Open Tickets')[0]).toBeInTheDocument();
+  });
+
+  it('SupplierDashboard renders supplier intelligence charts and insights', () => {
+    renderPage(<SupplierDashboard />);
+    expect(screen.getByText('Supplier Command Center')).toBeInTheDocument();
+    expect(screen.getByText('Supplier action insights')).toBeInTheDocument();
+    expect(screen.getByText('Supplier revenue trend')).toBeInTheDocument();
   });
 
   it('PatientDashboard remains action-focused instead of executive chart-heavy', () => {

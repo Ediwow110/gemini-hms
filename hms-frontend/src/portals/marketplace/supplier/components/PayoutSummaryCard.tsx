@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarSign, Download, ArrowRight, TrendingUp } from 'lucide-react';
+import { DollarSign, ArrowRight, TrendingUp } from 'lucide-react';
 
 export const PayoutSummaryCard: React.FC = () => {
   return (
@@ -9,8 +9,8 @@ export const PayoutSummaryCard: React.FC = () => {
           <div className="p-3 bg-white/10 rounded-2xl border border-white/10">
             <DollarSign className="h-6 w-6 text-emerald-400" />
           </div>
-          <button className="p-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors">
-            <Download className="h-5 w-5 text-slate-400" />
+          <button type="button" disabled title="Payout statement export endpoint is not available yet." className="cursor-not-allowed rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-black text-slate-400">
+            Export WIP
           </button>
         </div>
         

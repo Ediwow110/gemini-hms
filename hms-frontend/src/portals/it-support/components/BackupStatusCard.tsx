@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Database, Download, HardDrive, Clock, CheckCircle, Loader } from 'lucide-react';
+import React from 'react';
+import { Database, HardDrive, Clock, CheckCircle, Loader } from 'lucide-react';
 import { StatusBadge } from '../../../components/feedback/StatusBadge';
 
 export interface BackupEntry {
@@ -21,12 +21,6 @@ interface BackupStatusCardProps {
 }
 
 export const BackupStatusCard: React.FC<BackupStatusCardProps> = ({ backups, rpoTarget, rtoTarget }) => {
-  const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set());
-
-  const handleDownload = (backupId: string) => {
-    setDownloadedIds(prev => new Set(prev).add(backupId));
-  };
-
   const getTypeBadge = (type: string) => {
     switch (type) {
       case 'FULL':
@@ -104,12 +98,12 @@ export const BackupStatusCard: React.FC<BackupStatusCardProps> = ({ backups, rpo
               <span className="text-[10px] text-slate-400 font-medium">{backup.createdAt}</span>
               {backup.status === 'COMPLETED' && (
                 <button
-                  onClick={() => handleDownload(backup.id)}
-                  disabled={downloadedIds.has(backup.id)}
-                  className="text-[10px] bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-600 hover:text-indigo-700 font-bold px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="button"
+                  disabled
+                  title="Backup download endpoint is not available; sensitive operational exports require signed endpoint, reason capture, and audit logging."
+                  className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-400"
                 >
-                  <Download className="h-3 w-3" />
-                  {downloadedIds.has(backup.id) ? 'Simulated' : 'Download'}
+                  Export WIP
                 </button>
               )}
             </div>

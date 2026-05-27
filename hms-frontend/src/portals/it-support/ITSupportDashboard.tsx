@@ -12,6 +12,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import ITScopeFilter from './components/ITScopeFilter';
 import SystemHealthCard from './components/SystemHealthCard';
+import { AnalyticsMetricCard, ChartCard, InsightPanel, StatusDonutChart, TrendLineChart } from '../../components/analytics';
+import { itInsights, itLatencyTrend, itMetrics, jobBreakdown } from '../../data/analytics/operationsAnalytics.mock';
 import UserSupportQueue from './components/UserSupportQueue';
 import BackgroundJobTable from './components/BackgroundJobTable';
 import { useSupportTickets, useTicketStats } from '../../hooks/use-it-support';
@@ -83,6 +85,22 @@ export const ITSupportDashboard: React.FC = () => {
           metricLabel="View Health"
           onActionClick={() => navigate('/it/system-health')}
         />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        {itMetrics.map((metric) => (
+          <AnalyticsMetricCard key={metric.title} {...metric} value={metric.title === 'Open Tickets' ? (statsLoading ? '...' : stats.open) : metric.title === 'Urgent Incidents' ? (statsLoading ? '...' : stats.urgent) : metric.value} />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <ChartCard title="API latency and availability" description="Sandbox infrastructure trend for operational review." height={280}>
+          <TrendLineChart data={itLatencyTrend} title="API latency and availability" valueLabel="Latency ms" secondaryLabel="Availability %" />
+        </ChartCard>
+        <ChartCard title="Background job status" description="Job queue status drives retry and incident decisions." height={280}>
+          <StatusDonutChart data={jobBreakdown} title="Background job status" />
+        </ChartCard>
+        <InsightPanel insights={itInsights} title="IT operations insights" />
       </div>
 
       {/* Main Grid */}

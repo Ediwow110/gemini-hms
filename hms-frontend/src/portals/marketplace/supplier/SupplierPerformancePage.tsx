@@ -1,6 +1,8 @@
 import React from 'react';
 import SupplierShellNotice from './components/SupplierShellNotice';
 import SupplierPerformanceScorecard from './components/SupplierPerformanceScorecard';
+import { ChartCard, InsightPanel, TrendLineChart } from '../../../components/analytics';
+import { supplierInsights, supplierRevenueTrend } from '../../../data/analytics/operationsAnalytics.mock';
 import { Star, Quote } from 'lucide-react';
 
 export const SupplierPerformancePage: React.FC = () => {
@@ -15,7 +17,13 @@ export const SupplierPerformancePage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-           <SupplierPerformanceScorecard />
+           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+             <SupplierPerformanceScorecard />
+             <ChartCard title="Revenue and fulfillment trend" description="Sandbox trend for supplier performance decisions." height={280}>
+               <TrendLineChart data={supplierRevenueTrend} title="Supplier revenue trend" valueLabel="₱M" />
+             </ChartCard>
+           </div>
+           <InsightPanel insights={supplierInsights} title="Supplier performance insights" />
            
            <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-sm">
               <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Recent Buyer Feedback</h3>
@@ -52,7 +60,7 @@ export const SupplierPerformancePage: React.FC = () => {
               <p className="text-emerald-300 text-[10px] font-medium leading-relaxed">
                 Your on-time delivery is at 98%. Maintaining this for 30 more days will qualify you for the "Trusted Express" badge, increasing listing visibility by 15%.
               </p>
-              <button className="w-full py-2.5 bg-white text-emerald-900 rounded-xl text-xs font-black">Learn More</button>
+              <button type="button" disabled title="Growth recommendation workflow is not available yet." className="w-full cursor-not-allowed py-2.5 bg-white/70 text-emerald-900 rounded-xl text-xs font-black">Learn More WIP</button>
            </div>
         </div>
       </div>

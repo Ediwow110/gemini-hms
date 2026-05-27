@@ -13,6 +13,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import ComplianceScopeFilter from './components/ComplianceScopeFilter';
 import ComplianceRiskCard from './components/ComplianceRiskCard';
+import { ChartCard, InsightPanel, ReportTable, StatusDonutChart, TrendLineChart } from '../../components/analytics';
+import { complianceInsights, complianceReportColumns, complianceReportRows, complianceStatusBreakdown, complianceTrend } from '../../data/analytics/operationsAnalytics.mock';
 import PHIAccessTable from './components/PHIAccessTable';
 import { StatusBadge } from '../../components/feedback/StatusBadge';
 import { useAuditEvents, useAccessReview } from '../../hooks/use-compliance';
@@ -100,6 +102,18 @@ export const ComplianceDashboard: React.FC = () => {
           onActionClick={() => navigate('/compliance/access-reviews')}
         />
       </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <ChartCard title="PHI access and flagged events trend" description="Real audit records feed the counters; chart is sandbox until aggregate API exists." height={280}>
+          <TrendLineChart data={complianceTrend} title="PHI access trend" valueLabel="Access checks" secondaryLabel="Flagged" />
+        </ChartCard>
+        <ChartCard title="Compliance status breakdown" description="Control status view for privacy operations." height={280}>
+          <StatusDonutChart data={complianceStatusBreakdown} title="Compliance status breakdown" />
+        </ChartCard>
+        <InsightPanel insights={complianceInsights} title="Compliance alerts" />
+      </div>
+
+      <ReportTable columns={complianceReportColumns} rows={complianceReportRows} caption="Compliance control drilldown table" />
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -18,6 +18,8 @@ import SupplierOrderQueue from './components/SupplierOrderQueue';
 import RFQInboxTable from './components/RFQInboxTable';
 import ListingHealthPanel from './components/ListingHealthPanel';
 import SupplierPerformanceScorecard from './components/SupplierPerformanceScorecard';
+import { ChartCard, InsightPanel, StatusDonutChart, TrendLineChart } from '../../../components/analytics';
+import { supplierInsights, supplierRevenueTrend, supplierStatusBreakdown } from '../../../data/analytics/operationsAnalytics.mock';
 
 export const SupplierDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -56,6 +58,16 @@ export const SupplierDashboard: React.FC = () => {
         <SupplierMetricCard label="Warranty Claims" value={2} icon={ShieldCheck} trend="-1" trendType="positive" color="rose" />
         <SupplierMetricCard label="Revenue (Mock)" value="₱6.4M" icon={DollarSign} trend="+12.5%" trendType="positive" color="emerald" />
         <SupplierMetricCard label="Payout Pending" value="₱1.85M" icon={DollarSign} color="indigo" />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <ChartCard title="Supplier revenue trend" description="Sandbox revenue trajectory for settlement planning." height={280}>
+          <TrendLineChart data={supplierRevenueTrend} title="Supplier revenue trend" valueLabel="₱M" />
+        </ChartCard>
+        <ChartCard title="Operational status mix" description="Listings, orders, shipped items, and warranty claims." height={280}>
+          <StatusDonutChart data={supplierStatusBreakdown} title="Supplier operational status" />
+        </ChartCard>
+        <InsightPanel insights={supplierInsights} title="Supplier action insights" />
       </div>
 
       {/* Quick Actions */}

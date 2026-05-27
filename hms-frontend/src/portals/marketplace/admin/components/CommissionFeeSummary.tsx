@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarSign, Download, TrendingUp } from 'lucide-react';
+import { DollarSign, TrendingUp } from 'lucide-react';
 
 export const CommissionFeeSummary: React.FC = () => {
   return (
@@ -9,8 +9,8 @@ export const CommissionFeeSummary: React.FC = () => {
           <div className="p-3 bg-white/10 rounded-2xl border border-white/10">
             <DollarSign className="h-6 w-6 text-emerald-400" />
           </div>
-          <button className="p-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors" title="Export Statement (Shell)">
-            <Download className="h-5 w-5 text-slate-400" />
+          <button type="button" disabled className="cursor-not-allowed rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-black text-slate-400" title="Statement export endpoint is not available yet.">
+            Export WIP
           </button>
         </div>
 
@@ -36,8 +36,8 @@ export const CommissionFeeSummary: React.FC = () => {
           </div>
         </div>
 
-        <button className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 group">
-          Export Statement (Shell) <Download className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+        <button type="button" disabled title="Statement export endpoint is not available yet." className="w-full cursor-not-allowed py-4 bg-white/10 text-slate-400 font-black rounded-2xl flex items-center justify-center gap-2">
+          Export Statement WIP
         </button>
       </div>
 
