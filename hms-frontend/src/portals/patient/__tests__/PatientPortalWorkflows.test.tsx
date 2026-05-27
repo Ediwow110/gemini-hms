@@ -12,6 +12,7 @@ vi.mock('../../../services/patient-portal.service', () => ({
   patientPortalService: {
     downloadLabResultPdf: vi.fn(),
     downloadInvoicePdf: vi.fn(),
+    downloadReceiptPdf: vi.fn(),
     downloadPrescriptionPdf: vi.fn(),
     createRefillRequest: vi.fn(),
     createMedicalRecordRequest: vi.fn(),
@@ -78,22 +79,45 @@ describe('Patient Portal Workflows', () => {
 
   describe('PatientBillingSummary', () => {
     const mockInvoices = [
-      { id: 'inv-1', service: 'Consultation', amount: 500, date: '2023-01-01', status: 'PAID' as const }
+      { id: 'inv-1', service: 'Consultation', amount: 500, date: '2023-01-01', status: 'PAID' as const, latestPostedPaymentId: 'pay-1' },
+      { id: 'inv-2', service: 'Lab Test', amount: 300, date: '2023-01-02', status: 'UNPAID' as const, latestPostedPaymentId: null }
     ];
 
     it('should call API and download helper on download invoice', async () => {
       const mockBlob = new Blob(['pdf-content'], { type: 'application/pdf' });
       vi.mocked(patientPortalService.downloadInvoicePdf).mockResolvedValue(mockBlob);
 
-      render(<PatientBillingSummary invoices={mockInvoices} outstandingBalance={0} />);
+      render(<PatientBillingSummary invoices={mockInvoices} outstandingBalance={300} />);
       
-      const downloadBtn = screen.getByTitle('Download Invoice PDF');
-      fireEvent.click(downloadBtn);
+      const downloadBtns = screen.getAllByTitle('Download Invoice PDF');
+      fireEvent.click(downloadBtns[0]);
 
       await waitFor(() => {
         expect(patientPortalService.downloadInvoicePdf).toHaveBeenCalledWith('inv-1');
         expect(downloadHelper.downloadBlob).toHaveBeenCalledWith(mockBlob, expect.stringContaining('invoice-consultation'));
       });
+    });
+
+    it('should call API and download helper on download receipt', async () => {
+      const mockBlob = new Blob(['pdf-content'], { type: 'application/pdf' });
+      vi.mocked(patientPortalService.downloadReceiptPdf).mockResolvedValue(mockBlob);
+
+      render(<PatientBillingSummary invoices={mockInvoices} outstandingBalance={300} />);
+      
+      const receiptBtn = screen.getByTitle('Download Receipt PDF');
+      fireEvent.click(receiptBtn);
+
+      await waitFor(() => {
+        expect(patientPortalService.downloadReceiptPdf).toHaveBeenCalledWith('pay-1');
+        expect(downloadHelper.downloadBlob).toHaveBeenCalledWith(mockBlob, expect.stringContaining('receipt-consultation'));
+      });
+    });
+
+    it('should disable receipt button if no paymentId exists', () => {
+      render(<PatientBillingSummary invoices={mockInvoices} outstandingBalance={300} />);
+      
+      const disabledBtn = screen.getByTitle('Receipt available after payment is posted');
+      expect(disabledBtn).toBeDisabled();
     });
   });
 

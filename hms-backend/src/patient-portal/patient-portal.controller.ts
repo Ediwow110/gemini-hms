@@ -126,8 +126,7 @@ export class PatientPortalController {
       patientId,
       resultId,
     );
-    const pdfBuffer =
-      await this.documentGenerator.generateLabResultPdf(data);
+    const pdfBuffer = await this.documentGenerator.generateLabResultPdf(data);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="lab-result-${resultId}.pdf"`,
@@ -149,8 +148,7 @@ export class PatientPortalController {
       patientId,
       invoiceId,
     );
-    const pdfBuffer =
-      await this.documentGenerator.generateInvoicePdf(data);
+    const pdfBuffer = await this.documentGenerator.generateInvoicePdf(data);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="invoice-${invoiceId}.pdf"`,
@@ -195,8 +193,7 @@ export class PatientPortalController {
       patientId,
       paymentId,
     );
-    const pdfBuffer =
-      await this.documentGenerator.generateReceiptPdf(data);
+    const pdfBuffer = await this.documentGenerator.generateReceiptPdf(data);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="receipt-${paymentId}.pdf"`,

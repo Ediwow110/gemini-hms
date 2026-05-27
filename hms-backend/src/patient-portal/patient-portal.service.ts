@@ -125,6 +125,12 @@ export class PatientPortalService {
         totalAmount: true,
         paidAmount: true,
         createdAt: true,
+        payments: {
+          where: { status: 'POSTED' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { id: true },
+        },
       },
     });
 
@@ -135,6 +141,7 @@ export class PatientPortalService {
       totalAmount: inv.totalAmount,
       paidAmount: inv.paidAmount,
       balance: Number(inv.totalAmount) - Number(inv.paidAmount),
+      latestPostedPaymentId: inv.payments[0]?.id || null,
       createdAt: inv.createdAt,
     }));
   }
@@ -193,9 +200,7 @@ export class PatientPortalService {
       },
     });
     if (!labResult)
-      throw new NotFoundException(
-        'Lab result not found or not yet released',
-      );
+      throw new NotFoundException('Lab result not found or not yet released');
 
     const tenant = await this.prisma.tenant.findUniqueOrThrow({
       where: { id: tenantId },
@@ -288,8 +293,7 @@ export class PatientPortalService {
         },
       },
     });
-    if (!prescription)
-      throw new NotFoundException('Prescription not found');
+    if (!prescription) throw new NotFoundException('Prescription not found');
 
     const tenant = await this.prisma.tenant.findUniqueOrThrow({
       where: { id: tenantId },
@@ -342,9 +346,7 @@ export class PatientPortalService {
       },
     });
     if (!payment)
-      throw new NotFoundException(
-        'Payment not found or not yet posted',
-      );
+      throw new NotFoundException('Payment not found or not yet posted');
 
     const tenant = await this.prisma.tenant.findUniqueOrThrow({
       where: { id: tenantId },
@@ -446,14 +448,13 @@ export class PatientPortalService {
     dto: CreateMedicalRecordRequestDto,
   ) {
     // Check for existing pending request
-    const existingRequest =
-      await this.prisma.medicalRecordRequest.findFirst({
-        where: {
-          tenantId,
-          patientId,
-          status: 'PENDING',
-        },
-      });
+    const existingRequest = await this.prisma.medicalRecordRequest.findFirst({
+      where: {
+        tenantId,
+        patientId,
+        status: 'PENDING',
+      },
+    });
     if (existingRequest)
       throw new ConflictException(
         'A medical record request is already pending',

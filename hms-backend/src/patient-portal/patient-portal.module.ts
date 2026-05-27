@@ -32,7 +32,12 @@ import { DocumentGeneratorService } from './services/document-generator.service'
     }),
   ],
   controllers: [PatientPortalController],
-  providers: [PatientPortalService, PatientJwtGuard, PatientCsrfGuard, DocumentGeneratorService],
+  providers: [
+    PatientPortalService,
+    PatientJwtGuard,
+    PatientCsrfGuard,
+    DocumentGeneratorService,
+  ],
   exports: [PatientPortalService],
 })
 export class PatientPortalModule {}

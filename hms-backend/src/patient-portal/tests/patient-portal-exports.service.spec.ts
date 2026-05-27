@@ -3,10 +3,7 @@ import { PatientPortalService } from '../patient-portal.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../../audit/audit.service';
 import { JwtService } from '@nestjs/jwt';
-import {
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 
 describe('PatientPortalService - Exports & Self-Service', () => {
   let service: PatientPortalService;
@@ -194,7 +191,11 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       prisma.labResult.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.getLabResultForExport(mockTenantId, mockPatientId, mockResultId),
+        service.getLabResultForExport(
+          mockTenantId,
+          mockPatientId,
+          mockResultId,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -202,7 +203,11 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       prisma.labResult.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.getLabResultForExport('wrong-tenant', 'wrong-patient', mockResultId),
+        service.getLabResultForExport(
+          'wrong-tenant',
+          'wrong-patient',
+          mockResultId,
+        ),
       ).rejects.toThrow(NotFoundException);
 
       expect(prisma.labResult.findFirst).toHaveBeenCalledWith(
@@ -259,7 +264,11 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       prisma.invoice.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.getInvoiceForExport('wrong-tenant', 'wrong-patient', mockInvoiceId),
+        service.getInvoiceForExport(
+          'wrong-tenant',
+          'wrong-patient',
+          mockInvoiceId,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -399,11 +408,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.tenant.findUniqueOrThrow.mockResolvedValue(mockTenant);
 
-      await service.getPaymentForReceipt(
-        mockTenantId,
-        mockPatientId,
-        'pay-1',
-      );
+      await service.getPaymentForReceipt(mockTenantId, mockPatientId, 'pay-1');
 
       expect(audit.log).toHaveBeenCalledWith({
         tenantId: mockTenantId,
@@ -584,11 +589,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         mockMedRecordRequest,
       );
 
-      await service.createMedicalRecordRequest(
-        mockTenantId,
-        mockPatientId,
-        {},
-      );
+      await service.createMedicalRecordRequest(mockTenantId, mockPatientId, {});
 
       expect(prisma.medicalRecordRequest.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -613,11 +614,10 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         mockMedRecordRequest,
       );
 
-      await service.createMedicalRecordRequest(
-        mockTenantId,
-        mockPatientId,
-        { requestType: 'LAB_RESULTS_ONLY', reason: 'Insurance' },
-      );
+      await service.createMedicalRecordRequest(mockTenantId, mockPatientId, {
+        requestType: 'LAB_RESULTS_ONLY',
+        reason: 'Insurance',
+      });
 
       expect(audit.log).toHaveBeenCalledWith({
         tenantId: mockTenantId,

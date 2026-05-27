@@ -67,6 +67,7 @@ export interface PatientInvoice {
   totalAmount: number;
   paidAmount: number;
   balance: number;
+  latestPostedPaymentId: string | null;
   createdAt: string;
 }
 

@@ -30,11 +30,7 @@ export class DocumentGeneratorService {
 
       // Patient info
       doc.fontSize(12).text('Patient Information', { underline: true });
-      doc
-        .fontSize(10)
-        .text(
-          `Name: ${patient.firstName} ${patient.lastName}`,
-        );
+      doc.fontSize(10).text(`Name: ${patient.firstName} ${patient.lastName}`);
       doc.text(`Patient Number: ${patient.patientNumber}`);
       doc.moveDown();
 
@@ -65,9 +61,7 @@ export class DocumentGeneratorService {
               'Flag',
             ]),
           );
-        doc.text(
-          '─'.repeat(80),
-        );
+        doc.text('─'.repeat(80));
 
         for (const row of results) {
           doc.text(
@@ -97,9 +91,7 @@ export class DocumentGeneratorService {
       if (labResult.releasedAt) {
         doc
           .fontSize(10)
-          .text(
-            `Released: ${new Date(labResult.releasedAt).toLocaleString()}`,
-          );
+          .text(`Released: ${new Date(labResult.releasedAt).toLocaleString()}`);
       }
 
       doc.moveDown(2);
@@ -137,20 +129,14 @@ export class DocumentGeneratorService {
       // Header
       doc.fontSize(18).text(tenantName, { align: 'center' });
       doc.fontSize(14).text('Invoice', { align: 'center' });
-      doc
-        .fontSize(10)
-        .text(`Invoice #: ${invoice.invoiceNumber || 'N/A'}`, {
-          align: 'center',
-        });
+      doc.fontSize(10).text(`Invoice #: ${invoice.invoiceNumber || 'N/A'}`, {
+        align: 'center',
+      });
       doc.moveDown();
 
       // Patient info
       doc.fontSize(12).text('Patient Information', { underline: true });
-      doc
-        .fontSize(10)
-        .text(
-          `Name: ${patient.firstName} ${patient.lastName}`,
-        );
+      doc.fontSize(10).text(`Name: ${patient.firstName} ${patient.lastName}`);
       doc.text(`Patient Number: ${patient.patientNumber}`);
       doc.moveDown();
 
@@ -158,8 +144,7 @@ export class DocumentGeneratorService {
       doc.fontSize(12).text('Invoice Details', { underline: true });
       doc.fontSize(10).text(`Total Amount: ${invoice.totalAmount}`);
       doc.text(`Paid Amount: ${invoice.paidAmount}`);
-      const balance =
-        Number(invoice.totalAmount) - Number(invoice.paidAmount);
+      const balance = Number(invoice.totalAmount) - Number(invoice.paidAmount);
       doc.text(`Balance: ${balance.toFixed(2)}`);
       doc.text(`Status: ${invoice.status}`);
       doc.moveDown();
@@ -243,19 +228,13 @@ export class DocumentGeneratorService {
 
       // Patient info
       doc.fontSize(12).text('Patient Information', { underline: true });
-      doc
-        .fontSize(10)
-        .text(
-          `Name: ${patient.firstName} ${patient.lastName}`,
-        );
+      doc.fontSize(10).text(`Name: ${patient.firstName} ${patient.lastName}`);
       doc.text(`Patient Number: ${patient.patientNumber}`);
       doc.moveDown();
 
       // Medication details
       doc.fontSize(12).text('Medication', { underline: true });
-      doc
-        .fontSize(10)
-        .text(`Medication Name: ${prescription.medicationName}`);
+      doc.fontSize(10).text(`Medication Name: ${prescription.medicationName}`);
       doc.text(`Dosage: ${prescription.dosage}`);
       doc.text(`Frequency: ${prescription.frequency}`);
       doc.text(`Duration: ${prescription.duration}`);
@@ -309,20 +288,14 @@ export class DocumentGeneratorService {
       // Header
       doc.fontSize(18).text(tenantName, { align: 'center' });
       doc.fontSize(14).text('Official Receipt', { align: 'center' });
-      doc
-        .fontSize(10)
-        .text(`Receipt #: ${payment.receiptNumber || 'N/A'}`, {
-          align: 'center',
-        });
+      doc.fontSize(10).text(`Receipt #: ${payment.receiptNumber || 'N/A'}`, {
+        align: 'center',
+      });
       doc.moveDown();
 
       // Patient info
       doc.fontSize(12).text('Patient Information', { underline: true });
-      doc
-        .fontSize(10)
-        .text(
-          `Name: ${patient.firstName} ${patient.lastName}`,
-        );
+      doc.fontSize(10).text(`Name: ${patient.firstName} ${patient.lastName}`);
       doc.text(`Patient Number: ${patient.patientNumber}`);
       doc.moveDown();
 
@@ -331,9 +304,7 @@ export class DocumentGeneratorService {
       doc.fontSize(10).text(`Amount Paid: ${payment.amount}`);
       doc.text(`Payment Method: ${payment.paymentMethod}`);
       doc.text(`Status: ${payment.status}`);
-      doc.text(
-        `Date: ${new Date(payment.createdAt).toLocaleString()}`,
-      );
+      doc.text(`Date: ${new Date(payment.createdAt).toLocaleString()}`);
       doc.moveDown();
 
       // Invoice reference
@@ -365,8 +336,6 @@ export class DocumentGeneratorService {
    */
   private padColumns(columns: string[]): string {
     const widths = [20, 12, 10, 18, 8];
-    return columns
-      .map((col, i) => col.padEnd(widths[i] || 15))
-      .join(' ');
+    return columns.map((col, i) => col.padEnd(widths[i] || 15)).join(' ');
   }
 }
