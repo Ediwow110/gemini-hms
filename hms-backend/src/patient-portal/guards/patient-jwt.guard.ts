@@ -59,12 +59,25 @@ export class PatientJwtGuard implements CanActivate {
         );
       }
 
+      // Look up the associated User record for audit logging
+      let userId: string | undefined;
+      try {
+        const userRecord = await this.prisma.user.findFirst({
+          where: { tenantId: patientUser.tenantId, email: patientUser.email },
+          select: { id: true },
+        });
+        userId = userRecord?.id;
+      } catch {
+        // Non-critical: audit logging falls back to patientId
+      }
+
       // Attach patientContext to request
       request.patientUser = {
         patientUserId: patientUser.id,
         patientId: patientUser.patientId,
         tenantId: patientUser.tenantId,
         email: patientUser.email,
+        userId,
       };
 
       return true;

@@ -145,8 +145,6 @@ test.describe.serial('runtime QA', () => {
   });
 
   test('dashboard routes render for key roles', async () => {
-    // Merge dashboard routes into the same window as batch 4: only 2 more logins needed
-    // Batch 4 had 2 logins; we add 4 more at a 61s gap
     await sleep(61_000);
 
     const dashLogins: { email: string; label: string; routes: string[] }[] = [
@@ -156,7 +154,6 @@ test.describe.serial('runtime QA', () => {
       { email: 'branch.admin@hospital.com', label: 'Branch Admin', routes: ['/branch-admin'] },
     ];
 
-    // All 4 logins fit in one 5/60s window
     for (const d of dashLogins) {
       await doLogin(d.email, false, d.label);
       await visitRoutes(d.routes, d.label);
@@ -164,7 +161,6 @@ test.describe.serial('runtime QA', () => {
   });
 
   test('multi-branch user sees branch selector and selects branch', async () => {
-    // Wait for rate limit window from dashboard test to expire
     await sleep(61_000);
     await page.context().clearCookies();
     await page.goto('/login', { waitUntil: 'domcontentloaded' });
@@ -203,8 +199,9 @@ test.describe.serial('runtime QA', () => {
     await expect(page.locator('body')).not.toHaveText(/^\s*$/);
   });
 
-  test('patient portal data renders lab results, invoices, prescriptions', async () => {
-    // Login as patient via portal (within same window as multi-branch — 2 total logins)
+  test('patient portal: data loads and PDF downloads succeed', async () => {
+    await sleep(61_000);
+    // Login as patient via portal
     await page.context().clearCookies();
     await page.goto('/login', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('input[name="email"]')).toBeVisible({ timeout: 20_000 });
@@ -227,31 +224,118 @@ test.describe.serial('runtime QA', () => {
     expect(cookies.some((c) => c.name === 'patient_token'), 'patient_token').toBeTruthy();
     expect(cookies.some((c) => c.name === 'patient_csrf'), 'patient_csrf').toBeTruthy();
 
-    // Visit lab results page
+    // ── Lab Results Page + PDF ──
     await page.goto('/patient/lab-results', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2_000);
     expect(page.url()).toContain('/patient/lab-results');
-    await expect(page.locator('body')).not.toHaveText(/^\s*$/);
-    // Look for lab result data
-    const labContent = page.locator('main, [role="main"], body').first();
-    await expect(labContent).toBeVisible();
 
-    // Visit billing page
+    // Find download button
+    const labDownload = page.locator('button[aria-label="Download PDF"], button[title="Download PDF"]').first();
+    if (await labDownload.isVisible({ timeout: 3_000 })) {
+      // Intercept the PDF response
+      const pdfResp = page.waitForResponse(
+        (r) => r.url().includes('/patient-portal/lab-results/') && r.url().endsWith('/pdf'),
+        { timeout: 15_000 },
+      );
+      await labDownload.click();
+      const resp = await pdfResp;
+      expect(resp.status(), 'Lab Result PDF status').toBe(200);
+      const ct = resp.headers()['content-type'] || '';
+      expect(ct.toLowerCase()).toContain('application/pdf');
+    } else {
+      // No download button visible — just verify page loads
+      console.log('[INFO] No lab result download button found — verifying page renders');
+    }
+    await expect(page.locator('body')).not.toHaveText(/^\s*$/);
+
+    // ── Billing Page + Invoice PDF ──
     await page.goto('/patient/billing', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2_000);
     expect(page.url()).toContain('/patient/billing');
+
+    // Find invoice download button
+    const invDownload = page.locator('button:has-text("Invoice"), button[aria-label*="Invoice"], button[title*="Invoice"]').first();
+    if (await invDownload.isVisible({ timeout: 3_000 })) {
+      const pdfResp = page.waitForResponse(
+        (r) => r.url().includes('/patient-portal/invoices/') && r.url().endsWith('/pdf'),
+        { timeout: 15_000 },
+      );
+      await invDownload.click();
+      const resp = await pdfResp;
+      expect(resp.status(), 'Invoice PDF status').toBe(200);
+      const ct = resp.headers()['content-type'] || '';
+      expect(ct.toLowerCase()).toContain('application/pdf');
+    } else {
+      console.log('[INFO] No invoice download button found — verifying page renders');
+    }
     await expect(page.locator('body')).not.toHaveText(/^\s*$/);
 
-    // Visit prescriptions page
+    // ── Prescriptions Page + PDF ──
     await page.goto('/patient/prescriptions', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2_000);
     expect(page.url()).toContain('/patient/prescriptions');
+
+    // Find prescription download button
+    const presDownload = page.locator('button[aria-label*="Download"], button[title*="Download Prescription"], button:has-text("Download")').first();
+    if (await presDownload.isVisible({ timeout: 3_000 })) {
+      const pdfResp = page.waitForResponse(
+        (r) => r.url().includes('/patient-portal/prescriptions/') && r.url().endsWith('/pdf'),
+        { timeout: 15_000 },
+      );
+      await presDownload.click();
+      const resp = await pdfResp;
+      expect(resp.status(), 'Prescription PDF status').toBe(200);
+      const ct = resp.headers()['content-type'] || '';
+      expect(ct.toLowerCase()).toContain('application/pdf');
+    } else {
+      console.log('[INFO] No prescription download button found — verifying page renders');
+    }
+    await expect(page.locator('body')).not.toHaveText(/^\s*$/);
+
+    // ── Refill Request ──
+    // Look for a refill button on the prescriptions page
+    const refillBtn = page.locator('button:has-text("Refill"), button:has-text("Request Refill")').first();
+    if (await refillBtn.isVisible({ timeout: 3_000 })) {
+      const refillResp = page.waitForResponse(
+        (r) => r.url().includes('/patient-portal/prescriptions/') && r.url().includes('/refill-request'),
+        { timeout: 15_000 },
+      );
+      await refillBtn.click();
+      const resp = await refillResp;
+      // 201 (created) or 409 (already pending) are both acceptable
+      expect(resp.status(), 'Refill request status').toBeGreaterThanOrEqual(200);
+      expect(resp.status(), 'Refill request status').toBeLessThan(500);
+      console.log(`[INFO] Refill request returned ${resp.status()}`);
+    } else {
+      console.log('[INFO] No refill button found — verifying page renders');
+    }
+
+    // ── Medical Records Page + Request ──
+    await page.goto('/patient/medical-records', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2_000);
+    expect(page.url()).toContain('/patient/medical-records');
+
+    // Look for request medical records button
+    const recordRequest = page.locator('button:has-text("Request"), button:has-text("Request Records"), button:has-text("New Request")').first();
+    if (await recordRequest.isVisible({ timeout: 3_000 })) {
+      const recordResp = page.waitForResponse(
+        (r) => r.url().includes('/patient-portal/medical-record-requests'),
+        { timeout: 15_000 },
+      );
+      await recordRequest.click();
+      const resp = await recordResp;
+      expect(resp.status(), 'Medical record request status').toBeGreaterThanOrEqual(200);
+      expect(resp.status(), 'Medical record request status').toBeLessThan(500);
+      console.log(`[INFO] Medical record request returned ${resp.status()}`);
+    } else {
+      console.log('[INFO] No medical record request button found — verifying page renders');
+    }
     await expect(page.locator('body')).not.toHaveText(/^\s*$/);
   });
 
   test('responsive screenshot: patient dashboard at mobile and tablet', async () => {
-    // Wait for rate limit window from patient test to expire
     await sleep(61_000);
+    // Login as patient
     await page.context().clearCookies();
     await page.goto('/login', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('input[name="email"]')).toBeVisible({ timeout: 20_000 });

@@ -12,6 +12,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
 
   const mockTenantId = 'tenant-1';
   const mockPatientId = 'patient-1';
+  const mockUserId = 'user-1';
   const mockResultId = 'result-1';
   const mockInvoiceId = 'invoice-1';
   const mockPrescriptionId = 'rx-1';
@@ -170,6 +171,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       const result = await service.getLabResultForExport(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         mockResultId,
       );
 
@@ -194,6 +196,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         service.getLabResultForExport(
           mockTenantId,
           mockPatientId,
+          mockUserId,
           mockResultId,
         ),
       ).rejects.toThrow(NotFoundException);
@@ -206,6 +209,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         service.getLabResultForExport(
           'wrong-tenant',
           'wrong-patient',
+          mockUserId,
           mockResultId,
         ),
       ).rejects.toThrow(NotFoundException);
@@ -226,12 +230,13 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       await service.getLabResultForExport(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         mockResultId,
       );
 
       expect(audit.log).toHaveBeenCalledWith({
         tenantId: mockTenantId,
-        userId: mockPatientId,
+        userId: mockUserId,
         eventKey: 'LAB_RESULT_PDF_EXPORTED',
         recordType: 'LabResult',
         recordId: mockResultId,
@@ -251,6 +256,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       const result = await service.getInvoiceForExport(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         mockInvoiceId,
       );
 
@@ -267,6 +273,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         service.getInvoiceForExport(
           'wrong-tenant',
           'wrong-patient',
+          mockUserId,
           mockInvoiceId,
         ),
       ).rejects.toThrow(NotFoundException);
@@ -279,12 +286,13 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       await service.getInvoiceForExport(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         mockInvoiceId,
       );
 
       expect(audit.log).toHaveBeenCalledWith({
         tenantId: mockTenantId,
-        userId: mockPatientId,
+        userId: mockUserId,
         eventKey: 'INVOICE_PDF_EXPORTED',
         recordType: 'Invoice',
         recordId: mockInvoiceId,
@@ -304,6 +312,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       const result = await service.getPrescriptionForExport(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         mockPrescriptionId,
       );
 
@@ -320,6 +329,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       const result = await service.getPrescriptionForExport(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         mockPrescriptionId,
       );
 
@@ -333,6 +343,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         service.getPrescriptionForExport(
           mockTenantId,
           mockPatientId,
+          mockUserId,
           mockPrescriptionId,
         ),
       ).rejects.toThrow(NotFoundException);
@@ -345,12 +356,13 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       await service.getPrescriptionForExport(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         mockPrescriptionId,
       );
 
       expect(audit.log).toHaveBeenCalledWith({
         tenantId: mockTenantId,
-        userId: mockPatientId,
+        userId: mockUserId,
         eventKey: 'PRESCRIPTION_PDF_EXPORTED',
         recordType: 'Prescription',
         recordId: mockPrescriptionId,
@@ -386,6 +398,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       const result = await service.getPaymentForReceipt(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         'pay-1',
       );
 
@@ -399,7 +412,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       prisma.payment.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.getPaymentForReceipt(mockTenantId, mockPatientId, 'pay-1'),
+        service.getPaymentForReceipt(mockTenantId, mockPatientId, mockUserId, 'pay-1'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -408,11 +421,11 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.tenant.findUniqueOrThrow.mockResolvedValue(mockTenant);
 
-      await service.getPaymentForReceipt(mockTenantId, mockPatientId, 'pay-1');
+      await service.getPaymentForReceipt(mockTenantId, mockPatientId, mockUserId, 'pay-1');
 
       expect(audit.log).toHaveBeenCalledWith({
         tenantId: mockTenantId,
-        userId: mockPatientId,
+        userId: mockUserId,
         eventKey: 'PATIENT_RECEIPT_DOWNLOADED',
         recordType: 'Payment',
         recordId: 'pay-1',
@@ -433,6 +446,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       const result = await service.createRefillRequest(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         mockPrescriptionId,
         { reason: 'Running low' },
       );
@@ -456,6 +470,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         service.createRefillRequest(
           mockTenantId,
           mockPatientId,
+          mockUserId,
           mockPrescriptionId,
           { reason: 'Running low' },
         ),
@@ -469,6 +484,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         service.createRefillRequest(
           'wrong-tenant',
           'wrong-patient',
+          mockUserId,
           mockPrescriptionId,
           {},
         ),
@@ -482,6 +498,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         service.createRefillRequest(
           mockTenantId,
           mockPatientId,
+          mockUserId,
           mockPrescriptionId,
           {},
         ),
@@ -496,13 +513,14 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       await service.createRefillRequest(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         mockPrescriptionId,
         { reason: 'Running low' },
       );
 
       expect(audit.log).toHaveBeenCalledWith({
         tenantId: mockTenantId,
-        userId: mockPatientId,
+        userId: mockUserId,
         eventKey: 'PRESCRIPTION_REFILL_REQUESTED',
         recordType: 'RefillRequest',
         recordId: mockRefillRequest.id,
@@ -569,6 +587,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       const result = await service.createMedicalRecordRequest(
         mockTenantId,
         mockPatientId,
+        mockUserId,
         { requestType: 'FULL_RECORD', reason: 'Insurance' },
       );
 
@@ -589,7 +608,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         mockMedRecordRequest,
       );
 
-      await service.createMedicalRecordRequest(mockTenantId, mockPatientId, {});
+      await service.createMedicalRecordRequest(mockTenantId, mockPatientId, mockUserId, {});
 
       expect(prisma.medicalRecordRequest.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -604,7 +623,7 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       );
 
       await expect(
-        service.createMedicalRecordRequest(mockTenantId, mockPatientId, {}),
+        service.createMedicalRecordRequest(mockTenantId, mockPatientId, mockUserId, {}),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -614,14 +633,14 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         mockMedRecordRequest,
       );
 
-      await service.createMedicalRecordRequest(mockTenantId, mockPatientId, {
+      await service.createMedicalRecordRequest(mockTenantId, mockPatientId, mockUserId, {
         requestType: 'LAB_RESULTS_ONLY',
         reason: 'Insurance',
       });
 
       expect(audit.log).toHaveBeenCalledWith({
         tenantId: mockTenantId,
-        userId: mockPatientId,
+        userId: mockUserId,
         eventKey: 'MEDICAL_RECORD_COPY_REQUESTED',
         recordType: 'MedicalRecordRequest',
         recordId: mockMedRecordRequest.id,

@@ -118,12 +118,14 @@ export class PatientPortalController {
   async downloadLabResultPdf(
     @GetPatientUser('tenantId') tenantId: string,
     @GetPatientUser('patientId') patientId: string,
+    @GetPatientUser('userId') userId: string,
     @Param('id') resultId: string,
     @Res() res: Response,
   ) {
     const data = await this.portalService.getLabResultForExport(
       tenantId,
       patientId,
+      userId,
       resultId,
     );
     const pdfBuffer = await this.documentGenerator.generateLabResultPdf(data);
@@ -140,12 +142,14 @@ export class PatientPortalController {
   async downloadInvoicePdf(
     @GetPatientUser('tenantId') tenantId: string,
     @GetPatientUser('patientId') patientId: string,
+    @GetPatientUser('userId') userId: string,
     @Param('id') invoiceId: string,
     @Res() res: Response,
   ) {
     const data = await this.portalService.getInvoiceForExport(
       tenantId,
       patientId,
+      userId,
       invoiceId,
     );
     const pdfBuffer = await this.documentGenerator.generateInvoicePdf(data);
@@ -162,12 +166,14 @@ export class PatientPortalController {
   async downloadPrescriptionPdf(
     @GetPatientUser('tenantId') tenantId: string,
     @GetPatientUser('patientId') patientId: string,
+    @GetPatientUser('userId') userId: string,
     @Param('id') prescriptionId: string,
     @Res() res: Response,
   ) {
     const data = await this.portalService.getPrescriptionForExport(
       tenantId,
       patientId,
+      userId,
       prescriptionId,
     );
     const pdfBuffer =
@@ -185,12 +191,14 @@ export class PatientPortalController {
   async downloadReceiptPdf(
     @GetPatientUser('tenantId') tenantId: string,
     @GetPatientUser('patientId') patientId: string,
+    @GetPatientUser('userId') userId: string,
     @Param('id') paymentId: string,
     @Res() res: Response,
   ) {
     const data = await this.portalService.getPaymentForReceipt(
       tenantId,
       patientId,
+      userId,
       paymentId,
     );
     const pdfBuffer = await this.documentGenerator.generateReceiptPdf(data);
@@ -208,12 +216,14 @@ export class PatientPortalController {
   async createRefillRequest(
     @GetPatientUser('tenantId') tenantId: string,
     @GetPatientUser('patientId') patientId: string,
+    @GetPatientUser('userId') userId: string,
     @Param('id') prescriptionId: string,
     @Body() dto: CreateRefillRequestDto,
   ) {
     return this.portalService.createRefillRequest(
       tenantId,
       patientId,
+      userId,
       prescriptionId,
       dto,
     );
@@ -234,11 +244,13 @@ export class PatientPortalController {
   async createMedicalRecordRequest(
     @GetPatientUser('tenantId') tenantId: string,
     @GetPatientUser('patientId') patientId: string,
+    @GetPatientUser('userId') userId: string,
     @Body() dto: CreateMedicalRecordRequestDto,
   ) {
     return this.portalService.createMedicalRecordRequest(
       tenantId,
       patientId,
+      userId,
       dto,
     );
   }

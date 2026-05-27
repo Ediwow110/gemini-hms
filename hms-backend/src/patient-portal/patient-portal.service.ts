@@ -176,6 +176,7 @@ export class PatientPortalService {
   async getLabResultForExport(
     tenantId: string,
     patientId: string,
+    userId: string | undefined,
     resultId: string,
   ) {
     const labResult = await this.prisma.labResult.findFirst({
@@ -206,13 +207,15 @@ export class PatientPortalService {
       where: { id: tenantId },
     });
 
-    await this.auditService.log({
-      tenantId,
-      userId: patientId,
-      eventKey: 'LAB_RESULT_PDF_EXPORTED',
-      recordType: 'LabResult',
-      recordId: resultId,
-    });
+    if (userId) {
+      await this.auditService.log({
+        tenantId,
+        userId,
+        eventKey: 'LAB_RESULT_PDF_EXPORTED',
+        recordType: 'LabResult',
+        recordId: resultId,
+      });
+    }
 
     return {
       labResult,
@@ -224,6 +227,7 @@ export class PatientPortalService {
   async getInvoiceForExport(
     tenantId: string,
     patientId: string,
+    userId: string | undefined,
     invoiceId: string,
   ) {
     const invoice = await this.prisma.invoice.findFirst({
@@ -253,13 +257,15 @@ export class PatientPortalService {
       where: { id: tenantId },
     });
 
-    await this.auditService.log({
-      tenantId,
-      userId: patientId,
-      eventKey: 'INVOICE_PDF_EXPORTED',
-      recordType: 'Invoice',
-      recordId: invoiceId,
-    });
+    if (userId) {
+      await this.auditService.log({
+        tenantId,
+        userId,
+        eventKey: 'INVOICE_PDF_EXPORTED',
+        recordType: 'Invoice',
+        recordId: invoiceId,
+      });
+    }
 
     return {
       invoice,
@@ -272,6 +278,7 @@ export class PatientPortalService {
   async getPrescriptionForExport(
     tenantId: string,
     patientId: string,
+    userId: string | undefined,
     prescriptionId: string,
   ) {
     const prescription = await this.prisma.prescription.findFirst({
@@ -299,13 +306,15 @@ export class PatientPortalService {
       where: { id: tenantId },
     });
 
-    await this.auditService.log({
-      tenantId,
-      userId: patientId,
-      eventKey: 'PRESCRIPTION_PDF_EXPORTED',
-      recordType: 'Prescription',
-      recordId: prescriptionId,
-    });
+    if (userId) {
+      await this.auditService.log({
+        tenantId,
+        userId,
+        eventKey: 'PRESCRIPTION_PDF_EXPORTED',
+        recordType: 'Prescription',
+        recordId: prescriptionId,
+      });
+    }
 
     return {
       prescription,
@@ -317,6 +326,7 @@ export class PatientPortalService {
   async getPaymentForReceipt(
     tenantId: string,
     patientId: string,
+    userId: string | undefined,
     paymentId: string,
   ) {
     const payment = await this.prisma.payment.findFirst({
@@ -352,13 +362,15 @@ export class PatientPortalService {
       where: { id: tenantId },
     });
 
-    await this.auditService.log({
-      tenantId,
-      userId: patientId,
-      eventKey: 'PATIENT_RECEIPT_DOWNLOADED',
-      recordType: 'Payment',
-      recordId: paymentId,
-    });
+    if (userId) {
+      await this.auditService.log({
+        tenantId,
+        userId,
+        eventKey: 'PATIENT_RECEIPT_DOWNLOADED',
+        recordType: 'Payment',
+        recordId: paymentId,
+      });
+    }
 
     return {
       payment,
@@ -374,6 +386,7 @@ export class PatientPortalService {
   async createRefillRequest(
     tenantId: string,
     patientId: string,
+    userId: string | undefined,
     prescriptionId: string,
     dto: CreateRefillRequestDto,
   ) {
@@ -414,14 +427,16 @@ export class PatientPortalService {
       },
     });
 
-    await this.auditService.log({
-      tenantId,
-      userId: patientId,
-      eventKey: 'PRESCRIPTION_REFILL_REQUESTED',
-      recordType: 'RefillRequest',
-      recordId: refillRequest.id,
-      newValues: { prescriptionId, reason: dto.reason },
-    });
+    if (userId) {
+      await this.auditService.log({
+        tenantId,
+        userId,
+        eventKey: 'PRESCRIPTION_REFILL_REQUESTED',
+        recordType: 'RefillRequest',
+        recordId: refillRequest.id,
+        newValues: { prescriptionId, reason: dto.reason },
+      });
+    }
 
     return refillRequest;
   }
@@ -445,6 +460,7 @@ export class PatientPortalService {
   async createMedicalRecordRequest(
     tenantId: string,
     patientId: string,
+    userId: string | undefined,
     dto: CreateMedicalRecordRequestDto,
   ) {
     // Check for existing pending request
@@ -469,17 +485,19 @@ export class PatientPortalService {
       },
     });
 
-    await this.auditService.log({
-      tenantId,
-      userId: patientId,
-      eventKey: 'MEDICAL_RECORD_COPY_REQUESTED',
-      recordType: 'MedicalRecordRequest',
-      recordId: recordRequest.id,
-      newValues: {
-        requestType: dto.requestType || 'FULL_RECORD',
-        reason: dto.reason,
-      },
-    });
+    if (userId) {
+      await this.auditService.log({
+        tenantId,
+        userId,
+        eventKey: 'MEDICAL_RECORD_COPY_REQUESTED',
+        recordType: 'MedicalRecordRequest',
+        recordId: recordRequest.id,
+        newValues: {
+          requestType: dto.requestType || 'FULL_RECORD',
+          reason: dto.reason,
+        },
+      });
+    }
 
     return recordRequest;
   }

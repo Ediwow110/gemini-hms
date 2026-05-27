@@ -68,6 +68,7 @@ describe('PatientPortalService Downloads and Requests', () => {
       const res = await service.getLabResultForExport(
         'tenant-1',
         'patient-1',
+        'user-1',
         'result-1',
       );
       expect(res.labResult).toBe(mockResult);
@@ -81,7 +82,7 @@ describe('PatientPortalService Downloads and Requests', () => {
     it('should block if lab result is unreleased or wrong patient', async () => {
       prisma.labResult.findFirst.mockResolvedValue(null);
       await expect(
-        service.getLabResultForExport('tenant-1', 'patient-1', 'result-1'),
+        service.getLabResultForExport('tenant-1', 'patient-1', 'user-1', 'result-1'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -97,6 +98,7 @@ describe('PatientPortalService Downloads and Requests', () => {
       const res = await service.getInvoiceForExport(
         'tenant-1',
         'patient-1',
+        'user-1',
         'inv-1',
       );
       expect(res.invoice).toBe(mockInvoice);
@@ -110,7 +112,7 @@ describe('PatientPortalService Downloads and Requests', () => {
     it('should block if invoice is wrong patient or missing', async () => {
       prisma.invoice.findFirst.mockResolvedValue(null);
       await expect(
-        service.getInvoiceForExport('tenant-1', 'patient-1', 'inv-1'),
+        service.getInvoiceForExport('tenant-1', 'patient-1', 'user-1', 'inv-1'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -126,6 +128,7 @@ describe('PatientPortalService Downloads and Requests', () => {
       const res = await service.getPaymentForReceipt(
         'tenant-1',
         'patient-1',
+        'user-1',
         'pay-1',
       );
       expect(res.payment).toBe(mockPayment);
@@ -139,7 +142,7 @@ describe('PatientPortalService Downloads and Requests', () => {
     it('should block if receipt is unpaid or wrong patient', async () => {
       prisma.payment.findFirst.mockResolvedValue(null);
       await expect(
-        service.getPaymentForReceipt('tenant-1', 'patient-1', 'pay-1'),
+        service.getPaymentForReceipt('tenant-1', 'patient-1', 'user-1', 'pay-1'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -152,6 +155,7 @@ describe('PatientPortalService Downloads and Requests', () => {
       const res = await service.getPrescriptionForExport(
         'tenant-1',
         'patient-1',
+        'user-1',
         'rx-1',
       );
       expect(res.prescription).toBe(mockRx);
@@ -165,7 +169,7 @@ describe('PatientPortalService Downloads and Requests', () => {
     it('should block if prescription is draft/cancelled or wrong patient', async () => {
       prisma.prescription.findFirst.mockResolvedValue(null);
       await expect(
-        service.getPrescriptionForExport('tenant-1', 'patient-1', 'rx-1'),
+        service.getPrescriptionForExport('tenant-1', 'patient-1', 'user-1', 'rx-1'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -177,7 +181,7 @@ describe('PatientPortalService Downloads and Requests', () => {
       prisma.refillRequest.findFirst.mockResolvedValue(null); // No existing pending request
       prisma.refillRequest.create.mockResolvedValue({ id: 'refill-1' });
 
-      await service.createRefillRequest('tenant-1', 'patient-1', 'rx-1', {
+      await service.createRefillRequest('tenant-1', 'patient-1', 'user-1', 'rx-1', {
         reason: 'need more',
       });
       expect(audit.log).toHaveBeenCalledWith(
@@ -193,7 +197,7 @@ describe('PatientPortalService Downloads and Requests', () => {
       prisma.refillRequest.findFirst.mockResolvedValue({ id: 'refill-old' });
 
       await expect(
-        service.createRefillRequest('tenant-1', 'patient-1', 'rx-1', {
+        service.createRefillRequest('tenant-1', 'patient-1', 'user-1', 'rx-1', {
           reason: 'need more',
         }),
       ).rejects.toThrow(ConflictException);
@@ -205,7 +209,7 @@ describe('PatientPortalService Downloads and Requests', () => {
       prisma.medicalRecordRequest.findFirst.mockResolvedValue(null);
       prisma.medicalRecordRequest.create.mockResolvedValue({ id: 'mr-1' });
 
-      await service.createMedicalRecordRequest('tenant-1', 'patient-1', {
+      await service.createMedicalRecordRequest('tenant-1', 'patient-1', 'user-1', 'user-1', {
         requestType: 'FULL_RECORD',
         reason: 'moving',
       });
@@ -220,7 +224,7 @@ describe('PatientPortalService Downloads and Requests', () => {
       prisma.medicalRecordRequest.findFirst.mockResolvedValue({ id: 'mr-old' });
 
       await expect(
-        service.createMedicalRecordRequest('tenant-1', 'patient-1', {
+        service.createMedicalRecordRequest('tenant-1', 'patient-1', 'user-1', 'user-1', {
           requestType: 'FULL_RECORD',
         }),
       ).rejects.toThrow(ConflictException);

@@ -2,7 +2,7 @@ import { expect, type Page, type APIResponse, type BrowserContext } from '@playw
 
 export const FRONTEND_URL = 'http://localhost:5173';
 export const BACKEND_URL = 'http://localhost:3000';
-export const TENANT_CODE = 'Test Tenant';
+export const TENANT_CODE = 'Central Hospital (Main Branch)';
 export const DEFAULT_PASSWORD = 'Admin@123';
 
 export interface RoleAccount {
