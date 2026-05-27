@@ -2,7 +2,7 @@ import { useRouteError, useNavigate } from 'react-router-dom';
 import { AlertTriangle, RefreshCcw, Home } from 'lucide-react';
 
 export const RouteErrorBoundary = () => {
-  const error = useRouteError() as any;
+  const error = useRouteError() as { status?: number; statusText?: string; message?: string; stack?: string };
   const navigate = useNavigate();
 
   const isDev = import.meta.env.DEV;

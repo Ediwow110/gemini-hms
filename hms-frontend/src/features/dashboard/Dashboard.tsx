@@ -38,6 +38,7 @@ const getGreeting = () => {
 
 export const Dashboard = () => {
   const user = useUser();
+  const navigate = useNavigate();
   const displayName = user?.email?.split('@')[0] || 'Staff';
 
   return (

@@ -1,12 +1,11 @@
+import { describe, it, expect } from 'vitest';
 import {
-  ROLE_PRIORITY,
-  ROLE_PORTAL_PATHS,
   normalizeRole,
   getPrimaryRole,
   getDefaultPortalPath,
   isKnownPortalPath,
   getSafePortalPath
-} from './role-portal-resolver';
+} from '../role-portal-resolver';
 
 describe('Role Portal Resolver', () => {
   it('should normalize known role aliases', () => {
@@ -22,10 +21,35 @@ describe('Role Portal Resolver', () => {
     expect(getPrimaryRole([])).toBeNull();
   });
 
-  it('should get default portal path', () => {
-    expect(getDefaultPortalPath(['Branch Admin', 'Doctor'])).toBe('/branch-admin');
+  it('should return correct path for all known roles', () => {
+    expect(getDefaultPortalPath(['Super Admin'])).toBe('/admin');
+    expect(getDefaultPortalPath(['Branch Admin'])).toBe('/branch-admin');
+    expect(getDefaultPortalPath(['Marketplace Admin'])).toBe('/marketplace-admin');
+    expect(getDefaultPortalPath(['Compliance Officer'])).toBe('/compliance');
+    expect(getDefaultPortalPath(['IT Support'])).toBe('/it');
+    expect(getDefaultPortalPath(['HR Manager'])).toBe('/hr');
+    expect(getDefaultPortalPath(['HR Staff'])).toBe('/hr');
+    expect(getDefaultPortalPath(['Procurement Officer'])).toBe('/procurement');
+    expect(getDefaultPortalPath(['Procurement Manager'])).toBe('/procurement');
+    expect(getDefaultPortalPath(['Procurement Agent'])).toBe('/procurement');
     expect(getDefaultPortalPath(['Doctor'])).toBe('/doctor');
-    expect(getDefaultPortalPath(['Lab Technician'])).toBe('/lab'); // Via alias 'Med-Tech'
+    expect(getDefaultPortalPath(['Nurse'])).toBe('/nurse');
+    expect(getDefaultPortalPath(['Med-Tech'])).toBe('/lab');
+    expect(getDefaultPortalPath(['Lab Technician'])).toBe('/lab');
+    expect(getDefaultPortalPath(['Cashier'])).toBe('/cashier');
+    expect(getDefaultPortalPath(['Finance'])).toBe('/cashier');
+    expect(getDefaultPortalPath(['Pharmacist'])).toBe('/pharmacy');
+    expect(getDefaultPortalPath(['Supplier'])).toBe('/supplier');
+    expect(getDefaultPortalPath(['Supplier Admin'])).toBe('/supplier');
+    expect(getDefaultPortalPath(['Marketplace Supplier'])).toBe('/supplier');
+    expect(getDefaultPortalPath(['Marketplace Buyer'])).toBe('/marketplace');
+    expect(getDefaultPortalPath(['Customer'])).toBe('/marketplace');
+    expect(getDefaultPortalPath(['Patient'])).toBe('/patient');
+    expect(getDefaultPortalPath(['Field Technician'])).toBe('/field-service');
+    expect(getDefaultPortalPath(['Receptionist'])).toBe('/queue');
+  });
+
+  it('should get default portal path for fallback scenarios', () => {
     expect(getDefaultPortalPath(['Unknown Role'])).toBe('/unauthorized');
     expect(getDefaultPortalPath([])).toBe('/unauthorized');
   });
@@ -37,16 +61,9 @@ describe('Role Portal Resolver', () => {
   });
 
   it('should return safe portal path', () => {
-    // If path is valid, return it
     expect(getSafePortalPath('/admin', ['Super Admin'])).toBe('/admin');
-    
-    // If path is invalid, fallback to default for roles
     expect(getSafePortalPath('/invalid-path', ['Doctor'])).toBe('/doctor');
-    
-    // If path is missing, fallback to default for roles
     expect(getSafePortalPath(undefined, ['Nurse'])).toBe('/nurse');
-    
-    // If no roles and invalid path, fallback to unauthorized
     expect(getSafePortalPath('/invalid-path', [])).toBe('/unauthorized');
   });
 });

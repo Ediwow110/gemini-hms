@@ -10,12 +10,14 @@ export interface UserState {
   branchId?: string;
   roles: string[];
   permissions: string[];
+  defaultPortalPath?: string;
 }
 
 export interface AuthContextType {
   user: UserState | null;
   isLoading: boolean;
-  authError?: any;
+  authError?: unknown;
+  logout: () => void;
   refetchUser: () => Promise<void>;
 }
 
@@ -68,15 +70,16 @@ export const usePermissions = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [authError, setAuthError] = useState<any>(null);
+  const [authError, setAuthError] = useState<unknown>(null);
 
-  const logDiagnostics = (phase: string, error: any) => {
+  const logDiagnostics = (phase: string, error: unknown) => {
     if (import.meta.env.DEV) {
+      const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string };
       console.error("[Auth Diagnostics]", {
         phase,
         endpoint: "/v1/auth/me",
-        status: error?.response?.status,
-        message: error?.response?.data?.message || error?.message,
+        status: err?.response?.status,
+        message: err?.response?.data?.message || err?.message,
         apiBaseUrl: apiClient.defaults.baseURL,
         hasAccessCookie: document.cookie.includes('access_token'),
         timestamp: new Date().toISOString()

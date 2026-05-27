@@ -220,7 +220,12 @@ export class AuthService {
 
     // 3. Non-sensitive: auto-verify MFA status in session
     await this.sessionService.markMfaVerified(session.id);
-    return await this.generateTokenPair(user, roles, session.id, initialRtPlain);
+    return await this.generateTokenPair(
+      user,
+      roles,
+      session.id,
+      initialRtPlain,
+    );
   }
 
   async verifyMfa(userId: string, sessionId: string, code: string) {
@@ -247,7 +252,12 @@ export class AuthService {
 
     await this.sessionService.setInitialRefreshToken(sessionId, newRtHash);
 
-    return await this.generateTokenPair(user as any, roles, sessionId, newRtPlain);
+    return await this.generateTokenPair(
+      user as any,
+      roles,
+      sessionId,
+      newRtPlain,
+    );
   }
 
   async verifyMfaWithRecoveryCode(
@@ -283,7 +293,12 @@ export class AuthService {
 
     await this.sessionService.setInitialRefreshToken(sessionId, newRtHash);
 
-    return await this.generateTokenPair(user as any, roles, sessionId, newRtPlain);
+    return await this.generateTokenPair(
+      user as any,
+      roles,
+      sessionId,
+      newRtPlain,
+    );
   }
 
   async selectBranch(userId: string, tenantId: string, branchId: string) {
@@ -386,7 +401,9 @@ export class AuthService {
     const portalMap: Record<string, { path: string; priority: number }> = {
       'Super Admin': { path: '/admin', priority: 100 },
       'Branch Admin': { path: '/branch-admin', priority: 90 },
+      'Procurement Manager': { path: '/procurement', priority: 85 },
       'Procurement Officer': { path: '/procurement', priority: 85 },
+      'Procurement Agent': { path: '/procurement', priority: 85 },
       'HR Manager': { path: '/hr', priority: 80 },
       'Compliance Officer': { path: '/compliance', priority: 75 },
       'Marketplace Admin': { path: '/marketplace-admin', priority: 70 },
@@ -394,16 +411,22 @@ export class AuthService {
       Nurse: { path: '/nurse', priority: 55 },
       Pharmacist: { path: '/pharmacy', priority: 50 },
       'Med-Tech': { path: '/lab', priority: 45 },
+      'Lab Technician': { path: '/lab', priority: 45 },
       Cashier: { path: '/cashier', priority: 40 },
+      Finance: { path: '/cashier', priority: 40 },
       Receptionist: { path: '/queue', priority: 35 },
       'IT Support': { path: '/it', priority: 30 },
       'Field Technician': { path: '/field-service', priority: 25 },
       'HR Staff': { path: '/hr', priority: 20 },
+      'Supplier Admin': { path: '/supplier', priority: 15 },
       Supplier: { path: '/supplier', priority: 15 },
+      'Marketplace Supplier': { path: '/supplier', priority: 15 },
+      'Marketplace Buyer': { path: '/marketplace', priority: 10 },
+      Customer: { path: '/marketplace', priority: 10 },
       Patient: { path: '/patient', priority: 10 },
     };
 
-    let bestMatch = { path: '/', priority: -1 };
+    let bestMatch = { path: '/unauthorized', priority: -1 };
 
     for (const role of roles) {
       const match = portalMap[role];
@@ -479,17 +502,28 @@ export class AuthService {
     branchId?: string,
   ) {
     const defaultPortalPath = this.getDefaultPortalPath(roles);
-    
+
     // Determine branch selection requirement
     const userBranches = await this.prisma.userBranch.findMany({
       where: { userId: user.id, tenantId: user.tenantId, isActive: true },
       include: { branch: { select: { id: true, name: true, code: true } } },
     });
-    
-    const availableBranches = userBranches.map(ub => ub.branch);
-    
+
+    const availableBranches = userBranches.map((ub) => ub.branch);
+
+    const GLOBAL_PORTAL_ROLES = new Set([
+      'Super Admin',
+      'Marketplace Admin',
+      'Compliance Officer',
+      'IT Support',
+    ]);
+    const hasGlobalPortalRole = roles.some((role) =>
+      GLOBAL_PORTAL_ROLES.has(role),
+    );
+
     // Branch selection is required only when user has multiple eligible branches and no selected branch
-    const requiresBranchSelection = !branchId && availableBranches.length > 1;
+    const requiresBranchSelection =
+      !hasGlobalPortalRole && !branchId && availableBranches.length > 1;
 
     const payload = {
       sub: user.id,

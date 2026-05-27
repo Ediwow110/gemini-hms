@@ -42,7 +42,7 @@ describe('AuthService', () => {
               update: jest.fn(),
             },
             userBranch: {
-              findMany: jest.fn(),
+              findMany: jest.fn().mockResolvedValue([]),
               findFirst: jest.fn(),
             },
             userRole: {

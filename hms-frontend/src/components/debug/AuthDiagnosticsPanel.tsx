@@ -8,10 +8,12 @@ export const AuthDiagnosticsPanel: React.FC<{ onClose?: () => void }> = ({ onClo
   
   if (!import.meta.env.DEV) return null;
 
+  const err = authError as { response?: { status?: number; data?: { message?: string } }; message?: string };
+
   // Show if there is a bootstrap error that is not a simple 401 Unauthenticated
-  const isError = authError && authError.response?.status !== 401;
-  const isNetworkError = authError && !authError.response;
-  const isCorsError = authError?.message === 'Network Error';
+  const isError = err && err.response?.status !== 401;
+  const isNetworkError = err && !err.response;
+  const isCorsError = err?.message === 'Network Error';
 
   if (!isError && !isNetworkError) return null;
 
@@ -59,7 +61,7 @@ export const AuthDiagnosticsPanel: React.FC<{ onClose?: () => void }> = ({ onClo
               Suggested Checks
             </h4>
             <ul className="text-[11px] text-rose-800 space-y-1.5 list-disc list-inside">
-              {!authError?.response && (
+              {!err?.response && (
                 <li>Is the backend running on <code>{apiOrigin}</code>?</li>
               )}
               {isCorsError && (
@@ -74,7 +76,7 @@ export const AuthDiagnosticsPanel: React.FC<{ onClose?: () => void }> = ({ onClo
           </div>
           
           <div className="text-[10px] text-rose-500 font-mono text-center">
-            {authError?.message} {authError?.response?.status ? `(${authError.response.status})` : ''}
+            {err?.message} {err?.response?.status ? `(${err.response.status})` : ''}
           </div>
         </div>
       </div>

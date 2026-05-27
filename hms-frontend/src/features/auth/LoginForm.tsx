@@ -46,7 +46,7 @@ export const LoginForm = () => {
 
   const navigate = useNavigate();
 
-  const handleSuccessfulAuth = (user: any) => {
+  const handleSuccessfulAuth = (user: { defaultPortalPath?: string; roles?: string[] }) => {
     const path = getSafePortalPath(user?.defaultPortalPath, user?.roles || []);
     if (!isKnownPortalPath(path)) {
       setError("Authenticated, but no portal is assigned to your role. Contact administrator.");
