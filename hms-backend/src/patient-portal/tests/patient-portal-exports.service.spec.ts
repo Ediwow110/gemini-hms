@@ -3,7 +3,11 @@ import { PatientPortalService } from '../patient-portal.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../../audit/audit.service';
 import { JwtService } from '@nestjs/jwt';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 describe('PatientPortalService - Exports & Self-Service', () => {
   let service: PatientPortalService;
@@ -240,7 +244,24 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         eventKey: 'LAB_RESULT_PDF_EXPORTED',
         recordType: 'LabResult',
         recordId: mockResultId,
+        newValues: { patientId: mockPatientId },
       });
+    });
+
+    it('should reject with ForbiddenException when userId is missing', async () => {
+      prisma.labResult.findFirst.mockResolvedValue(mockLabResult);
+      prisma.tenant.findUniqueOrThrow.mockResolvedValue(mockTenant);
+
+      await expect(
+        service.getLabResultForExport(
+          mockTenantId,
+          mockPatientId,
+          undefined,
+          mockResultId,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(audit.log).not.toHaveBeenCalled();
     });
   });
 
@@ -296,7 +317,24 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         eventKey: 'INVOICE_PDF_EXPORTED',
         recordType: 'Invoice',
         recordId: mockInvoiceId,
+        newValues: { patientId: mockPatientId },
       });
+    });
+
+    it('should reject with ForbiddenException when userId is missing', async () => {
+      prisma.invoice.findFirst.mockResolvedValue(mockInvoice);
+      prisma.tenant.findUniqueOrThrow.mockResolvedValue(mockTenant);
+
+      await expect(
+        service.getInvoiceForExport(
+          mockTenantId,
+          mockPatientId,
+          undefined,
+          mockInvoiceId,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(audit.log).not.toHaveBeenCalled();
     });
   });
 
@@ -366,7 +404,24 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         eventKey: 'PRESCRIPTION_PDF_EXPORTED',
         recordType: 'Prescription',
         recordId: mockPrescriptionId,
+        newValues: { patientId: mockPatientId },
       });
+    });
+
+    it('should reject with ForbiddenException when userId is missing', async () => {
+      prisma.prescription.findFirst.mockResolvedValue(mockPrescription);
+      prisma.tenant.findUniqueOrThrow.mockResolvedValue(mockTenant);
+
+      await expect(
+        service.getPrescriptionForExport(
+          mockTenantId,
+          mockPatientId,
+          undefined,
+          mockPrescriptionId,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(audit.log).not.toHaveBeenCalled();
     });
   });
 
@@ -412,7 +467,12 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       prisma.payment.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.getPaymentForReceipt(mockTenantId, mockPatientId, mockUserId, 'pay-1'),
+        service.getPaymentForReceipt(
+          mockTenantId,
+          mockPatientId,
+          mockUserId,
+          'pay-1',
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -421,7 +481,12 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       prisma.payment.findFirst.mockResolvedValue(mockPayment);
       prisma.tenant.findUniqueOrThrow.mockResolvedValue(mockTenant);
 
-      await service.getPaymentForReceipt(mockTenantId, mockPatientId, mockUserId, 'pay-1');
+      await service.getPaymentForReceipt(
+        mockTenantId,
+        mockPatientId,
+        mockUserId,
+        'pay-1',
+      );
 
       expect(audit.log).toHaveBeenCalledWith({
         tenantId: mockTenantId,
@@ -429,7 +494,25 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         eventKey: 'PATIENT_RECEIPT_DOWNLOADED',
         recordType: 'Payment',
         recordId: 'pay-1',
+        newValues: { patientId: mockPatientId },
       });
+    });
+
+    it('should reject with ForbiddenException when userId is missing', async () => {
+      prisma.payment = prisma.payment || { findFirst: jest.fn() };
+      prisma.payment.findFirst.mockResolvedValue(mockPayment);
+      prisma.tenant.findUniqueOrThrow.mockResolvedValue(mockTenant);
+
+      await expect(
+        service.getPaymentForReceipt(
+          mockTenantId,
+          mockPatientId,
+          undefined,
+          'pay-1',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(audit.log).not.toHaveBeenCalled();
     });
   });
 
@@ -525,10 +608,29 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         recordType: 'RefillRequest',
         recordId: mockRefillRequest.id,
         newValues: {
+          patientId: mockPatientId,
           prescriptionId: mockPrescriptionId,
           reason: 'Running low',
         },
       });
+    });
+
+    it('should reject with ForbiddenException when userId is missing', async () => {
+      prisma.prescription.findFirst.mockResolvedValue(mockPrescription);
+      prisma.refillRequest.findFirst.mockResolvedValue(null);
+      prisma.refillRequest.create.mockResolvedValue(mockRefillRequest);
+
+      await expect(
+        service.createRefillRequest(
+          mockTenantId,
+          mockPatientId,
+          undefined,
+          mockPrescriptionId,
+          { reason: 'Running low' },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(audit.log).not.toHaveBeenCalled();
     });
   });
 
@@ -608,7 +710,12 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         mockMedRecordRequest,
       );
 
-      await service.createMedicalRecordRequest(mockTenantId, mockPatientId, mockUserId, {});
+      await service.createMedicalRecordRequest(
+        mockTenantId,
+        mockPatientId,
+        mockUserId,
+        {},
+      );
 
       expect(prisma.medicalRecordRequest.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -623,7 +730,12 @@ describe('PatientPortalService - Exports & Self-Service', () => {
       );
 
       await expect(
-        service.createMedicalRecordRequest(mockTenantId, mockPatientId, mockUserId, {}),
+        service.createMedicalRecordRequest(
+          mockTenantId,
+          mockPatientId,
+          mockUserId,
+          {},
+        ),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -633,10 +745,15 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         mockMedRecordRequest,
       );
 
-      await service.createMedicalRecordRequest(mockTenantId, mockPatientId, mockUserId, {
-        requestType: 'LAB_RESULTS_ONLY',
-        reason: 'Insurance',
-      });
+      await service.createMedicalRecordRequest(
+        mockTenantId,
+        mockPatientId,
+        mockUserId,
+        {
+          requestType: 'LAB_RESULTS_ONLY',
+          reason: 'Insurance',
+        },
+      );
 
       expect(audit.log).toHaveBeenCalledWith({
         tenantId: mockTenantId,
@@ -645,10 +762,32 @@ describe('PatientPortalService - Exports & Self-Service', () => {
         recordType: 'MedicalRecordRequest',
         recordId: mockMedRecordRequest.id,
         newValues: {
+          patientId: mockPatientId,
           requestType: 'LAB_RESULTS_ONLY',
           reason: 'Insurance',
         },
       });
+    });
+
+    it('should reject with ForbiddenException when userId is missing', async () => {
+      prisma.medicalRecordRequest.findFirst.mockResolvedValue(null);
+      prisma.medicalRecordRequest.create.mockResolvedValue(
+        mockMedRecordRequest,
+      );
+
+      await expect(
+        service.createMedicalRecordRequest(
+          mockTenantId,
+          mockPatientId,
+          undefined,
+          {
+            requestType: 'FULL_RECORD',
+            reason: 'Insurance',
+          },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(audit.log).not.toHaveBeenCalled();
     });
   });
 

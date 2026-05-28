@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  ForbiddenException,
   ConflictException,
   Logger,
 } from '@nestjs/common';
@@ -23,6 +24,15 @@ export class PatientPortalService {
     private readonly jwtService: JwtService,
     private readonly auditService: AuditService,
   ) {}
+
+  private requireAuditableUser(userId?: string): string {
+    if (!userId) {
+      throw new ForbiddenException(
+        'Patient portal account is not linked to an auditable user identity.',
+      );
+    }
+    return userId;
+  }
 
   async login(dto: PatientLoginDto) {
     const tenant = await this.prisma.tenant.findFirst({
@@ -207,15 +217,15 @@ export class PatientPortalService {
       where: { id: tenantId },
     });
 
-    if (userId) {
-      await this.auditService.log({
-        tenantId,
-        userId,
-        eventKey: 'LAB_RESULT_PDF_EXPORTED',
-        recordType: 'LabResult',
-        recordId: resultId,
-      });
-    }
+    const auditableUserId = this.requireAuditableUser(userId);
+    await this.auditService.log({
+      tenantId,
+      userId: auditableUserId,
+      eventKey: 'LAB_RESULT_PDF_EXPORTED',
+      recordType: 'LabResult',
+      recordId: resultId,
+      newValues: { patientId },
+    });
 
     return {
       labResult,
@@ -257,15 +267,15 @@ export class PatientPortalService {
       where: { id: tenantId },
     });
 
-    if (userId) {
-      await this.auditService.log({
-        tenantId,
-        userId,
-        eventKey: 'INVOICE_PDF_EXPORTED',
-        recordType: 'Invoice',
-        recordId: invoiceId,
-      });
-    }
+    const auditableUserId = this.requireAuditableUser(userId);
+    await this.auditService.log({
+      tenantId,
+      userId: auditableUserId,
+      eventKey: 'INVOICE_PDF_EXPORTED',
+      recordType: 'Invoice',
+      recordId: invoiceId,
+      newValues: { patientId },
+    });
 
     return {
       invoice,
@@ -306,15 +316,15 @@ export class PatientPortalService {
       where: { id: tenantId },
     });
 
-    if (userId) {
-      await this.auditService.log({
-        tenantId,
-        userId,
-        eventKey: 'PRESCRIPTION_PDF_EXPORTED',
-        recordType: 'Prescription',
-        recordId: prescriptionId,
-      });
-    }
+    const auditableUserId = this.requireAuditableUser(userId);
+    await this.auditService.log({
+      tenantId,
+      userId: auditableUserId,
+      eventKey: 'PRESCRIPTION_PDF_EXPORTED',
+      recordType: 'Prescription',
+      recordId: prescriptionId,
+      newValues: { patientId },
+    });
 
     return {
       prescription,
@@ -362,15 +372,15 @@ export class PatientPortalService {
       where: { id: tenantId },
     });
 
-    if (userId) {
-      await this.auditService.log({
-        tenantId,
-        userId,
-        eventKey: 'PATIENT_RECEIPT_DOWNLOADED',
-        recordType: 'Payment',
-        recordId: paymentId,
-      });
-    }
+    const auditableUserId = this.requireAuditableUser(userId);
+    await this.auditService.log({
+      tenantId,
+      userId: auditableUserId,
+      eventKey: 'PATIENT_RECEIPT_DOWNLOADED',
+      recordType: 'Payment',
+      recordId: paymentId,
+      newValues: { patientId },
+    });
 
     return {
       payment,
@@ -427,16 +437,15 @@ export class PatientPortalService {
       },
     });
 
-    if (userId) {
-      await this.auditService.log({
-        tenantId,
-        userId,
-        eventKey: 'PRESCRIPTION_REFILL_REQUESTED',
-        recordType: 'RefillRequest',
-        recordId: refillRequest.id,
-        newValues: { prescriptionId, reason: dto.reason },
-      });
-    }
+    const auditableUserId = this.requireAuditableUser(userId);
+    await this.auditService.log({
+      tenantId,
+      userId: auditableUserId,
+      eventKey: 'PRESCRIPTION_REFILL_REQUESTED',
+      recordType: 'RefillRequest',
+      recordId: refillRequest.id,
+      newValues: { patientId, prescriptionId, reason: dto.reason },
+    });
 
     return refillRequest;
   }
@@ -485,19 +494,19 @@ export class PatientPortalService {
       },
     });
 
-    if (userId) {
-      await this.auditService.log({
-        tenantId,
-        userId,
-        eventKey: 'MEDICAL_RECORD_COPY_REQUESTED',
-        recordType: 'MedicalRecordRequest',
-        recordId: recordRequest.id,
-        newValues: {
-          requestType: dto.requestType || 'FULL_RECORD',
-          reason: dto.reason,
-        },
-      });
-    }
+    const auditableUserId = this.requireAuditableUser(userId);
+    await this.auditService.log({
+      tenantId,
+      userId: auditableUserId,
+      eventKey: 'MEDICAL_RECORD_COPY_REQUESTED',
+      recordType: 'MedicalRecordRequest',
+      recordId: recordRequest.id,
+      newValues: {
+        patientId,
+        requestType: dto.requestType || 'FULL_RECORD',
+        reason: dto.reason,
+      },
+    });
 
     return recordRequest;
   }
