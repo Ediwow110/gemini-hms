@@ -62,7 +62,7 @@ jobs:
           echo "Validation Time: $(date)"
           echo "Git Commit: ${{ github.sha }}"
           echo "Audit Check: PASSED"
-          echo "E2E Test Suite: PASSED (81/81 tests)"
+          echo "E2E Test Suite: PASSED"
           echo "Docker Build Validation: PASSED"
           echo "===================================================="
           echo "Manual action required to execute final production release."
