@@ -1,24 +1,29 @@
 import React from 'react';
 import { AlertCircle, ArrowRight, ExternalLink } from 'lucide-react';
-
-type AlertSeverity = 'info' | 'warning' | 'critical';
+import type { AnalyticsSeverity } from '../../types/analytics';
 
 interface DashboardAlertCardProps {
   title: string;
   message: string;
-  severity: AlertSeverity;
+  severity: AnalyticsSeverity;
   actionLabel?: string;
   actionHref?: string;
   actionOnClick?: () => void;
   timestamp?: string;
 }
 
-const severityStyles: Record<AlertSeverity, { iconClass: string; bgClass: string; borderClass: string; textClass: string }> = {
+const severityStyles: Record<AnalyticsSeverity, { iconClass: string; bgClass: string; borderClass: string; textClass: string }> = {
   info: {
     iconClass: 'text-indigo-500',
     bgClass: 'bg-indigo-50',
     borderClass: 'border-indigo-100',
     textClass: 'text-indigo-700',
+  },
+  success: {
+    iconClass: 'text-emerald-500',
+    bgClass: 'bg-emerald-50',
+    borderClass: 'border-emerald-100',
+    textClass: 'text-emerald-700',
   },
   warning: {
     iconClass: 'text-amber-500',
