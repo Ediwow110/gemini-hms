@@ -50,12 +50,6 @@ export class SelfApprovalGuard implements CanActivate {
       await this.logAndThrow(user, recordId);
     }
 
-    // Deny by default: if the record type is not recognized, block the action
-    // to prevent self-approval on unknown mutable record types.
-    if (!approvalRequest && !encounter) {
-      return false;
-    }
-
     return true;
   }
 
