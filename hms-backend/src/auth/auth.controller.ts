@@ -50,7 +50,7 @@ function setAuthCookies(
   res: Response,
   result: any,
   isProd: boolean,
-  userId?: string,
+  _userId?: string,
 ): string {
   if (result.accessToken) {
     res.cookie('access_token', result.accessToken, COOKIE_OPTIONS(isProd));

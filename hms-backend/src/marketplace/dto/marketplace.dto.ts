@@ -7,7 +7,6 @@ import {
   Min,
 } from 'class-validator';
 import { ListingStatus } from '@prisma/client';
-import { Type } from 'class-transformer';
 
 export class CreateListingDto {
   @IsUUID()

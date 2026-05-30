@@ -16,7 +16,6 @@ import {
   CloseSessionDto,
 } from './dto/payment.dto';
 import { RefundRequestDto, VoidRequestDto } from './dto/reversal.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { BranchGuard } from '../auth/guards/branch.guard';

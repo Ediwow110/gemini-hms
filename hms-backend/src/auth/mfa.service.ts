@@ -103,7 +103,7 @@ export class MfaService {
         token: code,
         window: 1, // Allow 1-step window
       });
-    } catch (e) {
+    } catch {
       return false;
     }
   }

@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as crypto from 'crypto';
 
 export interface VitalsInput {
   bps: number; // Systolic BP

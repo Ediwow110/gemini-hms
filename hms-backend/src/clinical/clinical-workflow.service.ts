@@ -28,7 +28,6 @@ import {
   EncounterSummaryDto,
   VitalsSummaryDto,
   ClinicalOrderSummaryDto,
-  ClinicalOrderItemSummaryDto,
   LabResultSummaryDto,
   PrescriptionSummaryDto,
   BillingHandoffSummaryDto,

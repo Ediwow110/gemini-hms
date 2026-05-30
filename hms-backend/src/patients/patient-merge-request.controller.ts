@@ -14,7 +14,6 @@ import {
   ApproveMergeRequestDto,
   RejectMergeRequestDto,
 } from './dto/patient-merge.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';

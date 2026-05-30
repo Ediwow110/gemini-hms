@@ -7,7 +7,6 @@ import {
   Body,
   UseGuards,
   Req,
-  ForbiddenException,
 } from '@nestjs/common';
 import { LogisticsService } from './logistics.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
