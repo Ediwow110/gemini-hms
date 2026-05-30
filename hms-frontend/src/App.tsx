@@ -50,6 +50,7 @@ const BranchAdminDashboard = lazy(() => import('./portals/branch-admin/BranchAdm
 
 // SuperAdmin Portal
 const SuperAdminDashboard = lazy(() => import('./portals/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
+const AdminExecutiveDashboard = lazy(() => import('./pages/admin/AdminExecutiveDashboard').then(m => ({ default: m.AdminExecutiveDashboard })));
 const TenantsPage = lazy(() => import('./portals/admin/TenantsPage').then(m => ({ default: m.TenantsPage })));
 const BranchesPage = lazy(() => import('./portals/admin/BranchesPage').then(m => ({ default: m.BranchesPage })));
 const UsersPage = lazy(() => import('./portals/admin/UsersPage').then(m => ({ default: m.UsersPage })));
@@ -311,6 +312,7 @@ const router = createBrowserRouter([
 
           // SuperAdmin Portal
           { path: 'admin', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><SuperAdminDashboard /></LazyPage></PermissionRoute> },
+          { path: 'admin/executive', element: <PermissionRoute allowedRoles={['Super Admin', 'Admin']}><LazyPage><AdminExecutiveDashboard /></LazyPage></PermissionRoute> },
           { path: 'admin/tenants', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><TenantsPage /></LazyPage></PermissionRoute> },
           { path: 'admin/branches', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><BranchesPage /></LazyPage></PermissionRoute> },
           { path: 'admin/users', element: <PermissionRoute permission="admin.role.change"><LazyPage><UsersPage /></LazyPage></PermissionRoute> },
