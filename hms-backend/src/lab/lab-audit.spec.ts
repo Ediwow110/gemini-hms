@@ -3,7 +3,6 @@ import { LabService } from './lab.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ApprovalsService } from '../approvals/approvals.service';
-import { Prisma } from '@prisma/client';
 
 describe('LabService Audit Coupling (Batch 8)', () => {
   let service: LabService;

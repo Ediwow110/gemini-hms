@@ -6,8 +6,6 @@ import { NotFoundException, ForbiddenException } from '@nestjs/common';
 
 describe('ItSupportService', () => {
   let service: ItSupportService;
-  let prisma: any;
-  let audit: any;
 
   const mockPrisma = {
     supportTicket: {
@@ -34,8 +32,6 @@ describe('ItSupportService', () => {
     }).compile();
 
     service = module.get<ItSupportService>(ItSupportService);
-    prisma = module.get(PrismaService);
-    audit = module.get(AuditService);
   });
 
   it('should be defined', () => {
@@ -164,7 +160,7 @@ describe('ItSupportService', () => {
         status: 'IN_PROGRESS',
       });
 
-      const result = await service.update(
+      await service.update(
         'ticket-1',
         { status: 'IN_PROGRESS' },
         'tenant-1',

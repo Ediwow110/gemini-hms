@@ -201,11 +201,7 @@ describe('NursingService', () => {
     });
 
     it('should start a task (OPEN -> IN_PROGRESS)', async () => {
-      const result = await service.startTask(
-        mockTenantId,
-        mockTaskId,
-        mockUser,
-      );
+      await service.startTask(mockTenantId, mockTaskId, mockUser);
       expect(prisma.nurseTask.update).toHaveBeenCalled();
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'NURSE_TASK_STARTED' }),
@@ -231,11 +227,7 @@ describe('NursingService', () => {
         completedAt: new Date(),
         completedById: mockUserId,
       });
-      const result = await service.completeTask(
-        mockTenantId,
-        mockTaskId,
-        mockUser,
-      );
+      await service.completeTask(mockTenantId, mockTaskId, mockUser);
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'NURSE_TASK_COMPLETED' }),
         expect.anything(),
@@ -248,7 +240,7 @@ describe('NursingService', () => {
         ...mockTask,
         status: TaskStatus.CANCELLED,
       });
-      const result = await service.cancelTask(
+      await service.cancelTask(
         mockTenantId,
         mockTaskId,
         mockUser,
@@ -270,11 +262,7 @@ describe('NursingService', () => {
         ...mockTask,
         status: TaskStatus.OPEN,
       });
-      const result = await service.reopenTask(
-        mockTenantId,
-        mockTaskId,
-        mockUser,
-      );
+      await service.reopenTask(mockTenantId, mockTaskId, mockUser);
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'NURSE_TASK_REOPENED' }),
         expect.anything(),
