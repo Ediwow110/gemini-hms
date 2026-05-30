@@ -19,7 +19,7 @@ DB_USER=postgres DB_NAME=hms_db sh scripts/db-backup.sh
 
 The backup file is written to `./backups/` by default (overridable via `BACKUP_DIR`).
 
-### Restore
+### Restore into Primary Database
 
 ```bash
 BACKUP_FILE=./backups/hms_db_backup_20260530_120000.sql \
@@ -29,6 +29,29 @@ BACKUP_FILE=./backups/hms_db_backup_20260530_120000.sql \
 ```
 
 **Safety**: Restore requires `RESTORE_CONFIRM=YES` and a valid `BACKUP_FILE` path.
+
+### Restore into Clean Target (Drill Environment)
+
+For restore drills, use the dedicated restore target compose file to avoid touching the primary database volume:
+
+```bash
+# 1. Start the clean restore target
+docker compose -f docker-compose.restore.yml up -d
+
+# 2. Restore backup into the restore target
+COMPOSE_FILE=docker-compose.restore.yml \
+  DB_SERVICE=db_restore \
+  RESTORE_DB_USER=hms_prod_user \
+  RESTORE_DB_NAME=gemini_hms_prod \
+  BACKUP_FILE=./backups/gemini_hms_prod_backup_*.sql \
+  RESTORE_CONFIRM=YES \
+  bash scripts/db-restore.sh
+
+# 3. Teardown when done (destroys restored data)
+docker compose -f docker-compose.restore.yml down -v
+```
+
+The restore script supports `RESTORE_DB_USER` and `RESTORE_DB_NAME` env vars that override `DB_USER`/`DB_NAME` for restore target scenarios. This allows the `.env` file to keep primary DB credentials while the restore drill uses separate credentials.
 
 ## Manual Backup
 
