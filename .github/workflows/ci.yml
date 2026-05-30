@@ -50,7 +50,14 @@ jobs:
       - run: npm ci
       - name: Run Dependency Vulnerability Audit
         run: npm audit --audit-level=critical
-      - run: npm run typecheck
+      - name: Run frontend typecheck with diagnostics
+        run: |
+          set +e
+          npm run typecheck 2>&1 | tee ../frontend-typecheck.log
+          status=${PIPESTATUS[0]}
+          echo "--- frontend typecheck tail ---"
+          tail -n 200 ../frontend-typecheck.log
+          exit $status
       - run: npm run lint
       - run: npm run test
       - run: npm run build
