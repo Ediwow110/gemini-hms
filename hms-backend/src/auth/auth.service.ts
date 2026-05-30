@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   UnauthorizedException,
   ForbiddenException,
   HttpStatus,
@@ -29,6 +30,7 @@ type UserRoleWithName = {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly SENSITIVE_ROLES = [
     'Super Admin',
     'Branch Admin',
@@ -193,7 +195,13 @@ export class AuthService {
     );
 
     // 2. Handle MFA Step-Up
-    if (isSensitive && process.env.DISABLE_AUTH_VERIFICATION !== 'true') {
+    const mfaDisabled = process.env.DISABLE_AUTH_VERIFICATION === 'true';
+    if (mfaDisabled) {
+      this.logger.warn(
+        'MFA step-up is DISABLED — this should only occur in test environments',
+      );
+    }
+    if (isSensitive && !mfaDisabled) {
       const challenge = user.mfaEnabled ? 'MFA_VERIFY' : 'MFA_SETUP';
 
       // Issue a restricted mfaToken (short-lived, limited scope)

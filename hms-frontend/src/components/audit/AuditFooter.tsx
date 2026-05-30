@@ -39,7 +39,7 @@ export const AuditFooter = () => {
   }, []);
 
   return (
-    <footer className="mt-12 py-6 border-t border-slate-200/80 bg-white/40 backdrop-blur-md rounded-t-2xl px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-xs font-semibold text-slate-400 select-none animate-fade-in">
+    <footer className="mt-12 py-6 border-t border-slate-200/80 bg-white/80 rounded-t-2xl px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-sm font-semibold text-slate-500 select-none">
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-1.5 text-indigo-600 bg-indigo-50/50 px-2.5 py-1 rounded-lg border border-indigo-100/50">
           <ShieldCheck className="h-4 w-4" />

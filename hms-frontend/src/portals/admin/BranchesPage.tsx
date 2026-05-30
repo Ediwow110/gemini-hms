@@ -114,7 +114,10 @@ export const BranchesPage: React.FC = () => {
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
         </div>
-        <button className="btn border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5">
+        <button 
+          onClick={() => setShowCreateModal(true)}
+          className="btn border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
+        >
           <Filter className="h-4 w-4" /> Filter Status
         </button>
       </div>

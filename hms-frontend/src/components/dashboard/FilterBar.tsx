@@ -32,7 +32,7 @@ export const FilterBar = ({
   rightAction,
 }: FilterBarProps) => {
   return (
-    <div className="card p-4 flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between mb-6 animate-fade-in bg-white/70 backdrop-blur-sm shadow-sm border-slate-200/60">
+    <div className="card p-4 flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between mb-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row flex-1 gap-3 items-stretch sm:items-center">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">

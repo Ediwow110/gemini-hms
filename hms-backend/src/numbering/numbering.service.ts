@@ -32,34 +32,29 @@ export class NumberingService {
     const safeBranchId = branchId || null;
 
     const logic = async (db: any) => {
-      // Find the existing sequence
-      let sequence = await db.numberingSequence.findFirst({
+      // Use upsert to atomically create-or-increment, avoiding race conditions
+      // on the findFirst + create path. The unique constraint on
+      // (tenantId, branchId, entityType) ensures only one sequence exists.
+      const sequence = await db.numberingSequence.upsert({
         where: {
-          tenantId,
-          branchId: safeBranchId,
-          entityType,
-        },
-      });
-
-      if (sequence) {
-        // Atomically increment
-        sequence = await db.numberingSequence.update({
-          where: { id: sequence.id },
-          data: { currentVal: { increment: 1 } },
-        });
-      } else {
-        // Create new
-        sequence = await db.numberingSequence.create({
-          data: {
+          tenantId_branchId_entityType: {
             tenantId,
             branchId: safeBranchId,
             entityType,
-            prefix: config.prefix,
-            currentVal: 1,
-            padding: config.padding,
           },
-        });
-      }
+        },
+        update: {
+          currentVal: { increment: 1 },
+        },
+        create: {
+          tenantId,
+          branchId: safeBranchId,
+          entityType,
+          prefix: config.prefix,
+          currentVal: 1,
+          padding: config.padding,
+        },
+      });
 
       const paddedValue = String(sequence.currentVal).padStart(
         sequence.padding,

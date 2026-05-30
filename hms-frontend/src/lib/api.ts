@@ -1,8 +1,13 @@
 import axios from 'axios';
 
-function getCsrfToken(): string | null {
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
+let csrfToken: string | null = null;
+
+export function setCsrfToken(token: string | null): void {
+  csrfToken = token;
+}
+
+export function getCsrfToken(): string | null {
+  return csrfToken;
 }
 
 const UNSAFE_METHODS = ['post', 'put', 'patch', 'delete'];
@@ -17,10 +22,17 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   if (config.method && UNSAFE_METHODS.includes(config.method)) {
-    const csrfToken = getCsrfToken();
-    if (csrfToken) {
-      config.headers['X-CSRF-Token'] = csrfToken;
+    const token = getCsrfToken();
+    if (token) {
+      config.headers['X-CSRF-Token'] = token;
     }
   }
   return config;
+});
+
+apiClient.interceptors.response.use((response) => {
+  if (response.data?.csrfToken) {
+    setCsrfToken(response.data.csrfToken);
+  }
+  return response;
 });

@@ -28,7 +28,7 @@ const PATIENT_COOKIE_OPTIONS = (isProd: boolean) => ({
 });
 
 const PATIENT_CSRF_COOKIE_OPTIONS = (isProd: boolean) => ({
-  httpOnly: false,
+  httpOnly: true,
   secure: isProd,
   sameSite: 'strict' as const,
   path: '/patient-portal',
@@ -62,10 +62,11 @@ export class PatientPortalController {
     const csrfToken = crypto.randomUUID();
     res.cookie('patient_csrf', csrfToken, PATIENT_CSRF_COOKIE_OPTIONS(isProd));
 
-    // Browser-safe response: no accessToken exposed to JS
+    // Browser-safe response: no accessToken exposed to JS, include csrfToken for header
     return {
       patientId: result.patientId,
       email: result.email,
+      csrfToken,
     };
   }
 

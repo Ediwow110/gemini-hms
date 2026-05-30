@@ -98,7 +98,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           />
           <button 
             onClick={onClose}
-            className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold px-2 py-1 rounded-lg uppercase tracking-wider"
+            className="text-micro bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-2 py-1 rounded-lg"
           >
             Esc
           </button>
@@ -148,7 +148,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         </div>
 
         {/* Keyboard instructions footer */}
-        <div className="border-t border-slate-100 px-4 py-2.5 bg-slate-50 flex justify-between text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+        <div className="border-t border-slate-100 px-4 py-2.5 bg-slate-50 flex justify-between text-micro text-slate-500 font-semibold">
           <span>Use <kbd className="bg-white border px-1 rounded shadow-sm">↓</kbd> <kbd className="bg-white border px-1 rounded shadow-sm">↑</kbd> to navigate</span>
           <span>Press <kbd className="bg-white border px-1 rounded shadow-sm">Enter</kbd> to select</span>
         </div>

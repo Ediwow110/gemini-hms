@@ -6,82 +6,17 @@ import {
   Stethoscope,
   Menu,
   X,
-  LogOut,
   User,
   Clock
 } from 'lucide-react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useCallback, memo } from 'react';
 
-import { useUser, useAuth, usePermissions } from '../hooks/use-user';
-import { getNavGroups } from './portal-registry';
+import { useUser, useAuth } from '../hooks/use-user';
+import { RoleBasedSidebar } from './RoleBasedSidebar';
 
-function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick?: () => void }) {
-  const isActive = (path: string) => pathname === path;
-  const user = useUser();
-  const { logout } = useAuth();
-  const { hasPermission } = usePermissions();
-
-  const groups = getNavGroups(user?.roles || []);
-
-  return (
-    <>
-      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
-        {groups.map((group) => (
-          <div key={group.label}>
-            <h3 className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em] mb-2">
-              {group.label}
-            </h3>
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                if (item.permission && !hasPermission(item.permission)) return null;
-                const Icon = item.icon;
-                const active = isActive(item.to);
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    onClick={onNavClick}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group relative ${
-                      active
-                        ? 'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 font-semibold shadow-sm shadow-indigo-100'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                    }`}
-                  >
-                    {active && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-r-full" />
-                    )}
-                    <Icon className={`h-[18px] w-[18px] transition-colors duration-200 ${
-                      active ? 'text-indigo-600' : 'text-slate-500 group-hover:text-slate-700'
-                    }`} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      {/* User card */}
-      <div className="p-3 border-t border-slate-100">
-        <div 
-          onClick={logout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100/80 hover:from-slate-100 hover:to-slate-100 transition-all duration-200 cursor-pointer group"
-        >
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-indigo-200 uppercase">
-            {user?.email?.[0] || 'U'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 truncate">{user?.email}</p>
-            <p className="text-[11px] text-slate-500 truncate">{user?.roles?.[0]}</p>
-          </div>
-          <LogOut className="h-4 w-4 text-slate-500 group-hover:text-slate-700 transition-colors" />
-        </div>
-      </div>
-    </>
-  );
-}
+const MemoizedSidebar = memo(RoleBasedSidebar);
+MemoizedSidebar.displayName = 'MemoizedSidebar';
 
 export const AppShell = () => {
   const navigate = useNavigate();
@@ -90,6 +25,14 @@ export const AppShell = () => {
   const [searchFocused, setSearchFocused] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const user = useUser();
+
+  const { logout } = useAuth();
+
+  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
+
+  const handleBranchClick = () => {
+    alert("Branch switching is currently restricted to your assigned home branch.");
+  };
 
   return (
     <div className="min-h-screen flex bg-[#f0f2f7]">
@@ -102,16 +45,16 @@ export const AppShell = () => {
           </div>
           <div>
             <span className="font-bold text-lg text-slate-900 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>HMS Core</span>
-            <p className="text-[10px] text-slate-500 font-medium -mt-0.5">Healthcare Platform</p>
+            <p className="text-caption -mt-0.5">Healthcare Platform</p>
           </div>
         </div>
-        <SidebarContent pathname={location.pathname} />
+        <MemoizedSidebar pathname={location.pathname} />
       </aside>
 
       {/* Mobile sidebar overlay */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={closeMobileMenu} />
           <aside className="absolute left-0 top-0 bottom-0 w-[280px] bg-white shadow-2xl flex flex-col animate-slide-in-right">
             <div className="p-5 flex items-center justify-between border-b border-slate-100">
               <div className="flex items-center gap-3">
@@ -120,11 +63,11 @@ export const AppShell = () => {
                 </div>
                 <span className="font-bold text-lg text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>HMS Core</span>
               </div>
-              <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+              <button onClick={closeMobileMenu} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
                 <X className="h-5 w-5 text-slate-500" />
               </button>
             </div>
-            <SidebarContent pathname={location.pathname} onNavClick={() => setMobileMenuOpen(false)} />
+            <MemoizedSidebar pathname={location.pathname} onNavClick={closeMobileMenu} />
           </aside>
         </div>
       )}
@@ -165,7 +108,10 @@ export const AppShell = () => {
             </button>
 
             {/* Branch selector */}
-            <button className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
+            <button 
+              onClick={handleBranchClick}
+              className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
               <Briefcase className="h-4 w-4 text-slate-500" />
               <span className="font-medium text-xs">Branch: {user?.branchId || 'None'}</span>
             </button>
@@ -174,7 +120,7 @@ export const AppShell = () => {
             <Link to="/notifications" className="relative p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-all duration-200 hover:text-slate-700">
               <Bell className="h-5 w-5" />
               <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                <span className="animate-notification-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-white" />
               </span>
             </Link>
@@ -182,10 +128,14 @@ export const AppShell = () => {
             <div className="h-7 w-px bg-slate-200 mx-1 hidden sm:block" />
 
             {/* User */}
-            <div className="flex items-center gap-3 pl-1 cursor-pointer group">
+            <div 
+              onClick={logout}
+              className="flex items-center gap-3 pl-1 cursor-pointer group"
+              title="Click to logout"
+            >
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-slate-900 leading-none group-hover:text-indigo-700 transition-colors">{user?.email}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">{user?.roles?.[0]}</p>
+                <p className="text-caption mt-0.5">{user?.roles?.[0]}</p>
               </div>
               <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-indigo-200/50 group-hover:shadow-lg group-hover:shadow-indigo-300/50 transition-all duration-200 uppercase">
                 {user?.email?.[0] || 'U'}
@@ -230,7 +180,7 @@ export const AppShell = () => {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Register Patient</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">Enroll new record in master index</p>
+                    <p className="text-caption mt-0.5">Enroll new record in master index</p>
                   </div>
                 </button>
 
@@ -246,7 +196,7 @@ export const AppShell = () => {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Admit Queue Ticket</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">Issue active patient queue slot</p>
+                    <p className="text-caption mt-0.5">Issue active patient queue slot</p>
                   </div>
                 </button>
 
@@ -262,7 +212,7 @@ export const AppShell = () => {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Create Medical Order</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">Order imaging, labs or rx</p>
+                    <p className="text-caption mt-0.5">Order imaging, labs or rx</p>
                   </div>
                 </button>
               </div>

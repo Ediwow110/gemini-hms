@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, LedgerEntry } from '@prisma/client';
 
@@ -19,6 +19,13 @@ export class LedgerService {
     },
     tx?: Prisma.TransactionClient,
   ): Promise<LedgerEntry> {
+    const amt = Number(data.amount);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      throw new BadRequestException(
+        'validation_error: ledger_amount_must_be_a_positive_number',
+      );
+    }
+
     const client = tx || this.prisma;
     return client.ledgerEntry.create({
       data: {

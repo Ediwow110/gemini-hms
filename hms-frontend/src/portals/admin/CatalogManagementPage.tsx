@@ -241,18 +241,18 @@ export const CatalogManagementPage: React.FC = () => {
                 <tr className="bg-slate-50/50 border-b border-slate-200">
                   {activeTab === 'items' ? (
                     <>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Code / Item</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Price</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                      <th className="px-6 py-4 text-table-header">Code / Item</th>
+                      <th className="px-6 py-4 text-table-header">Category</th>
+                      <th className="px-6 py-4 text-table-header">Price</th>
+                      <th className="px-6 py-4 text-table-header">Status</th>
+                      <th className="px-6 py-4 text-table-header text-right">Actions</th>
                     </>
                   ) : (
                     <>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Category Name</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                      <th className="px-6 py-4 text-table-header">Category Name</th>
+                      <th className="px-6 py-4 text-table-header">Description</th>
+                      <th className="px-6 py-4 text-table-header">Status</th>
+                      <th className="px-6 py-4 text-table-header text-right">Actions</th>
                     </>
                   )}
                 </tr>

@@ -2206,22 +2206,29 @@ export class ClinicalWorkflowService {
       orderBy: { releasedAt: { sort: 'desc', nulls: 'last' } },
     });
 
-    await this.audit.log(
-      {
-        tenantId,
-        userId: user.userId!,
-        eventKey: 'LAB_RELEASED_QUEUE_VIEWED',
-        recordType: 'LabResult',
-        recordId: 'QUEUE',
-        newValues: {
-          branchScope: branchId || 'ALL',
-          count: results.length,
-          action: 'PHI_QUEUE_READ',
+    // Fire-and-forget audit — don't block the read if audit write fails
+    try {
+      await this.audit.log(
+        {
+          tenantId,
+          userId: user.userId!,
+          eventKey: 'LAB_RELEASED_QUEUE_VIEWED',
+          recordType: 'LabResult',
+          recordId: 'QUEUE',
+          newValues: {
+            branchScope: branchId || 'ALL',
+            count: results.length,
+            action: 'PHI_QUEUE_READ',
+          },
         },
-      },
-      undefined,
-      branchId,
-    );
+        undefined,
+        branchId,
+      );
+    } catch (auditErr) {
+      console.error(
+        '[Audit] LAB_RELEASED_QUEUE_VIEWED failed: audit write error',
+      );
+    }
 
     return results.map((r: any) => ({
       id: r.id,
