@@ -231,9 +231,9 @@
 | **Category** | `[LOCAL]` |
 | **Severity** | LOW |
 | **Owner** | Windows contributors |
-| **Current Status** | Three scripts (`db-backup.sh`, `db-restore.sh`, `smoke-prod.sh`) show persistent CRLF line-ending diffs on Windows. See `docs/runbooks/local-windows-hygiene.md`. |
+| **Current Status** | **Resolved (ND-6)** — `.gitattributes` created enforcing `eol=lf` for shell scripts, TypeScript, JSON, Markdown, and CI files. See `docs/runbooks/local-windows-hygiene.md`. Three scripts (`db-backup.sh`, `db-restore.sh`, `smoke-prod.sh`) may still show CRLF diffs in existing working trees until `git checkout --` is run to re-normalize. |
 | **Why It Matters** | CRLF can cause shebang failures on Linux. Persistent diffs create noise in `git status` and risk accidental commit of whitespace-only changes. |
-| **Concrete Next Action** | Follow the hygiene runbook: check `git config core.autocrlf`, run scripts with `bash`, avoid committing CRLF diffs. |
+| **Concrete Next Action** | Run `git add --renormalize .` to apply `.gitattributes` rules to all files, or `git checkout -- scripts/*.sh` to refresh individual scripts. New checkouts will automatically use LF. |
 | **Deployment Required?** | No |
 | **Blocks Pilot Readiness?** | No |
 | **Blocks Production Readiness?** | No |

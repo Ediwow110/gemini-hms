@@ -1,0 +1,36 @@
+# Force LF line endings for shell scripts
+*.sh text eol=lf
+
+# Force LF for TypeScript/JS source files
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+
+# JSON/YAML/TOML - LF
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+
+# Markdown/docs
+*.md text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+
+# Docker/CI files
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+*.yml text eol=lf
+
+# Git files
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+# Binary files - no conversion
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
