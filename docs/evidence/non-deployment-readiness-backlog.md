@@ -23,12 +23,12 @@
 | **Category** | `[GH-ADMIN]` |
 | **Severity** | HIGH |
 | **Owner** | Repository admin |
-| **Current Status** | `main` branch has no protection rules. Direct pushes, no required reviews, no status checks enforced. Documented in Phase 29M (PR #111). |
-| **Why It Matters** | Without branch protection, unreviewed or untested code can land on `main`. This is a fundamental governance gap. |
-| **Concrete Next Action** | Enable branch protection on `main`: require PR reviews, require status checks (CI, Docker build), restrict direct pushes. |
+| **Current Status** | **Config file created** at `.github/branch-protection.json` (ND-2) specifying all 5 required checks (guard, build, frontend, backend, verifiers), required PR reviews (1), dismiss stale, linear history, no force pushes, no deletions, enforce admins. **Manually apply in GitHub settings — admin access required.** |
+| **Why It Matters** | Without branch protection enforcement, unreviewed or untested code can land on `main`. Config file is ready but not yet enforced. |
+| **Concrete Next Action** | Apply `.github/branch-protection.json` settings in GitHub repo → Settings → Branches → main → Add rule or Edit. Requires admin access. |
 | **Deployment Required?** | No |
-| **Blocks Pilot Readiness?** | Yes |
-| **Blocks Production Readiness?** | Yes |
+| **Blocks Pilot Readiness?** | Yes — until enforced |
+| **Blocks Production Readiness?** | Yes — until enforced |
 
 ---
 
@@ -39,12 +39,12 @@
 | **Category** | `[GH-ADMIN]` |
 | **Severity** | HIGH |
 | **Owner** | Repository admin |
-| **Current Status** | CI workflows exist but are not set as *required* checks in branch protection. Any commit can land even if CI fails. |
-| **Why It Matters** | Required CI checks are the gate that prevents broken or lint-ridden code from reaching `main`. |
-| **Concrete Next Action** | Mark `guard`, `build`, `backend`, `frontend`, `verifiers`, and `docker-build` as required checks in branch protection settings. |
+| **Current Status** | **Config file updated** (`.github/branch-protection.json` via ND-2) with all 5 checks: `guard`, `build`, `frontend`, `backend`, `verifiers`. Must be applied in GitHub settings as required status checks. |
+| **Why It Matters** | Required CI checks prevent broken or lint-ridden code from reaching `main`. Config is ready but not yet enforced. |
+| **Concrete Next Action** | In GitHub repo settings, enable "Require status checks to pass before merging" and select all 5 checks. |
 | **Deployment Required?** | No |
-| **Blocks Pilot Readiness?** | Yes |
-| **Blocks Production Readiness?** | Yes |
+| **Blocks Pilot Readiness?** | Yes — until enforced |
+| **Blocks Production Readiness?** | Yes — until enforced |
 
 ---
 
@@ -55,12 +55,12 @@
 | **Category** | `[GH-ADMIN]` |
 | **Severity** | MEDIUM |
 | **Owner** | Repository admin |
-| **Current Status** | No `.github/CODEOWNERS` file exists. No automatic review assignments for specific paths. |
-| **Why It Matters** | Without CODEOWNERS, changes to critical paths (database schema, audit, security) may not get the right reviewer. |
-| **Concrete Next Action** | Create `.github/CODEOWNERS` with sensible defaults: `@Ediwow110` for all paths, or per-module owners. |
+| **Current Status** | **CREATED** at `.github/CODEOWNERS` (ND-2). Default owner `@Ediwow110` with per-path rules for backend, frontend, CI, deployment, scripts, and documentation. |
+| **Why It Matters** | CODEOWNERS enables automatic review routing for critical paths. |
+| **Concrete Next Action** | No further action — file exists. Ensure `.github/CODEOWNERS` is protected in branch protection rules if possible. |
 | **Deployment Required?** | No |
-| **Blocks Pilot Readiness?** | MEDIUM — can work without, but risky. |
-| **Blocks Production Readiness?** | Yes |
+| **Blocks Pilot Readiness?** | No — resolved |
+| **Blocks Production Readiness?** | No — resolved |
 
 ---
 
@@ -309,9 +309,9 @@
 ### By Category
 
 | Category | Count | Key Items |
-|---|---|---|
+|---|---|---|---|
 | `[LOCAL]` | 5 | Lint errors, audit test failures, CRLF, mobile QA, backup ignore |
-| `[GH-ADMIN]` | 3 | Branch protection, required CI, CODEOWNERS |
+| `[GH-ADMIN]` | 2 | Branch protection, required CI (config files ready, admin apply needed) |
 | `[RUNTIME]` | 1 | Phase 30C smoke path |
 | `[STAGE]` | 4 | GCP IAM, staging deploy, monitoring, Phase 30C |
 | `[COMPLIANCE]` | 2 | Pentest, certification |
@@ -321,8 +321,8 @@
 
 | Blocks | Items |
 |---|---|
-| **Blocks Pilot Readiness** | Branch protection, required CI, GCP IAM, staging deploy, monitoring |
-| **Blocks Production Readiness** | All of the above + CODEOWNERS, pentest, certification |
+| **Blocks Pilot Readiness** | Branch protection (config ready, apply needed), required CI (config ready, apply needed), GCP IAM, staging deploy, monitoring |
+| **Blocks Production Readiness** | All of the above + pentest, certification |
 | **Does Not Block** | Lint errors, audit failures, CRLF, backup artifacts, mobile QA, Phase 30C |
 
 ### Recommended Local-First Actions (when deployment is paused)

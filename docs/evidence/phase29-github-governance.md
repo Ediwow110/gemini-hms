@@ -26,37 +26,49 @@ This document records GitHub repository governance and branch protection readine
 | Auto-merge status | NOT ENABLED | Not configured. |
 | Secrets exposure policy | DOCUMENTED | CI uses GitHub Secrets for env vars. `.env` files in `.gitignore`. No committed secrets in repo (verified by guard job). |
 | Release checklist usage | DOCUMENTED | Phase 29D runbooks include release checklists. |
-| PR template usage | NOT CONFIGURED | No `PULL_REQUEST_TEMPLATE.md` found. |
+| PR template usage | CONFIGURED | `.github/pull_request_template.md` exists with comprehensive checklists for change type, security, database, deployment, and final verdict. |
+| CODEOWNERS | CONFIGURED | `.github/CODEOWNERS` added in ND-2 PR. Default owner `@Ediwow110` with per-path rules for backend, frontend, CI, deployment, documentation. |
+| Branch protection config file | PRESENT | `.github/branch-protection.json` defines required checks (guard, build, frontend, backend, verifiers), required PR review (1), dismiss stale, enforce admins, linear history, no force pushes, no deletions. Manual application still required in GitHub settings. |
 | Public claims hygiene requirement | DOCUMENTED | CI verifier checks for unsupported claims. `docs/client-handoff/` uses disclaimer framing. |
 | Manual settings required | YES | Branch protection, required CI checks, required reviews, and CODEOWNERS must be configured in GitHub repo settings. |
 
 ## Key Gaps
 
-1. **No branch protection**: Main branch is unprotected. This is the highest-priority governance gap. A developer can push directly to main without CI, review, or Docker build.
-2. **No required reviews**: While all recent PRs have been reviewed by this agent, there is no enforcement mechanism.
-3. **No CODEOWNERS**: No automated ownership mapping for code review.
-4. **No PR template**: No standardized PR description format enforced.
-5. **No required status checks**: CI and Docker build run but are not configured as required checks for merge.
+1. **Branch protection not enforced**: Configuration file exists (`.github/branch-protection.json`) but must be manually applied in GitHub repo settings. Admin access required.
+2. **No required reviews (enforced)**: While all recent PRs have been reviewed by this agent, there is no enforcement mechanism.
+3. **Required status checks not enforced**: CI and Docker build run but are not configured as required checks for merge. Must be configured in GitHub settings.
+
+## Status Updates (ND-2)
+
+| Item | Before ND-2 | After ND-2 |
+|---|---|---|
+| PR template | Missing | Created: `.github/pull_request_template.md` with comprehensive checklists |
+| CODEOWNERS | Missing | Created: `.github/CODEOWNERS` with `@Ediwow110` as default + per-path rules |
+| Branch protection config | Partial | Updated: `.github/branch-protection.json` includes all 5 checks (guard, build, frontend, backend, verifiers) |
+| Branch protection enforcement | Not enabled | Still requires manual application in GitHub repo settings (admin access) |
 
 ## Recommendations
 
-1. Enable branch protection on `main`:
+1. **Apply branch protection in GitHub settings using `.github/branch-protection.json` as the reference**:
    - Require pull request reviews (at least 1)
-   - Require status checks (CI guard, frontend, backend, verifiers + Production Docker Build)
+   - Require status checks (guard, build, frontend, backend, verifiers)
    - Require branches to be up to date
    - Restrict direct pushes
-2. Add `CODEOWNERS` file for automated review routing.
-3. Add `PULL_REQUEST_TEMPLATE.md` for standardized PR descriptions.
-4. Configure squash merge as the only allowed merge method (already used by convention).
+   - Dismiss stale reviews
+   - Require conversation resolution
+   - Enforce for admins
+   - Disable force pushes
+   - Disable branch deletion
+2. Configure squash merge as the only allowed merge method (already used by convention).
 
 ## Final Verdict
 
-- [x] PASS (documentation only)
+- [x] PASS (documentation + config files)
 - [ ] FAIL
 - [ ] BLOCKED
 
 ## Notes
 
-Governance relies on convention rather than enforcement. Branch protection and required status checks must be configured in GitHub repo settings (requires admin access). This document does not imply that governance enforcement is in place.
+Governance configuration files (CODEOWNERS, branch-protection.json, PR template) are now in place. Manual application in GitHub repo settings is still required to enforce branch protection and required checks. Admin access to the repository is needed.
 
 System remains **STAGING-ONLY**.

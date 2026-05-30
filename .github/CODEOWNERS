@@ -1,0 +1,17 @@
+# Default ownership for all files
+* @Ediwow110
+
+# Backend code
+/hms-backend/ @Ediwow110
+
+# Frontend code
+/hms-frontend/ @Ediwow110
+
+# CI, deployment, infrastructure
+/.github/ @Ediwow110
+/docker-compose*.yml @Ediwow110
+/scripts/ @Ediwow110
+
+# Documentation
+/docs/runbooks/ @Ediwow110
+/docs/evidence/ @Ediwow110
