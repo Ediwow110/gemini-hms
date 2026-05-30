@@ -144,35 +144,35 @@
 
 ---
 
-## 9. Backend Lint Errors / Warnings
+## 9. Backend Lint Warnings
 
 | Field | Value |
 |---|---|
 | **Category** | `[LOCAL]` |
 | **Severity** | HIGH |
 | **Owner** | Development team |
-| **Current Status** | 228 lint errors reported in `hms-backend`. Pre-date Sprint 2A and Phase 29. |
-| **Why It Matters** | Lint errors may indicate dead code, type confusion, or potential runtime bugs. They also make it hard to distinguish new issues from pre-existing noise. |
-| **Concrete Next Action** | Audit the top 10-20 most severe lint errors. Fix patterns (unused vars, type mismatches) in small targeted PRs. Do not attempt a bulk fix. |
+| **Current Status** | **0 errors**, 385 warnings (`no-unsafe-argument`) + 37 (`no-unused-vars` in e2e files only). All `no-unused-vars` in `src/` resolved (ND-3, ND-4). The `no-unsafe-argument` warnings are type-safety issues requiring refactoring and are deferred. |
+| **Why It Matters** | Lint warnings may indicate dead code or type confusion. Remaining warnings are in `test/` e2e files (expected) or type-safety patterns that require refactoring. |
+| **Concrete Next Action** | If type-safety improvement is desired, address `no-unsafe-argument` warnings in a future batch. |
 | **Deployment Required?** | No |
 | **Blocks Pilot Readiness?** | No |
 | **Blocks Production Readiness?** | No |
 
 ---
 
-## 10. Audit Test Failures
+## 10. Audit E2E Test Failures
 
 | Field | Value |
 |---|---|
 | **Category** | `[LOCAL]` / `[RUNTIME]` |
 | **Severity** | MEDIUM |
 | **Owner** | Development team |
-| **Current Status** | 2 audit test failures. Pre-date Sprint 2A and Phase 29. |
-| **Why It Matters** | Audit tests validate transactional integrity and idempotency. Failures may indicate gaps in the audit trail or idempotency logic. |
-| **Concrete Next Action** | Run the failing tests (`npm test -- --grep audit` or similar), inspect the failure reason, and fix in a targeted PR. |
-| **Deployment Required?** | No (tests run locally) |
+| **Current Status** | 3 E2E audit tests (`audit-chain`, `audit-immutability`, `audit-forensic-context`) fail with `PrismaClientKnownRequestError` — **no PostgreSQL available**. All audit unit tests pass (1246/1246 backend). See [`docs/evidence/audit-e2e-evidence.md`](./audit-e2e-evidence.md) for full analysis. |
+| **Why It Matters** | E2E audit tests validate the database-level immutable audit chain. They cannot run without PostgreSQL. The underlying audit logic is covered by unit tests. |
+| **Concrete Next Action** | Re-run E2E tests when PostgreSQL is available (CI, staging, or local Docker). |
+| **Deployment Required?** | No (blocked by PostgreSQL availability) |
 | **Blocks Pilot Readiness?** | No |
-| **Blocks Production Readiness?** | No |
+| **Blocks Production Readiness?** | Yes — must pass before production cutover |
 
 ---
 
