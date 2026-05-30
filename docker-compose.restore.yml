@@ -1,0 +1,24 @@
+services:
+  db_restore:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${RESTORE_DB_USER:-${DB_USER:?DB_USER is required}}
+      POSTGRES_PASSWORD: ${RESTORE_DB_PASSWORD:-${DB_PASSWORD:?DB_PASSWORD is required}}
+      POSTGRES_DB: ${RESTORE_DB_NAME:-${DB_NAME:?DB_NAME is required}}
+    volumes:
+      - postgres_restore_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hms_restore
+
+volumes:
+  postgres_restore_data:
+
+networks:
+  hms_restore:
+    driver: bridge
