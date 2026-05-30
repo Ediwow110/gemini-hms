@@ -9,8 +9,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    exclude: ['recharts', 'es-toolkit'],
+  },
   server: {
+    host: '0.0.0.0',
     proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
       '/patient-portal': {
         target: 'http://localhost:3000',
         changeOrigin: true,

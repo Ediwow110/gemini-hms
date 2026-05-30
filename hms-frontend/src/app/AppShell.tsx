@@ -29,7 +29,7 @@ function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
         {groups.map((group) => (
           <div key={group.label}>
-            <h3 className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-2">
+            <h3 className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em] mb-2">
               {group.label}
             </h3>
             <div className="space-y-0.5">
@@ -52,7 +52,7 @@ function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-r-full" />
                     )}
                     <Icon className={`h-[18px] w-[18px] transition-colors duration-200 ${
-                      active ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'
+                      active ? 'text-indigo-600' : 'text-slate-500 group-hover:text-slate-700'
                     }`} />
                     {item.label}
                   </Link>
@@ -76,7 +76,7 @@ function SidebarContent({ pathname, onNavClick }: { pathname: string; onNavClick
             <p className="text-sm font-semibold text-slate-900 truncate">{user?.email}</p>
             <p className="text-[11px] text-slate-500 truncate">{user?.roles?.[0]}</p>
           </div>
-          <LogOut className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+          <LogOut className="h-4 w-4 text-slate-500 group-hover:text-slate-700 transition-colors" />
         </div>
       </div>
     </>
@@ -102,7 +102,7 @@ export const AppShell = () => {
           </div>
           <div>
             <span className="font-bold text-lg text-slate-900 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>HMS Core</span>
-            <p className="text-[10px] text-slate-400 font-medium -mt-0.5">Healthcare Platform</p>
+            <p className="text-[10px] text-slate-500 font-medium -mt-0.5">Healthcare Platform</p>
           </div>
         </div>
         <SidebarContent pathname={location.pathname} />
@@ -143,13 +143,13 @@ export const AppShell = () => {
 
             {/* Search */}
             <div className={`relative hidden md:block transition-all duration-300 ease-out ${searchFocused ? 'max-w-lg' : 'max-w-sm'} w-full`}>
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
               <input
                 type="text"
                 placeholder="Search patients, orders, or staff..."
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200/80 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all duration-300"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200/80 rounded-xl text-sm placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all duration-300"
               />
             </div>
           </div>
@@ -166,7 +166,7 @@ export const AppShell = () => {
 
             {/* Branch selector */}
             <button className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
-              <Briefcase className="h-4 w-4 text-slate-400" />
+              <Briefcase className="h-4 w-4 text-slate-500" />
               <span className="font-medium text-xs">Branch: {user?.branchId || 'None'}</span>
             </button>
             
@@ -207,7 +207,7 @@ export const AppShell = () => {
             <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-slide-up relative">
               <button 
                 onClick={() => setShowQuickCreate(false)} 
-                className="absolute top-4 right-4 p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                className="absolute top-4 right-4 p-1.5 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -230,7 +230,7 @@ export const AppShell = () => {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Register Patient</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Enroll new record in master index</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Enroll new record in master index</p>
                   </div>
                 </button>
 
@@ -246,7 +246,7 @@ export const AppShell = () => {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Admit Queue Ticket</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Issue active patient queue slot</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Issue active patient queue slot</p>
                   </div>
                 </button>
 
@@ -262,7 +262,7 @@ export const AppShell = () => {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Create Medical Order</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Order imaging, labs or rx</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Order imaging, labs or rx</p>
                   </div>
                 </button>
               </div>

@@ -1,6 +1,6 @@
 import { PlusCircle, Search } from "lucide-react";
 import { PageHeader } from "../../components/ui/page-header";
-import { ReportExportButton } from "../../components/analytics";
+import { ReportExportButton } from "../../components/analytics/ReportExportButton";
 import { StatusBadge } from "../../components/ui/status-badge";
 import { useNavigate } from "react-router-dom";
 
