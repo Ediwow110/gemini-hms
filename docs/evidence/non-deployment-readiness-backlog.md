@@ -247,9 +247,9 @@
 | **Category** | `[LOCAL]` |
 | **Severity** | LOW |
 | **Owner** | Contributors |
-| **Current Status** | `.gitignore` now ignores `backups/`, `*.sql`, `*.dump` (added in this PR). No backup files are tracked. |
+| **Current Status** | **Resolved (ND-7)** — `.gitignore` ignores `backups/`, `*.sql`, `*.dump`. One pre-existing tracked file (`hms-backend/backups/production_snapshot.sql`) was removed from tracking via `git rm --cached`. No backup files remain tracked. |
 | **Why It Matters** | Backup files contain DB contents (synthetic data for drills, but still side-effect noise). They bloat the repository. |
-| **Concrete Next Action** | Already mitigated by `.gitignore` update. Ensure `backups/` directory is listed in `.gitignore` on future branches. |
+| **Concrete Next Action** | None. Verify on future backups that no `.sql` or `.dump` files appear in `git status`. |
 | **Deployment Required?** | No |
 | **Blocks Pilot Readiness?** | No |
 | **Blocks Production Readiness?** | No |

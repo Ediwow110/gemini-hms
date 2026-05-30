@@ -4,9 +4,9 @@
 
 | Field | Value |
 |---|---|
-| Report date | 2026-05-30 |
-| Commit SHA | fa91b25 |
-| Branch / PR | main (via Phase 29A through 29M) |
+| Report date | 2026-05-31 (updated ND-8) |
+| Commit SHA | 53e9ca5 |
+| Branch / PR | main (via Phase 29A-29N, Phase 30A-30B, ND-2 through ND-7) |
 | Reviewer | automated-ci (opencode senior-engineering-reviewer) |
 
 ## Executive Verdict
@@ -26,12 +26,25 @@
 | Smoke test | `scripts/smoke-prod.sh` (Phase 29F) | PASS | Shell syntax valid, API_PREFIX + timeout support. Tested against compose runtime (frontend responds). Health endpoint needs direct backend access. |
 | CI | `.github/workflows/ci.yml` (guard, frontend, backend, verifiers) | PASS | All Phase 29 PRs passed CI. Release evidence step added (Phase 29G). |
 | Docker build | `.github/workflows/docker-build.yml` | PASS | All Phase 29 PRs passed Production Docker Build. |
-| Database migration safety | `docs/evidence/phase29-migration-safety.md` | BLOCKED | Prisma validate + generate pass. Migration deploy blocked locally (no PostgreSQL). CI passes. |
-| Backup and restore | `docs/evidence/phase29-backup-restore.md` | BLOCKED | Backup works (236KB SQL dump). Restore and full E2E drill blocked (no clean target environment). |
+| Database migration safety | `docs/evidence/phase29-migration-safety.md` | PASS | Prisma validate + generate pass. Local PostgreSQL deploy verified (53/53 migrations, PR #118). CI passes. |
+| Backup and restore | `docs/evidence/phase29-backup-restore.md` | PASS | Full drill completed (Phase 30B): backup (236KB), restore target start, restore, verify (85 tables, 53 migrations), teardown. |
 | Security review | `docs/evidence/phase29-security.md` | PASS | Backend audit 0 critical/0 high, frontend audit 0 vulns, tests pass, auth guards reviewed, CSRF/CORS reviewed. |
 | Observability | `docs/evidence/phase29-observability.md` | PASS | All healthchecks pass, logs accessible. Alert rules documented only — no hosted monitoring. |
 | Frontend readiness | `docs/evidence/phase29-frontend-readiness.md` | PASS | Typecheck, lint, tests (114), build all pass. Pre-existing type/lint issues are non-blocking. |
 | Operator runbooks | Phase 29D (deploy, rollback, incident, db-restore, env-checklist) | PASS | All runbooks present and reviewed. |
+
+## Non-Deployment Hardening (ND-2 through ND-9)
+
+| ND | Task | PR/SHA | Status |
+|---|---|---|---|
+| 2 | GitHub branch protection plan | #119 (merged) | ConFIGURED (CODEOWNERS, branch-protection.json, PR template). Apply in GitHub settings. |
+| 3 | Backend lint cleanup batch 1 | #120 | Open — 30 src files, removed unused imports/vars |
+| 4 | Backend lint cleanup batch 2 | #121 | Open — spec/test file unused vars |
+| 5 | Audit E2E database evidence | #122 | Open — audit-e2e-evidence.md created |
+| 6 | CRLF/script hygiene | `53e9ca5` | Done — .gitattributes created |
+| 7 | Backup artifact hygiene | #123 | Open — production_snapshot.sql untracked |
+| 8 | Local quality evidence refresh | This PR | In progress |
+| 9 | Final non-deployment readiness report | Next | Pending |
 
 ## Merged Phase 29 PRs
 
@@ -57,13 +70,13 @@
 
 | Risk | Severity | Owner | Mitigation | Revisit Date |
 |---|---|---|---|---|
-| Main branch unprotected | High | Engineering | Enable GitHub branch protection (requires admin). PRs used by convention, not enforcement. | Pre-pilot |
-| No required CI checks | High | Engineering | Configure required status checks in branch protection. | Pre-pilot |
+| Main branch unprotected | High | Engineering | Config files ready (CODEOWNERS, branch-protection.json). Manual apply in GitHub settings needed. PRs used by convention. | Pre-pilot |
+| No required CI checks | High | Engineering | Config files define 5 checks. Manual apply in GitHub settings needed. | Pre-pilot |
 | GCP IAM block prevents staging deploy | High | Ops | Account lacks roles on `unified-xylocarp-j524r`. External dependency. | Ongoing |
-| E2E tests blocked locally | Medium | Team | CI passes all E2E tests (53 suites, 143 tests). Local PostgreSQL needed. | When DB available |
-| Backend lint warnings (196 pre-existing) | Low | Team | No errors. CI passes. | Ongoing |
-| Backup restore E2E not exercised | Medium | Ops | Backup script works. Full restore drill needs dedicated environment. | Pre-pilot |
-| Migration deploy unverified locally | Medium | Team | CI passes migration deploy. Local PostgreSQL needed. | When DB available |
+| E2E tests blocked locally (DB) | Medium | Team | 3 E2E audit tests fail only due to PostgreSQL unavailability (ND-5 documented). All 1246 unit tests pass. | When DB available |
+| Backend lint warnings (385 no-unsafe-argument) | Low | Team | 0 errors. All src/ no-unused-vars resolved (ND-3/ND-4). CI passes. | Ongoing |
+| Backup restore E2E drill | Low | Ops | Full drill PASS (Phase 30B). Backup, restore, verify, teardown all verified. | Done |
+| Migration deploy verified locally | Low | Team | 53/53 migrations applied against local PostgreSQL (PR #118). Seed PASS. | Done |
 | No hosted monitoring / alert routing | High | Ops | All signals available locally. No real alert routing configured. | Staging deploy |
 | No automated pen test | Medium | Security | Manual review only. | Pre-pilot |
 | No cross-browser / mobile device testing | Low | QA | Chrome-only testing. No real-device mobile QA. | Pre-pilot |
@@ -77,12 +90,12 @@
 - External HIPAA certification
 - External SOC 2 certification
 - Hosted monitoring dashboard and alert routing
-- Branch protection enforcement
-- Required CI status checks on main
-- CODEOWNERS file
-- PR template
+- Branch protection enforcement (config ready, manual apply needed)
+- Required CI status checks on main (config ready, manual apply needed)
+- Re-run E2E audit tests when PostgreSQL available
 - Cross-browser and mobile-device testing
 - Automated penetration testing
+- resolve no-unsafe-argument lint warnings (385 instances)
 
 ## Final Verdict
 
