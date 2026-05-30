@@ -4,9 +4,35 @@
 
 Document the procedure for restoring the HMS database from a backup. This runbook is used when rollback is not possible (destructive migration) or when data corruption requires restoration.
 
-## Backup Source
+## Automated Scripts
 
-Backups are created using `pg_dump`:
+Automated backup and restore scripts are provided in the `scripts/` directory:
+
+- `scripts/db-backup.sh` — Creates a timestamped SQL dump via Docker Compose
+- `scripts/db-restore.sh` — Restores from a backup file with explicit confirmation
+
+### Backup
+
+```bash
+DB_USER=postgres DB_NAME=hms_db sh scripts/db-backup.sh
+```
+
+The backup file is written to `./backups/` by default (overridable via `BACKUP_DIR`).
+
+### Restore
+
+```bash
+BACKUP_FILE=./backups/hms_db_backup_20260530_120000.sql \
+  DB_USER=postgres DB_NAME=hms_db \
+  RESTORE_CONFIRM=YES \
+  sh scripts/db-restore.sh
+```
+
+**Safety**: Restore requires `RESTORE_CONFIRM=YES` and a valid `BACKUP_FILE` path.
+
+## Manual Backup
+
+Backups can also be created manually using `pg_dump`:
 
 ```bash
 pg_dump -h $DB_HOST -U $DB_USER -d $DB_NAME -F c -f backup-$(date +%Y%m%d%H%M%S).dump
@@ -30,7 +56,7 @@ createdb -h $DB_HOST -U $DB_SUPERUSER $NEW_DB_NAME
 psql -h $DB_HOST -U $DB_SUPERUSER -c "CREATE DATABASE $NEW_DB_NAME;"
 ```
 
-## Restore Command Placeholders
+## Manual Restore Commands
 
 ```bash
 # Restore using pg_restore (for custom-format dumps)
