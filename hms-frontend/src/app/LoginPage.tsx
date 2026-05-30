@@ -50,11 +50,11 @@ export const LoginPage = () => {
         <div className="flex gap-6 animate-slide-up stagger-2">
           <div className="flex items-center gap-3 bg-slate-900/50 backdrop-blur-md px-5 py-3.5 rounded-xl border border-white/10 shadow-xl">
             <ShieldCheck className="h-6 w-6 text-emerald-400" />
-            <span className="font-semibold text-sm tracking-wide">HIPAA Compliant</span>
+            <span className="font-semibold text-sm tracking-wide">Compliance-Aligned Controls</span>
           </div>
           <div className="flex items-center gap-3 bg-slate-900/50 backdrop-blur-md px-5 py-3.5 rounded-xl border border-white/10 shadow-xl">
             <Hospital className="h-6 w-6 text-blue-400" />
-            <span className="font-semibold text-sm tracking-wide">Enterprise Ready</span>
+            <span className="font-semibold text-sm tracking-wide">Release Candidate</span>
           </div>
         </div>
       </div>
@@ -94,7 +94,7 @@ export const LoginPage = () => {
         
         {/* System Version */}
         <p className="text-center text-xs text-white/50 font-medium mt-8">
-          HMS Core v2.0 · Built for Production
+          HMS Core v2.0 · Pre-Production Release Candidate
         </p>
       </div>
     </div>

@@ -2,7 +2,13 @@
 
 This repository contains the architectural foundation and core workflows for a secure, multi-tenant, branch-isolated healthcare operations platform.
 
-> **Status: ✅ PRODUCTION READY — All Phases 0-8 Complete + HIPAA & SOC2 Type II Certified**
+> **Status: Pre-production release candidate.** Core local/CI gates are passing, but production deployment, external compliance certification, staging validation, backup/restore drills, and operational readiness sign-off are not yet complete.
+
+## Current Production Readiness Position
+
+The system is suitable for local development, demos, internal review, and staging preparation. It should **not** be represented as production-deployed, HIPAA certified, SOC 2 certified, or ready for real patient PHI until the required external and operational gates are completed.
+
+GCP production deployment is intentionally deferred for now. The immediate focus is keeping the codebase stable, removing unsupported compliance branding, and preserving a clean release-candidate baseline.
 
 ## Stack
 
@@ -10,39 +16,39 @@ This repository contains the architectural foundation and core workflows for a s
 - **Framework**: Vite + React
 - **Language**: TypeScript
 - **Styling**: TailwindCSS / Vanilla CSS
-- **Authentication**: JWT-based (Stateful session-bound for Staff, stateless scoped-token for Patients)
+- **Authentication**: JWT-based client integration for staff and patient workflows
 
 ### Backend
 - **Framework**: NestJS
 - **Language**: TypeScript
 - **Database ORM**: Prisma (PostgreSQL)
-- **Authentication**: Passport-JWT with Global Fail-Closed Guards and Stateful Session Management
+- **Authentication**: Passport-JWT with global fail-closed guards and stateful session management
 
 ## Architecture Highlights
 
-- **Multi-Tenant Branch Isolation**: Robust isolation using `tenantId` and `branchId`, verified via automated security sweeps.
-- **Stateful Session Management**: JWTs are verified against a `Session` table, allowing for multi-device support, immediate session revocation (Targeted Logout), and a 30-second leeway window to handle concurrent tab refreshes.
-- **Decoupled Patient Portal Auth**: Dedicated stateless JWT auth pipeline that protects patients from staff privilege escalation and keeps staff session databases clean.
-- **MFA & Break-Glass Recovery**: Complete TOTP MFA support with secure encrypted storage of secrets using `aes-256-gcm`, coupled with bcrypt-hashed, one-time burn MFA recovery codes.
-- **Global Fail-Closed Security**: All routes are protected by default; public access requires explicit `@Public()` opt-out.
+- **Multi-Tenant Branch Isolation**: Isolation model built around `tenantId` and `branchId`, with automated verification coverage.
+- **Stateful Session Management**: JWTs are verified against a `Session` table, supporting multi-device sessions, session revocation, and refresh-token rotation safeguards.
+- **Decoupled Patient Portal Auth**: Dedicated patient auth flow designed to reduce staff/patient privilege-mixing risk.
+- **MFA & Break-Glass Recovery**: TOTP MFA support with protected secret storage and bcrypt-hashed one-time recovery codes.
+- **Global Fail-Closed Security**: Routes are protected by default; public access requires explicit `@Public()` opt-out.
 - **Branch-Scoped Modules**:
-  - **Clinical EMR (Encounters & SOAP Notes)**: Role-gated clinical encounters (Doctor/Admin write, Nurse/Receptionist read) with SOAP notes, irreversible locking, and ICD-10 diagnosis linkages.
-  - **ePHI-Protected Patient Portal**: Scoped, read-only endpoints allowing patients to access their own profile details, active prescriptions, outstanding invoices, and strictly **released** lab results.
-  - **Orders & Queue**: Isolated patient flow and order management.
-  - **Billing**: Branch-specific invoicing, payments, cashier session reconciliation, and supervisor-approved voids & refund ledger journal.
-  - **Laboratory**: Branch-isolated result encoding and validation.
-  - **Inventory**: Catalog-Stock split. Global catalog (`InventoryItem`) with branch-specific stock (`BranchStock`).
-  - **HR Management**: Employee profile tracking, leave management, professional license monitoring, and employee termination account deactivation triggers.
-  - **Procurement**: Pluggable supplier registry, purchase request manager approval validations, PO generation, and receiving logs.
-  - **Referral Partners**: Referral agency/doctor registry and rebate tracking.
-- **Audit Engine**: Immutable, DB-enforced activity logging via PostgreSQL triggers.
-- **Background Jobs**: CRON-based notification dispatcher for PHI-safe Email/SMS alerts.
+  - **Clinical EMR (Encounters & SOAP Notes)**: Role-gated encounters, SOAP notes, locking workflows, diagnosis linkages, prescriptions, and referrals.
+  - **Patient Portal**: Scoped patient-facing endpoints for released/allowed patient data.
+  - **Orders & Queue**: Branch-aware patient flow and order management.
+  - **Billing**: Invoicing, payments, cashier reconciliation, voids, refunds, and ledger-oriented controls.
+  - **Laboratory**: Branch-isolated result encoding, validation, and release gating.
+  - **Inventory**: Global catalog with branch-specific stock.
+  - **HR Management**: Employee profiles, leave tracking, licensing, and termination-driven account controls.
+  - **Procurement**: Supplier registry, purchase requests, approvals, purchase orders, and receiving logs.
+  - **Referral Partners**: Referral registry and rebate tracking.
+- **Audit Engine**: Activity logging and audit-context middleware for sensitive workflows.
+- **Background Jobs**: Scheduled notification dispatch for operational alerts.
 
 ## Local Setup
 
 ### Quick Setup & Recovery (White Screen Fix)
-If you encounter a "White Screen" or dependency errors, use the setup scripts:
-- **Windows:** Run `.\setup.ps1` in PowerShell.
+If you encounter a white screen or dependency errors, use the setup scripts:
+- **Windows:** Run `./setup.ps1` in PowerShell.
 - **Linux/macOS:** Run `bash setup.sh`.
 
 ### Backend
@@ -70,45 +76,49 @@ If you encounter a "White Screen" or dependency errors, use the setup scripts:
 
 | Module | Isolation Level | Status |
 |---|---|---|
-| **Foundation / Auth** | Tenant / Branch / Session | **Verified E2E (MFA & Recovery)** |
-| **Clinical EMR** | Tenant / Branch | **Verified E2E (Encounters, SOAP, locking, ICD-10, Prescriptions, Referrals)** |
-| **Patient Portal** | Tenant / Patient | **Verified E2E (Custom stateless JWT, ePHI Release Filters, Outstanding Balance)** |
-| **Insurance Claims** | Tenant / Branch | **Verified E2E (Draft/Submit/Paid Settlement tracking, Stub cleared)** |
-| **Accounting Ledger** | Tenant / Branch | **Verified E2E (Double-entry bookkeeping, cash/revenue/insurance receivables)** |
-| **Procurement** | Tenant / Branch | **Verified E2E (Suppliers, PR approvals, PO tracking, Receiving)** |
-| **Referral Partners** | Tenant | **Verified E2E (Dr Registry, Rebate logs, Status confirmations)** |
-| **HR Management** | Tenant / Branch | **Verified E2E (Employee profiles, Status deactivations, Leaves, Licenses)** |
-| **Patients** | Tenant | **Verified E2E** |
-| **Orders** | Branch | **Verified E2E** |
-| **Queueing** | Branch | **Verified E2E** |
-| **Billing** | Branch | **Verified E2E (Idempotency, Reconcile, Voids & Refund Ledger)** |
-| **Laboratory** | Branch | **Verified E2E (Status-based Release gates)** |
-| **Inventory** | Hybrid | **Verified E2E** |
+| **Foundation / Auth** | Tenant / Branch / Session | Verified by local/CI tests |
+| **Clinical EMR** | Tenant / Branch | Verified by local/CI tests |
+| **Patient Portal** | Tenant / Patient | Verified by local/CI tests |
+| **Insurance Claims** | Tenant / Branch | Verified by local/CI tests |
+| **Accounting Ledger** | Tenant / Branch | Verified by local/CI tests |
+| **Procurement** | Tenant / Branch | Verified by local/CI tests |
+| **Referral Partners** | Tenant | Verified by local/CI tests |
+| **HR Management** | Tenant / Branch | Verified by local/CI tests |
+| **Patients** | Tenant | Verified by local/CI tests |
+| **Orders** | Branch | Verified by local/CI tests |
+| **Queueing** | Branch | Verified by local/CI tests |
+| **Billing** | Branch | Verified by local/CI tests |
+| **Laboratory** | Branch | Verified by local/CI tests |
+| **Inventory** | Hybrid | Verified by local/CI tests |
 
-## Phase Status
-| Phase | Description | Status |
-|---|---|---|
-| **Phase 0** | Foundation (Auth, RBAC, MFA, Sessions, Break-Glass) | ✅ COMPLETE |
-| **Phase 1** | Revenue Core (Billing, Payments, Invoices, Idempotency) | ✅ COMPLETE |
-| **Phase 2** | LIS (Lab Orders, Results, Lifecycle, Approvals) | ✅ COMPLETE |
-| **Phase 3** | Diagnostic Center GA (Cashier Voids, Refund Ledger, Maker-Checker) | ✅ COMPLETE |
-| **Phase 4** | Clinical EMR (Encounters, SOAP, ICD-10, Prescriptions, Referrals, Patient Portal) | ✅ COMPLETE |
-| **Phase 5** | Enterprise Business Expansion (Insurance Claims, Double-Entry Ledger, HR, Procurement, Referral Partners) | ✅ COMPLETE |
-| **Production Hardening** | 6 Security Blockers (CI, Soft Deletes, Audit Context, Lab Atomic Tx, ePHI Masking, Docker) | ✅ COMPLETE |
-| **Phase 6** | Enterprise SaaS (Multi-Tenancy, K8s, Analytics, Audit Chain, SLA Alerts) | ✅ COMPLETE |
-| **Phase 7** | Enterprise GA (Hardening at Scale: CI Security, Load Tests, OWASP Pen-Tests, Telemetry, Runbooks) | ✅ COMPLETE |
-| **Phase 8** | Healthcare Compliance & Multi-Region (HIPAA, SOC2, Active-Active, CPT, E-Rx, Beds) | ✅ COMPLETE |
+## Readiness Gates
+
+| Gate | Status |
+|---|---|
+| Local backend/frontend checks | Passing |
+| CI build/test/verification | Passing on recent release-candidate work |
+| Docker build readiness | Present |
+| Staging deployment | Deferred / not yet proven |
+| GCP infrastructure | Deferred |
+| Backup and restore drill | Not yet proven against staging/production data |
+| External security review / penetration test | Not yet completed |
+| HIPAA/SOC 2 certification | Not claimed |
+| Production operations sign-off | Not yet complete |
 
 ## Testing
 
-Core authentication, branch context, branch-isolation, and MFA recovery paths are verified with unit and E2E tests.
-- **Unit Tests**: `npm run test` (513/513 tests passing)
-- **E2E Tests**: `npm run test:e2e` (112/112 tests passing sequentially)
-- **Stress & Concurrency Tests**: Run scripts validating parallel execution:
-  - `npx ts-node scripts/stress-refresh-tokens.ts` (Validates 30s leeway)
-  - `npx ts-node scripts/stress-payment-idempotency.ts` (Validates DB unique constraint locking)
-  - `npx ts-node scripts/stress-cashier-close.ts` (Validates optimistic transaction locks)
+Core authentication, branch context, branch isolation, and MFA recovery paths are covered by unit and E2E tests.
 
-## Known Gaps & Deferred Items (Blocking Full GA)
+- **Backend Unit Tests**: `npm run test`
+- **Backend E2E Tests**: `npm run test:e2e`
+- **Frontend Tests**: `npm run test`
+- **Frontend Typecheck**: `npm run typecheck`
+- **Frontend Build**: `npm run build`
+- **Security/Clinical Verifiers**: project-specific verification scripts under the backend/frontend package scripts
 
-- **Legacy Inventory Technical Debt**: Existing `currentStock` field on `InventoryItem` remains; use `BranchStock` for all production features.
+## Known Gaps & Deferred Items
+
+- **Production deployment**: GCP deployment is intentionally deferred until the release-candidate baseline is stable.
+- **Compliance**: The project contains compliance-oriented controls, but it is not certified and should not be marketed as certified.
+- **Operations**: Backup/restore drills, incident drills, alerting proof, and staging smoke tests still need real-environment evidence.
+- **Legacy Inventory Technical Debt**: Existing `currentStock` field on `InventoryItem` remains; use `BranchStock` for production-facing stock workflows.
