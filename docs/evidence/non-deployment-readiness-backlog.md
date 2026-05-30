@@ -213,14 +213,14 @@
 | Field | Value |
 |---|---|
 | **Category** | `[LOCAL]` / `[RUNTIME]` |
-| **Severity** | MEDIUM |
-| **Owner** | Development team |
-| **Current Status** | Sprint 2A added `Pharmacist` role usage in `@Roles('Pharmacist')` decorators, but no Prisma seed or migration creates the role in the database. |
-| **Why It Matters** | Without the role seeded, `Pharmacist`-gated endpoints fail with "Forbidden" for all users. |
-| **Concrete Next Action** | Add `Pharmacist` to the roles seed file or create a data migration. |
+| **Severity** | — |
+| **Owner** | — |
+| **Current Status** | **VERIFIED — ALREADY SEEDED.** `Pharmacist` exists in `hms-backend/prisma/seed.ts` (line 227) with role UUID `00000000-0000-0000-0000-000000000008`, a permission mapping (line 296-298: `patient.view`, `inventory.item.view`, `inventory.stock.dispense`, `pharmacy.stockmovement.view`, `queue.view`), and a test user `pharmacist@hospital.com` (line 380). |
+| **Why It Matters** | N/A — prerequisite already met. |
+| **Concrete Next Action** | None. Verified and resolved. This item can be removed from active backlog. |
 | **Deployment Required?** | No |
-| **Blocks Pilot Readiness?** | Yes |
-| **Blocks Production Readiness?** | Yes |
+| **Blocks Pilot Readiness?** | No — already seeded |
+| **Blocks Production Readiness?** | No — already seeded |
 
 ---
 
@@ -310,9 +310,9 @@
 
 | Category | Count | Key Items |
 |---|---|---|
-| `[LOCAL]` | 7 | Lint errors, audit test failures, frontend issues, CRLF, mobile QA, backup ignore, pharmacist seed |
+| `[LOCAL]` | 6 | Lint errors, audit test failures, frontend issues, CRLF, mobile QA, backup ignore |
 | `[GH-ADMIN]` | 3 | Branch protection, required CI, CODEOWNERS |
-| `[RUNTIME]` | 3 | Migrations, Phase 30C smoke path, pharmacist seed (overlap) |
+| `[RUNTIME]` | 2 | Migrations, Phase 30C smoke path |
 | `[STAGE]` | 4 | GCP IAM, staging deploy, monitoring, Phase 30C |
 | `[COMPLIANCE]` | 2 | Pentest, certification |
 | `[PRODUCT]` | 0 | All deferred product work is separate |
@@ -321,7 +321,7 @@
 
 | Blocks | Items |
 |---|---|
-| **Blocks Pilot Readiness** | Branch protection, required CI, GCP IAM, staging deploy, monitoring, pharmacist role |
+| **Blocks Pilot Readiness** | Branch protection, required CI, GCP IAM, staging deploy, monitoring |
 | **Blocks Production Readiness** | All of the above + CODEOWNERS, migrations applied, pentest, certification |
 | **Does Not Block** | Lint errors, audit failures, frontend issues, CRLF, backup artifacts, mobile QA, Phase 30C |
 
@@ -329,6 +329,5 @@
 
 1. Fix the 2 audit test failures (item 10)
 2. Fix frontend typecheck errors (item 11) — `CommandPalette.canAccess`, `TopBar.isStaff`, `roleNavigation.ts`
-3. Add `Pharmacist` role to seed (item 13)
-4. Apply migrations against local Docker PostgreSQL (item 12)
-5. Optionally execute Phase 30C restored-app smoke path (item 8)
+3. Apply migrations against local Docker PostgreSQL (item 12)
+4. Optionally execute Phase 30C restored-app smoke path (item 8)
