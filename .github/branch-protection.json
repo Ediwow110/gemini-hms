@@ -6,8 +6,10 @@
       "strict": true,
       "contexts": [
         "guard",
+        "build",
         "frontend",
-        "backend"
+        "backend",
+        "verifiers"
       ]
     },
     "required_pull_request_reviews": {
