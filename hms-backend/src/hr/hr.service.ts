@@ -229,7 +229,7 @@ export class HrService {
     tenantId: string,
     actorId: string,
     leaveId: string,
-    user: RequestUser,
+    _user: RequestUser,
   ) {
     const leave = await this.prisma.leaveRequest.findFirst({
       where: { id: leaveId, tenantId },
@@ -268,7 +268,7 @@ export class HrService {
     tenantId: string,
     actorId: string,
     leaveId: string,
-    user: RequestUser,
+    _user: RequestUser,
   ) {
     const leave = await this.prisma.leaveRequest.findFirst({
       where: { id: leaveId, tenantId },

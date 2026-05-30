@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  ForbiddenException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, ForbiddenException, Logger } from '@nestjs/common';
 
 export interface PolicyToken {
   id: string;

@@ -5,7 +5,6 @@ import {
   Body,
   Param,
   UseGuards,
-  Get,
 } from '@nestjs/common';
 import { ProcurementService } from './procurement.service';
 import {

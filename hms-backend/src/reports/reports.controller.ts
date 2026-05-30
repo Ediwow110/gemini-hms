@@ -3,7 +3,6 @@ import { ReportsService } from './reports.service';
 import { CreateReportExportDto } from './dto/create-export.dto';
 import { ApproveExportDto } from './dto/approve-export.dto';
 import { RejectExportDto } from './dto/reject-export.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';

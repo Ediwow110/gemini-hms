@@ -7,7 +7,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NotificationsService } from './notifications.service';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';

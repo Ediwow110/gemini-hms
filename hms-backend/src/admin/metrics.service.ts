@@ -33,7 +33,7 @@ export class MetricsService {
     let dbStatus = 'HEALTHY';
     try {
       await this.prisma.$queryRaw`SELECT 1`;
-    } catch (e) {
+    } catch {
       dbStatus = 'UNHEALTHY';
     }
 
@@ -42,7 +42,7 @@ export class MetricsService {
       triggeredSlaAlertsCount = await this.prisma.slaAlert.count({
         where: { status: 'TRIGGERED' },
       });
-    } catch (e) {
+    } catch {
       // Fallback if table not initialized in migrations/unit tests
     }
 

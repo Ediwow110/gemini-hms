@@ -15,11 +15,9 @@ import { SaveVitalsDto } from './dto/save-vitals.dto';
 import { MarkVitalsErrorDto } from './dto/mark-vitals-error.dto';
 import { SaveTriageDto } from './dto/save-triage.dto';
 import { MarkTriageErrorDto } from './dto/mark-triage-error.dto';
-import { SaveDraftSoapDto } from './dto/save-draft-soap.dto';
 import { SaveDraftLabResultDto } from './dto/save-draft-lab-result.dto';
 import { ValidateLabResultDto } from './dto/validate-lab-result.dto';
 import { ReleaseLabResultDto } from './dto/release-lab-result.dto';
-import { LabParameterDefinitionDto } from './dto/lab-parameter-definition.dto';
 import { CreateClinicalOrderDto } from './dto/create-clinical-order.dto';
 import { CancelClinicalOrderDto } from './dto/cancel-clinical-order.dto';
 import { ReceiveLabOrderDto } from './dto/receive-lab-order.dto';
@@ -31,7 +29,6 @@ import {
   VitalsSummaryDto,
   ClinicalOrderSummaryDto,
   ValidatedResultSummaryDto,
-  ClinicalOrderItemSummaryDto,
   LabResultSummaryDto,
   PrescriptionSummaryDto,
   BillingHandoffSummaryDto,

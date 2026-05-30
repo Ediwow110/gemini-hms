@@ -174,7 +174,7 @@ export class DiagnosisService {
     }
   }
 
-  async restore(diagnosisId: string, userId: string) {
+  async restore(diagnosisId: string, _userId: string) {
     return this.prisma.encounterDiagnosis.update({
       where: { id: diagnosisId },
       data: { deletedAt: null, deletedById: null, deleteReason: null },

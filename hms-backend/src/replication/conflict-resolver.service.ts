@@ -80,6 +80,7 @@ export class ConflictResolverService {
   async detectConflicts(tenantId: string, entityType: string, since?: string) {
     this.checkReplicationEnabled();
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const sinceDate = since
       ? new Date(since)
       : new Date(Date.now() - 60 * 60 * 1000);
