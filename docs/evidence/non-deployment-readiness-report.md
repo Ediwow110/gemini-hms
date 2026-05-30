@@ -1,7 +1,7 @@
 # Non-Deployment Readiness Report
 
 **Date:** 2026-05-31
-**Commit SHA:** 53e9ca5
+**Commit SHA:** 15da32a
 **Phase:** ND-9 (Final)
 
 ## Executive Summary
@@ -15,12 +15,12 @@ This report summarizes all non-deployment hardening completed across 8 phases (N
 | ND | Phase | Status | PR/Merge |
 |---|---|---|---|
 | 2 | GitHub branch protection plan | **CONFIGURED** | [#119 merged](https://github.com/Ediwow110/gemini-hms/pull/119) |
-| 3 | Backend lint cleanup batch 1 (src/) | **COMPLETE** | [#120 open](https://github.com/Ediwow110/gemini-hms/pull/120) |
-| 4 | Backend lint cleanup batch 2 (spec/) | **COMPLETE** | [#121 open](https://github.com/Ediwow110/gemini-hms/pull/121) |
-| 5 | Audit E2E database evidence | **COMPLETE** | [#122 open](https://github.com/Ediwow110/gemini-hms/pull/122) |
+| 3 | Backend lint cleanup batch 1 (src/) | **COMPLETE** | [#120 merged](https://github.com/Ediwow110/gemini-hms/pull/120) |
+| 4 | Backend lint cleanup batch 2 (spec/) | **COMPLETE** | [#121 merged](https://github.com/Ediwow110/gemini-hms/pull/121) |
+| 5 | Audit E2E database evidence | **COMPLETE** | [#122 merged](https://github.com/Ediwow110/gemini-hms/pull/122) |
 | 6 | CRLF/script hygiene | **COMPLETE** | Pushed to main (53e9ca5) |
-| 7 | Backup artifact hygiene | **COMPLETE** | [#123 open](https://github.com/Ediwow110/gemini-hms/pull/123) |
-| 8 | Local quality evidence refresh | **COMPLETE** | [#123 open](https://github.com/Ediwow110/gemini-hms/pull/123) |
+| 7 | Backup artifact hygiene | **COMPLETE** | [#123 merged](https://github.com/Ediwow110/gemini-hms/pull/123) |
+| 8 | Local quality evidence refresh | **COMPLETE** | [#123 merged](https://github.com/Ediwow110/gemini-hms/pull/123) |
 | 9 | This report | **COMPLETE** | — |
 
 ## Quality Metrics
