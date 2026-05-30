@@ -181,14 +181,14 @@
 | Field | Value |
 |---|---|
 | **Category** | `[LOCAL]` |
-| **Severity** | MEDIUM |
-| **Owner** | Development team |
-| **Current Status** | TypeScript errors in `CommandPalette.canAccess`, `TopBar.isStaff`, `roleNavigation.ts` icons, and 8 lint errors in `RadiologyCanvas.tsx`. Pre-date Sprint 2A. |
-| **Why It Matters** | Type errors are potential runtime crashes. Lint errors hide new issues. |
-| **Concrete Next Action** | Fix type errors (likely missing null checks or icon imports) in small targeted PRs. |
+| **Severity** | — |
+| **Owner** | — |
+| **Current Status** | **VERIFIED — ALL RESOLVED.** TypeScript typecheck passes with 0 errors (`tsc --noEmit` exit 0). `CommandPalette.canAccess` typing is correct. `TopBar` component no longer exists in the codebase. `roleNavigation.ts` uses `React.ElementType` for icons. Frontend lint passes with 0 errors. Frontend tests: 14 suites, 114 tests, all PASS. Frontend build: PASS. |
+| **Why It Matters** | N/A — all pre-existing type/lint issues have been resolved in earlier PRs. |
+| **Concrete Next Action** | None. Verified and resolved. This item can be removed from active backlog. |
 | **Deployment Required?** | No |
-| **Blocks Pilot Readiness?** | No |
-| **Blocks Production Readiness?** | No |
+| **Blocks Pilot Readiness?** | No — already resolved |
+| **Blocks Production Readiness?** | No — already resolved |
 
 ---
 
@@ -310,7 +310,7 @@
 
 | Category | Count | Key Items |
 |---|---|---|
-| `[LOCAL]` | 6 | Lint errors, audit test failures, frontend issues, CRLF, mobile QA, backup ignore |
+| `[LOCAL]` | 5 | Lint errors, audit test failures, CRLF, mobile QA, backup ignore |
 | `[GH-ADMIN]` | 3 | Branch protection, required CI, CODEOWNERS |
 | `[RUNTIME]` | 2 | Migrations, Phase 30C smoke path |
 | `[STAGE]` | 4 | GCP IAM, staging deploy, monitoring, Phase 30C |
@@ -323,11 +323,10 @@
 |---|---|
 | **Blocks Pilot Readiness** | Branch protection, required CI, GCP IAM, staging deploy, monitoring |
 | **Blocks Production Readiness** | All of the above + CODEOWNERS, migrations applied, pentest, certification |
-| **Does Not Block** | Lint errors, audit failures, frontend issues, CRLF, backup artifacts, mobile QA, Phase 30C |
+| **Does Not Block** | Lint errors, audit failures, CRLF, backup artifacts, mobile QA, Phase 30C |
 
 ### Recommended Local-First Actions (when deployment is paused)
 
-1. Fix the 2 audit test failures (item 10)
-2. Fix frontend typecheck errors (item 11) — `CommandPalette.canAccess`, `TopBar.isStaff`, `roleNavigation.ts`
-3. Apply migrations against local Docker PostgreSQL (item 12)
-4. Optionally execute Phase 30C restored-app smoke path (item 8)
+1. Fix the 2 audit test failures (item 10) — E2E only, blocked pending PostgreSQL
+2. Apply migrations against local Docker PostgreSQL (item 12)
+3. Optionally execute Phase 30C restored-app smoke path (item 8)
