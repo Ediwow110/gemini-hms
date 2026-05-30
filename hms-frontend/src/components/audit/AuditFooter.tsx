@@ -43,15 +43,15 @@ export const AuditFooter = () => {
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-1.5 text-indigo-600 bg-indigo-50/50 px-2.5 py-1 rounded-lg border border-indigo-100/50">
           <ShieldCheck className="h-4 w-4" />
-          <span>HIPAA Compliance Guidelines</span>
+          <span>Compliance-Oriented Controls</span>
         </div>
         <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50/50 px-2.5 py-1 rounded-lg border border-emerald-100/50">
           <Lock className="h-4 w-4" />
-          <span>SOC2 Audit Trail Guidelines</span>
+          <span>Audit Trail Controls</span>
         </div>
         <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50/50 px-2.5 py-1 rounded-lg border border-amber-100/50">
           <Activity className="h-4 w-4" />
-          <span>Active-Active Replica Target</span>
+          <span>Operational Resilience Target</span>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ export const AuditFooter = () => {
           <span>Client IP: <strong className="text-slate-500">{sessionInfo.ipAddress}</strong></span>
           <span>Session ID: <strong className="text-slate-500">{sessionInfo.sessionId.substring(0, 12)}...</strong></span>
           <span>Tenant ID: <strong className="text-slate-500">{user?.tenantId || 'global'}</strong></span>
-          <span>Retention: <strong className="text-slate-500">6 Years (HHS Guidelines)</strong></span>
+          <span>Retention Target: <strong className="text-slate-500">Policy-Based</strong></span>
         </div>
         <p className="text-[9px] text-slate-400 font-medium text-left md:text-right max-w-xs leading-normal italic">
           * Warning: Client-reported IP is for reference only and is not trusted for security audit logging. Server-side proxy logs are the authoritative source.
