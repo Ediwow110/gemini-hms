@@ -25,7 +25,8 @@ import {
   Truck,
   Zap,
   Activity,
-  Search
+  Search,
+  Briefcase
 } from 'lucide-react';
 export interface NavItem {
   label: string;
@@ -316,27 +317,9 @@ export const PORTAL_NAV_CONFIG: Record<string, NavGroup[]> = {
  */
 export const DEFAULT_NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Dashboard & Core',
+    label: 'General',
     items: [
-      { label: 'Command Center', to: '/', icon: LayoutDashboard },
-      { label: 'Patient Management', to: '/patients', icon: Users, permission: 'patient.view' },
-      { label: 'Appointment & Queue', to: '/queue', icon: ListOrdered, permission: 'queue.view' },
-    ],
-  },
-  {
-    label: 'Clinical Modules',
-    items: [
-      { label: 'EMR / Records', to: '/emr', icon: ClipboardList, permission: 'patient.view' },
-      { label: 'Laboratory / LIS', to: '/lab/results', icon: FlaskConical, permission: 'lab.result.view' },
-      { label: 'Pharmacy', to: '/pharmacy', icon: Pill, permission: 'inventory.stock.dispense' },
-    ],
-  },
-  {
-    label: 'Finance & Supply',
-    items: [
-      { label: 'Billing & Cashier', to: '/billing', icon: CreditCard, permission: 'billing.invoice.view' },
-      { label: 'Inventory & Stock', to: '/inventory', icon: Package, permission: 'inventory.item.view' },
-      { label: 'Procurement', to: '/procurement', icon: ShoppingBag, permission: 'inventory.stock.receive' },
+      { label: 'Dashboard', to: '/', icon: LayoutDashboard },
     ],
   },
 ];
