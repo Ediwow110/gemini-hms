@@ -162,7 +162,7 @@ describe('LabService — Phase 4D additions', () => {
       });
       prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
 
-      const result = await service.receiveSpecimen(
+      await service.receiveSpecimen(
         mockTenantId,
         mockUserId,
         mockBranchId,
@@ -246,7 +246,7 @@ describe('LabService — Phase 4D additions', () => {
       prisma.order.update.mockResolvedValue({});
       prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
 
-      const result = await service.releaseResult(
+      await service.releaseResult(
         mockTenantId,
         mockUserId,
         mockBranchId,
@@ -355,7 +355,7 @@ describe('LabService — Phase 4D additions', () => {
         { ...mockResult, isCritical: true, criticalStatus: 'OPEN' },
       ]);
 
-      const result = await service.markResultAsCritical(
+      await service.markResultAsCritical(
         mockTenantId,
         mockUserId,
         mockBranchId,

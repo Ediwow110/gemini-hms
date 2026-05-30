@@ -149,6 +149,7 @@ export class AuthService {
       });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...result } = user;
     return result;
   }
