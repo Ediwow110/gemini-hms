@@ -13,6 +13,7 @@ import { SaveVitalsDto } from './dto/save-vitals.dto';
 import { MarkVitalsErrorDto } from './dto/mark-vitals-error.dto';
 import { SaveTriageDto } from './dto/save-triage.dto';
 import { MarkTriageErrorDto } from './dto/mark-triage-error.dto';
+import { SaveDraftSoapDto } from './dto/save-draft-soap.dto';
 import { CreateClinicalOrderDto } from './dto/create-clinical-order.dto';
 import { CancelClinicalOrderDto } from './dto/cancel-clinical-order.dto';
 import { ReceiveLabOrderDto } from './dto/receive-lab-order.dto';
