@@ -124,4 +124,5 @@ jobs:
       - name: Run Security Config Verifier
         run: npm run verify:security
       - name: Print Release Evidence
+        working-directory: ./
         run: sh scripts/print-release-evidence.sh
