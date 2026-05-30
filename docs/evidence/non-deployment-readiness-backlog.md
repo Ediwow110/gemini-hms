@@ -197,14 +197,14 @@
 | Field | Value |
 |---|---|
 | **Category** | `[RUNTIME]` |
-| **Severity** | MEDIUM |
-| **Owner** | Development team |
-| **Current Status** | Phase 14 (lab workflow) and Sprint 2A (pharmacy) migrations created but not applied. No local PostgreSQL instance outside Docker. |
-| **Why It Matters** | Unapplied migrations mean the running schema is out of sync with Prisma schema. New features depending on these fields will fail. |
-| **Concrete Next Action** | Start a local PostgreSQL container or restore target, run `npx prisma migrate deploy`, and verify. |
-| **Deployment Required?** | No (can run locally against Docker PostgreSQL) |
-| **Blocks Pilot Readiness?** | No |
-| **Blocks Production Readiness?** | Yes |
+| **Severity** | — |
+| **Owner** | — |
+| **Current Status** | **VERIFIED — ALL 53 MIGRATIONS APPLIED.** Tested 2026-05-30 against local Docker PostgreSQL 15 (temporary container `postgres:15-alpine`, port 5433). Full round-trip: `prisma validate` (PASS), `prisma generate` (PASS), `migrate deploy` (53/53 applied), `migrate status` ("up to date!"), `db seed` (PASS). Backend tests: 68 suites/1246 tests all PASS. Backend build: PASS. |
+| **Why It Matters** | N/A — all migrations verified against running PostgreSQL. |
+| **Concrete Next Action** | None. Verified and resolved. Must be repeated whenever new migrations are added. |
+| **Deployment Required?** | No (local Docker PostgreSQL) |
+| **Blocks Pilot Readiness?** | No — verified against running DB |
+| **Blocks Production Readiness?** | No — verified against running DB |
 
 ---
 
@@ -312,7 +312,7 @@
 |---|---|---|
 | `[LOCAL]` | 5 | Lint errors, audit test failures, CRLF, mobile QA, backup ignore |
 | `[GH-ADMIN]` | 3 | Branch protection, required CI, CODEOWNERS |
-| `[RUNTIME]` | 2 | Migrations, Phase 30C smoke path |
+| `[RUNTIME]` | 1 | Phase 30C smoke path |
 | `[STAGE]` | 4 | GCP IAM, staging deploy, monitoring, Phase 30C |
 | `[COMPLIANCE]` | 2 | Pentest, certification |
 | `[PRODUCT]` | 0 | All deferred product work is separate |
@@ -322,11 +322,10 @@
 | Blocks | Items |
 |---|---|
 | **Blocks Pilot Readiness** | Branch protection, required CI, GCP IAM, staging deploy, monitoring |
-| **Blocks Production Readiness** | All of the above + CODEOWNERS, migrations applied, pentest, certification |
+| **Blocks Production Readiness** | All of the above + CODEOWNERS, pentest, certification |
 | **Does Not Block** | Lint errors, audit failures, CRLF, backup artifacts, mobile QA, Phase 30C |
 
 ### Recommended Local-First Actions (when deployment is paused)
 
 1. Fix the 2 audit test failures (item 10) — E2E only, blocked pending PostgreSQL
-2. Apply migrations against local Docker PostgreSQL (item 12)
-3. Optionally execute Phase 30C restored-app smoke path (item 8)
+2. Optionally execute Phase 30C restored-app smoke path (item 8)
