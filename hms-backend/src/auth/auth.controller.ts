@@ -40,7 +40,7 @@ const REFRESH_COOKIE_OPTIONS = (isProd: boolean) => ({
 });
 
 const CSRF_COOKIE_OPTIONS = (isProd: boolean) => ({
-  httpOnly: false,
+  httpOnly: true,
   secure: isProd,
   sameSite: 'strict' as const,
   path: '/',
@@ -51,7 +51,7 @@ function setAuthCookies(
   result: any,
   isProd: boolean,
   userId?: string,
-): void {
+): string {
   if (result.accessToken) {
     res.cookie('access_token', result.accessToken, COOKIE_OPTIONS(isProd));
   }
@@ -67,6 +67,7 @@ function setAuthCookies(
   }
   const csrfToken = crypto.randomBytes(32).toString('hex');
   res.cookie('csrf_token', csrfToken, CSRF_COOKIE_OPTIONS(isProd));
+  return csrfToken;
 }
 
 function clearAuthCookies(res: Response): void {
@@ -113,13 +114,14 @@ export class AuthController {
 
     // Set httpOnly cookies for standard auth
     const isProd = process.env.NODE_ENV === 'production';
-    setAuthCookies(res, result, isProd, user.id);
+    const csrfToken = setAuthCookies(res, result, isProd, user.id);
 
     return {
       message: 'Authenticated',
       user: result.user,
       requiresBranchSelection: result.requiresBranchSelection,
       availableBranches: result.availableBranches,
+      csrfToken,
     };
   }
 
@@ -141,13 +143,14 @@ export class AuthController {
     }
 
     const isProd = process.env.NODE_ENV === 'production';
-    setAuthCookies(res, result as any, isProd, user.userId);
+    const csrfToken = setAuthCookies(res, result as any, isProd, user.userId);
 
     return {
       message: 'Branch selected',
       user: (result as any).user,
       requiresBranchSelection: (result as any).requiresBranchSelection,
       availableBranches: (result as any).availableBranches,
+      csrfToken,
     };
   }
 
@@ -193,9 +196,9 @@ export class AuthController {
     );
 
     const isProd = process.env.NODE_ENV === 'production';
-    setAuthCookies(res, result, isProd);
+    const csrfToken = setAuthCookies(res, result, isProd);
 
-    return { message: 'Tokens refreshed' };
+    return { message: 'Tokens refreshed', csrfToken };
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -239,13 +242,14 @@ export class AuthController {
     const result = await this.authService.verifyMfa(user.sub, user.sid, code);
 
     const isProd = process.env.NODE_ENV === 'production';
-    setAuthCookies(res, result, isProd, user.sub);
+    const csrfToken = setAuthCookies(res, result, isProd, user.sub);
 
     return {
       message: 'MFA verified',
       user: result.user,
       requiresBranchSelection: result.requiresBranchSelection,
       availableBranches: result.availableBranches,
+      csrfToken,
     };
   }
 
@@ -279,13 +283,14 @@ export class AuthController {
     );
 
     const isProd = process.env.NODE_ENV === 'production';
-    setAuthCookies(res, result, isProd, user.sub);
+    const csrfToken = setAuthCookies(res, result, isProd, user.sub);
 
     return {
       message: 'MFA verified via recovery code',
       user: result.user,
       requiresBranchSelection: result.requiresBranchSelection,
       availableBranches: result.availableBranches,
+      csrfToken,
     };
   }
 }

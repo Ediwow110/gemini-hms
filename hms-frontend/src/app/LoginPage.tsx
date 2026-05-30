@@ -85,7 +85,7 @@ export const LoginPage = () => {
           <LoginForm />
 
           <div className="mt-8 pt-6 border-t border-slate-200 text-center">
-             <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider">
+             <p className="text-label flex items-center justify-center gap-1.5">
                <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
                Authorized Personnel Only
              </p>

@@ -7,9 +7,10 @@ const getBaseUrl = () => {
   return import.meta.env.PROD ? '/patient-portal' : '/patient-portal';
 };
 
-function getPatientCsrfToken(): string | null {
-  const match = document.cookie.match(/(?:^|;\s*)patient_csrf=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
+let patientCsrfToken: string | null = null;
+
+function setPatientCsrfToken(token: string | null): void {
+  patientCsrfToken = token;
 }
 
 const patientApi = axios.create({
@@ -21,12 +22,18 @@ const patientApi = axios.create({
 patientApi.interceptors.request.use((config) => {
   const UNSAFE_METHODS = ['post', 'put', 'patch', 'delete'];
   if (config.method && UNSAFE_METHODS.includes(config.method.toLowerCase())) {
-    const csrfToken = getPatientCsrfToken();
-    if (csrfToken) {
-      config.headers['X-CSRF-Token'] = csrfToken;
+    if (patientCsrfToken) {
+      config.headers['X-CSRF-Token'] = patientCsrfToken;
     }
   }
   return config;
+});
+
+patientApi.interceptors.response.use((response) => {
+  if (response.data?.csrfToken) {
+    setPatientCsrfToken(response.data.csrfToken);
+  }
+  return response;
 });
 
 export interface PatientProfile {

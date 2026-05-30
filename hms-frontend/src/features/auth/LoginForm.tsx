@@ -173,7 +173,7 @@ export const LoginForm = () => {
             <ShieldCheck className="h-6 w-6 text-indigo-600" />
           </div>
           <h3 className="text-lg font-bold text-slate-900">Security Verification</h3>
-          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+          <p className="text-sm text-slate-600 max-w-xs mx-auto leading-relaxed">
             Multi-factor authentication is required for your role. Please enter the 6-digit TOTP code from your authenticator app.
           </p>
         </div>
@@ -394,9 +394,9 @@ export const LoginForm = () => {
             Remember device
           </span>
         </label>
-        <a href="#" className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
+        <span className="text-sm font-semibold text-slate-300 select-none">
           Forgot password?
-        </a>
+        </span>
       </div>
 
       {/* Submit Button */}

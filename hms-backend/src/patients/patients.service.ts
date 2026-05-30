@@ -117,48 +117,51 @@ export class PatientsService {
     const dob = dto.dob ? new Date(dto.dob) : existing.dob;
     const normalizedNameDobKey = `${firstName.trim().toLowerCase()}-${lastName.trim().toLowerCase()}-${dob.toISOString().split('T')[0]}`;
 
-    try {
-      const updateResult = await this.prisma.patient.updateMany({
+    return this.prisma.$transaction(async (tx) => {
+      try {
+        const updateResult = await tx.patient.updateMany({
+          where: { id, tenantId },
+          data: {
+            ...dto,
+            dob: dto.dob ? new Date(dto.dob) : undefined,
+            normalizedNameDobKey,
+          },
+        });
+
+        if (updateResult.count === 0) {
+          throw new NotFoundException('Patient not found');
+        }
+      } catch (e: any) {
+        if (e.code === 'P2002') {
+          throw new ConflictException(
+            'A patient with this name and birthdate already exists',
+          );
+        }
+        throw e;
+      }
+
+      const updated = await tx.patient.findFirst({
         where: { id, tenantId },
-        data: {
-          ...dto,
-          dob: dto.dob ? new Date(dto.dob) : undefined,
-          normalizedNameDobKey,
-        },
       });
 
-      if (updateResult.count === 0) {
-        // No matching record for tenant & id => either not found or out of scope
+      if (!updated) {
         throw new NotFoundException('Patient not found');
       }
-    } catch (e: any) {
-      if (e.code === 'P2002') {
-        throw new ConflictException(
-          'A patient with this name and birthdate already exists',
-        );
-      }
-      throw e;
-    }
 
-    const updated = await this.prisma.patient.findFirst({
-      where: { id, tenantId },
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'PATIENT_UPDATED',
+          recordType: 'Patient',
+          recordId: id,
+          oldValues: existing,
+          newValues: updated,
+        },
+        tx,
+      );
+
+      return updated;
     });
-
-    if (!updated) {
-      throw new NotFoundException('Patient not found');
-    }
-
-    // Log Audit Event (PATIENT_UPDATED)
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'PATIENT_UPDATED',
-      recordType: 'Patient',
-      recordId: id,
-      oldValues: existing,
-      newValues: updated,
-    });
-
-    return updated;
   }
 }

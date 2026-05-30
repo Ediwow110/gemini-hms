@@ -27,7 +27,7 @@ export const RouteSummaryPanel: React.FC = () => {
              <div key={i} className="relative">
                 <div className={`absolute -left-6 top-1 h-2.5 w-2.5 rounded-full border-2 border-slate-900 ${
                   step.status === 'COMPLETED' ? 'bg-emerald-500' :
-                  step.status === 'IN_PROGRESS' ? 'bg-indigo-500 animate-ping' :
+                  step.status === 'IN_PROGRESS' ? 'bg-indigo-500 animate-notification-ping' :
                   'bg-white/20'
                 }`} />
                 <p className={`text-xs font-black uppercase tracking-tight ${step.status === 'PENDING' ? 'text-slate-500' : 'text-white'}`}>

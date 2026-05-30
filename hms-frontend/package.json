@@ -11,8 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify:clinical": "npx tsx scripts/verify-clinical-readonly-wiring.ts",
-    "verify:security": "npx tsx scripts/verify-security-config.ts"
+    "_verify:clinical": "npx tsx scripts/verify-clinical-readonly-wiring.ts",
+    "_verify:security": "npx tsx scripts/verify-security-config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -50,7 +50,7 @@ export function WorkQueueTable<T>({
   }
 
   return (
-    <div className="card overflow-hidden bg-white/90 backdrop-blur-sm animate-fade-in border-slate-200/60">
+    <div className="card overflow-hidden animate-fade-in">
       <div className="overflow-x-auto">
         <table className="w-full text-left table-premium">
           <thead>

@@ -172,8 +172,10 @@ export class PharmacyService {
       );
     }
 
-    const effectiveBranchId =
-      user.branchId || prescription.branchId || tenantId;
+    const effectiveBranchId = user.branchId || prescription.branchId;
+    if (!effectiveBranchId) {
+      throw new ForbiddenException('access_denied: missing_branch_context');
+    }
     if (
       prescription.branchId !== effectiveBranchId &&
       !user.roles?.includes('Super Admin')

@@ -39,7 +39,7 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
 
           return (
             <div key={group.label} className="animate-fade-in">
-              <h3 className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-2 select-none">
+              <h3 className="px-3 text-label mb-2 select-none">
                 {group.label}
               </h3>
               <div className="space-y-0.5">

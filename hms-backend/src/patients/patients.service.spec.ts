@@ -11,16 +11,21 @@ describe('PatientsService write isolation', () => {
   let prisma: any;
 
   beforeEach(async () => {
+    const patientMock = {
+      findFirst: jest.fn(),
+      updateMany: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PatientsService,
         {
           provide: PrismaService,
           useValue: {
-            patient: {
-              findFirst: jest.fn(),
-              updateMany: jest.fn(),
-            },
+            $transaction: jest.fn().mockImplementation(async (fn: any) => {
+              return fn({ patient: patientMock });
+            }),
+            patient: patientMock,
           },
         },
         {
