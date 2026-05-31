@@ -40,6 +40,7 @@ const ReleasedResultDetailPage = lazy(() => import('./portals/lab/ReleasedResult
 // Specialized Operational & Compliance Panels
 const EMRWorkspace = lazy(() => import('./features/emr/EMRWorkspace').then(m => ({ default: m.EMRWorkspace })));
 const PharmacyHub = lazy(() => import('./features/pharmacy/PharmacyHub').then(m => ({ default: m.PharmacyHub })));
+const PharmacyDashboard = lazy(() => import('./pages/pharmacy/PharmacyDashboard').then(m => ({ default: m.PharmacyDashboard })));
 const RadiologyCanvas = lazy(() => import('./features/radiology/RadiologyCanvas').then(m => ({ default: m.RadiologyCanvas })));
 const ClaimsDashboard = lazy(() => import('./features/claims/ClaimsDashboard').then(m => ({ default: m.ClaimsDashboard })));
 const PatientMergeRequests = lazy(() => import('./features/admin/PatientMergeRequests').then(m => ({ default: m.PatientMergeRequests })));
@@ -293,7 +294,9 @@ const router = createBrowserRouter([
           { path: 'lab/released/:patientId/:orderId', element: <PermissionRoute permission="lab.result.view"><LazyPage><ReleasedResultDetailPage /></LazyPage></PermissionRoute> },
           { path: 'emr', element: <PermissionRoute permission="patient.view"><LazyPage><EMRWorkspace /></LazyPage></PermissionRoute> },
           { path: 'radiology', element: <PermissionRoute permission="lab.result.view"><LazyPage><RadiologyCanvas /></LazyPage></PermissionRoute> },
-          { path: 'pharmacy', element: <PermissionRoute permission="inventory.stock.dispense"><LazyPage><PharmacyHub /></LazyPage></PermissionRoute> },
+           { path: 'pharmacy/dashboard', element: <PermissionRoute permission="inventory.item.view"><LazyPage><PharmacyDashboard /></LazyPage></PermissionRoute> },
+           { path: 'pharmacy', element: <PermissionRoute permission="inventory.stock.dispense"><LazyPage><PharmacyHub /></LazyPage></PermissionRoute> },
+
           { path: 'claims', element: <PermissionRoute permission="billing.claim.view"><LazyPage><ClaimsDashboard /></LazyPage></PermissionRoute> },
           { path: 'admin/patient-merges', element: <PermissionRoute permission="admin.role.change"><LazyPage><PatientMergeRequests /></LazyPage></PermissionRoute> },
           
