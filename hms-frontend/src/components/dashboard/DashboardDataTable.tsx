@@ -33,7 +33,7 @@ export const DashboardDataTable = <T extends { id: string | number }>({
         <h3 className="text-sm font-black tracking-tight text-slate-900">{title}</h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs" role="table" aria-label={title}>
           <thead className="bg-slate-50/50 text-slate-400">
             <tr>
               {columns.map((col, idx) => (
