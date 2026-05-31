@@ -19,6 +19,7 @@ import { Queue } from './features/queue/Queue';
 
 // Lazy-loaded — split by feature/portal (named exports need .then() adapter)
 const Billing = lazy(() => import('./features/billing/Billing').then(m => ({ default: m.Billing })));
+const BillingDashboard = lazy(() => import('./pages/billing/BillingDashboard').then(m => ({ default: m.BillingDashboard })));
 const CashierClosing = lazy(() => import('./features/billing/CashierClosing').then(m => ({ default: m.CashierClosing })));
 const ApprovalCenter = lazy(() => import('./features/approvals/ApprovalCenter').then(m => ({ default: m.ApprovalCenter })));
 const AuditLogViewer = lazy(() => import('./features/admin/AuditLogViewer').then(m => ({ default: m.AuditLogViewer })));
@@ -259,7 +260,9 @@ const router = createBrowserRouter([
           { path: 'orders/new', element: <PermissionRoute permission="order.create"><CreateOrder /></PermissionRoute> },
           { path: 'queue', element: <PermissionRoute permission="queue.view"><Queue /></PermissionRoute> },
           // Lazy-loaded routes below
-          { path: 'billing', element: <PermissionRoute permission="billing.invoice.view"><LazyPage><Billing /></LazyPage></PermissionRoute> },
+           { path: 'billing/dashboard', element: <PermissionRoute permission="billing.invoice.view"><LazyPage><BillingDashboard /></LazyPage></PermissionRoute> },
+           { path: 'billing', element: <PermissionRoute permission="billing.invoice.view"><LazyPage><Billing /></LazyPage></PermissionRoute> },
+
           { path: 'billing/cashier-closing', element: <PermissionRoute allowedRoles={['Cashier']}><LazyPage><CashierClosing /></LazyPage></PermissionRoute> },
           { path: 'approvals', element: <PermissionRoute permission="approval.request.view"><LazyPage><ApprovalCenter /></LazyPage></PermissionRoute> },
           { path: 'audit-logs', element: <PermissionRoute permission="audit.view"><LazyPage><AuditLogViewer /></LazyPage></PermissionRoute> },
