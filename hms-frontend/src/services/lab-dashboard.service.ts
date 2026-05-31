@@ -62,23 +62,23 @@ export const labDashboardService = {
 
       return {
         kpis: [
-          { title: 'Pending Workload', value: pendingCount, description: 'Specimens & Validated', severity: 'warning' as const },
-          { title: 'Completed Tests', value: completedCount, description: 'Released today', severity: 'success' as const },
-          { title: 'Critical Results', value: criticalCount, description: 'Awaiting action', severity: 'critical' as const },
-          { title: 'Avg Turnaround', value: `${Math.round(avgTat)}m`, description: 'Order to Release', severity: 'info' as const },
+          { title: 'Pending Workload', value: pendingCount, description: 'Specimens & Validated', severity: 'warning' },
+          { title: 'Completed Tests', value: completedCount, description: 'Released today', severity: 'success' },
+          { title: 'Critical Results', value: criticalCount, description: 'Awaiting action', severity: 'critical' },
+          { title: 'Avg Turnaround', value: `${Math.round(avgTat)}m`, description: 'Order to Release', severity: 'info' },
         ],
         alerts: [
           ...critical.slice(0, 3).map((c, idx) => ({
             id: c.id || `crit-${idx}`,
             title: 'Critical Result',
             message: `Patient ${c.patientName} requires immediate review`,
-            severity: 'critical' as const,
+            severity: 'critical',
           })),
           ...specimens.slice(0, 2).map((s, idx) => ({
             id: s.id || `spec-${idx}`,
             title: 'Pending Specimen',
             message: `Specimen ${s.orderNumber} awaiting receiving`,
-            severity: 'warning' as const,
+            severity: 'warning',
           })),
         ],
         statusDistribution: [

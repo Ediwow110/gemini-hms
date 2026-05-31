@@ -121,6 +121,12 @@ export const roleNavigation: NavGroupConfig[] = [
     ],
   },
   {
+    label: 'Clinical Operations',
+    items: [
+      { label: 'Ops Dashboard', to: '/clinical/ops', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Admin', 'Doctor', 'Nurse'], zone: 'staff' },
+    ],
+  },
+  {
     label: 'Branch Control',
     items: [
       { label: 'Branch Dashboard', to: '/branch-admin', icon: LayoutDashboard, allowedRoles: ['Branch Admin'], zone: 'staff' },
