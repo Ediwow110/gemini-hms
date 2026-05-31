@@ -1,7 +1,9 @@
 import { clinicalWorkflowService } from './clinicalWorkflow.service';
 import { nursingService } from './nursing.service';
 import type { 
-  ClinicalOpsDashboardData 
+  ClinicalOpsDashboardData,
+  ClinicalOpsKpi,
+  ClinicalOpsAlert
 } from '../types/clinical-ops-dashboard';
 
 export const clinicalOpsDashboardService = {
