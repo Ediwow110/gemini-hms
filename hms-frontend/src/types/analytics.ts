@@ -63,6 +63,38 @@ export interface ScopeFilter {
   tenant?: string;
   region?: string;
   reportType?: string;
+  status?: string;
+}
+
+export interface AdminDashboardSummary {
+  activePatients: number;
+  todaysAppointments: number;
+  pendingLabs: number;
+  lowStock: number;
+  revenue: number;
+  securityAlerts: number;
+}
+
+export interface AdminDashboardAlert {
+  title: string;
+  message: string;
+  severity: AnalyticsSeverity;
+}
+
+export interface AdminDashboardAlertsResponse {
+  lowStock: AdminDashboardAlert[];
+  criticalLabs: AdminDashboardAlert[];
+}
+
+export interface AdminDashboardTopListEntry {
+  id: string;
+  label: string;
+  value: string | number;
+}
+
+export interface AdminDashboardTopListsResponse {
+  busiestDepts: AdminDashboardTopListEntry[];
+  unpaidBills: AdminDashboardTopListEntry[];
 }
 
 export interface DashboardSummary {
