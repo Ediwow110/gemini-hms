@@ -111,6 +111,9 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'field-service/service-worklog', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
   { path: 'field-service/offline-sync', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
 
+  // Clinical Ops Dashboard (Staff Zone, Observational, Branch Scoped)
+  { path: 'clinical/ops', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse'], zone: 'staff', isBranchScoped: true },
+
   // Doctor Portal Workspace Routes (Staff Zone, Clinical Scope, Branch Scoped, Doctor/Admin allowedRoles)
   { path: 'doctor', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
   { path: 'doctor/queue', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
