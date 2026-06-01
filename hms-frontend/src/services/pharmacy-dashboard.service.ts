@@ -1,4 +1,5 @@
 import { apiClient } from '../lib/api';
+import { demoData } from '../demo-data/dashboard-demo.data';
 
 interface CatalogItem {
   id: string;
@@ -84,17 +85,8 @@ export const pharmacyDashboardService = {
           { label: 'Low', value: lowStockCount },
           { label: 'Out', value: outOfStockCount },
         ],
-        categoryDistribution: [
-          { label: 'Antibiotics', value: 40 },
-          { label: 'Analgesics', value: 30 },
-          { label: 'Cardiovascular', value: 20 },
-          { label: 'Others', value: 10 },
-        ],
-        topDispensed: [
-          { id: 'td-1', label: 'Paracetamol 500mg', value: '1,240', trend: '+12%' },
-          { id: 'td-2', label: 'Amoxicillin 250mg', value: '850', trend: '+5%' },
-          { id: 'td-3', label: 'Metformin 500mg', value: '620', trend: '-2%' },
-        ],
+        categoryDistribution: demoData.pharmacy.categoryDistribution,
+        topDispensed: demoData.pharmacy.topDispensed,
         lowestStock: catalog
           .sort((a, b) => a.currentStock - b.currentStock)
           .slice(0, 5)

@@ -1,4 +1,5 @@
 import { apiClient } from '../lib/api';
+import { demoData } from '../demo-data/dashboard-demo.data';
 
 interface InvoiceItem {
   id: string;
@@ -88,11 +89,7 @@ export const billingDashboardService = {
           { label: 'Unpaid', value: unpaidCount },
           { label: 'Overdue', value: overdueCount },
         ],
-        paymentMethodDistribution: [
-          { label: 'Cash', value: 60 },
-          { label: 'Credit Card', value: 25 },
-          { label: 'Insurance', value: 15 },
-        ],
+        paymentMethodDistribution: demoData.billing.paymentMethodDistribution,
         highestOutstanding: invoices
           .sort((a, b) => (b.balance || 0) - (a.balance || 0))
           .slice(0, 5)

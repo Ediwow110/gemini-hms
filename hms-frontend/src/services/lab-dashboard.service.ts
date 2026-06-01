@@ -1,4 +1,5 @@
 import { apiClient } from '../lib/api';
+import { demoData } from '../demo-data/dashboard-demo.data';
 import type { 
   PendingSpecimenDto, 
   ReleasableResultDto, 
@@ -86,17 +87,8 @@ export const labDashboardService = {
           { label: 'Released', value: completedCount },
           { label: 'Critical', value: criticalCount },
         ],
-        workloadDistribution: [
-          { label: 'Hematology', value: 45 },
-          { label: 'Chemistry', value: 30 },
-          { label: 'Microbiology', value: 15 },
-          { label: 'Other', value: 10 },
-        ],
-        topRequestedTests: [
-          { id: 't1', label: 'CBC', value: '420', trend: '+5%' },
-          { id: 't2', label: 'Comprehensive Metabolic Panel', value: '310', trend: '+2%' },
-          { id: 't3', label: 'HbA1c', value: '150', trend: '-10%' },
-        ],
+        workloadDistribution: demoData.lab.workloadDistribution,
+        topRequestedTests: demoData.lab.topRequestedTests,
         longestPending: specimens
           .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
           .slice(0, 5)
