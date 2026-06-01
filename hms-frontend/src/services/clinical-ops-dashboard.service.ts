@@ -1,3 +1,4 @@
+import { demoData } from '../demo-data/dashboard-demo.data';
 import { clinicalWorkflowService } from './clinicalWorkflow.service';
 import { nursingService } from './nursing.service';
 import type { 
@@ -68,17 +69,8 @@ export const clinicalOpsDashboardService = {
           { label: 'In Consultation', value: summary.activePatients - (pendingTriage + waitingForDoctor) },
           { label: 'Completed', value: summary.completedEncountersToday },
         ],
-        workloadDistribution: [
-          { label: 'General Practice', value: 40 },
-          { label: 'Pediatrics', value: 25 },
-          { label: 'Internal Medicine', value: 20 },
-          { label: 'Urgent Care', value: 15 },
-        ],
-        topDepartments: [
-          { id: 'd1', label: 'Emergency', value: 'High', trend: '↑' },
-          { id: 'd2', label: 'Pediatrics', value: 'Medium', trend: '→' },
-          { id: 'd3', label: 'General', value: 'Medium', trend: '↓' },
-        ],
+        workloadDistribution: demoData.clinicalOps.workloadDistribution,
+        topDepartments: demoData.clinicalOps.topDepartments,
         pendingQueue: queue.slice(0, 10),
       };
     } catch (error) {
