@@ -35,7 +35,7 @@ export interface TicketStats {
 }
 
 export class ItSupportService {
-  private baseUrl = '/api/v1/it-support';
+  private baseUrl = '/v1/it-support';
 
   async createTicket(data: {
     issueType: string;
