@@ -14,19 +14,13 @@ export class DashboardController {
 
   @Get('admin/summary')
   @Roles('Super Admin', 'Admin')
-  async getSummary(
-    @Query() query: DashboardQueryDto,
-    @GetUser() user: User,
-  ) {
+  async getSummary(@Query() query: DashboardQueryDto, @GetUser() user: User) {
     return this.dashboardService.getAdminSummary(query, user.id, user.tenantId);
   }
 
   @Get('admin/trends')
   @Roles('Super Admin', 'Admin')
-  async getTrends(
-    @Query() query: DashboardQueryDto,
-    @GetUser() user: User,
-  ) {
+  async getTrends(@Query() query: DashboardQueryDto, @GetUser() user: User) {
     return this.dashboardService.getAdminTrends(query, user.tenantId);
   }
 
