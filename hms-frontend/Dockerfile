@@ -1,11 +1,11 @@
-# Use Node 22 (matching agent's environment)
-FROM node:22-slim AS build
+# Use Node 20 (matching CI environment)
+FROM node:20-slim AS build
 
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies deterministically
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 # Build the project
 COPY . .
