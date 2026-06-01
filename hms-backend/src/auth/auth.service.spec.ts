@@ -827,3 +827,266 @@ describe('JWT Claim Consistency', () => {
     ).rejects.toThrow(UnauthorizedException);
   });
 });
+
+describe('AuthService Refresh Token Boundaries', () => {
+  let service: AuthService;
+  let jwtService: { sign: jest.Mock };
+  let sessionService: {
+    rotateRefreshToken: jest.Mock;
+    revokeSession: jest.Mock;
+  };
+  let prisma: {
+    user: { findUnique: jest.Mock };
+    userBranch: { findMany: jest.Mock; findFirst: jest.Mock };
+    userRole: { findMany: jest.Mock };
+    rolePermission: { findFirst: jest.Mock };
+    session: { update: jest.Mock };
+    $transaction: jest.Mock;
+  };
+  let auditService: { log: jest.Mock };
+
+  beforeEach(async () => {
+    jwtService = { sign: jest.fn().mockReturnValue('mocked-token') };
+
+    sessionService = {
+      createSession: jest.fn().mockResolvedValue({ id: 'session-id' }),
+      markMfaVerified: jest.fn().mockResolvedValue(undefined),
+      setInitialRefreshToken: jest.fn().mockResolvedValue(undefined),
+      rotateRefreshToken: jest.fn(),
+      revokeSession: jest.fn(),
+      revokeAllForUser: jest.fn(),
+    };
+
+    prisma = {
+      user: { findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+      userBranch: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
+      },
+      userRole: { findMany: jest.fn() },
+      rolePermission: { findFirst: jest.fn() },
+      session: { update: jest.fn() },
+      $transaction: jest.fn(async (cb: any) => cb({})),
+    };
+
+    auditService = { log: jest.fn().mockResolvedValue(undefined) };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: JwtService, useValue: jwtService },
+        { provide: SessionService, useValue: sessionService },
+        {
+          provide: MfaService,
+          useValue: {
+            verifyCode: jest.fn(),
+            verifyRecoveryCode: jest.fn(),
+            generateSecret: jest.fn(),
+            enableMfa: jest.fn(),
+            generateRecoveryCodes: jest.fn(),
+          },
+        },
+        { provide: AuditService, useValue: auditService },
+      ],
+    }).compile();
+
+    service = module.get<AuthService>(AuthService);
+  });
+
+  it('refreshTokens should throw UnauthorizedException when session not found', async () => {
+    sessionService.rotateRefreshToken.mockResolvedValue({
+      rotated: false,
+      reason: 'expired_or_not_found',
+      session: null,
+    });
+
+    await expect(
+      service.refreshTokens('nonexistent-session', 'some-token'),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('refreshTokens should throw retry error when replay within leeway', async () => {
+    sessionService.rotateRefreshToken.mockResolvedValue({
+      rotated: false,
+      reason: 'replay_within_leeway',
+      session: { id: 'session-id' },
+    });
+
+    try {
+      await service.refreshTokens('session-id', 'replayed-token');
+      fail('Expected UnauthorizedException');
+    } catch (e: any) {
+      expect(e.message).toBe('Token already rotated');
+      expect(e.response.retry).toBe(true);
+    }
+  });
+
+  it('refreshTokens should throw UnauthorizedException when breached (revoked)', async () => {
+    sessionService.rotateRefreshToken.mockResolvedValue({
+      rotated: false,
+      reason: 'revoked',
+      session: null,
+    });
+
+    await expect(
+      service.refreshTokens('session-id', 'stolen-token'),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('refreshTokens should reject missing user record', async () => {
+    sessionService.rotateRefreshToken.mockResolvedValue({
+      rotated: true,
+      reason: 'rotated',
+      session: {
+        id: 'session-id',
+        userId: 'user-uuid',
+        branchId: null,
+      },
+    });
+    prisma.user.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.refreshTokens('session-id', 'valid-token'),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('refreshTokens should preserve branchId from session', async () => {
+    sessionService.rotateRefreshToken.mockResolvedValue({
+      rotated: true,
+      reason: 'rotated',
+      session: {
+        id: 'session-id',
+        userId: 'user-uuid',
+        branchId: 'branch-uuid',
+      },
+    });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-uuid',
+      tenantId: 'tenant-uuid',
+      status: 'ACTIVE',
+      deactivatedAt: null,
+      tokenVersion: 0,
+      userRoles: [
+        {
+          status: 'ACTIVE',
+          role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+        },
+      ],
+    });
+    prisma.userBranch.findMany.mockResolvedValue([]);
+
+    await service.refreshTokens('session-id', 'valid-token');
+
+    expect(jwtService.sign).toHaveBeenCalledWith(
+      expect.objectContaining({ branchId: 'branch-uuid' }),
+      expect.any(Object),
+    );
+  });
+});
+
+describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
+  let service: AuthService;
+  let prisma: {
+    user: { findUnique: jest.Mock; findFirst: jest.Mock; update: jest.Mock };
+    userBranch: { findMany: jest.Mock; findFirst: jest.Mock };
+    userRole: { findMany: jest.Mock };
+    rolePermission: { findFirst: jest.Mock };
+    session: { update: jest.Mock };
+    $transaction: jest.Mock;
+  };
+
+  const mockUser = {
+    id: 'user-123',
+    email: 'test@example.com',
+    tenantId: 'tenant-456',
+    passwordHash: 'redacted',
+    isMfaEnabled: false,
+    mfaEnabled: false,
+    mfaSecret: null,
+    status: 'ACTIVE',
+    deactivatedAt: null,
+    tokenVersion: 0,
+    tenant: { id: 'tenant-456', name: 'Tenant', status: 'ACTIVE' },
+    userRoles: [
+      {
+        status: 'ACTIVE',
+        role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+      },
+    ],
+  };
+
+  beforeEach(async () => {
+    prisma = {
+      user: { findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+      userBranch: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
+      },
+      userRole: { findMany: jest.fn() },
+      rolePermission: { findFirst: jest.fn() },
+      session: { update: jest.fn() },
+      $transaction: jest.fn(async (cb: any) => cb({})),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        { provide: PrismaService, useValue: prisma },
+        {
+          provide: JwtService,
+          useValue: { sign: jest.fn().mockReturnValue('mocked-token') },
+        },
+        {
+          provide: SessionService,
+          useValue: {
+            createSession: jest.fn().mockResolvedValue({ id: 'session-id' }),
+            markMfaVerified: jest.fn().mockResolvedValue(undefined),
+            setInitialRefreshToken: jest.fn().mockResolvedValue(undefined),
+            rotateRefreshToken: jest.fn(),
+            revokeSession: jest.fn(),
+          },
+        },
+        {
+          provide: MfaService,
+          useValue: {
+            verifyCode: jest.fn(),
+            verifyRecoveryCode: jest.fn(),
+            generateSecret: jest.fn(),
+            enableMfa: jest.fn(),
+            generateRecoveryCodes: jest.fn(),
+          },
+        },
+        { provide: AuditService, useValue: { log: jest.fn() } },
+      ],
+    }).compile();
+
+    service = module.get<AuthService>(AuthService);
+  });
+
+  it('should require MFA challenge for sensitive roles when DISABLE_AUTH_VERIFICATION is false', async () => {
+    process.env.DISABLE_AUTH_VERIFICATION = 'false';
+    prisma.rolePermission.findFirst.mockResolvedValueOnce({
+      roleId: 'role-123',
+      permissionId: 'perm-123',
+    });
+
+    const result = await service.login(mockUser);
+
+    expect(result.message).toBe('MFA_REQUIRED');
+    expect(result.mfaToken).toBeDefined();
+  });
+
+  it('should skip MFA challenge for sensitive roles when DISABLE_AUTH_VERIFICATION is true', async () => {
+    process.env.DISABLE_AUTH_VERIFICATION = 'true';
+    prisma.rolePermission.findFirst.mockResolvedValueOnce({
+      roleId: 'role-123',
+      permissionId: 'perm-123',
+    });
+
+    const result = await service.login(mockUser);
+
+    expect(result.accessToken).toBeDefined();
+    expect(result.message).not.toBe('MFA_REQUIRED');
+  });
+});
