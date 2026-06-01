@@ -60,7 +60,7 @@ export interface CreatePaymentDto {
 }
 
 export class BillingFrontendService {
-  private baseUrl = '/api/v1/billing';
+  private baseUrl = '/v1/billing';
 
   async getInvoices(): Promise<InvoiceDto[]> {
     const res = await apiClient.get(`${this.baseUrl}/invoices`);

@@ -52,9 +52,9 @@ export const pharmacyDashboardService = {
   async getDashboardData(branchId: string) {
     try {
       const [catalogRes, lowStockRes, queueRes] = await Promise.all([
-        apiClient.get<CatalogItem[]>('/api/v1/inventory/catalog', { params: { branchId } }),
-        apiClient.get<LowStockItem[]>('/api/v1/inventory/alerts/low-stock', { params: { branchId } }),
-        apiClient.get('/api/v1/pharmacy/prescriptions', { params: { status: 'ACTIVE', branchId } }),
+        apiClient.get<CatalogItem[]>('/v1/inventory/catalog', { params: { branchId } }),
+        apiClient.get<LowStockItem[]>('/v1/inventory/alerts/low-stock', { params: { branchId } }),
+        apiClient.get('/v1/pharmacy/prescriptions', { params: { status: 'ACTIVE', branchId } }),
       ]);
 
       const catalog = catalogRes.data || [];

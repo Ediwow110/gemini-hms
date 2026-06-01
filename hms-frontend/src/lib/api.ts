@@ -13,6 +13,7 @@ export function getCsrfToken(): string | null {
 const UNSAFE_METHODS = ['post', 'put', 'patch', 'delete'];
 
 export const apiClient = axios.create({
+  // apiClient baseURL includes `/api`; service methods should call `/v1/...`
   baseURL: import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000/api'),
   withCredentials: true,
   headers: {

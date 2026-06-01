@@ -44,10 +44,10 @@ export const labDashboardService = {
   async getDashboardData(branchId: string) {
     try {
       const [specimensRes, releasableRes, criticalRes, turnaroundRes] = await Promise.all([
-        apiClient.get<PendingSpecimenDto[]>('/api/v1/lab/specimens/pending', { params: { branchId } }),
-        apiClient.get<ReleasableResultDto[]>('/api/v1/lab/results/releasable', { params: { branchId } }),
-        apiClient.get<CriticalResultDto[]>('/api/v1/lab/critical-results', { params: { branchId } }),
-        apiClient.get<TurnaroundSummaryDto>('/api/v1/lab/turnaround', { params: { branchId } }),
+        apiClient.get<PendingSpecimenDto[]>('/v1/lab/specimens/pending', { params: { branchId } }),
+        apiClient.get<ReleasableResultDto[]>('/v1/lab/results/releasable', { params: { branchId } }),
+        apiClient.get<CriticalResultDto[]>('/v1/lab/critical-results', { params: { branchId } }),
+        apiClient.get<TurnaroundSummaryDto>('/v1/lab/turnaround', { params: { branchId } }),
       ]);
 
       const specimens = specimensRes.data || [];

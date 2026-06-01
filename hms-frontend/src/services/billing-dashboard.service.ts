@@ -55,8 +55,8 @@ export const billingDashboardService = {
   async getDashboardData(branchId: string) {
     try {
       const [invoicesRes, sessionRes] = await Promise.all([
-        apiClient.get<InvoiceItem[]>('/api/v1/billing/invoices', { params: { branchId } }),
-        apiClient.get<{ payments: SessionPayment[] } | null>('/api/v1/billing/sessions/active', { params: { branchId } }),
+        apiClient.get<InvoiceItem[]>('/v1/billing/invoices', { params: { branchId } }),
+        apiClient.get<{ payments: SessionPayment[] } | null>('/v1/billing/sessions/active', { params: { branchId } }),
       ]);
 
       const invoices = invoicesRes.data || [];
