@@ -30,12 +30,13 @@ WORKDIR /app
 # Create system user and group
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# Copy only necessary files from builder and set correct ownership
-COPY --from=builder --chown=appuser:appgroup /app/package*.json ./
-COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
+# Install production dependencies only (prisma CLI available as dependency)
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci --omit=dev && npx prisma generate
+
+# Copy built artifacts from builder
 COPY --from=builder --chown=appuser:appgroup /app/dist ./dist
-COPY --from=builder --chown=appuser:appgroup /app/prisma ./prisma
-COPY --from=builder --chown=appuser:appgroup /app/prisma.config.ts ./
 
 # Drop root privileges and switch to appuser
 USER appuser
