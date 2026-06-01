@@ -130,5 +130,42 @@ describe('BranchGuard', () => {
       );
       expect(guard.canActivate(context)).toBe(true);
     });
+
+    it('should allow Super Admin to target a branch when consistent across body/query/params', () => {
+      const context = mockExecutionContext(
+        {
+          userId: 'u1',
+          tenantId: 't1',
+          roles: ['Super Admin'],
+          branchId: 'b1',
+        },
+        { branchId: 'b2' },
+        {},
+      );
+      expect(guard.canActivate(context)).toBe(true);
+    });
+
+    it('should still reject Super Admin when params/body/query branchIds conflict', () => {
+      const context = mockExecutionContext(
+        {
+          userId: 'u1',
+          tenantId: 't1',
+          roles: ['Super Admin'],
+          branchId: 'b1',
+        },
+        { branchId: 'b2' },
+        { branchId: 'b3' },
+      );
+      expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+    });
+
+    it('should allow Super Admin without branchId when no branchId in request', () => {
+      const context = mockExecutionContext(
+        { userId: 'u1', tenantId: 't1', roles: ['Super Admin'] },
+        {},
+        {},
+      );
+      expect(guard.canActivate(context)).toBe(true);
+    });
   });
 });
