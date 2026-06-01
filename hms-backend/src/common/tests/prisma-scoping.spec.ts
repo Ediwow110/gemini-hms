@@ -86,7 +86,7 @@ describe('PrismaQueryScoping', () => {
       };
 
       mockDb.patient.findFirst.mockImplementation(
-        async ({ where: { id, tenantId } }: any) => {
+        async ({ where: { id: _id, tenantId } }: any) => {
           if (tenantId === mockTenantA) return tenantAPatient;
           return null;
         },
@@ -108,7 +108,7 @@ describe('PrismaQueryScoping', () => {
       };
 
       mockDb.patient.findFirst.mockImplementation(
-        async ({ where: { id, tenantId } }: any) => {
+        async ({ where: { id: _id, tenantId } }: any) => {
           if (tenantId === mockTenantA) return tenantAPatient;
           return null;
         },
@@ -193,7 +193,8 @@ describe('PrismaQueryScoping', () => {
     it('labResult findFirst with tenantId correctly scopes', async () => {
       mockDb.labResult.findFirst.mockImplementation(
         async ({ where: { id, tenantId } }: any) => {
-          if (tenantId === mockTenantA) return { id, tenantId, status: 'RELEASED' };
+          if (tenantId === mockTenantA)
+            return { id, tenantId, status: 'RELEASED' };
           return null;
         },
       );
@@ -212,7 +213,8 @@ describe('PrismaQueryScoping', () => {
     it('prescription findFirst with tenantId correctly scopes', async () => {
       mockDb.prescription.findFirst.mockImplementation(
         async ({ where: { id, tenantId } }: any) => {
-          if (tenantId === mockTenantA) return { id, tenantId, status: 'ACTIVE' };
+          if (tenantId === mockTenantA)
+            return { id, tenantId, status: 'ACTIVE' };
           return null;
         },
       );
