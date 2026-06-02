@@ -1,14 +1,18 @@
 import React from "react";
 import { PatientIdentityHeader } from "../../components/ui/patient-identity-header";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { PlusCircle, ArrowLeft } from "lucide-react";
+import { useUser } from "../../hooks/use-user";
+import { PatientNoteForm } from "../notes/PatientNoteForm";
 
 export const PatientProfile = () => {
   const navigate = useNavigate();
-  const patient = { id: "P001", name: "John Doe", age: 45, gender: "M", category: "Regular", balance: 50 };
+  const { id: patientId } = useParams<{ id: string }>();
+  const user = useUser();
+  const patient = { id: patientId ?? "P001", name: "John Doe", age: 45, gender: "M", category: "Regular", balance: 50 };
   const [activeTab, setActiveTab] = React.useState("Overview");
   
-  const tabs = ["Overview", "Orders", "Billing", "Lab Results", "Documents", "Timeline"];
+  const tabs = ["Overview", "Orders", "Billing", "Lab Results", "Documents", "Timeline", "Notes"];
   
   return (
     <div className="space-y-6 animate-fade-in">
@@ -81,6 +85,13 @@ export const PatientProfile = () => {
                    </div>
                 </div>
               </section>
+            </div>
+          ) : activeTab === "Notes" ? (
+            <div className="animate-fade-in">
+              <PatientNoteForm
+                currentUserId={user?.id ?? ""}
+                patientId={patientId ?? "unknown"}
+              />
             </div>
           ) : (
             <div className="py-16 text-center animate-fade-in">
