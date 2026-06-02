@@ -1,49 +1,116 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pill, Plus, AlertTriangle } from 'lucide-react';
 import { usePatientPrescriptions, useCreatePrescription } from '../../../hooks/use-doctor';
+import { useAutoDraft } from '../../../lib/autodraft/useAutoDraft';
+import { DraftRecoveryDialog } from '../../../lib/autodraft/DraftRecoveryDialog';
+import { deleteAutoDraft } from '../../../lib/autodraft/indexedDbDraftStore';
 import type { PrescriptionDto } from '../../../services/doctor.service';
+
+type PrescriptionDraftData = {
+  medicationName: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+  encounterId: string;
+};
+
+const EMPTY_FORM: PrescriptionDraftData = {
+  medicationName: '',
+  dosage: '1 tablet',
+  frequency: 'Once daily (OD)',
+  duration: '30 days',
+  instructions: '',
+  encounterId: '',
+};
 
 interface DoctorPrescriptionPanelProps {
   patientId: string;
   isLocked: boolean;
+  currentUserId: string;
 }
 
-export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescriptionPanelProps) => {
+export const DoctorPrescriptionPanel = ({ patientId, isLocked, currentUserId }: DoctorPrescriptionPanelProps) => {
   const { data: prescriptions, isLoading, refetch } = usePatientPrescriptions(patientId);
   const createRx = useCreatePrescription();
 
-  const [medicationName, setMedicationName] = useState('');
-  const [dosage, setDosage] = useState('1 tablet');
-  const [frequency, setFrequency] = useState('Once daily (OD)');
-  const [duration, setDuration] = useState('30 days');
-  const [instructions, setInstructions] = useState('');
-  const [encounterId, setEncounterId] = useState('');
+  const [formData, setFormData] = useState<PrescriptionDraftData>(EMPTY_FORM);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(true);
 
-  const safePrescriptions = prescriptions || [];
+  useEffect(() => {
+    setShowRecovery(true);
+    setFormData(EMPTY_FORM);
+    setIsDirty(false);
+  }, [patientId]);
+
+  const route = useMemo(
+    () => `/patients/${patientId}/prescriptions/new`,
+    [patientId]
+  );
+
+  const autoDraft = useAutoDraft<PrescriptionDraftData>({
+    enabled: true,
+    userId: currentUserId,
+    module: 'prescription',
+    entityId: patientId,
+    route,
+    formData,
+    isDirty,
+    ttlHours: 72,
+  });
+
+  const { draftId, discardDraft, clearRecoveredDraft } = autoDraft;
+
+  const updateField = useCallback(
+    <K extends keyof PrescriptionDraftData>(key: K, value: PrescriptionDraftData[K]) => {
+      setFormData((prev) => ({ ...prev, [key]: value }));
+      setIsDirty(true);
+    },
+    []
+  );
+
+  const handleResume = useCallback(
+    (draftFormData: PrescriptionDraftData) => {
+      setFormData(draftFormData);
+      setIsDirty(true);
+      clearRecoveredDraft();
+    },
+    [clearRecoveredDraft]
+  );
+
+  const handleClose = useCallback(() => setShowRecovery(false), []);
 
   const handleAddRx = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!medicationName || isLocked || !encounterId) return;
+    if (!formData.medicationName || isLocked || !formData.encounterId) return;
 
     createRx.mutate(
       {
         patientId,
-        encounterId,
-        medicationName,
-        dosage,
-        frequency,
-        duration,
-        notes: instructions || undefined,
+        encounterId: formData.encounterId,
+        medicationName: formData.medicationName,
+        dosage: formData.dosage,
+        frequency: formData.frequency,
+        duration: formData.duration,
+        notes: formData.instructions || undefined,
       },
       {
         onSuccess: () => {
-          setMedicationName('');
-          setInstructions('');
+          setIsDirty(false);
+          deleteAutoDraft(draftId);
+          setFormData((prev) => ({
+            ...prev,
+            medicationName: '',
+            instructions: '',
+          }));
           refetch();
         },
       },
     );
   };
+
+  const safePrescriptions = prescriptions || [];
 
   return (
     <div className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4" data-patient-id={patientId}>
@@ -69,14 +136,24 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescript
         </span>
       </div>
 
+      {/* Recovery dialog */}
+      {showRecovery ? (
+        <DraftRecoveryDialog
+          draft={autoDraft.recoveredDraft}
+          onResume={handleResume}
+          onDiscard={discardDraft}
+          onClose={handleClose}
+        />
+      ) : null}
+
       {/* Encounter ID input (required for prescription creation) */}
-      {!isLocked && !encounterId && (
+      {!isLocked && !formData.encounterId && (
         <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
           <p className="font-semibold">Enter Encounter ID to enable prescribing:</p>
           <input
             type="text"
-            value={encounterId}
-            onChange={(e) => setEncounterId(e.target.value)}
+            value={formData.encounterId}
+            onChange={(e) => updateField('encounterId', e.target.value)}
             placeholder="Paste encounter UUID..."
             className="mt-2 w-full px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/10"
           />
@@ -84,20 +161,20 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescript
       )}
 
       {/* Add Prescription form */}
-      {!isLocked && encounterId && (
+      {!isLocked && formData.encounterId && (
         <form onSubmit={handleAddRx} className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col">
           <div className="flex gap-2">
             <input
               type="text"
-              value={medicationName}
-              onChange={(e) => setMedicationName(e.target.value)}
+              value={formData.medicationName}
+              onChange={(e) => updateField('medicationName', e.target.value)}
               placeholder="Medication Name (e.g. Paracetamol 500mg)..."
               className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all"
             />
             <input
               type="text"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
+              value={formData.duration}
+              onChange={(e) => updateField('duration', e.target.value)}
               placeholder="Duration (e.g. 7 days)..."
               className="w-28 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none"
             />
@@ -106,14 +183,14 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescript
           <div className="flex gap-2">
             <input
               type="text"
-              value={dosage}
-              onChange={(e) => setDosage(e.target.value)}
+              value={formData.dosage}
+              onChange={(e) => updateField('dosage', e.target.value)}
               placeholder="Dosage (e.g. 1 tab)..."
               className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none"
             />
             <select
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
+              value={formData.frequency}
+              onChange={(e) => updateField('frequency', e.target.value)}
               className="flex-1 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none"
             >
               <option value="Once daily (OD)">Once daily (OD)</option>
@@ -128,19 +205,29 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked }: DoctorPrescript
           <div className="flex gap-2">
             <input
               type="text"
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
+              value={formData.instructions}
+              onChange={(e) => updateField('instructions', e.target.value)}
               placeholder="Special instructions..."
               className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none"
             />
             <button
               type="submit"
-              disabled={createRx.isPending || !medicationName}
+              disabled={createRx.isPending || !formData.medicationName}
               className="btn bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-1.5 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {createRx.isPending ? 'Saving...' : <><Plus className="h-3.5 w-3.5" /> Add</>}
             </button>
           </div>
+
+          {autoDraft.lastDraft ? (
+            <p className="text-[10px] text-slate-400">
+              Local draft saved {new Date(autoDraft.lastDraft.updatedAt).toLocaleTimeString()}
+            </p>
+          ) : null}
+
+          {autoDraft.isSavingDraft ? (
+            <p className="text-[10px] text-amber-600 font-semibold">Saving draft...</p>
+          ) : null}
 
           {createRx.isError && (
             <p className="text-[10px] text-rose-600 font-semibold">

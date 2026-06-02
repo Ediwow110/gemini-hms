@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
+import { useUser } from '../../hooks/use-user';
 import { PageHeader } from '../../components/ui/page-header';
 import { PatientSafetyHeader, PatientSafetyInfo } from './components/PatientSafetyHeader';
 import { DoctorSOAPEditor } from './components/DoctorSOAPEditor';
@@ -59,6 +60,7 @@ export const DoctorEMRPage = () => {
   const { patientId: routePatientId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const user = useUser();
 
   // Determine active patient from either path parameter or query string
   const patientId = routePatientId || searchParams.get('patientId') || null;
@@ -228,7 +230,7 @@ export const DoctorEMRPage = () => {
 
           {/* Panel 3: Right (Clinical Context - Orders, Results, prescriptions) - spans 4 columns */}
           <div className="xl:col-span-4 space-y-5">
-            <DoctorPrescriptionPanel patientId={activePatient.id} isLocked={false} />
+            <DoctorPrescriptionPanel patientId={activePatient.id} isLocked={false} currentUserId={user?.id ?? ''} />
             <DoctorOrdersPanel patientId={activePatient.id} encounterId={activeEncounter?.id} isLocked={false} />
             <DoctorResultsPanel patientId={activePatient.id} />
           </div>
