@@ -143,6 +143,7 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked, currentUserId }: 
           onResume={handleResume}
           onDiscard={discardDraft}
           onClose={handleClose}
+          message="Recovered prescription draft — review all fields carefully before submitting. This is local browser data, not a saved prescription."
         />
       ) : null}
 

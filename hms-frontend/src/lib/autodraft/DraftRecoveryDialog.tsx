@@ -6,6 +6,7 @@ type DraftRecoveryDialogProps<TFormData> = {
   onResume: (formData: TFormData) => void;
   onDiscard: () => void;
   onClose?: () => void;
+  message?: string;
 };
 
 const FOCUSABLE_SELECTOR =
@@ -16,6 +17,7 @@ export function DraftRecoveryDialog<TFormData>({
   onResume,
   onDiscard,
   onClose,
+  message,
 }: DraftRecoveryDialogProps<TFormData>) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -97,6 +99,12 @@ export function DraftRecoveryDialog<TFormData>({
           Last saved:{" "}
           <strong>{new Date(draft.updatedAt).toLocaleString()}</strong>
         </p>
+
+        {message ? (
+          <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+            {message}
+          </p>
+        ) : null}
 
         <p className="text-xs text-slate-500 mb-4">
           This draft is stored locally in this browser only. It is not a database

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
 import {
   saveAutoDraft,
   getAutoDraft,
@@ -8,6 +9,7 @@ import {
 } from "../lib/autodraft/indexedDbDraftStore";
 import type { CreateDraftInput } from "../lib/autodraft/types";
 import { buildDraftId } from "../lib/autodraft/types";
+import { DraftRecoveryDialog } from "../lib/autodraft/DraftRecoveryDialog";
 
 type PrescriptionDraftData = {
   medicationName: string;
@@ -141,5 +143,38 @@ describe("Prescription AutoDraft", () => {
 
     const remaining = await listAutoDraftsForUser("user-other");
     expect(remaining.length).toBe(1);
+  });
+
+  it("DraftRecoveryDialog renders prescription safety message when provided", () => {
+    const msg = "Recovered prescription draft — review all fields carefully before submitting. This is local browser data, not a saved prescription.";
+    const draft = {
+      draftId: "prescription:user-1:patient-1:/patients/patient-1/prescriptions/new",
+      userId: "user-1",
+      module: "prescription" as const,
+      entityId: "patient-1",
+      route: "/patients/patient-1/prescriptions/new",
+      formData: { medicationName: "Test", dosage: "1 tab", frequency: "OD", duration: "7d", instructions: "", encounterId: "enc-1" },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 72000000).toISOString(),
+    };
+    render(<DraftRecoveryDialog draft={draft} onResume={() => {}} onDiscard={() => {}} message={msg} />);
+    expect(screen.getByText(msg)).toBeTruthy();
+  });
+
+  it("DraftRecoveryDialog does not render message section when message is omitted", () => {
+    const draft = {
+      draftId: "prescription:user-1:patient-1:/patients/patient-1/prescriptions/new",
+      userId: "user-1",
+      module: "prescription" as const,
+      entityId: "patient-1",
+      route: "/patients/patient-1/prescriptions/new",
+      formData: { medicationName: "Test", dosage: "1 tab", frequency: "OD", duration: "7d", instructions: "", encounterId: "enc-1" },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 72000000).toISOString(),
+    };
+    const { container } = render(<DraftRecoveryDialog draft={draft} onResume={() => {}} onDiscard={() => {}} />);
+    expect(container.querySelector(".bg-amber-50")).toBeNull();
   });
 });
