@@ -160,17 +160,21 @@ export function useAutoDraft<TFormData>(
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [enabled, isDirty, saveNow]);
 
-  // Best-effort save before unload.
+  // Dirty-form warning before unload.
+  // Idle, periodic, and visibilitychange saves are the reliable protections.
+  // Async IndexedDB writes during beforeunload are not reliably persisted
+  // by browsers, so we only show a standard browser warning.
   useEffect(() => {
     if (!enabled || !isDirty) return;
 
-    const onBeforeUnload = () => {
-      saveNow();
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
     };
 
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [enabled, isDirty, saveNow]);
+  }, [enabled, isDirty]);
 
   return {
     draftId,
