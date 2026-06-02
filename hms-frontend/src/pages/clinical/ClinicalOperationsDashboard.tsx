@@ -46,7 +46,7 @@ const ClinicalOperationsDashboard: React.FC = () => {
 
   const flowTotal = useMemo(() =>
     data ? data.flowDistribution.reduce((a, b) => a + b.value, 0) : 0,
-    [data?.flowDistribution]
+    [data]
   );
 
   if (loading) {

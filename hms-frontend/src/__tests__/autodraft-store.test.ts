@@ -83,7 +83,7 @@ describe("AutoDraft Store", () => {
         password: "p@ss",
         authorization: "Bearer xyz",
       },
-    } as any;
+    } as unknown as CreateDraftInput<Record<string, unknown>>;
 
     const saved = await saveAutoDraft(dirtyInput);
     expect(saved.formData).not.toHaveProperty("token");
