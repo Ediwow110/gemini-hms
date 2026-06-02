@@ -177,7 +177,7 @@ export const PatientBillingPage = () => {
         paymentMethod: paymentMethod.toUpperCase(),
       }, idempotencyKey);
       setIsDirty(false);
-      await deleteAutoDraft(draftId);
+      try { await deleteAutoDraft(draftId); } catch { /* non-critical cleanup */ }
       setReceiptData(res as { id?: string });
       setShowReceipt(true);
     } catch (err) {
