@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/ui/page-header';
 import { 
@@ -15,21 +15,69 @@ import { InvoiceSummaryCard, BillItem } from './components/InvoiceSummaryCard';
 import { PaymentMethodPanel } from './components/PaymentMethodPanel';
 import { useInvoices, useActiveSession, useCreatePayment } from '../../hooks/use-billing';
 import { usePatientBillingHandoff } from '../../hooks/use-clinical-workflow';
+import { useUser } from '../../hooks/use-user';
+import { useAutoDraft } from '../../lib/autodraft/useAutoDraft';
+import { DraftRecoveryDialog } from '../../lib/autodraft/DraftRecoveryDialog';
+import { deleteAutoDraft } from '../../lib/autodraft/indexedDbDraftStore';
+
+type BillingDraftData = {
+  paymentMethod: string;
+};
 
 export const PatientBillingPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const invoiceId = searchParams.get('invoice') || '';
+  const currentUser = useUser();
 
   const { invoices, loading: invLoading, error: invError } = useInvoices();
   const { session, loading: sessionLoading } = useActiveSession();
   const { postPayment, loading: payLoading, error: payError } = useCreatePayment();
 
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
+  const [formData, setFormData] = useState<BillingDraftData>({ paymentMethod: 'cash' });
+  const [isDirty, setIsDirty] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(true);
   const [showReceipt, setShowReceipt] = useState<boolean>(false);
   const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
   const [receiptData, setReceiptData] = useState<{ id?: string } | null>(null);
   const [submitError, setSubmitError] = useState<string>('');
+
+  const paymentMethod = formData.paymentMethod;
+
+  useEffect(() => {
+    setShowRecovery(true);
+    setFormData({ paymentMethod: 'cash' });
+    setIsDirty(false);
+  }, [invoiceId]);
+
+  const route = useMemo(
+    () => `/cashier/billing?invoice=${invoiceId}`,
+    [invoiceId]
+  );
+
+  const autoDraft = useAutoDraft<BillingDraftData>({
+    enabled: true,
+    userId: currentUser?.id ?? '',
+    module: 'billing-invoice',
+    entityId: invoiceId || 'new',
+    route,
+    formData,
+    isDirty,
+    ttlHours: 72,
+  });
+
+  const { draftId, discardDraft, clearRecoveredDraft } = autoDraft;
+
+  const handleResume = useCallback(
+    (draftFormData: BillingDraftData) => {
+      setFormData(draftFormData);
+      setIsDirty(true);
+      clearRecoveredDraft();
+    },
+    [clearRecoveredDraft]
+  );
+
+  const handleClose = useCallback(() => setShowRecovery(false), []);
 
   const invoice = invoices.find(inv => inv.id === invoiceId || inv.invoiceNumber === invoiceId);
   const patientId = invoice?.order?.patient?.id || '';
@@ -97,7 +145,8 @@ export const PatientBillingPage = () => {
   const remainingBalance = totalAmount - amountPaid;
 
   const handleMethodChange = (methodId: string) => {
-    setPaymentMethod(methodId);
+    setFormData((prev) => ({ ...prev, paymentMethod: methodId }));
+    setIsDirty(true);
   };
 
   const handleProcessSubmit = (e: React.FormEvent) => {
@@ -127,6 +176,8 @@ export const PatientBillingPage = () => {
         amount: remainingBalance,
         paymentMethod: paymentMethod.toUpperCase(),
       }, idempotencyKey);
+      setIsDirty(false);
+      await deleteAutoDraft(draftId);
       setReceiptData(res as { id?: string });
       setShowReceipt(true);
     } catch (err) {
@@ -147,6 +198,23 @@ export const PatientBillingPage = () => {
           </div>
         </div>
       )}
+
+      {/* Recovery dialog */}
+      {showRecovery ? (
+        <DraftRecoveryDialog
+          draft={autoDraft.recoveredDraft}
+          onResume={handleResume}
+          onDiscard={discardDraft}
+          onClose={handleClose}
+          message="Recovered billing draft — review all fields carefully before submitting payment. This is local browser data, not a processed payment or receipt."
+        />
+      ) : null}
+
+      {autoDraft.lastDraft ? (
+        <p className="text-[10px] text-slate-400 text-right -mb-4">
+          Local draft saved {new Date(autoDraft.lastDraft.updatedAt).toLocaleTimeString()}
+        </p>
+      ) : null}
 
       {payError && (
         <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-750 font-bold">
