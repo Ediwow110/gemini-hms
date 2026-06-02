@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAutoDraft } from "@/lib/autodraft/useAutoDraft";
 import { DraftRecoveryDialog } from "@/lib/autodraft/DraftRecoveryDialog";
 import { deleteAutoDraft } from "@/lib/autodraft/indexedDbDraftStore";
@@ -53,36 +53,45 @@ export function PatientNoteForm({
     appVersion,
   });
 
-  function updateField<K extends keyof PatientNoteFormData>(
-    key: K,
-    value: PatientNoteFormData[K]
-  ) {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-    setIsDirty(true);
-  }
+  const { draftId, discardDraft, clearRecoveredDraft } = autoDraft;
 
-  async function saveToDatabase() {
+  const updateField = useCallback(
+    <K extends keyof PatientNoteFormData>(key: K, value: PatientNoteFormData[K]) => {
+      setFormData((prev) => ({ ...prev, [key]: value }));
+      setIsDirty(true);
+    },
+    []
+  );
+
+  const saveToDatabase = useCallback(async () => {
     // Replace this with your real API call.
     // await api.patientNotes.create({ patientId, ...formData });
 
     setIsDirty(false);
 
     // Critical: clear local draft after successful real save.
-    await deleteAutoDraft(autoDraft.draftId);
-  }
+    await deleteAutoDraft(draftId);
+  }, [draftId]);
+
+  const handleResume = useCallback(
+    (draftFormData: PatientNoteFormData) => {
+      setFormData(draftFormData);
+      setIsDirty(true);
+      clearRecoveredDraft();
+    },
+    [clearRecoveredDraft]
+  );
+
+  const handleClose = useCallback(() => setShowRecovery(false), []);
 
   return (
     <>
       {showRecovery ? (
         <DraftRecoveryDialog
           draft={autoDraft.recoveredDraft}
-          onResume={(draftFormData) => {
-            setFormData(draftFormData);
-            setIsDirty(true);
-            autoDraft.clearRecoveredDraft();
-          }}
-          onDiscard={autoDraft.discardDraft}
-          onClose={() => setShowRecovery(false)}
+          onResume={handleResume}
+          onDiscard={discardDraft}
+          onClose={handleClose}
         />
       ) : null}
 
@@ -148,7 +157,7 @@ export function PatientNoteForm({
         <button
           type="button"
           onClick={async () => {
-            await autoDraft.discardDraft();
+            await discardDraft();
             setIsDirty(false);
           }}
         >

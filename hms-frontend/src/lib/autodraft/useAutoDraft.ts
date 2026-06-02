@@ -57,10 +57,16 @@ export function useAutoDraft<TFormData>(
 
   const idleTimerRef = useRef<number | null>(null);
   const latestFormDataRef = useRef(formData);
+  const pendingSaveRef = useRef(false);
+  const saveParamsRef = useRef({ enabled, isDirty, userId, module, entityId, route, ttlHours, appVersion });
 
   useEffect(() => {
     latestFormDataRef.current = formData;
   }, [formData]);
+
+  useEffect(() => {
+    saveParamsRef.current = { enabled, isDirty, userId, module, entityId, route, ttlHours, appVersion };
+  });
 
   const draftId = useMemo(
     () => buildDraftId({ userId, module, entityId, route }),
@@ -68,24 +74,33 @@ export function useAutoDraft<TFormData>(
   );
 
   const saveNow = useCallback(async () => {
-    if (!enabled || !isDirty || !userId) return;
+    const p = saveParamsRef.current;
+    if (!p.enabled || !p.isDirty || !p.userId) return;
+    if (pendingSaveRef.current) return;
 
+    pendingSaveRef.current = true;
     setIsSavingDraft(true);
     try {
       const draft = await saveAutoDraft({
-        userId,
-        module,
-        entityId,
-        route,
+        userId: p.userId,
+        module: p.module,
+        entityId: p.entityId,
+        route: p.route,
         formData: latestFormDataRef.current,
-        ttlHours,
-        appVersion,
+        ttlHours: p.ttlHours,
+        appVersion: p.appVersion,
       });
       setLastDraft(draft as AutoDraft<TFormData>);
     } finally {
       setIsSavingDraft(false);
+      pendingSaveRef.current = false;
     }
-  }, [enabled, isDirty, userId, module, entityId, route, ttlHours, appVersion]);
+  }, []);
+
+  const saveNowRef = useRef(saveNow);
+  useEffect(() => {
+    saveNowRef.current = saveNow;
+  });
 
   const discardDraft = useCallback(async () => {
     await deleteAutoDraft(draftId);
@@ -125,7 +140,7 @@ export function useAutoDraft<TFormData>(
     }
 
     idleTimerRef.current = window.setTimeout(() => {
-      saveNow();
+      saveNowRef.current();
     }, idleMs);
 
     return () => {
@@ -133,18 +148,18 @@ export function useAutoDraft<TFormData>(
         window.clearTimeout(idleTimerRef.current);
       }
     };
-  }, [enabled, isDirty, formData, idleMs, saveNow]);
+  }, [enabled, isDirty, formData, idleMs]);
 
   // Periodic save while dirty.
   useEffect(() => {
     if (!enabled || !isDirty) return;
 
     const interval = window.setInterval(() => {
-      saveNow();
+      saveNowRef.current();
     }, periodicMs);
 
     return () => window.clearInterval(interval);
-  }, [enabled, isDirty, periodicMs, saveNow]);
+  }, [enabled, isDirty, periodicMs]);
 
   // Save when tab becomes hidden.
   useEffect(() => {
@@ -152,13 +167,13 @@ export function useAutoDraft<TFormData>(
 
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
-        saveNow();
+        saveNowRef.current();
       }
     };
 
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [enabled, isDirty, saveNow]);
+  }, [enabled, isDirty]);
 
   // Dirty-form warning before unload.
   // Idle, periodic, and visibilitychange saves are the reliable protections.
