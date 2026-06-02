@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { 
   UserPlus, 
   UserCheck, 
@@ -8,28 +8,88 @@ import {
   User
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
+import { useAutoDraft } from '../../lib/autodraft/useAutoDraft';
+import { DraftRecoveryDialog } from '../../lib/autodraft/DraftRecoveryDialog';
+import { deleteAutoDraft } from '../../lib/autodraft/indexedDbDraftStore';
+import { useUser } from '../../hooks/use-user';
+
+type AppointmentDraftData = {
+  firstName: string;
+  lastName: string;
+  dob: string;
+  gender: string;
+  email: string;
+  phone: string;
+  address: string;
+  insuranceProvider: string;
+  policyId: string;
+  emergencyName: string;
+  emergencyPhone: string;
+  reason: string;
+  referredDept: string;
+};
+
+const EMPTY_FORM: AppointmentDraftData = {
+  firstName: '',
+  lastName: '',
+  dob: '',
+  gender: '',
+  email: '',
+  phone: '',
+  address: '',
+  insuranceProvider: '',
+  policyId: '',
+  emergencyName: '',
+  emergencyPhone: '',
+  reason: '',
+  referredDept: '',
+};
 
 export const NursePatientIntakePage = () => {
-  // Demographic Form States
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [dob, setDob] = useState('');
-  const [gender, setGender] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
+  const currentUser = useUser();
+  const currentUserId = currentUser?.id || '';
 
-  // Insurance
-  const [insuranceProvider, setInsuranceProvider] = useState('');
-  const [policyId, setPolicyId] = useState('');
+  const [formData, setFormData] = useState<AppointmentDraftData>(EMPTY_FORM);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(true);
 
-  // Emergency Contact
-  const [emergencyName, setEmergencyName] = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
+  useEffect(() => {
+    setShowRecovery(true);
+  }, []);
 
-  // Clinical
-  const [reason, setReason] = useState('');
-  const [referredDept, setReferredDept] = useState('');
+  const route = '/nurse/intake';
+
+  const autoDraft = useAutoDraft<AppointmentDraftData>({
+    enabled: true,
+    userId: currentUserId,
+    module: 'appointment',
+    entityId: null,
+    route,
+    formData,
+    isDirty,
+    ttlHours: 72,
+  });
+
+  const { draftId, discardDraft, clearRecoveredDraft } = autoDraft;
+
+  const updateField = useCallback(
+    <K extends keyof AppointmentDraftData>(key: K, value: AppointmentDraftData[K]) => {
+      setFormData((prev) => ({ ...prev, [key]: value }));
+      setIsDirty(true);
+    },
+    []
+  );
+
+  const handleResume = useCallback(
+    (draftFormData: AppointmentDraftData) => {
+      setFormData(draftFormData);
+      setIsDirty(true);
+      clearRecoveredDraft();
+    },
+    [clearRecoveredDraft]
+  );
+
+  const handleClose = useCallback(() => setShowRecovery(false), []);
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [successMsg, setSuccessMsg] = useState(false);
@@ -40,20 +100,9 @@ export const NursePatientIntakePage = () => {
     setTimeout(() => {
       setIsRegistering(false);
       setSuccessMsg(true);
-      // Reset inputs
-      setFirstName('');
-      setLastName('');
-      setDob('');
-      setGender('');
-      setEmail('');
-      setPhone('');
-      setAddress('');
-      setInsuranceProvider('');
-      setPolicyId('');
-      setEmergencyName('');
-      setEmergencyPhone('');
-      setReason('');
-      setReferredDept('');
+      setIsDirty(false);
+      deleteAutoDraft(draftId);
+      setFormData(EMPTY_FORM);
     }, 1000);
   };
 
@@ -83,6 +132,17 @@ export const NursePatientIntakePage = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="card p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-6">
+            {/* Recovery dialog */}
+            {showRecovery ? (
+              <DraftRecoveryDialog
+                draft={autoDraft.recoveredDraft}
+                onResume={handleResume}
+                onDiscard={discardDraft}
+                onClose={handleClose}
+                message="Recovered intake draft — this is local browser data, not a saved patient record. Verify all fields before submitting."
+              />
+            ) : null}
+
             {/* 1. Demographics Section */}
             <div className="space-y-4">
               <h3 className="font-bold text-slate-800 text-xs tracking-wider uppercase flex items-center gap-2 border-b border-slate-100 pb-2">
@@ -96,8 +156,8 @@ export const NursePatientIntakePage = () => {
                   <input
                     type="text"
                     required
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    value={formData.firstName}
+                    onChange={(e) => updateField('firstName', e.target.value)}
                     placeholder="e.g. John"
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
@@ -107,8 +167,8 @@ export const NursePatientIntakePage = () => {
                   <input
                     type="text"
                     required
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    value={formData.lastName}
+                    onChange={(e) => updateField('lastName', e.target.value)}
                     placeholder="e.g. Doe"
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
@@ -118,8 +178,8 @@ export const NursePatientIntakePage = () => {
                   <input
                     type="date"
                     required
-                    value={dob}
-                    onChange={(e) => setDob(e.target.value)}
+                    value={formData.dob}
+                    onChange={(e) => updateField('dob', e.target.value)}
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
                   />
                 </div>
@@ -127,8 +187,8 @@ export const NursePatientIntakePage = () => {
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Biological Sex</label>
                   <select
                     required
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value)}
+                    value={formData.gender}
+                    onChange={(e) => updateField('gender', e.target.value)}
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer text-slate-700"
                   >
                     <option value="">Select gender...</option>
@@ -142,8 +202,8 @@ export const NursePatientIntakePage = () => {
                   <input
                     type="tel"
                     required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    value={formData.phone}
+                    onChange={(e) => updateField('phone', e.target.value)}
                     placeholder="e.g. 555-0199"
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
@@ -152,8 +212,8 @@ export const NursePatientIntakePage = () => {
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
                   <input
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={formData.email}
+                    onChange={(e) => updateField('email', e.target.value)}
                     placeholder="e.g. john.doe@example.com"
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
@@ -163,8 +223,8 @@ export const NursePatientIntakePage = () => {
                   <input
                     type="text"
                     required
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    value={formData.address}
+                    onChange={(e) => updateField('address', e.target.value)}
                     placeholder="Street, City, Zip Code"
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
@@ -184,8 +244,8 @@ export const NursePatientIntakePage = () => {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Provider / Payer</label>
                     <input
                       type="text"
-                      value={insuranceProvider}
-                      onChange={(e) => setInsuranceProvider(e.target.value)}
+                      value={formData.insuranceProvider}
+                      onChange={(e) => updateField('insuranceProvider', e.target.value)}
                       placeholder="e.g. Blue Shield"
                       className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
@@ -194,8 +254,8 @@ export const NursePatientIntakePage = () => {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Policy ID / No.</label>
                     <input
                       type="text"
-                      value={policyId}
-                      onChange={(e) => setPolicyId(e.target.value)}
+                      value={formData.policyId}
+                      onChange={(e) => updateField('policyId', e.target.value)}
                       placeholder="e.g. BS-909283-A"
                       className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
@@ -214,8 +274,8 @@ export const NursePatientIntakePage = () => {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Name</label>
                     <input
                       type="text"
-                      value={emergencyName}
-                      onChange={(e) => setEmergencyName(e.target.value)}
+                      value={formData.emergencyName}
+                      onChange={(e) => updateField('emergencyName', e.target.value)}
                       placeholder="Full Name"
                       className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
@@ -224,8 +284,8 @@ export const NursePatientIntakePage = () => {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact Phone</label>
                     <input
                       type="tel"
-                      value={emergencyPhone}
-                      onChange={(e) => setEmergencyPhone(e.target.value)}
+                      value={formData.emergencyPhone}
+                      onChange={(e) => updateField('emergencyPhone', e.target.value)}
                       placeholder="Phone Number"
                       className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
@@ -247,8 +307,8 @@ export const NursePatientIntakePage = () => {
                   <input
                     type="text"
                     required
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
+                    value={formData.reason}
+                    onChange={(e) => updateField('reason', e.target.value)}
                     placeholder="Brief description of primary symptoms"
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
@@ -258,8 +318,8 @@ export const NursePatientIntakePage = () => {
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assigned Department</label>
                   <select
                     required
-                    value={referredDept}
-                    onChange={(e) => setReferredDept(e.target.value)}
+                    value={formData.referredDept}
+                    onChange={(e) => updateField('referredDept', e.target.value)}
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer text-slate-700"
                   >
                     <option value="">Select target department...</option>
