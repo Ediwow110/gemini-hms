@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAutoDraft } from "@/lib/autodraft/useAutoDraft";
 import { DraftRecoveryDialog } from "@/lib/autodraft/DraftRecoveryDialog";
 import { deleteAutoDraft } from "@/lib/autodraft/indexedDbDraftStore";
@@ -31,6 +31,10 @@ export function PatientNoteForm({
   const [formData, setFormData] = useState<PatientNoteFormData>(EMPTY_FORM);
   const [isDirty, setIsDirty] = useState(false);
   const [showRecovery, setShowRecovery] = useState(true);
+
+  useEffect(() => {
+    setShowRecovery(true);
+  }, [patientId]);
 
   const route = useMemo(
     () => `/patients/${patientId}/notes/new`,
