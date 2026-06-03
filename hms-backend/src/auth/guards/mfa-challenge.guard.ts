@@ -27,7 +27,7 @@ export class MfaChallengeGuard implements CanActivate {
       }
       request.user = payload;
       return true;
-    } catch (e) {
+    } catch {
       throw new UnauthorizedException('Invalid or expired MFA token');
     }
   }

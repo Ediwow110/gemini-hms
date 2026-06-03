@@ -2223,7 +2223,7 @@ export class ClinicalWorkflowService {
         undefined,
         branchId,
       );
-    } catch (auditErr) {
+    } catch {
       console.error(
         '[Audit] LAB_RELEASED_QUEUE_VIEWED failed: audit write error',
       );
@@ -2360,7 +2360,7 @@ export class ClinicalWorkflowService {
         undefined,
         labResult.order?.branchId,
       );
-    } catch (auditErr) {
+    } catch {
       console.error(
         '[Audit] LAB_RESULT_RELEASED_READ failed: audit write error',
       );

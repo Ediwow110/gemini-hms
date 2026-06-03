@@ -22,19 +22,10 @@ type MockJwtService = {
   sign: jest.Mock;
 };
 
-type MockSessionService = {
-  createSession: jest.Mock;
-  markMfaVerified: jest.Mock;
-  setInitialRefreshToken: jest.Mock;
-  rotateRefreshToken: jest.Mock;
-  revokeSession: jest.Mock;
-};
-
 describe('Auth Routing Stability', () => {
   let service: AuthService;
   let prisma: MockPrisma;
   let jwtService: MockJwtService;
-  let sessionService: MockSessionService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

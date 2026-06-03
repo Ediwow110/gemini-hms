@@ -290,6 +290,7 @@ describe('Additional JWT Strategy Edge Cases', () => {
 
   it('should reject payload missing sub', async () => {
     const { sub, ...payload } = validPayload;
+    void sub;
     await expect(strategy.validate(payload)).rejects.toThrow(
       UnauthorizedException,
     );
@@ -297,6 +298,7 @@ describe('Additional JWT Strategy Edge Cases', () => {
 
   it('should reject payload missing sid', async () => {
     const { sid, ...payload } = validPayload;
+    void sid;
     await expect(strategy.validate(payload)).rejects.toThrow(
       UnauthorizedException,
     );
@@ -304,6 +306,7 @@ describe('Additional JWT Strategy Edge Cases', () => {
 
   it('should reject payload missing tenantId', async () => {
     const { tenantId, ...payload } = validPayload;
+    void tenantId;
     await expect(strategy.validate(payload)).rejects.toThrow(
       UnauthorizedException,
     );
@@ -311,6 +314,7 @@ describe('Additional JWT Strategy Edge Cases', () => {
 
   it('should reject payload missing tokenVersion (not a number)', async () => {
     const { tokenVersion, ...payload } = validPayload;
+    void tokenVersion;
     await expect(strategy.validate(payload)).rejects.toThrow(
       UnauthorizedException,
     );

@@ -82,6 +82,7 @@ export class DashboardService {
         },
       }),
     ]);
+    void lowStock;
 
     return {
       activePatients,
@@ -93,8 +94,7 @@ export class DashboardService {
     };
   }
 
-  async getAdminTrends(query: DashboardQueryDto, tenantId: string) {
-    const { dateFrom, dateTo } = query;
+  async getAdminTrends(_query: DashboardQueryDto, tenantId: string) {
     // Simplified trend: daily count of encounters for the last 7 days
     const encounters = await this.prisma.encounter.groupBy({
       by: ['encounteredAt'],
