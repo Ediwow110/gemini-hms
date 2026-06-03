@@ -51,26 +51,32 @@ If you encounter a white screen or dependency errors, use the setup scripts:
 - **Windows:** Run `./setup.ps1` in PowerShell.
 - **Linux/macOS:** Run `bash setup.sh`.
 
-### Backend
+### Backend (Windows PowerShell)
 1. `cd hms-backend`
 2. `npm install --include=dev`
 3. Create a `.env` file from the provided `.env.example`:
-   ```bash
-   cp .env.example .env
+   ```powershell
+   Copy-Item .env.example .env
    ```
-4. Update `.env` with your actual `DATABASE_URL`, a secure `JWT_SECRET` (minimum 32 characters), and `MASTER_MFA_KEY` (minimum 32 characters).
+4. Edit `.env` with your actual `DATABASE_URL`, a secure `JWT_SECRET` (minimum 32 characters), and `MASTER_MFA_KEY` (minimum 32 characters).
 5. Run migrations and seed the database:
-   ```bash
+   ```powershell
    npx prisma generate
    npx prisma db push
    npx prisma db seed
    ```
-6. Start development server: `npm run start:dev`
+6. **Make sure PostgreSQL is running** before step 5. Use Docker if you don't have a local install:
+   ```powershell
+   docker compose up -d db
+   ```
+7. Start development server: `npm run start:dev`
 
-### Frontend
+### Frontend (Windows PowerShell)
 1. `cd hms-frontend`
 2. `npm install`
 3. Start development server: `npm run dev`
+
+**Note:** There is no root `npm install` or root `package.json`. Backend and frontend are started separately in their own directories. The frontend defaults to `http://localhost:3000/api` in dev mode.
 
 ## Core Modules & Isolation Status
 
