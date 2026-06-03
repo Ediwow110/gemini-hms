@@ -3,6 +3,7 @@ import {
   saveAutoDraft,
   getAutoDraft,
   deleteAutoDraft,
+  safeDeleteAutoDraft,
   listAutoDraftsForUser,
   deleteAutoDraftsForUser,
 } from "../lib/autodraft/indexedDbDraftStore";
@@ -90,5 +91,27 @@ describe("AutoDraft Store", () => {
     expect(saved.formData).not.toHaveProperty("password");
     expect(saved.formData).not.toHaveProperty("authorization");
     expect(saved.formData).toHaveProperty("text");
+  });
+
+  describe("safeDeleteAutoDraft", () => {
+    it("returns true when delete succeeds", async () => {
+      const saved = await saveAutoDraft(baseInput);
+      const result = await safeDeleteAutoDraft(saved.draftId, "test-cleanup");
+      expect(result).toBe(true);
+      const loaded = await getAutoDraft(saved.draftId);
+      expect(loaded).toBeNull();
+    });
+
+    it("does not throw when draft does not exist", async () => {
+      await expect(
+        safeDeleteAutoDraft("non-existent-draft-id", "test-cleanup")
+      ).resolves.not.toThrow();
+    });
+
+    it("returns boolean (true or false) and never throws", async () => {
+      const saved = await saveAutoDraft(baseInput);
+      const result = await safeDeleteAutoDraft(saved.draftId, "test-cleanup");
+      expect(typeof result).toBe("boolean");
+    });
   });
 });

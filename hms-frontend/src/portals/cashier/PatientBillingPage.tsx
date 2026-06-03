@@ -18,7 +18,7 @@ import { usePatientBillingHandoff } from '../../hooks/use-clinical-workflow';
 import { useUser } from '../../hooks/use-user';
 import { useAutoDraft } from '../../lib/autodraft/useAutoDraft';
 import { DraftRecoveryDialog } from '../../lib/autodraft/DraftRecoveryDialog';
-import { deleteAutoDraft } from '../../lib/autodraft/indexedDbDraftStore';
+import { safeDeleteAutoDraft } from '../../lib/autodraft/indexedDbDraftStore';
 
 type BillingDraftData = {
   paymentMethod: string;
@@ -177,7 +177,7 @@ export const PatientBillingPage = () => {
         paymentMethod: paymentMethod.toUpperCase(),
       }, idempotencyKey);
       setIsDirty(false);
-      try { await deleteAutoDraft(draftId); } catch { /* non-critical cleanup */ }
+      await safeDeleteAutoDraft(draftId, "billing-payment-success");
       setReceiptData(res as { id?: string });
       setShowReceipt(true);
     } catch (err) {
