@@ -59,12 +59,10 @@ export function useAutoDraft<TFormData>(
   const latestFormDataRef = useRef(formData);
   const pendingSaveRef = useRef(false);
   const saveParamsRef = useRef({ enabled, isDirty, userId, module, entityId, route, ttlHours, appVersion });
+  const saveNowRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
     latestFormDataRef.current = formData;
-  }, [formData]);
-
-  useEffect(() => {
     saveParamsRef.current = { enabled, isDirty, userId, module, entityId, route, ttlHours, appVersion };
   });
 
@@ -97,7 +95,6 @@ export function useAutoDraft<TFormData>(
     }
   }, []);
 
-  const saveNowRef = useRef(saveNow);
   useEffect(() => {
     saveNowRef.current = saveNow;
   });
@@ -161,35 +158,31 @@ export function useAutoDraft<TFormData>(
     return () => window.clearInterval(interval);
   }, [enabled, isDirty, periodicMs]);
 
-  // Save when tab becomes hidden.
+  // Stable listeners: visibility change + beforeunload.
+  // Uses ref-based dirty check to avoid add/remove churn on keystroke.
   useEffect(() => {
-    if (!enabled || !isDirty) return;
+    if (!enabled) return;
 
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
+      if (document.visibilityState === "hidden" && saveParamsRef.current.isDirty) {
         saveNowRef.current();
       }
     };
 
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [enabled, isDirty]);
-
-  // Dirty-form warning before unload.
-  // Idle, periodic, and visibilitychange saves are the reliable protections.
-  // Async IndexedDB writes during beforeunload are not reliably persisted
-  // by browsers, so we only show a standard browser warning.
-  useEffect(() => {
-    if (!enabled || !isDirty) return;
-
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
+      if (saveParamsRef.current.isDirty) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
     };
 
+    document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [enabled, isDirty]);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [enabled]);
 
   return {
     draftId,
