@@ -10,7 +10,7 @@ import {
 import { PageHeader } from '../../components/ui/page-header';
 import { useAutoDraft } from '../../lib/autodraft/useAutoDraft';
 import { DraftRecoveryDialog } from '../../lib/autodraft/DraftRecoveryDialog';
-import { deleteAutoDraft } from '../../lib/autodraft/indexedDbDraftStore';
+import { safeDeleteAutoDraft } from '../../lib/autodraft/indexedDbDraftStore';
 import { useUser } from '../../hooks/use-user';
 
 type AppointmentDraftData = {
@@ -97,7 +97,7 @@ export const NursePatientIntakePage = () => {
       setIsRegistering(false);
       setSuccessMsg(true);
       setIsDirty(false);
-      deleteAutoDraft(draftId);
+      safeDeleteAutoDraft(draftId, "appointment-registration-success");
       setFormData(EMPTY_FORM);
     }, 1000);
   };

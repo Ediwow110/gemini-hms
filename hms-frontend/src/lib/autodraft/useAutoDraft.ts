@@ -5,8 +5,8 @@ import {
   buildDraftId,
 } from "./types";
 import {
-  deleteAutoDraft,
   getAutoDraft,
+  safeDeleteAutoDraft,
   saveAutoDraft,
 } from "./indexedDbDraftStore";
 
@@ -100,7 +100,7 @@ export function useAutoDraft<TFormData>(
   });
 
   const discardDraft = useCallback(async () => {
-    await deleteAutoDraft(draftId);
+    await safeDeleteAutoDraft(draftId, "user-discard");
     setLastDraft(null);
     setRecoveredDraft(null);
   }, [draftId]);

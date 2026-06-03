@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAutoDraft } from "@/lib/autodraft/useAutoDraft";
 import { DraftRecoveryDialog } from "@/lib/autodraft/DraftRecoveryDialog";
-import { deleteAutoDraft } from "@/lib/autodraft/indexedDbDraftStore";
+import { safeDeleteAutoDraft } from "@/lib/autodraft/indexedDbDraftStore";
 
 type PatientNoteFormData = {
   subjective: string;
@@ -68,9 +68,7 @@ export function PatientNoteForm({
     // await api.patientNotes.create({ patientId, ...formData });
 
     setIsDirty(false);
-
-    // Critical: clear local draft after successful real save.
-    await deleteAutoDraft(draftId);
+    await safeDeleteAutoDraft(draftId, "patient-note-submit-success");
   }, [draftId]);
 
   const handleResume = useCallback(

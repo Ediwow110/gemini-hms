@@ -3,7 +3,7 @@ import { Pill, Plus, AlertTriangle } from 'lucide-react';
 import { usePatientPrescriptions, useCreatePrescription } from '../../../hooks/use-doctor';
 import { useAutoDraft } from '../../../lib/autodraft/useAutoDraft';
 import { DraftRecoveryDialog } from '../../../lib/autodraft/DraftRecoveryDialog';
-import { deleteAutoDraft } from '../../../lib/autodraft/indexedDbDraftStore';
+import { safeDeleteAutoDraft } from '../../../lib/autodraft/indexedDbDraftStore';
 import type { PrescriptionDto } from '../../../services/doctor.service';
 
 type PrescriptionDraftData = {
@@ -98,7 +98,7 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked, currentUserId }: 
       {
         onSuccess: () => {
           setIsDirty(false);
-          deleteAutoDraft(draftId);
+          safeDeleteAutoDraft(draftId, "prescription-submit-success");
           setFormData((prev) => ({
             ...prev,
             medicationName: '',

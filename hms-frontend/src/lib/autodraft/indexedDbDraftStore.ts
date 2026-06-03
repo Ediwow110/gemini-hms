@@ -150,6 +150,24 @@ export async function deleteAutoDraft(draftId: string): Promise<void> {
   });
 }
 
+export async function safeDeleteAutoDraft(
+  draftId: string,
+  context?: string
+): Promise<boolean> {
+  try {
+    await deleteAutoDraft(draftId);
+    return true;
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn("[AutoDraft] Failed to delete local draft", {
+        context,
+        error: error instanceof Error ? error.message : "unknown error",
+      });
+    }
+    return false;
+  }
+}
+
 export async function deleteAutoDraftsForUser(userId: string): Promise<void> {
   const drafts = await listAutoDraftsForUser(userId);
   await Promise.all(drafts.map((draft) => deleteAutoDraft(draft.draftId)));
