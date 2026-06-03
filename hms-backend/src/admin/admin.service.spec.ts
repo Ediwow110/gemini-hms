@@ -24,7 +24,6 @@ describe('AdminService', () => {
   let service: AdminService;
   let prisma: any;
   let audit: { log: jest.Mock };
-  let metrics: { getMetrics: jest.Mock };
 
   const superAdminActor: RequestUser = {
     userId: 'actor-id',

@@ -1,9 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import {
-  NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { PatientsService } from '../../patients/patients.service';
 import { BillingService } from '../../billing/billing.service';
 import { LabService } from '../../lab/lab.service';
@@ -16,28 +12,13 @@ import { AuditService } from '../../audit/audit.service';
 import { EncountersService } from '../../encounters/encounters.service';
 import { OrdersService } from '../../orders/orders.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
 import { NumberingService } from '../../numbering/numbering.service';
 import { ApprovalsService } from '../../approvals/approvals.service';
 import { LedgerService } from '../../ledger/ledger.service';
 
 const TENANT_A = 'tenant-A';
-const TENANT_B = 'tenant-B';
 const USER_A = 'user-A';
 const BRANCH_A = 'branch-A';
-
-function mockDeep<T>(overrides: Partial<T> = {}): T {
-  const proxy = new Proxy({} as any, {
-    get: (target, prop) =>
-      prop in target ? target[prop] : jest.fn().mockResolvedValue(undefined),
-  });
-  if (typeof overrides === 'object') {
-    for (const key of Object.keys(overrides)) {
-      proxy[key] = overrides[key as keyof T];
-    }
-  }
-  return proxy;
-}
 
 describe('Tenant Isolation — PatientsService', () => {
   let service: PatientsService;

@@ -58,12 +58,6 @@ describe('ClinicalWorkflowService.saveVitals', () => {
     roles: ['Super Admin'],
   };
 
-  const patientUser: RequestUser = {
-    userId: 'pat-1',
-    tenantId,
-    roles: ['Patient'],
-  };
-
   const cashierUser: RequestUser = {
     userId: 'cash-1',
     tenantId,
