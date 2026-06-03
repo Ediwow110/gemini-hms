@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { 
   UserPlus, 
   UserCheck, 
@@ -52,10 +52,6 @@ export const NursePatientIntakePage = () => {
   const [formData, setFormData] = useState<AppointmentDraftData>(EMPTY_FORM);
   const [isDirty, setIsDirty] = useState(false);
   const [showRecovery, setShowRecovery] = useState(true);
-
-  useEffect(() => {
-    setShowRecovery(true);
-  }, []);
 
   const route = '/nurse/intake';
 
