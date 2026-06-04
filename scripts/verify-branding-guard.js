@@ -45,6 +45,7 @@ const ALLOWED_PATTERNS = [
   'smoke-test check pattern',
   // Disclaimers saying what we do NOT claim
   '"Production Ready"',
+  'Production Ready, etc.',
   '"HIPAA/SOC2 Certified."',
   '"Not Production Ready"',
   'Maintain "Not',
