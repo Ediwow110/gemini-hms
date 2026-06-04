@@ -51,14 +51,36 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Invalid token structure');
     }
 
-    // Stateful check: verify session exists and is active
+    // Stateful check: verify session exists and is active.
+    // Roles are re-fetched from the DB on every request (defense in depth):
+    // we never trust the roles embedded in the JWT, so a role revocation
+    // takes effect on the next request even if the issuing code path forgot
+    // to bump the user's tokenVersion. Mirrors the active predicate used by
+    // AuthService.getActiveRoleNames and PermissionsGuard.
     const session = await this.prisma.session.findUnique({
       where: { id: payload.sid },
-      include: { user: true },
+      include: {
+        user: {
+          include: {
+            userRoles: {
+              where: {
+                status: 'ACTIVE',
+                role: { status: 'ACTIVE', archivedAt: null },
+              },
+              include: {
+                role: {
+                  select: { name: true, status: true, archivedAt: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (
       !session ||
+      !session.user ||
       session.expiresAt < new Date() ||
       session.user.status !== 'ACTIVE' ||
       session.user.deactivatedAt !== null ||
@@ -75,13 +97,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Token/Session mismatch');
     }
 
+    const activeRoleNames = (session.user.userRoles ?? [])
+      .filter(
+        (userRole) =>
+          userRole.status === 'ACTIVE' &&
+          userRole.role?.status === 'ACTIVE' &&
+          userRole.role.archivedAt === null,
+      )
+      .map((userRole) => userRole.role.name);
+
     return {
       userId: session.user.id,
       sessionId: session.id,
       email: session.user.email,
       tenantId: session.tenantId,
       supplierId: session.user.supplierId,
-      roles: payload.roles ?? [],
+      roles: activeRoleNames,
       tokenVersion: session.user.tokenVersion,
       mfaVerified: !!payload.mfaVerified,
       scope: payload.scope,

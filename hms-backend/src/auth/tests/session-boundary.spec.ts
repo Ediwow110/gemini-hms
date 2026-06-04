@@ -260,6 +260,10 @@ describe('Additional JWT Strategy Edge Cases', () => {
       status: 'ACTIVE',
       deactivatedAt: null,
       tokenVersion: 0,
+      userRoles: [] as Array<{
+        status: string;
+        role: { name: string; status: string; archivedAt: Date | null };
+      }>,
     },
   };
 
@@ -351,5 +355,247 @@ describe('Additional JWT Strategy Edge Cases', () => {
     await expect(strategy.validate(validPayload)).rejects.toThrow(
       UnauthorizedException,
     );
+  });
+});
+
+describe('JwtStrategy role-sourcing (defense in depth vs stale JWT roles)', () => {
+  let strategy: any;
+  let prisma: {
+    session: { findUnique: jest.Mock };
+  };
+
+  const validPayload = {
+    sub: 'user-uuid-123',
+    sid: 'session-uuid-789',
+    email: 'test@hospital.com',
+    tenantId: 'tenant-uuid-456',
+    // JWT claims this role. The strategy must NOT trust it: the
+    // authoritative role set is the one currently in the DB.
+    roles: ['Doctor'],
+    tokenVersion: 0,
+  };
+
+  const buildSession = (userRoles: unknown[]) => ({
+    id: 'session-uuid-789',
+    userId: 'user-uuid-123',
+    tenantId: 'tenant-uuid-456',
+    expiresAt: new Date(Date.now() + 86400000),
+    user: {
+      id: 'user-uuid-123',
+      email: 'test@hospital.com',
+      tenantId: 'tenant-uuid-456',
+      status: 'ACTIVE',
+      deactivatedAt: null,
+      tokenVersion: 0,
+      userRoles,
+    },
+  });
+
+  beforeEach(async () => {
+    prisma = {
+      session: { findUnique: jest.fn() },
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        JwtStrategy,
+        { provide: PrismaService, useValue: prisma },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest
+              .fn()
+              .mockReturnValue(
+                'test-secret-that-is-at-least-32-characters-long',
+              ),
+          },
+        },
+      ],
+    }).compile();
+
+    strategy = module.get(JwtStrategy);
+  });
+
+  // ── include shape ──────────────────────────────────────────────────
+
+  it('queries session with the active userRoles+role include', async () => {
+    prisma.session.findUnique.mockResolvedValue(
+      buildSession([
+        {
+          status: 'ACTIVE',
+          role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+        },
+      ]),
+    );
+
+    await strategy.validate(validPayload);
+
+    expect(prisma.session.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'session-uuid-789' },
+        include: expect.objectContaining({
+          user: expect.objectContaining({
+            include: expect.objectContaining({
+              userRoles: expect.objectContaining({
+                where: {
+                  status: 'ACTIVE',
+                  role: { status: 'ACTIVE', archivedAt: null },
+                },
+                include: {
+                  role: {
+                    select: { name: true, status: true, archivedAt: true },
+                  },
+                },
+              }),
+            }),
+          }),
+        }),
+      }),
+    );
+  });
+
+  // ── 1. valid role → allow path (analog) ────────────────────────────
+
+  it('returns DB-derived roles for an active role assignment', async () => {
+    prisma.session.findUnique.mockResolvedValue(
+      buildSession([
+        {
+          status: 'ACTIVE',
+          role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+        },
+      ]),
+    );
+
+    const result = await strategy.validate(validPayload);
+
+    expect(result.roles).toEqual(['Doctor']);
+  });
+
+  it('returns multiple DB-derived roles for multiple active assignments', async () => {
+    prisma.session.findUnique.mockResolvedValue(
+      buildSession([
+        {
+          status: 'ACTIVE',
+          role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+        },
+        {
+          status: 'ACTIVE',
+          role: { name: 'Nurse', status: 'ACTIVE', archivedAt: null },
+        },
+      ]),
+    );
+
+    const result = await strategy.validate(validPayload);
+
+    expect(result.roles.sort()).toEqual(['Doctor', 'Nurse']);
+  });
+
+  // ── 2. revoked role → deny path (the audit-claim fix) ──────────────
+
+  it('does not return a role whose UserRole is REVOKED in DB even if JWT claims it', async () => {
+    // DB filter pushes the REVOKED row out of the include.
+    // The include would never return it, but we also defend in depth by
+    // not falling back to payload.roles — so this test asserts both
+    // layers: the include-shape assertion above AND the empty result.
+    prisma.session.findUnique.mockResolvedValue(buildSession([]));
+
+    const result = await strategy.validate({
+      ...validPayload,
+      roles: ['SuperAdmin', 'Doctor'],
+    });
+
+    expect(result.roles).toEqual([]);
+  });
+
+  // ── 3. archived role excluded ─────────────────────────────────────
+
+  it('does not return a role whose role.archivedAt is set', async () => {
+    prisma.session.findUnique.mockResolvedValue(
+      buildSession([
+        {
+          status: 'ACTIVE',
+          role: {
+            name: 'LegacyRole',
+            status: 'ACTIVE',
+            archivedAt: new Date('2026-01-01T00:00:00.000Z'),
+          },
+        },
+      ]),
+    );
+
+    const result = await strategy.validate(validPayload);
+
+    expect(result.roles).toEqual([]);
+  });
+
+  it('does not return a role whose role.status is not ACTIVE', async () => {
+    prisma.session.findUnique.mockResolvedValue(
+      buildSession([
+        {
+          status: 'ACTIVE',
+          role: { name: 'InactiveRole', status: 'INACTIVE', archivedAt: null },
+        },
+      ]),
+    );
+
+    const result = await strategy.validate(validPayload);
+
+    expect(result.roles).toEqual([]);
+  });
+
+  it('does not return a role whose UserRole.status is not ACTIVE', async () => {
+    prisma.session.findUnique.mockResolvedValue(
+      buildSession([
+        {
+          status: 'REVOKED',
+          role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+        },
+      ]),
+    );
+
+    const result = await strategy.validate(validPayload);
+
+    expect(result.roles).toEqual([]);
+  });
+
+  // ── 4. fail-closed ────────────────────────────────────────────────
+
+  it('still throws when tokenVersion does not match DB', async () => {
+    prisma.session.findUnique.mockResolvedValue(
+      buildSession([
+        {
+          status: 'ACTIVE',
+          role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+        },
+      ]),
+    );
+
+    await expect(
+      strategy.validate({ ...validPayload, tokenVersion: 99 }),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('throws when session.user is missing on the loaded session (defensive)', async () => {
+    prisma.session.findUnique.mockResolvedValue({
+      id: 'session-uuid-789',
+      userId: 'user-uuid-123',
+      tenantId: 'tenant-uuid-456',
+      expiresAt: new Date(Date.now() + 86400000),
+      user: null,
+    });
+
+    await expect(strategy.validate(validPayload)).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it('returns empty roles when userRoles is empty (no fallback to payload)', async () => {
+    prisma.session.findUnique.mockResolvedValue(buildSession([]));
+
+    const result = await strategy.validate(validPayload);
+
+    // Critical: the payload said ['Doctor'], but the strategy MUST NOT
+    // surface a role the user no longer has in the DB.
+    expect(result.roles).toEqual([]);
   });
 });

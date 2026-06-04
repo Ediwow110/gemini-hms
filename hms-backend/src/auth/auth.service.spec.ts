@@ -561,6 +561,12 @@ describe('JWT Claim Consistency', () => {
             status: 'ACTIVE',
             deactivatedAt: null,
             tokenVersion: 0,
+            userRoles: [
+              {
+                status: 'ACTIVE',
+                role: { name: 'Doctor', status: 'ACTIVE', archivedAt: null },
+              },
+            ],
           },
         }),
       },
