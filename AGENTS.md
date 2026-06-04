@@ -26,8 +26,8 @@
   4. *14D*: `releaseLabResult` (VALIDATED→RELEASED), `releasedById`/`releasedAt` Prisma fields, Branch Admin/Super Admin release button with confirmation modal, conflict error handling, `useReleaseLabResult` cache-invalidating hook, verifier allowlist updated from 11→12 mutations.
   5. *14D-F*: `getReleasedResults` GET endpoint, `ReleasedResultQueueDto`, `ReleasedResultsPage.tsx`, real `releasedAt` field (no `lockedAt` proxy), skills review COMPLETE — **FINAL VERDICT: ACCEPT WITH NITS** (no blocking findings).
 - **Prisma schema fully updated** for Phase 14A-D: Triage model, Vitals correction fields, NoteType SOAP, Order clinical fields (orderType, priority, encounterId, cancelledReason/by/at, requestedBy/at), ClinicalOrderItem, LabSpecimen, all lab result lifecycle fields (encodedById/At, validatedById/At, releasedById/At, lastEditedById/At).
-- **Phase 20 (RC Audit — local)**: Auth/security hardened (Gates 19C-H, 19D, 19D-F). Clinical boundary: 13 mutations. Tests: 1020/1020 backend, 124/124 E2E, 78/78 frontend. Deps: 3 moderate dev-only vulns. Verdict: LOCAL GREEN ONLY.
-- **Sprint 2A (Pharmacy Module)**: COMPLETE — `PharmacyModule` with `GET /api/v1/pharmacy/prescriptions?status=` (queue) + `POST /api/v1/pharmacy/prescriptions/:id/dispense` (ACTIVE→DISPENSED mutation). `dispensedById`/`dispensedAt` Prisma fields. `Pharmacist` role authorized. Inventory integration via `InventoryService.dispenseItem()`. Transactional audit `PRESCRIPTION_DISPENSED`. 14 unit tests. Frontend PharmacyHub refactored from mock data to real API. Verifier: 13 mutations (12 clinical + 1 pharmacy).
+- **Phase 20 (RC Audit — local)**: Auth/security hardened (Gates 19C-H, 19D, 19D-F). Clinical boundary: 15 mutations. Tests: 1020/1020 backend, 124/124 E2E, 78/78 frontend. Deps: 3 moderate dev-only vulns. Verdict: LOCAL GREEN ONLY.
+- **Sprint 2A (Pharmacy Module)**: COMPLETE — `PharmacyModule` with `GET /api/v1/pharmacy/prescriptions?status=` (queue) + `POST /api/v1/pharmacy/prescriptions/:id/dispense` (ACTIVE→DISPENSED mutation). `dispensedById`/`dispensedAt` Prisma fields. `Pharmacist` role authorized. Inventory integration via `InventoryService.dispenseItem()`. Transactional audit `PRESCRIPTION_DISPENSED`. 14 unit tests. Frontend PharmacyHub refactored from mock data to real API. Verifier: 15 mutations (12 clinical + 2 pharmacy + 1 doctor).
 - **PR #200 (BACKEND-P3-LINT-CLEANUP)**: Merged at 0ba67f5 — removed 19 `@typescript-eslint/no-unused-vars` warnings across 9 backend files. Zero behavioral changes. Net: +65/-47 lines.
 ### Blocked
 - **GCP IAM**: Account `eediwow866@gmail.com` lacks `serviceusage.serviceUsageAdmin`, `compute.admin`, `cloudsql.admin`, `artifactregistry.admin` on project `unified-xylocarp-j524r`. Cannot view IAM policy.
@@ -43,7 +43,7 @@
 - `Pharmacist` role: string-based `@Roles('Pharmacist')` — consistent with existing codebase (no Prisma enum change). Must be seeded in DB at deployment time.
 - `dispenseMedication`: `@Roles('Pharmacist', 'Branch Admin', 'Super Admin')` — same as release but adds Pharmacist.
 - Inventory integration uses existing `InventoryService.dispenseItem()` — no duplication of stock logic.
-- Mutation allowlist now **13** (12 clinical + `useDispenseMedication`).
+- Mutation allowlist now **15** (12 clinical + 2 pharmacy + 1 doctor).
 ## Next Steps
 1. **Get GCP IAM roles granted** (`serviceUsageAdmin`, `compute.admin`, `cloudsql.admin`) on `unified-xylocarp-j524r`.
 2. Re-run Phase 18-J to enable APIs, provision staging VM + Cloud SQL.
@@ -51,11 +51,11 @@
 4. Execute Phase 18-L (GitHub Actions CI proof).
 5. Revisit Sprint 2B (pharmacy enhancements) after CI/staging clean.
 ## Critical Context
-- **Mutation allowlist**: **13** total — 12 clinical (saveVitals, markVitalsEnteredInError, saveTriage, markTriageEnteredInError, saveDraftSOAP, signSOAP, createClinicalOrder, cancelClinicalOrder, receiveLabOrder, saveDraftLabResult, validateLabResult, releaseLabResult) + 1 pharmacy (dispenseMedication).
+- **Mutation allowlist**: **15** total — 12 clinical (saveVitals, markVitalsEnteredInError, saveTriage, markTriageEnteredInError, saveDraftSOAP, signSOAP, createClinicalOrder, cancelClinicalOrder, receiveLabOrder, saveDraftLabResult, validateLabResult, releaseLabResult) + 2 pharmacy (dispenseMedication, useAdjustStock) + 1 doctor (useCreatePrescription).
 - **Pharmacy endpoints**: `GET /api/v1/pharmacy/prescriptions?status=` (Pharmacist/Branch Admin/Super Admin, read-only queue); `POST /api/v1/pharmacy/prescriptions/:id/dispense` (Pharmacist/Branch Admin/Super Admin, ACTIVE→DISPENSED).
 - **Pharmacy dispense**: Optimistic locking via `updateMany` with `where: { id, version, status: 'ACTIVE' }`. Calls `InventoryService.dispenseItem()` for stock deduction. Transactional audit `PRESCRIPTION_DISPENSED`.
 - **Frontend PharmacyHub**: Refactored from mock-only to real API (prescription queue from `usePrescriptionQueue`, drug catalog from `useDrugCatalog`, dispense via `useDispenseMedication` with cache invalidation).
-- **Test count**: 1435/1435 backend (75 suites), incl. 14 pharmacy tests. Frontend typecheck/lint/verifier all pass.
+- **Test count**: 1445/1445 backend (75 suites), incl. 14 pharmacy tests. Frontend: 184/184 tests (19 files). Frontend typecheck/lint/verifier all pass.
 - **Prisma schema**: Prescription model now has `dispensedById`, `dispensedAt` fields + `DispensedBy` User relation + `(tenantId, branchId, status)` index.
 ## Relevant Files
 - `hms-backend/src/pharmacy/pharmacy.module.ts`: Module definition.
