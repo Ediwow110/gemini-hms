@@ -1668,15 +1668,23 @@ describe('AdminService', () => {
   });
 
   it('stale JWT tokenVersion is rejected after role assignment or revocation', async () => {
+    const futureExpiry = new Date(Date.now() + 60 * 60 * 1000);
     const strategyPrisma = {
-      user: {
-        findFirst: jest.fn().mockResolvedValue({
-          id: 'target-id',
-          email: 'target@example.com',
+      session: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'session-id',
+          userId: 'target-id',
           tenantId: 'tenant-id',
-          status: 'ACTIVE',
-          deactivatedAt: null,
-          tokenVersion: 2,
+          expiresAt: futureExpiry,
+          user: {
+            id: 'target-id',
+            email: 'target@example.com',
+            tenantId: 'tenant-id',
+            status: 'ACTIVE',
+            deactivatedAt: null,
+            tokenVersion: 2,
+            userRoles: [],
+          },
         }),
       },
     };
@@ -1691,6 +1699,7 @@ describe('AdminService', () => {
     await expect(
       strategy.validate({
         sub: 'target-id',
+        sid: 'session-id',
         email: 'target@example.com',
         tenantId: 'tenant-id',
         roles: ['Receptionist'],
@@ -1700,15 +1709,23 @@ describe('AdminService', () => {
   });
 
   it('stale JWT tokenVersion is rejected after role permission mutation for affected users', async () => {
+    const futureExpiry = new Date(Date.now() + 60 * 60 * 1000);
     const strategyPrisma = {
-      user: {
-        findFirst: jest.fn().mockResolvedValue({
-          id: 'user-1',
-          email: 'user1@example.com',
+      session: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'session-id',
+          userId: 'user-1',
           tenantId: 'tenant-id',
-          status: 'ACTIVE',
-          deactivatedAt: null,
-          tokenVersion: 3,
+          expiresAt: futureExpiry,
+          user: {
+            id: 'user-1',
+            email: 'user1@example.com',
+            tenantId: 'tenant-id',
+            status: 'ACTIVE',
+            deactivatedAt: null,
+            tokenVersion: 3,
+            userRoles: [],
+          },
         }),
       },
     };
@@ -1723,6 +1740,7 @@ describe('AdminService', () => {
     await expect(
       strategy.validate({
         sub: 'user-1',
+        sid: 'session-id',
         email: 'user1@example.com',
         tenantId: 'tenant-id',
         roles: ['Custom Scheduler'],
