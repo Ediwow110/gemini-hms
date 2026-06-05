@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe, APP_GUARD } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { BillingModule } from '../src/billing/billing.module';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -16,7 +17,7 @@ import { randomUUID } from 'crypto';
 import { cleanupDatabase } from './helpers/db-cleanup';
 
 describe('Billing Branch Scoping (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
   let tenantId: string;
   let branchId: string;

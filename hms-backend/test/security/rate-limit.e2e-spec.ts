@@ -5,10 +5,11 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env.test') });
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
 
 describe('Rate Limiting DDoS Prevention Tests (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   const tenantId = '00000000-0000-0000-0000-00000000000e';
 
   beforeAll(async () => {

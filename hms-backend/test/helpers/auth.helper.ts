@@ -1,7 +1,9 @@
 import * as request from 'supertest';
+import { App } from 'supertest/types';
+import { INestApplication } from '@nestjs/common';
 
 export async function loginAs(
-  app: any,
+  app: INestApplication<App>,
   email: string,
   password: string,
 ): Promise<string> {

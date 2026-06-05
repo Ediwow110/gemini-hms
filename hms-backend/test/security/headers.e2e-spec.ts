@@ -5,10 +5,11 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env.test') });
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
 
 describe('OWASP Secure Security Headers Validation (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

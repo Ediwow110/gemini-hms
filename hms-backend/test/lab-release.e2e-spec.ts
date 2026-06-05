@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { LabModule } from '../src/lab/lab.module';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -11,7 +12,7 @@ import { BranchGuard } from '../src/auth/guards/branch.guard';
 import { randomUUID } from 'crypto';
 
 describe('Lab Result Release Transaction (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
   let tenantId: string;
   let branchId: string;

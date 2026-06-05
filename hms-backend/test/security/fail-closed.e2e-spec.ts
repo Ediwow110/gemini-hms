@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, Controller, Get } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
 
 @Controller('unprotected-test')
@@ -12,7 +13,7 @@ class UnprotectedController {
 }
 
 describe('Security Posture: Fail-Closed (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
 
   beforeAll(async () => {
     process.env.JWT_SECRET =

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { ClinicalModule } from '../src/clinical/clinical.module';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { AuditModule } from '../src/audit/audit.module';
@@ -13,7 +14,7 @@ import { AuditContextMiddleware } from '../src/audit/audit-context.middleware';
 import { randomUUID } from 'crypto';
 
 describe('Audit Log Forensic Context (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
   let tenantId: string;
   let branchId: string;

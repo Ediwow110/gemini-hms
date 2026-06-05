@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe, APP_GUARD } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { BillingModule } from '../src/billing/billing.module';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -15,7 +16,7 @@ import { seedUser } from './helpers/seed.helper';
 import { randomUUID } from 'crypto';
 
 describe('Cashier Reconciliation (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
 
   let tenantId: string;

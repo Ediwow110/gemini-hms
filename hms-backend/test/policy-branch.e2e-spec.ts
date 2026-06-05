@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { BranchGuard } from '../src/auth/guards/branch.guard';
@@ -28,7 +29,7 @@ class PolicyTestController {
 }
 
 describe('Cross-Branch Policy (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
 
   const tenantId = randomUUID();
   const branchAId = randomUUID();

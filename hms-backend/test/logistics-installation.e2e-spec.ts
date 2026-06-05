@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
@@ -11,7 +12,7 @@ import { LogisticsModule } from '../src/logistics/logistics.module';
 import { randomUUID } from 'crypto';
 
 describe('Logistics & Installation E2E Gates (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
 
   const tenantId = '00000000-0000-0000-0000-00000000000c';

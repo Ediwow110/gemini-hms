@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { BillingModule } from '../src/billing/billing.module';
 import { LedgerModule } from '../src/ledger/ledger.module';
 import { PrismaModule } from '../src/prisma/prisma.module';
@@ -15,7 +16,7 @@ import { AuditModule } from '../src/audit/audit.module';
 import { ApprovalsModule } from '../src/approvals/approvals.module';
 
 describe('Ledger Double-Entry E2E', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
   let tenantId: string;
   let branchId: string;

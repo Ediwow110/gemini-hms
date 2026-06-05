@@ -2,6 +2,7 @@ process.env.JWT_SECRET = 'test-secret-key-for-e2e-tests-that-is-long-enough';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { randomUUID } from 'crypto';
 import cookieParser from 'cookie-parser';
 import { AuthTestModule } from './helpers/auth-test.module';
@@ -12,7 +13,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 
 describe('Auth Selection (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
   let uniqueTenantName: string;
   let testUserEmail: string;

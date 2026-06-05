@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe, APP_GUARD } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
@@ -14,7 +15,7 @@ import { cleanupDatabase } from './helpers/db-cleanup';
 import { randomUUID } from 'crypto';
 
 describe('Maker-Checker Security (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
   let tenantId: string;
   let userId: string;
