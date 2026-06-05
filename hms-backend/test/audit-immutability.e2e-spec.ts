@@ -8,7 +8,7 @@ import { cleanupDatabase } from './helpers/db-cleanup';
 import { randomUUID } from 'crypto';
 
 describe('Audit Log Immutability (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
   let tenantId: string;
   let userId: string;

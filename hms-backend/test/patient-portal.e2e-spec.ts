@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import cookieParser from 'cookie-parser';
 import { PatientPortalModule } from '../src/patient-portal/patient-portal.module';
 import { PrismaModule } from '../src/prisma/prisma.module';
@@ -21,7 +22,7 @@ function extractPatientToken(res: request.Response): string {
 }
 
 describe('Patient Portal E2E', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
 
   let tenant: any;

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import request from 'supertest';
+import { App } from 'supertest/types';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
@@ -11,7 +12,7 @@ import { SlaAlertsModule } from '../src/sla-alerts/sla-alerts.module';
 import { SlaAlertsService } from '../src/sla-alerts/sla-alerts.service';
 
 describe('Real-Time SLA Alerts and Notifications (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let prisma: PrismaService;
   let slaService: SlaAlertsService;
 
