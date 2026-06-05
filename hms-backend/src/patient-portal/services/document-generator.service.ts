@@ -7,8 +7,12 @@ export class DocumentGeneratorService {
    * Generate a PDF report for a released lab result.
    */
   async generateLabResultPdf(data: {
-    labResult: any;
-    patient: any;
+    labResult: {
+      results?: unknown;
+      remarks?: string | null;
+      releasedAt?: string | Date | null;
+    };
+    patient: { firstName: string; lastName: string; patientNumber: string };
     tenantName: string;
   }): Promise<Buffer> {
     const { labResult, patient, tenantName } = data;
@@ -38,17 +42,19 @@ export class DocumentGeneratorService {
       doc.fontSize(12).text('Results', { underline: true });
       doc.moveDown(0.5);
 
-      let results: any[] = [];
-      try {
-        results =
-          typeof labResult.results === 'string'
-            ? JSON.parse(labResult.results)
-            : labResult.results || [];
-      } catch {
-        results = [];
-      }
+      const parsedResults = (() => {
+        try {
+          if (typeof labResult.results === 'string') {
+            const parsed = JSON.parse(labResult.results);
+            return Array.isArray(parsed) ? parsed : [];
+          }
+          return Array.isArray(labResult.results) ? labResult.results : [];
+        } catch {
+          return [];
+        }
+      })() as Array<Record<string, unknown>>;
 
-      if (Array.isArray(results) && results.length > 0) {
+      if (parsedResults.length > 0) {
         // Table header
         doc
           .fontSize(9)
@@ -63,16 +69,24 @@ export class DocumentGeneratorService {
           );
         doc.text('─'.repeat(80));
 
-        for (const row of results) {
-          doc.text(
-            this.padColumns([
-              row.parameter || row.name || '-',
-              row.value != null ? String(row.value) : '-',
-              row.unit || '-',
-              row.referenceRange || row.reference || '-',
-              row.flag || '-',
-            ]),
-          );
+        for (const row of parsedResults) {
+          const param =
+            typeof row.parameter === 'string'
+              ? row.parameter
+              : typeof row.name === 'string'
+                ? row.name
+                : '-';
+
+          const val = row.value != null ? String(row.value) : '-'; // eslint-disable-line @typescript-eslint/no-base-to-string
+          const unit = typeof row.unit === 'string' ? row.unit : '-';
+          const ref =
+            typeof row.referenceRange === 'string'
+              ? row.referenceRange
+              : typeof row.reference === 'string'
+                ? row.reference
+                : '-';
+          const flag = typeof row.flag === 'string' ? row.flag : '-';
+          doc.text(this.padColumns([param, val, unit, ref, flag]));
         }
       } else {
         doc.fontSize(10).text('No result data available.');
@@ -112,10 +126,21 @@ export class DocumentGeneratorService {
    * Generate a PDF invoice document.
    */
   async generateInvoicePdf(data: {
-    invoice: any;
-    patient: any;
+    invoice: {
+      invoiceNumber?: string | null;
+      totalAmount: unknown;
+      paidAmount: unknown;
+      status: string;
+    };
+    patient: { firstName: string; lastName: string; patientNumber: string };
     tenantName: string;
-    payments: any[];
+    payments: Array<{
+      receiptNumber?: string | null;
+      amount: unknown;
+      paymentMethod?: string | null;
+      status?: string | null;
+      createdAt?: string | Date | null;
+    }>;
   }): Promise<Buffer> {
     const { invoice, patient, tenantName, payments } = data;
 
@@ -142,8 +167,8 @@ export class DocumentGeneratorService {
 
       // Invoice details
       doc.fontSize(12).text('Invoice Details', { underline: true });
-      doc.fontSize(10).text(`Total Amount: ${invoice.totalAmount}`);
-      doc.text(`Paid Amount: ${invoice.paidAmount}`);
+      doc.fontSize(10).text(`Total Amount: ${String(invoice.totalAmount)}`);
+      doc.text(`Paid Amount: ${String(invoice.paidAmount)}`);
       const balance = Number(invoice.totalAmount) - Number(invoice.paidAmount);
       doc.text(`Balance: ${balance.toFixed(2)}`);
       doc.text(`Status: ${invoice.status}`);
@@ -205,8 +230,15 @@ export class DocumentGeneratorService {
    * Generate a PDF prescription document.
    */
   async generatePrescriptionPdf(data: {
-    prescription: any;
-    patient: any;
+    prescription: {
+      medicationName: string;
+      dosage: string;
+      frequency: string;
+      duration: string;
+      notes?: string | null;
+      prescribedBy?: { email: string } | null;
+    };
+    patient: { firstName: string; lastName: string; patientNumber: string };
     tenantName: string;
   }): Promise<Buffer> {
     const { prescription, patient, tenantName } = data;
@@ -272,8 +304,15 @@ export class DocumentGeneratorService {
    * Generate a PDF receipt for a specific payment.
    */
   async generateReceiptPdf(data: {
-    payment: any;
-    patient: any;
+    payment: {
+      receiptNumber?: string | null;
+      amount: unknown;
+      paymentMethod?: string | null;
+      status?: string | null;
+      createdAt?: string | Date | null;
+      invoice?: { invoiceNumber?: string | null } | null;
+    };
+    patient: { firstName: string; lastName: string; patientNumber: string };
     tenantName: string;
   }): Promise<Buffer> {
     const { payment, patient, tenantName } = data;
@@ -301,10 +340,13 @@ export class DocumentGeneratorService {
 
       // Payment details
       doc.fontSize(12).text('Payment Details', { underline: true });
-      doc.fontSize(10).text(`Amount Paid: ${payment.amount}`);
+      doc.fontSize(10).text(`Amount Paid: ${String(payment.amount)}`);
       doc.text(`Payment Method: ${payment.paymentMethod}`);
       doc.text(`Status: ${payment.status}`);
-      doc.text(`Date: ${new Date(payment.createdAt).toLocaleString()}`);
+      const paymentDate = payment.createdAt
+        ? new Date(payment.createdAt).toLocaleString()
+        : 'N/A';
+      doc.text(`Date: ${paymentDate}`);
       doc.moveDown();
 
       // Invoice reference
