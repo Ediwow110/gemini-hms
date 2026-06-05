@@ -19,7 +19,7 @@ export class MfaChallengeGuard implements CanActivate {
     if (type !== 'Bearer' || !token) throw new UnauthorizedException();
 
     try {
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify(token as string);
       if (payload.scope !== 'mfa_challenge') {
         throw new UnauthorizedException(
           'Invalid token scope for MFA challenge',
