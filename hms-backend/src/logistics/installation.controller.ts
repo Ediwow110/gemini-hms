@@ -15,6 +15,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UpdateInstallationJobStatusDto } from './dto/logistics.dto';
+import type { AuthenticatedRequest } from '../common/types/authenticated-request.type';
 
 @Controller('api/v1/logistics/installations')
 @UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
@@ -24,13 +25,13 @@ export class InstallationController {
 
   @Get()
   @RequirePermissions('field_service.job.view')
-  async findAll(@Req() req: any) {
+  async findAll(@Req() req: AuthenticatedRequest) {
     return this.installationService.findAll(req.user.tenantId);
   }
 
   @Get(':id')
   @RequirePermissions('field_service.job.view')
-  async findOne(@Req() req: any, @Param('id') id: string) {
+  async findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     const job = await this.installationService.findOne(req.user.tenantId, id);
     if (!job) {
       throw new NotFoundException('Installation job not found');
@@ -41,13 +42,13 @@ export class InstallationController {
   @Patch(':id/status')
   @RequirePermissions('field_service.job.update')
   async updateStatus(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateInstallationJobStatusDto,
   ) {
     return this.installationService.updateStatus(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       id,
       dto,
     );

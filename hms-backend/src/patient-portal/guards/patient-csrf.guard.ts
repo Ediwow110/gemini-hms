@@ -9,7 +9,7 @@ import {
 export class PatientCsrfGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const method = request.method;
+    const method: string = request.method;
 
     // Safe methods: exempt from CSRF check
     if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
