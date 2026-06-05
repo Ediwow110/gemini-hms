@@ -16,8 +16,10 @@ export class SelfApprovalGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
-    const recordId = request.params.id;
+    const user = request.user as
+      | { userId?: string; tenantId: string }
+      | undefined;
+    const recordId = request.params.id as string | undefined;
 
     if (!user || !recordId) return false;
 

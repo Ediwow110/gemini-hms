@@ -18,6 +18,7 @@ import {
   CreateDeliveryJobDto,
   UpdateDeliveryJobStatusDto,
 } from './dto/logistics.dto';
+import type { AuthenticatedRequest } from '../common/types/authenticated-request.type';
 
 @Controller('api/v1/logistics')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -26,36 +27,42 @@ export class LogisticsController {
 
   @Post('shipments')
   @RequirePermissions('fulfillment.update_status')
-  async createShipment(@Req() req: any, @Body() dto: CreateShipmentDto) {
+  async createShipment(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateShipmentDto,
+  ) {
     return this.logisticsService.createShipment(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       dto,
     );
   }
 
   @Get('shipments')
   @RequirePermissions('fulfillment.view')
-  async findAllShipments(@Req() req: any) {
+  async findAllShipments(@Req() req: AuthenticatedRequest) {
     return this.logisticsService.findAllShipments(req.user.tenantId);
   }
 
   @Get('shipments/:id')
   @RequirePermissions('fulfillment.view')
-  async findShipment(@Req() req: any, @Param('id') id: string) {
+  async findShipment(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     return this.logisticsService.findShipment(req.user.tenantId, id);
   }
 
   @Patch('shipments/:id/status')
   @RequirePermissions('fulfillment.update_status')
   async updateShipmentStatus(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateShipmentStatusDto,
   ) {
     return this.logisticsService.updateShipmentStatus(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       id,
       dto,
     );
@@ -63,10 +70,13 @@ export class LogisticsController {
 
   @Post('delivery-jobs')
   @RequirePermissions('field_service.job.assign')
-  async createDeliveryJob(@Req() req: any, @Body() dto: CreateDeliveryJobDto) {
+  async createDeliveryJob(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateDeliveryJobDto,
+  ) {
     return this.logisticsService.createDeliveryJob(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       dto,
     );
   }
@@ -74,13 +84,13 @@ export class LogisticsController {
   @Patch('delivery-jobs/:id/status')
   @RequirePermissions('field_service.job.update')
   async updateDeliveryJobStatus(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateDeliveryJobStatusDto,
   ) {
     return this.logisticsService.updateDeliveryJobStatus(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       id,
       dto,
     );
@@ -88,10 +98,10 @@ export class LogisticsController {
 
   @Get('technician/jobs')
   @RequirePermissions('field_service.job.view')
-  async findTechnicianJobs(@Req() req: any) {
+  async findTechnicianJobs(@Req() req: AuthenticatedRequest) {
     return this.logisticsService.findTechnicianJobs(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
     );
   }
 }

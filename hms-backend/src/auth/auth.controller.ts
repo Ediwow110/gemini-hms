@@ -89,7 +89,7 @@ export class AuthController {
   @Post('login')
   async login(
     @Body() loginDto: LoginDto,
-    @Res({ passthrough: true }) res: any,
+    @Res({ passthrough: true }) res: Response,
   ) {
     const user = await this.authService.validateUser(
       loginDto.tenantCode,
@@ -130,7 +130,7 @@ export class AuthController {
   async selectBranch(
     @GetUser() user: RequestUser,
     @Body() selectBranchDto: SelectBranchDto,
-    @Res({ passthrough: true }) res: any,
+    @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.selectBranch(
       user.userId!,
@@ -175,7 +175,10 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: any) {
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const csrfCookie = req.cookies?.csrf_token;
     const csrfHeader = req.headers['x-csrf-token'];
 
@@ -205,7 +208,7 @@ export class AuthController {
   @Post('logout')
   async logout(
     @GetUser() user: RequestUser,
-    @Res({ passthrough: true }) res: any,
+    @Res({ passthrough: true }) res: Response,
   ) {
     await this.authService.logout(user.userId!, user.sessionId!);
     clearAuthCookies(res);
@@ -231,7 +234,7 @@ export class AuthController {
   async mfaVerify(
     @GetUser() user: any,
     @Body('code') code: string,
-    @Res({ passthrough: true }) res: any,
+    @Res({ passthrough: true }) res: Response,
     @Body('secret') secret?: string,
   ) {
     if (user.challenge === 'MFA_SETUP') {
@@ -270,7 +273,7 @@ export class AuthController {
   async verifyRecoveryCode(
     @GetUser() user: any,
     @Body('code') code: string,
-    @Res({ passthrough: true }) res: any,
+    @Res({ passthrough: true }) res: Response,
   ) {
     if (!code) {
       throw new BadRequestException('Recovery code is required');

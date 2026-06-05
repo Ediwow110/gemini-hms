@@ -19,7 +19,7 @@ export class CsrfGuard implements CanActivate {
     if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest();
-    const method = request.method;
+    const method: string = request.method;
 
     // Safe methods: exempt from CSRF check
     if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {

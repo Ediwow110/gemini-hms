@@ -23,6 +23,7 @@ import {
   GetListingsQueryDto,
   CreateQuoteDto,
 } from './dto/marketplace.dto';
+import type { AuthenticatedRequest } from '../common/types/authenticated-request.type';
 
 @Controller('marketplace')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -33,7 +34,10 @@ export class MarketplaceController {
 
   @Get('listings')
   @RequirePermissions('marketplace.buyer.view')
-  async findAllBuyer(@Req() req: any, @Query() query: GetListingsQueryDto) {
+  async findAllBuyer(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: GetListingsQueryDto,
+  ) {
     // Buyers only see approved listings
     return this.marketplaceService.findAllListings(req.user.tenantId, {
       ...query,
@@ -43,7 +47,10 @@ export class MarketplaceController {
 
   @Get('listings/:id')
   @RequirePermissions('marketplace.buyer.view')
-  async findOneBuyer(@Req() req: any, @Param('id') id: string) {
+  async findOneBuyer(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     const listing = await this.marketplaceService.findOneListing(
       req.user.tenantId,
       id,
@@ -55,7 +62,7 @@ export class MarketplaceController {
 
   @Get('supplier/listings')
   @RequirePermissions('marketplace.supplier.view')
-  async findAllSupplier(@Req() req: any) {
+  async findAllSupplier(@Req() req: AuthenticatedRequest) {
     if (!req.user.supplierId) {
       throw new ForbiddenException('User is not associated with a supplier');
     }
@@ -67,13 +74,16 @@ export class MarketplaceController {
 
   @Post('supplier/listings')
   @RequirePermissions('marketplace.supplier.manage_listing')
-  async createSupplierListing(@Req() req: any, @Body() dto: CreateListingDto) {
+  async createSupplierListing(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateListingDto,
+  ) {
     if (!req.user.supplierId) {
       throw new ForbiddenException('User is not associated with a supplier');
     }
     return this.marketplaceService.createListing(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       {
         ...dto,
         supplierId: req.user.supplierId,
@@ -84,7 +94,7 @@ export class MarketplaceController {
   @Patch('supplier/listings/:id')
   @RequirePermissions('marketplace.supplier.manage_listing')
   async updateSupplierListing(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateListingDto,
   ) {
@@ -93,7 +103,7 @@ export class MarketplaceController {
     }
     return this.marketplaceService.updateListing(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       id,
       dto,
       req.user.supplierId,
@@ -102,13 +112,16 @@ export class MarketplaceController {
 
   @Delete('supplier/listings/:id')
   @RequirePermissions('marketplace.supplier.manage_listing')
-  async deleteSupplierListing(@Req() req: any, @Param('id') id: string) {
+  async deleteSupplierListing(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     if (!req.user.supplierId) {
       throw new ForbiddenException('User is not associated with a supplier');
     }
     return this.marketplaceService.deleteListing(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       id,
       req.user.supplierId,
     );
@@ -116,25 +129,28 @@ export class MarketplaceController {
 
   @Get('supplier/catalog-items')
   @RequirePermissions('marketplace.supplier.manage_listing')
-  async findAvailableCatalogItems(@Req() req: any) {
+  async findAvailableCatalogItems(@Req() req: AuthenticatedRequest) {
     return this.marketplaceService.findAvailableCatalogItems(req.user.tenantId);
   }
 
   @Get('supplier/rfqs')
   @RequirePermissions('marketplace.supplier.view')
-  async findAllSupplierRFQs(@Req() req: any) {
+  async findAllSupplierRFQs(@Req() req: AuthenticatedRequest) {
     return this.marketplaceService.findAllRFQs(req.user.tenantId);
   }
 
   @Get('supplier/rfqs/:id')
   @RequirePermissions('marketplace.supplier.view')
-  async findOneSupplierRFQ(@Req() req: any, @Param('id') id: string) {
+  async findOneSupplierRFQ(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     return this.marketplaceService.findOneRFQ(req.user.tenantId, id);
   }
 
   @Get('supplier/quotes')
   @RequirePermissions('marketplace.supplier.view')
-  async findSupplierQuotes(@Req() req: any) {
+  async findSupplierQuotes(@Req() req: AuthenticatedRequest) {
     if (!req.user.supplierId) {
       throw new ForbiddenException('User is not associated with a supplier');
     }
@@ -146,13 +162,16 @@ export class MarketplaceController {
 
   @Post('supplier/quotes')
   @RequirePermissions('marketplace.supplier.manage_listing') // Re-using permission for quoting for now
-  async createSupplierQuote(@Req() req: any, @Body() dto: CreateQuoteDto) {
+  async createSupplierQuote(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateQuoteDto,
+  ) {
     if (!req.user.supplierId) {
       throw new ForbiddenException('User is not associated with a supplier');
     }
     return this.marketplaceService.createQuote(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       req.user.supplierId,
       dto,
     );
@@ -160,7 +179,7 @@ export class MarketplaceController {
 
   @Get('supplier/orders')
   @RequirePermissions('marketplace.supplier.view')
-  async findSupplierOrders(@Req() req: any) {
+  async findSupplierOrders(@Req() req: AuthenticatedRequest) {
     if (!req.user.supplierId) {
       throw new ForbiddenException('User is not associated with a supplier');
     }
@@ -174,16 +193,22 @@ export class MarketplaceController {
 
   @Get('admin/listings')
   @RequirePermissions('marketplace.admin.view')
-  async findAllAdmin(@Req() req: any, @Query() query: GetListingsQueryDto) {
+  async findAllAdmin(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: GetListingsQueryDto,
+  ) {
     return this.marketplaceService.findAllListings(req.user.tenantId, query);
   }
 
   @Post('admin/listings')
   @RequirePermissions('marketplace.admin.manage')
-  async create(@Req() req: any, @Body() dto: CreateListingDto) {
+  async create(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateListingDto,
+  ) {
     return this.marketplaceService.createListing(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       dto,
     );
   }
@@ -191,13 +216,13 @@ export class MarketplaceController {
   @Patch('admin/listings/:id/moderate')
   @RequirePermissions('marketplace.admin.manage')
   async moderate(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: ModerateListingDto,
   ) {
     return this.marketplaceService.moderateListing(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       id,
       dto,
     );
@@ -206,13 +231,13 @@ export class MarketplaceController {
   @Patch('admin/listings/:id')
   @RequirePermissions('marketplace.admin.manage')
   async update(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateListingDto,
   ) {
     return this.marketplaceService.updateListing(
       req.user.tenantId,
-      req.user.userId,
+      req.user.userId!,
       id,
       dto,
     );
