@@ -18,7 +18,10 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SelectBranchDto } from './dto/select-branch.dto';
 import { GetUser } from './decorators/get-user.decorator';
-import type { RequestUser } from '../common/types/authenticated-request.type';
+import type {
+  RequestUser,
+  MfaChallengePayload,
+} from '../common/types/authenticated-request.type';
 import { Public } from '../common/decorators/public.decorator';
 import { MfaChallengeGuard } from './guards/mfa-challenge.guard';
 import { MfaService } from './mfa.service';
@@ -48,7 +51,7 @@ const CSRF_COOKIE_OPTIONS = (isProd: boolean) => ({
 
 function setAuthCookies(
   res: Response,
-  result: any,
+  result: { accessToken?: string; refreshToken?: string; sessionId?: string },
   isProd: boolean,
   _userId?: string,
 ): string {
@@ -100,7 +103,18 @@ export class AuthController {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const result: any = await this.authService.login(user);
+    const result = (await this.authService.login(user)) as {
+      statusCode?: number;
+      message?: string;
+      challenge?: string;
+      mfaToken?: string;
+      accessToken?: string;
+      refreshToken?: string;
+      sessionId?: string;
+      user?: unknown;
+      requiresBranchSelection?: boolean;
+      availableBranches?: unknown[];
+    };
     res.status(result.statusCode || HttpStatus.OK);
 
     // If MFA is required, return mfaToken in response body (not as cookie)
@@ -143,13 +157,13 @@ export class AuthController {
     }
 
     const isProd = process.env.NODE_ENV === 'production';
-    const csrfToken = setAuthCookies(res, result as any, isProd, user.userId);
+    const csrfToken = setAuthCookies(res, result, isProd, user.userId);
 
     return {
       message: 'Branch selected',
-      user: (result as any).user,
-      requiresBranchSelection: (result as any).requiresBranchSelection,
-      availableBranches: (result as any).availableBranches,
+      user: result.user,
+      requiresBranchSelection: result.requiresBranchSelection,
+      availableBranches: result.availableBranches,
       csrfToken,
     };
   }
@@ -179,15 +193,15 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const csrfCookie = req.cookies?.csrf_token;
-    const csrfHeader = req.headers['x-csrf-token'];
+    const csrfCookie = req.cookies?.csrf_token as string | undefined;
+    const csrfHeader = req.headers['x-csrf-token'] as string | undefined;
 
     if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
       throw new ForbiddenException('Invalid CSRF token');
     }
 
-    const refreshToken = req.cookies?.refresh_token;
-    const sessionId = req.cookies?.session_id;
+    const refreshToken = req.cookies?.refresh_token as string | undefined;
+    const sessionId = req.cookies?.session_id as string | undefined;
 
     if (!refreshToken || !sessionId) {
       throw new UnauthorizedException('Missing refresh credentials');
@@ -219,7 +233,7 @@ export class AuthController {
   @SkipMfa()
   @UseGuards(MfaChallengeGuard)
   @Post('mfa/setup')
-  async mfaSetup(@GetUser() user: any) {
+  async mfaSetup(@GetUser() user: MfaChallengePayload) {
     return this.mfaService.generateSecret(
       user.sub,
       user.email || 'user@hms.local',
@@ -232,7 +246,7 @@ export class AuthController {
   @UseGuards(MfaChallengeGuard)
   @Post('mfa/verify')
   async mfaVerify(
-    @GetUser() user: any,
+    @GetUser() user: MfaChallengePayload,
     @Body('code') code: string,
     @Res({ passthrough: true }) res: Response,
     @Body('secret') secret?: string,
@@ -271,7 +285,7 @@ export class AuthController {
   @UseGuards(MfaChallengeGuard)
   @Post('mfa/recovery-codes/verify')
   async verifyRecoveryCode(
-    @GetUser() user: any,
+    @GetUser() user: MfaChallengePayload,
     @Body('code') code: string,
     @Res({ passthrough: true }) res: Response,
   ) {
