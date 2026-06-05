@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { auditStorage } from './audit-context.middleware';
 import { createHash, createHmac } from 'crypto';
+import { AUDIT_CHAIN_SAFETY_CAP } from '../common/utils/pagination';
 
 export interface AuditLogData {
   tenantId: string;
@@ -159,9 +160,12 @@ export class AuditService {
   }
 
   async verifyChain(tenantId: string) {
+    // Safety cap to prevent unbounded memory/DoS. The cap covers most
+    // tenants; very large audit stores should use batched verification.
     const logs = await this.prisma.auditLog.findMany({
       where: { tenantId },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      take: AUDIT_CHAIN_SAFETY_CAP,
     });
 
     const corruptedLogIds: string[] = [];
@@ -190,6 +194,8 @@ export class AuditService {
 
     return {
       isValid: corruptedLogIds.length === 0,
+      truncated: logs.length >= AUDIT_CHAIN_SAFETY_CAP,
+      verificationCount: logs.length,
       corruptedLogIds,
     };
   }

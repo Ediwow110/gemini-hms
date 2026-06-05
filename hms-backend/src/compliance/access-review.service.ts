@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  clampTake,
+} from '../common/utils/pagination';
 
 @Injectable()
 export class AccessReviewService {
@@ -14,6 +19,7 @@ export class AccessReviewService {
           include: { role: true },
         },
       },
+      take: MAX_PAGE_SIZE,
     });
 
     const report = [];
@@ -61,6 +67,7 @@ export class AccessReviewService {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // Query audit logs representing privilege changes or role mutations
+    const MAX_ESCALATION_LOGS = 1000;
     const escalationLogs = await this.prisma.auditLog.findMany({
       where: {
         tenantId,
@@ -74,6 +81,7 @@ export class AccessReviewService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      take: MAX_ESCALATION_LOGS,
     });
 
     return escalationLogs.map((log) => ({

@@ -14,6 +14,11 @@ import {
   InventoryStatus,
 } from './dto/inventory.dto';
 import { AuditService } from '../audit/audit.service';
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  clampTake,
+} from '../common/utils/pagination';
 
 @Injectable()
 export class InventoryService {
@@ -256,6 +261,7 @@ export class InventoryService {
         },
       },
       orderBy: { name: 'asc' },
+      take: MAX_PAGE_SIZE,
     });
 
     return items.map((item) => ({
@@ -266,10 +272,17 @@ export class InventoryService {
     }));
   }
 
-  async getStockLogs(tenantId: string, branchId: string, itemId: string) {
+  async getStockLogs(
+    tenantId: string,
+    branchId: string,
+    itemId: string,
+    pageSize?: number,
+  ) {
+    const take = clampTake(pageSize, MAX_PAGE_SIZE, MAX_PAGE_SIZE);
     return this.prisma.stockLog.findMany({
       where: { tenantId, branchId, inventoryItemId: itemId },
       orderBy: { createdAt: 'desc' },
+      take,
     });
   }
 

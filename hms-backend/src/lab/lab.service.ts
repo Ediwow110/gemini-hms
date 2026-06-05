@@ -14,6 +14,11 @@ import { ApprovalsService } from '../approvals/approvals.service';
 import { AuditService } from '../audit/audit.service';
 import { Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  clampTake,
+} from '../common/utils/pagination';
 
 @Injectable()
 export class LabService {
@@ -355,7 +360,12 @@ export class LabService {
     });
   }
 
-  async getPendingWorklist(tenantId: string, branchId: string) {
+  async getPendingWorklist(
+    tenantId: string,
+    branchId: string,
+    pageSize?: number,
+  ) {
+    const take = clampTake(pageSize, MAX_PAGE_SIZE, MAX_PAGE_SIZE);
     return this.prisma.labResult.findMany({
       where: {
         order: { tenantId, branchId },
@@ -365,12 +375,18 @@ export class LabService {
         order: { include: { patient: true } },
       },
       orderBy: { createdAt: 'asc' },
+      take,
     });
   }
 
   // ──── Phase 4D: Specimen Receiving ────
 
-  async getPendingSpecimens(tenantId: string, branchId: string) {
+  async getPendingSpecimens(
+    tenantId: string,
+    branchId: string,
+    pageSize?: number,
+  ) {
+    const take = clampTake(pageSize, MAX_PAGE_SIZE, MAX_PAGE_SIZE);
     // Find lab specimens that need receiving (collected but not yet received)
     // Also find orders with lab results awaiting specimen collection
     const specimens = await this.prisma.labSpecimen.findMany({
@@ -395,6 +411,7 @@ export class LabService {
         },
       },
       orderBy: { createdAt: 'asc' },
+      take,
     });
 
     // Also find orders with lab results that have no specimen yet
@@ -418,6 +435,7 @@ export class LabService {
           },
         },
       },
+      take,
     });
 
     return [
@@ -536,7 +554,12 @@ export class LabService {
 
   // ──── Phase 4D: Releasable Results ────
 
-  async getReleasableResults(tenantId: string, branchId: string) {
+  async getReleasableResults(
+    tenantId: string,
+    branchId: string,
+    pageSize?: number,
+  ) {
+    const take = clampTake(pageSize, MAX_PAGE_SIZE, MAX_PAGE_SIZE);
     const results = await this.prisma.labResult.findMany({
       where: {
         order: { tenantId, branchId },
@@ -558,6 +581,7 @@ export class LabService {
         },
       },
       orderBy: { validatedAt: 'asc' },
+      take,
     });
 
     return results.map((r) => ({
@@ -585,7 +609,9 @@ export class LabService {
     tenantId: string,
     branchId: string,
     status?: string,
+    pageSize?: number,
   ) {
+    const take = clampTake(pageSize, MAX_PAGE_SIZE, MAX_PAGE_SIZE);
     const whereClause: any = {
       isCritical: true,
       order: { tenantId, branchId },
@@ -616,6 +642,7 @@ export class LabService {
         },
       },
       orderBy: { updatedAt: 'desc' },
+      take,
     });
 
     return results.map((r) => ({
@@ -943,7 +970,10 @@ export class LabService {
   // ──── Phase 4F: Turnaround Time Metrics ────
 
   async getTurnaroundMetrics(tenantId: string, branchId: string) {
-    // Query all lab results for this tenant/branch with their specimens and orders
+    // Query all lab results for this tenant/branch with their specimens and orders.
+    // SAFETY: Use a high cap (5000) to prevent memory DoS while keeping recent
+    // results for meaningful metrics.
+    const TAT_SAFETY_CAP = 5000;
     const results = await this.prisma.labResult.findMany({
       where: {
         order: { tenantId, branchId },
@@ -966,6 +996,7 @@ export class LabService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      take: TAT_SAFETY_CAP,
     });
 
     const releasedResults = results.filter((r) => r.status === 'RELEASED');

@@ -14,6 +14,7 @@ import { QueryNurseTaskDto } from './dto/query-nurse-task.dto';
 import { NurseTaskResponseDto } from './dto/nurse-task-response.dto';
 import { TaskStatus } from '@prisma/client';
 import type { RequestUser } from '../common/types/authenticated-request.type';
+import { MAX_PAGE_SIZE } from '../common/utils/pagination';
 
 const TASK_INCLUDE = {
   patient: {
@@ -77,6 +78,7 @@ export class NursingService {
       where,
       include: TASK_INCLUDE,
       orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+      take: MAX_PAGE_SIZE,
     });
 
     return tasks.map((t) => this.mapToDto(t));

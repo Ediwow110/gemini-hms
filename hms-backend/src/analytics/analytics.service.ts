@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ANALYTICS_SAFETY_CAP } from '../common/utils/pagination';
 
 @Injectable()
 export class AnalyticsService {
@@ -12,6 +13,7 @@ export class AnalyticsService {
         amount: true,
         createdAt: true,
       },
+      take: ANALYTICS_SAFETY_CAP,
     });
 
     const revenueByDay: Record<string, number> = {};
@@ -37,6 +39,7 @@ export class AnalyticsService {
       include: {
         icd10Code: true,
       },
+      take: ANALYTICS_SAFETY_CAP,
     });
 
     const counts: Record<
@@ -77,6 +80,7 @@ export class AnalyticsService {
         createdAt: true,
         updatedAt: true,
       },
+      take: ANALYTICS_SAFETY_CAP,
     });
 
     if (completedEntries.length === 0) {
@@ -100,6 +104,7 @@ export class AnalyticsService {
       select: {
         status: true,
       },
+      take: ANALYTICS_SAFETY_CAP,
     });
 
     if (claims.length === 0) {
