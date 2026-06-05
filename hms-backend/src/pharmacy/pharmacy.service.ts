@@ -16,6 +16,11 @@ import {
 import { ClinicalScopePolicy } from '../clinical/clinical-workflow.policy';
 import { PrescriptionStatus } from '@prisma/client';
 import type { RequestUser } from '../common/types/authenticated-request.type';
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  clampTake,
+} from '../common/utils/pagination';
 
 @Injectable()
 export class PharmacyService {
@@ -114,6 +119,7 @@ export class PharmacyService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      take: MAX_PAGE_SIZE,
     });
 
     return prescriptions.map((p) => ({

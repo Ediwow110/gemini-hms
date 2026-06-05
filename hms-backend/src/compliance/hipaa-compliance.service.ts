@@ -1,5 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  AUDIT_CHAIN_SAFETY_CAP,
+  DEFAULT_AUDIT_PAGE_SIZE,
+  MAX_AUDIT_PAGE_SIZE,
+  clampTake,
+} from '../common/utils/pagination';
 
 export interface BreachReport {
   incidentId: string;
@@ -49,6 +55,7 @@ export class HipaaComplianceService {
     return this.prisma.auditLog.findMany({
       where: whereClause,
       orderBy: { createdAt: 'desc' },
+      take: AUDIT_CHAIN_SAFETY_CAP,
     });
   }
 
@@ -60,6 +67,7 @@ export class HipaaComplianceService {
         tenantId,
       },
       orderBy: { createdAt: 'desc' },
+      take: AUDIT_CHAIN_SAFETY_CAP,
     });
 
     const anomalies = [];
