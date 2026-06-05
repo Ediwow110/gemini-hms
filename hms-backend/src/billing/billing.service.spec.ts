@@ -2259,4 +2259,54 @@ describe('BillingService Reversals', () => {
       );
     });
   });
+
+  describe('getInvoices pagination', () => {
+    beforeEach(() => {
+      // Clear prisma service mocks for invoice
+      jest.restoreAllMocks();
+      // Re-stub invoice.findMany
+      prisma.invoice.findMany = jest.fn().mockResolvedValue([]);
+    });
+
+    it('should apply default max page size when no pageSize provided', async () => {
+      await service.getInvoices(mockTenantId, mockBranchId);
+      expect(prisma.invoice.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 100 }),
+      );
+    });
+
+    it('should clamp pageSize to max when over limit', async () => {
+      await service.getInvoices(mockTenantId, mockBranchId, 500);
+      expect(prisma.invoice.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 100 }),
+      );
+    });
+
+    it('should preserve branchId filter', async () => {
+      await service.getInvoices(mockTenantId, mockBranchId);
+      expect(prisma.invoice.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+          }),
+        }),
+      );
+    });
+
+    it('should order by createdAt desc', async () => {
+      await service.getInvoices(mockTenantId, mockBranchId);
+      expect(prisma.invoice.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ orderBy: { createdAt: 'desc' } }),
+      );
+    });
+
+    it('should include order and patient relations', async () => {
+      await service.getInvoices(mockTenantId, mockBranchId);
+      expect(prisma.invoice.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: { order: { include: { patient: true } } },
+        }),
+      );
+    });
+  });
 });

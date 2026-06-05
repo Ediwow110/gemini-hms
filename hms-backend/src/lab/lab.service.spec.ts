@@ -676,4 +676,49 @@ describe('LabService — Phase 4D additions', () => {
       expect(orderMetric?.count).toBe(2);
     });
   });
+
+  describe('pagination caps', () => {
+    it('should cap getReleasableResults at MAX_PAGE_SIZE (100)', async () => {
+      prisma.labResult.findMany.mockResolvedValue([]);
+      await service.getReleasableResults(mockTenantId, mockBranchId, 500);
+      expect(prisma.labResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 100 }),
+      );
+    });
+
+    it('should preserve tenantId filter in getReleasableResults', async () => {
+      prisma.labResult.findMany.mockResolvedValue([]);
+      await service.getReleasableResults(mockTenantId, mockBranchId);
+      expect(prisma.labResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+          }),
+        }),
+      );
+    });
+
+    it('should cap getCriticalResults at MAX_PAGE_SIZE (100)', async () => {
+      prisma.labResult.findMany.mockResolvedValue([]);
+      await service.getCriticalResults(
+        mockTenantId,
+        mockBranchId,
+        undefined,
+        500,
+      );
+      expect(prisma.labResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 100 }),
+      );
+    });
+
+    it('should preserve isCritical flag in getCriticalResults', async () => {
+      prisma.labResult.findMany.mockResolvedValue([]);
+      await service.getCriticalResults(mockTenantId, mockBranchId);
+      expect(prisma.labResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ isCritical: true }),
+        }),
+      );
+    });
+  });
 });

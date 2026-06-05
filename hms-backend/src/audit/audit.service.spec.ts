@@ -381,4 +381,68 @@ describe('AuditService', () => {
       expect(result.corruptedLogIds).toContain('log-1');
     });
   });
+
+  describe('verifyChain pagination cap', () => {
+    it('should apply AUDIT_CHAIN_SAFETY_CAP (10000) to verifyChain', async () => {
+      prisma.auditLog.findMany.mockResolvedValue([]);
+      await service.verifyChain(mockTenantId);
+      expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 10000 }),
+      );
+    });
+
+    it('should preserve tenantId filter in verifyChain', async () => {
+      prisma.auditLog.findMany.mockResolvedValue([]);
+      await service.verifyChain(mockTenantId);
+      expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tenantId: mockTenantId },
+        }),
+      );
+    });
+
+    it('should set truncated flag when count equals cap', async () => {
+      const logs = Array.from({ length: 10000 }, (_, i) => ({
+        id: `log-${i}`,
+        tenantId: mockTenantId,
+        userId: 'user-1',
+        eventKey: 'TEST',
+        recordType: 'test',
+        recordId: 'rec-1',
+        branchId: 'branch-1',
+        oldValues: null,
+        newValues: null,
+        createdAt: new Date(Date.UTC(2024, 0, 1) + i * 1000),
+        hash: `placeholder-${i}`,
+        previousHash: i === 0 ? null : `placeholder-${i - 1}`,
+      }));
+      prisma.auditLog.findMany.mockResolvedValue(logs);
+
+      const result = await service.verifyChain(mockTenantId);
+      expect(result.truncated).toBe(true);
+      expect(result.verificationCount).toBe(10000);
+    });
+
+    it('should not set truncated flag when under cap', async () => {
+      const logs = Array.from({ length: 5000 }, (_, i) => ({
+        id: `log-${i}`,
+        tenantId: mockTenantId,
+        userId: 'user-1',
+        eventKey: 'TEST',
+        recordType: 'test',
+        recordId: 'rec-1',
+        branchId: 'branch-1',
+        oldValues: null,
+        newValues: null,
+        createdAt: new Date(Date.UTC(2024, 0, 1) + i * 1000),
+        hash: `valid-hash-${i}`,
+        previousHash: i === 0 ? null : `valid-hash-${i - 1}`,
+      }));
+      prisma.auditLog.findMany.mockResolvedValue(logs);
+
+      const result = await service.verifyChain(mockTenantId);
+      expect(result.truncated).toBe(false);
+      expect(result.verificationCount).toBe(5000);
+    });
+  });
 });
