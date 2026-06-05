@@ -500,4 +500,90 @@ describe('InventoryService', () => {
       expect(prisma.branchStock.findFirst).not.toHaveBeenCalled();
     });
   });
+
+  describe('getCatalog pagination', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should apply MAX_PAGE_SIZE cap (100) for catalog', async () => {
+      prisma.inventoryItem.findMany.mockResolvedValue([]);
+      await service.getCatalog('tenant1', 'branch1');
+      expect(prisma.inventoryItem.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 100 }),
+      );
+    });
+
+    it('should filter by tenantId and status', async () => {
+      prisma.inventoryItem.findMany.mockResolvedValue([]);
+      await service.getCatalog('tenant1', 'branch1', 'ACTIVE');
+      expect(prisma.inventoryItem.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tenantId: 'tenant1', status: 'ACTIVE' },
+        }),
+      );
+    });
+
+    it('should order by name asc', async () => {
+      prisma.inventoryItem.findMany.mockResolvedValue([]);
+      await service.getCatalog('tenant1', 'branch1');
+      expect(prisma.inventoryItem.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ orderBy: { name: 'asc' } }),
+      );
+    });
+
+    it('should include branchStocks scoped to branchId', async () => {
+      prisma.inventoryItem.findMany.mockResolvedValue([]);
+      await service.getCatalog('tenant1', 'branch1');
+      expect(prisma.inventoryItem.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: { branchStocks: { where: { branchId: 'branch1' } } },
+        }),
+      );
+    });
+  });
+
+  describe('getStockLogs pagination', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should apply default max page size when no pageSize provided', async () => {
+      prisma.stockLog.findMany = jest.fn().mockResolvedValue([]);
+      await service.getStockLogs('tenant1', 'branch1', 'item-1');
+      expect(prisma.stockLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 100 }),
+      );
+    });
+
+    it('should clamp pageSize to max when over limit', async () => {
+      prisma.stockLog.findMany = jest.fn().mockResolvedValue([]);
+      await service.getStockLogs('tenant1', 'branch1', 'item-1', 500);
+      expect(prisma.stockLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 100 }),
+      );
+    });
+
+    it('should preserve tenantId and branchId filters', async () => {
+      prisma.stockLog.findMany = jest.fn().mockResolvedValue([]);
+      await service.getStockLogs('tenant1', 'branch1', 'item-1');
+      expect(prisma.stockLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            tenantId: 'tenant1',
+            branchId: 'branch1',
+            inventoryItemId: 'item-1',
+          },
+        }),
+      );
+    });
+
+    it('should order by createdAt desc', async () => {
+      prisma.stockLog.findMany = jest.fn().mockResolvedValue([]);
+      await service.getStockLogs('tenant1', 'branch1', 'item-1');
+      expect(prisma.stockLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ orderBy: { createdAt: 'desc' } }),
+      );
+    });
+  });
 });
