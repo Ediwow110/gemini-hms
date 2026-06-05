@@ -4,6 +4,7 @@ import { CreateOrderDto, OrderItemType } from './dto/order.dto';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
 import { Prisma } from '@prisma/client';
+import { MAX_PAGE_SIZE, clampTake } from '../common/utils/pagination';
 
 @Injectable()
 export class OrdersService {
@@ -173,7 +174,8 @@ export class OrdersService {
     });
   }
 
-  async findAll(tenantId: string, branchId: string) {
+  async findAll(tenantId: string, branchId: string, pageSize?: number) {
+    const take = clampTake(pageSize, MAX_PAGE_SIZE, MAX_PAGE_SIZE);
     return this.prisma.order.findMany({
       where: { tenantId, branchId },
       include: {
@@ -182,6 +184,7 @@ export class OrdersService {
         items: true,
       },
       orderBy: { createdAt: 'desc' },
+      take,
     });
   }
 

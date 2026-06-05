@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateEncounterDto, UpdateEncounterDto } from './dto/encounter.dto';
 import { EncounterStatus } from '@prisma/client';
+import { MAX_PAGE_SIZE, clampTake } from '../common/utils/pagination';
 
 @Injectable()
 export class EncountersService {
@@ -90,7 +91,13 @@ export class EncountersService {
     }
   }
 
-  async findAll(tenantId: string, branchId?: string, patientId?: string) {
+  async findAll(
+    tenantId: string,
+    branchId?: string,
+    patientId?: string,
+    pageSize?: number,
+  ) {
+    const take = clampTake(pageSize, MAX_PAGE_SIZE, MAX_PAGE_SIZE);
     return this.prisma.encounter.findMany({
       where: {
         tenantId,
@@ -107,6 +114,7 @@ export class EncountersService {
           },
         },
       },
+      take,
     });
   }
 

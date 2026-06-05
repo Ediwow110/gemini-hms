@@ -5,6 +5,7 @@ import {
   renderTemplate,
   NotificationTemplateData,
 } from './notification-templates';
+import { MAX_PAGE_SIZE } from '../common/utils/pagination';
 
 @Injectable()
 export class NotificationsService {
@@ -78,7 +79,7 @@ export class NotificationsService {
     return this.prisma.notification.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: MAX_PAGE_SIZE,
     });
   }
 
