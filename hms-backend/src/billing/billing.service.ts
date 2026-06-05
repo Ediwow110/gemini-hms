@@ -19,6 +19,7 @@ import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
 import { computePaymentFingerprint } from './utils/idempotency';
 import { LedgerService } from '../ledger/ledger.service';
+import { MAX_PAGE_SIZE, clampTake } from '../common/utils/pagination';
 
 export const REVERSAL_TYPE = {
   REFUND: 'REFUND',
@@ -702,7 +703,8 @@ export class BillingService {
     return request;
   }
 
-  async getInvoices(tenantId: string, branchId: string) {
+  async getInvoices(tenantId: string, branchId: string, pageSize?: number) {
+    const take = clampTake(pageSize, MAX_PAGE_SIZE, MAX_PAGE_SIZE);
     return this.prisma.invoice.findMany({
       where: {
         order: { tenantId, branchId },
@@ -713,6 +715,7 @@ export class BillingService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      take,
     });
   }
 
