@@ -169,17 +169,17 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'admin/catalog', allowedRoles: ['Super Admin'], zone: 'staff' },
 
   // Branch Admin Workspace Routes (Staff Zone, Governance Scope, Branch Scoped)
-  { path: 'branch-admin', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/staff', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/departments', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/rooms', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/schedules', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/services', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/equipment', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/inventory-rules', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/billing-rules', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/queue-settings', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/approvals', allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin/staff', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin/departments', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin/rooms', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin/schedules', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin/services', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin/equipment', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin/inventory-rules', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin/billing-rules', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin/queue-settings', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin/approvals', allowedRoles: ['Branch Admin'], zone: 'staff' },
 
   // Compliance Officer Portal Workspace Routes (Staff Zone, Compliance Scope, Tenant Scoped)
   { path: 'compliance', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
