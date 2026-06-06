@@ -19,7 +19,7 @@ export const StatusDonutChart = ({ data, title, description, loading }: StatusDo
 
   return (
     <div role="img" aria-label={`${title ?? 'Status breakdown'}${description ? `. ${description}` : ''}`} className="grid h-full min-h-56 grid-cols-1 gap-4 sm:grid-cols-[1.2fr_1fr]">
-      <ResponsiveContainer width="100%" height="100%" minHeight={220}>
+      <ResponsiveContainer width="100%" height={220} minHeight={220}>
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="label" innerRadius="58%" outerRadius="82%" paddingAngle={3}>
             {data.map((entry, index) => <Cell key={entry.label} fill={entry.color ?? palette[index % palette.length]} />)}

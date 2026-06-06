@@ -67,6 +67,8 @@ export const usePermissions = () => {
   return { hasRole, hasPermission, isSuperAdmin, isBranchAdmin, isStaff, canAccess };
 };
 
+const PUBLIC_AUTH_PATHS = new Set(['/login']);
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,6 +111,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
+
+    if (PUBLIC_AUTH_PATHS.has(window.location.pathname)) {
+      setUser(null);
+      setAuthError(null);
+      setIsLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
 
     const bootstrapAuth = async () => {
       try {

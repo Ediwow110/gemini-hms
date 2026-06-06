@@ -7,9 +7,21 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'use-sync-external-store/with-selector.js': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
+      'use-sync-external-store/shim/with-selector.js': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
+      'use-sync-external-store/shim/with-selector': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
     },
   },
   optimizeDeps: {
+    include: [
+      'decimal.js-light',
+      'eventemitter3',
+      'tiny-invariant',
+      'react-is',
+      'use-sync-external-store/with-selector.js',
+      'use-sync-external-store/shim/with-selector.js',
+      'use-sync-external-store/shim/with-selector',
+    ],
     exclude: ['recharts', 'es-toolkit'],
   },
   build: {
@@ -48,11 +60,11 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://127.0.0.1:3000',
         changeOrigin: true,
       },
       '/patient-portal': {
-        target: 'http://localhost:3000',
+        target: 'http://127.0.0.1:3000',
         changeOrigin: true,
       },
     },

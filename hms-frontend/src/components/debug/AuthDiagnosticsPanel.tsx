@@ -18,7 +18,8 @@ export const AuthDiagnosticsPanel: React.FC<{ onClose?: () => void }> = ({ onClo
   if (!isError && !isNetworkError) return null;
 
   const currentOrigin = window.location.origin;
-  const apiOrigin = new URL(apiClient.defaults.baseURL || 'http://localhost:3000').origin;
+  const baseURL = apiClient.defaults.baseURL || '/api';
+  const apiOrigin = baseURL.startsWith('http') ? new URL(baseURL).origin : currentOrigin;
   const hasAccessCookie = document.cookie.includes('access_token');
   const isLocalhostMismatch = 
     (currentOrigin.includes('localhost') && apiOrigin.includes('127.0.0.1')) ||

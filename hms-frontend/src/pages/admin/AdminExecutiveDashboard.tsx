@@ -177,32 +177,40 @@ export const AdminExecutiveDashboard: React.FC = () => {
             {/* Trends & Analytics */}
             <div className="lg:col-span-2 space-y-8">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
                   <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Patient Volume Trend</h3>
-                  <VolumeAreaChart 
-                    data={trends} 
-                  />
+                  <div className="h-[calc(100%-3rem)]">
+                    <VolumeAreaChart 
+                      data={trends} 
+                    />
+                  </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
                   <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Revenue Trend</h3>
-                  <TrendLineChart 
-                    data={trends} 
-                  />
+                  <div className="h-[calc(100%-3rem)]">
+                    <TrendLineChart 
+                      data={trends} 
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
                   <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Dept Workload</h3>
-                  <StatusDonutChart 
-                    data={(topLists?.busiestDepts || []).map(d => ({ label: d.label, value: Number(d.value) })) as StatusBreakdown[]} 
-                  />
+                  <div className="h-[calc(100%-3rem)]">
+                    <StatusDonutChart 
+                      data={(topLists?.busiestDepts || []).map(d => ({ label: d.label, value: Number(d.value) })) as StatusBreakdown[]} 
+                    />
+                  </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
                   <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Branch Comparison</h3>
-                  <ComparisonBarChart 
-                    data={(topLists?.busiestDepts || []).map(d => ({ label: d.label, value: Number(d.value) })) as TrendPoint[]} 
-                  />
+                  <div className="h-[calc(100%-3rem)]">
+                    <ComparisonBarChart 
+                      data={(topLists?.busiestDepts || []).map(d => ({ label: d.label, value: Number(d.value) })) as TrendPoint[]} 
+                    />
+                  </div>
                 </div>
               </div>
             </div>

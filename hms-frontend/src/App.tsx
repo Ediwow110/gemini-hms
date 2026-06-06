@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from './app/AppShell';
 import { LoginPage } from './app/LoginPage';
 import { ProtectedRoute } from './app/ProtectedRoute';
@@ -8,6 +9,16 @@ import { GuardMode } from './app/types';
 import { RouteErrorBoundary } from './app/RouteErrorBoundary';
 import { AuthDiagnosticsPanel } from './components/debug/AuthDiagnosticsPanel';
 import { AuthProvider } from './hooks/use-user';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // Core routes — eagerly loaded (always needed)
 import { RoleRedirect } from './app/RoleRedirect';
@@ -500,9 +511,11 @@ const router = createBrowserRouter([
 
 export default function App() {
   return (
-    <AuthProvider>
-      <RouterProvider router={router} />
-      <AuthDiagnosticsPanel />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+        <AuthDiagnosticsPanel />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

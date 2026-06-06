@@ -17,7 +17,7 @@ export const VolumeAreaChart = ({ data, title, description, loading, valueLabel 
 
   return (
     <div role="img" aria-label={`${title ?? 'Volume chart'}${description ? `. ${description}` : ''}`} className="h-full min-h-56 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={220}>
         <AreaChart data={data} margin={{ top: 10, right: 18, bottom: 0, left: -10 }}>
           <defs>
             <linearGradient id="hmsVolume" x1="0" y1="0" x2="0" y2="1">

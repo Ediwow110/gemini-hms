@@ -133,25 +133,31 @@ export const PharmacyDashboard: React.FC = () => {
             {/* Analytics */}
             <div className="lg:col-span-2 space-y-8">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
                   <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Stock Status Distribution</h3>
-                  <StatusDonutChart 
-                    data={data?.stockDistribution || []} 
-                  />
+                  <div className="h-[calc(100%-3rem)]">
+                    <StatusDonutChart 
+                      data={data?.stockDistribution || []} 
+                    />
+                  </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
                   <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Category Distribution</h3>
-                  <ComparisonBarChart 
-                    data={data?.categoryDistribution || []} 
-                  />
+                  <div className="h-[calc(100%-3rem)]">
+                    <ComparisonBarChart 
+                      data={data?.categoryDistribution || []} 
+                    />
+                  </div>
                 </div>
               </div>
               
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
                 <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Dispensing Throughput (7d)</h3>
-                <VolumeAreaChart 
-                  data={[]} // Data gap: requires historical dispense logs aggregation
-                />
+                <div className="h-[calc(100%-3rem)]">
+                  <VolumeAreaChart 
+                    data={[]} // Data gap: requires historical dispense logs aggregation
+                  />
+                </div>
                 <div className="mt-4 p-3 bg-slate-50 rounded-lg text-center">
                   <p className="text-xs text-slate-500 font-medium">Dispense trend data currently unavailable. Real-time queue active.</p>
                 </div>

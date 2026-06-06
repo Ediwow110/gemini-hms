@@ -18,7 +18,7 @@ export const TrendLineChart = ({ data, title, description, loading, valueLabel =
 
   return (
     <div role="img" aria-label={`${title ?? 'Trend chart'}${description ? `. ${description}` : ''}`} className="h-full min-h-56 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={220}>
         <LineChart data={data} margin={{ top: 10, right: 18, bottom: 0, left: -10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
           <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
