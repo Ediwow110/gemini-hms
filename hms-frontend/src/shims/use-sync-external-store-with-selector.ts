@@ -19,40 +19,40 @@ export function useSyncExternalStoreWithSelector(
   
   const inst = instRef.current;
 
-  const instMemo = useMemo(() => {
-    let hasMemo = false;
-    let memoizedSnapshot: unknown;
-    let memoizedSelection: unknown;
+  const hasMemoRef = useRef(false);
+  const memoizedSnapshotRef = useRef<unknown>(null);
+  const memoizedSelectionRef = useRef<unknown>(null);
 
+  const instMemo = useMemo(() => {
     function memoizedSelector(nextSnapshot: unknown) {
-      if (!hasMemo) {
-        hasMemo = true;
-        memoizedSnapshot = nextSnapshot;
+      if (!hasMemoRef.current) {
+        hasMemoRef.current = true;
+        memoizedSnapshotRef.current = nextSnapshot;
         nextSnapshot = selector(nextSnapshot);
         if (isEqual !== undefined && inst.hasValue) {
           const currentSelection = inst.value;
           if (isEqual(currentSelection, nextSnapshot)) {
-            return (memoizedSelection = currentSelection);
+            return (memoizedSelectionRef.current = currentSelection);
           }
         }
-        return (memoizedSelection = nextSnapshot);
+        return (memoizedSelectionRef.current = nextSnapshot);
       }
-      const currentSelection = memoizedSelection;
-      if (objectIs(memoizedSnapshot, nextSnapshot)) return currentSelection;
+      const currentSelection = memoizedSelectionRef.current;
+      if (objectIs(memoizedSnapshotRef.current, nextSnapshot)) return currentSelection;
       const nextSelection = selector(nextSnapshot);
       if (isEqual !== undefined && isEqual(currentSelection, nextSelection)) {
-        memoizedSnapshot = nextSnapshot;
+        memoizedSnapshotRef.current = nextSnapshot;
         return currentSelection;
       }
-      memoizedSnapshot = nextSnapshot;
-      return (memoizedSelection = nextSelection);
+      memoizedSnapshotRef.current = nextSnapshot;
+      return (memoizedSelectionRef.current = nextSelection);
     }
 
     const maybeGetServerSnapshot = getServerSnapshot === undefined ? null : getServerSnapshot;
 
     return [
       () => memoizedSelector(getSnapshot()),
-      maybeGetServerSnapshot === null ? undefined : () => memoizedSelector(maybeGetServerSnapshot()),
+      maybeGetServerSnapshot === null ? (() => undefined) : () => memoizedSelector(maybeGetServerSnapshot()),
     ];
   }, [getSnapshot, getServerSnapshot, selector, isEqual]);
 
