@@ -26,7 +26,7 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     vi.clearAllMocks();
   });
 
-  it('marks only the exact matched item active (e.g. Department Manager on /branch-admin/departments)', () => {
+  it('marks only the exact matched item active (e.g. Branch Settings on /settings)', () => {
     mockUseUser.mockReturnValue({
       id: 'ba-1',
       email: 'branch-admin@hospital.com',
@@ -34,20 +34,20 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/branch-admin/departments']}>
-        <RoleBasedSidebar pathname="/branch-admin/departments" />
+      <MemoryRouter initialEntries={['/settings']}>
+        <RoleBasedSidebar pathname="/settings" />
       </MemoryRouter>
     );
 
-    const deptLinks = screen.getAllByText('Department Manager');
-    const deptLink = deptLinks.find(link => link.closest('a')?.getAttribute('href') === '/branch-admin/departments')?.closest('a');
+    const settingLinks = screen.getAllByText('Branch Settings');
+    const settingLink = settingLinks.find(link => link.closest('a')?.getAttribute('href') === '/settings')?.closest('a');
     const dashboardLink = screen.getByText('Branch Dashboard').closest('a');
 
-    expect(deptLink).toHaveClass('bg-gradient-to-r'); // active style
+    expect(settingLink).toHaveClass('bg-gradient-to-r'); // active style
     expect(dashboardLink).not.toHaveClass('bg-gradient-to-r'); // should not be active!
   });
 
-  it('marks the longest prefix match active when on a sub-route (e.g. Department Manager on /branch-admin/departments/new)', () => {
+  it('marks the longest prefix match active when on a sub-route (e.g. Branch Settings on /settings/security)', () => {
     mockUseUser.mockReturnValue({
       id: 'ba-1',
       email: 'branch-admin@hospital.com',
@@ -55,16 +55,16 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/branch-admin/departments/new']}>
-        <RoleBasedSidebar pathname="/branch-admin/departments/new" />
+      <MemoryRouter initialEntries={['/settings/security']}>
+        <RoleBasedSidebar pathname="/settings/security" />
       </MemoryRouter>
     );
 
-    const deptLinks = screen.getAllByText('Department Manager');
-    const deptLink = deptLinks.find(link => link.closest('a')?.getAttribute('href') === '/branch-admin/departments')?.closest('a');
+    const settingLinks = screen.getAllByText('Branch Settings');
+    const settingLink = settingLinks.find(link => link.closest('a')?.getAttribute('href') === '/settings')?.closest('a');
     const dashboardLink = screen.getByText('Branch Dashboard').closest('a');
 
-    expect(deptLink).toHaveClass('bg-gradient-to-r'); // active style
+    expect(settingLink).toHaveClass('bg-gradient-to-r'); // active style
     expect(dashboardLink).not.toHaveClass('bg-gradient-to-r');
   });
 
@@ -81,11 +81,72 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       </MemoryRouter>
     );
 
-    const deptLinks = screen.getAllByText('Department Manager');
-    const deptLink = deptLinks.find(link => link.closest('a')?.getAttribute('href') === '/branch-admin/departments')?.closest('a');
+    const settingLinks = screen.getAllByText('Branch Settings');
+    const settingLink = settingLinks.find(link => link.closest('a')?.getAttribute('href') === '/settings')?.closest('a');
     const dashboardLink = screen.getByText('Branch Dashboard').closest('a');
 
     expect(dashboardLink).toHaveClass('bg-gradient-to-r'); // active style
-    expect(deptLink).not.toHaveClass('bg-gradient-to-r');
+    expect(settingLink).not.toHaveClass('bg-gradient-to-r');
+  });
+
+  it('hides WIP routes and branch-scoped routes for Super Admin with no branch', () => {
+    mockUsePermissions.mockReturnValue({
+      isSuperAdmin: true,
+      canAccess: () => true,
+    });
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+      branchId: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <RoleBasedSidebar pathname="/admin" />
+      </MemoryRouter>
+    );
+
+    // Core admin routes should be visible
+    expect(screen.getByText('Tenants Manager')).toBeInTheDocument();
+    expect(screen.getByText('Branches Manager')).toBeInTheDocument();
+    expect(screen.getByText('Users & Accounts')).toBeInTheDocument();
+
+    // WIP routes should be hidden
+    expect(screen.queryByText('Drug Inventory')).not.toBeInTheDocument();
+    expect(screen.queryByText('Backup & Recovery')).not.toBeInTheDocument();
+
+    // Branch-scoped routes should be hidden (since branchId is None)
+    expect(screen.queryByText('Cashier Dashboard')).not.toBeInTheDocument();
+    expect(screen.queryByText('Doctor Dashboard')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nurse Dashboard')).not.toBeInTheDocument();
+  });
+
+  it('shows branch-scoped routes for Super Admin when branch is selected', () => {
+    mockUsePermissions.mockReturnValue({
+      isSuperAdmin: true,
+      canAccess: () => true,
+    });
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+      branchId: 'branch-123',
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <RoleBasedSidebar pathname="/admin" />
+      </MemoryRouter>
+    );
+
+    // Branch-scoped routes should be visible now
+    expect(screen.getByText('Cashier Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Doctor Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Nurse Dashboard')).toBeInTheDocument();
+
+    // But WIP routes should still be hidden
+    expect(screen.queryByText('Drug Inventory')).not.toBeInTheDocument();
+    expect(screen.queryByText('Backup & Recovery')).not.toBeInTheDocument();
   });
 });
