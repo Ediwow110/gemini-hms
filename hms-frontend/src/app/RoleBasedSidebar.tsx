@@ -12,12 +12,47 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
   const user = useUser();
   const { logout } = useAuth();
   const { canAccess } = usePermissions();
+  // Flatten all allowed nav items to determine the best match
+  const allAllowedItems = roleNavigation.flatMap(group =>
+    group.items.filter(item =>
+      canAccess({
+        permission: item.permission,
+        allowedRoles: item.allowedRoles,
+        isBranchScoped: item.isBranchScoped,
+        zone: item.zone,
+      })
+    )
+  );
+
+  // Find the single best active item (exact match wins first, then longest prefix match)
+  let bestActiveTo: string | null = null;
+  let longestMatchLength = -1;
+
+  for (const item of allAllowedItems) {
+    if (pathname === item.to) {
+      bestActiveTo = item.to;
+      longestMatchLength = item.to.length;
+      break;
+    }
+  }
+
+  if (!bestActiveTo) {
+    for (const item of allAllowedItems) {
+      if (item.to !== '/' && pathname.startsWith(item.to + '/')) {
+        if (item.to.length > longestMatchLength) {
+          longestMatchLength = item.to.length;
+          bestActiveTo = item.to;
+        }
+      }
+    }
+  }
+
+  if (!bestActiveTo && pathname === '/') {
+    bestActiveTo = '/';
+  }
 
   const isActive = (path: string) => {
-    if (path === '/') {
-      return pathname === '/';
-    }
-    return pathname.startsWith(path);
+    return bestActiveTo === path;
   };
 
   return (
