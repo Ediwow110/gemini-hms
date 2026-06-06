@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useUser, useAuth, usePermissions } from '../hooks/use-user';
-import { roleNavigation } from '../config/roleNavigation';
+import { roleNavigation, NavItemConfig } from '../config/roleNavigation';
 
 interface RoleBasedSidebarProps {
   pathname: string;
@@ -11,10 +11,18 @@ interface RoleBasedSidebarProps {
 export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps) => {
   const user = useUser();
   const { logout } = useAuth();
-  const { canAccess } = usePermissions();
+  const { canAccess, isSuperAdmin } = usePermissions();
+
+  const isDemoHidden = (item: NavItemConfig) => {
+    if (item.isHiddenForDemo) return true;
+    if (isSuperAdmin && !user?.branchId && item.isBranchScoped) return true;
+    return false;
+  };
+
   // Flatten all allowed nav items to determine the best match
   const allAllowedItems = roleNavigation.flatMap(group =>
     group.items.filter(item =>
+      !isDemoHidden(item) &&
       canAccess({
         permission: item.permission,
         allowedRoles: item.allowedRoles,
@@ -59,8 +67,9 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
     <>
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
         {roleNavigation.map((group) => {
-          // Filter items based on user permissions
+          // Filter items based on user permissions and demo settings
           const allowedItems = group.items.filter((item) =>
+            !isDemoHidden(item) &&
             canAccess({
               permission: item.permission,
               allowedRoles: item.allowedRoles,

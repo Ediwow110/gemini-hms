@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, ShieldAlert, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { roleNavigation } from '../config/roleNavigation';
-import { usePermissions } from '../hooks/use-user';
+import { useUser, usePermissions } from '../hooks/use-user';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -11,7 +11,8 @@ interface CommandPaletteProps {
 
 export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const navigate = useNavigate();
-  const { canAccess } = usePermissions();
+  const user = useUser();
+  const { canAccess, isSuperAdmin } = usePermissions();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -19,14 +20,17 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   // Flatten all navigation items that the user has permission to view
   const allowedItems = roleNavigation
     .flatMap((group) => group.items)
-    .filter((item) =>
-      canAccess({
+    .filter((item) => {
+      if (item.isHiddenForDemo) return false;
+      if (isSuperAdmin && !user?.branchId && item.isBranchScoped) return false;
+
+      return canAccess({
         permission: item.permission,
         allowedRoles: item.allowedRoles,
         isBranchScoped: item.isBranchScoped,
         zone: item.zone,
-      })
-    );
+      });
+    });
 
   const filteredItems = query === ''
     ? allowedItems

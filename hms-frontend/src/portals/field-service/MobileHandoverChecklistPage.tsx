@@ -51,8 +51,8 @@ export const MobileHandoverChecklistPage: React.FC = () => {
          </div>
       </div>
 
-      <div className="fixed bottom-4 left-4 right-4 max-w-2xl mx-auto">
-         <button className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl shadow-2xl uppercase text-xs flex items-center justify-center gap-2">
+      <div className="mt-8 pb-8">
+         <button className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl shadow-lg uppercase text-xs flex items-center justify-center gap-2">
             <ClipboardCheck className="h-5 w-5" /> Sign Handover (Shell)
          </button>
       </div>
