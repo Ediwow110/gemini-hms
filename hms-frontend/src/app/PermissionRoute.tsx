@@ -8,8 +8,8 @@ interface PermissionRouteProps {
   permission?: string;
   /** Array of permissions to check */
   permissions?: string[];
-  /** 
-   * Evaluation mode for `permissions` array. 
+  /**
+   * Evaluation mode for `permissions` array.
    * ANY: User must have at least one.
    * ALL: User must have all.
    * Default: ANY
@@ -17,27 +17,38 @@ interface PermissionRouteProps {
   mode?: GuardMode;
   /** Array of roles. If provided, user must have at least one of these roles. */
   allowedRoles?: string[];
+  /**
+   * If true, the route is scoped to a single branch (e.g. clinical, cashier, nurse).
+   * Super Admin will NOT bypass this guard even though they are a global role.
+   * Default: false (route is global governance / cross-branch).
+   */
+  isBranchScoped?: boolean;
   children: React.ReactNode;
 }
 
 /**
  * Route-level authorization guard component.
- * 
+ *
  * BEHAVIOR:
+ * 0. Super Admin is a global governance role. For non-branch-scoped routes
+ *    (global / admin / marketplace-admin / it / compliance / procurement oversight),
+ *    Super Admin is allowed through without matching the role/permission lists.
+ *    Branch-scoped clinical/operational routes still require the explicit role/permission.
  * 1. If `allowedRoles` is provided, it is checked first. If the user lacks the role, access is denied.
  * 2. If `permission` is provided, it is checked.
  * 3. If `permissions` array is provided, it is evaluated based on `mode`.
  * 4. ALL conditions provided must be met (e.g. if both roles and permissions are provided, user needs the role AND the permissions).
  */
-export const PermissionRoute: React.FC<PermissionRouteProps> = ({ 
-  permission, 
+export const PermissionRoute: React.FC<PermissionRouteProps> = ({
+  permission,
   permissions,
   mode = GuardMode.ANY,
   allowedRoles,
-  children 
+  isBranchScoped = false,
+  children
 }) => {
   const { isLoading } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isSuperAdmin } = usePermissions();
   const user = useUser();
 
   if (isLoading) {
@@ -46,6 +57,11 @@ export const PermissionRoute: React.FC<PermissionRouteProps> = ({
         <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
       </div>
     );
+  }
+
+  // 0. Super Admin global-governance bypass (non-branch-scoped routes only).
+  if (isSuperAdmin && !isBranchScoped) {
+    return <>{children}</>;
   }
 
   // 1. Role check (ANY)
