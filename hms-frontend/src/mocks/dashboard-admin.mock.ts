@@ -85,7 +85,7 @@ export const ADMIN_DASHBOARD_MOCK = {
     {
       id: 'alert-3',
       title: 'Abnormal Lab Result',
-      message: 'Critical Potassium level detected for Patient P-101.',
+      message: 'Critical Potassium level detected for Sample Patient 001.',
       severity: 'critical' as const,
       timestamp: '2 hours ago',
       actionLabel: 'View Result',
@@ -127,10 +127,10 @@ export const ADMIN_DASHBOARD_MOCK = {
   topLists: {
     unpaidBills: [
       { id: '1', label: 'Corp Health Plan', value: '$12,000', trend: 'Overdue 30d', drillDownUrl: '/billing/invoices/inv-1' },
-      { id: '2', label: 'Private Patient X', value: '$4,500', trend: 'Overdue 15d', drillDownUrl: '/billing/invoices/inv-2' },
+      { id: '2', label: 'Anonymous Client A', value: '$4,500', trend: 'Overdue 15d', drillDownUrl: '/billing/invoices/inv-2' },
       { id: '3', label: 'HMO North', value: '$3,200', trend: 'Pending', drillDownUrl: '/billing/invoices/inv-3' },
       { id: '4', label: 'City Insurance', value: '$2,100', trend: 'Pending', drillDownUrl: '/billing/invoices/inv-4' },
-      { id: '5', label: 'Private Patient Y', value: '$1,800', trend: 'Overdue 10d', drillDownUrl: '/billing/invoices/inv-5' },
+      { id: '5', label: 'Anonymous Client B', value: '$1,800', trend: 'Overdue 10d', drillDownUrl: '/billing/invoices/inv-5' },
     ],
     busiestDepts: [
       { id: 'd1', label: 'General Medicine', value: '42%', trend: 'High Load', drillDownUrl: '/admin/departments/general' },
