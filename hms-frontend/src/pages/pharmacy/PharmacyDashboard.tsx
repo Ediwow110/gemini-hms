@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  DashboardSection, 
-  DashboardKpiCard, 
-  DashboardAlertCard, 
-  DashboardDataTable, 
-  DashboardFilterBar 
+import {
+  DashboardSection,
+  DashboardKpiCard,
+  DashboardAlertCard,
+  DashboardDataTable,
+  DashboardFilterBar
 } from '../../components/dashboard';
-import { 
-  VolumeAreaChart, 
-  StatusDonutChart, 
-  ComparisonBarChart 
+import {
+  VolumeAreaChart,
+  StatusDonutChart,
+  ComparisonBarChart
 } from '../../components/analytics/charts';
 import { pharmacyDashboardService, type PharmacyDashboardData, type PharmacyDashboardTopListEntry } from '../../services/pharmacy-dashboard.service';
 import { Package, AlertTriangle, Activity, ClipboardList, Loader2, AlertCircle } from 'lucide-react';
 import type { DateRange, AnalyticsSeverity } from '../../types/analytics';
 
-const INITIAL_DATE_RANGE: DateRange = { 
-  from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], 
-  to: new Date().toISOString().split('T')[0] 
+const INITIAL_DATE_RANGE: DateRange = {
+  from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  to: new Date().toISOString().split('T')[0]
 };
 
 export const PharmacyDashboard: React.FC = () => {
@@ -53,8 +53,8 @@ export const PharmacyDashboard: React.FC = () => {
         <div className="flex flex-col items-center gap-3 text-center">
           <AlertCircle className="h-12 w-12 text-rose-500" />
           <h2 className="text-lg font-bold text-slate-900">{error}</h2>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800"
           >
             Retry
@@ -69,13 +69,20 @@ export const PharmacyDashboard: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Pharmacy Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">Pharmacy Dashboard</h1>
+            {data?.isDemoData && (
+              <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700 animate-pulse">
+                Demo Preview Mode
+              </span>
+            )}
+          </div>
           <p className="text-sm font-medium text-slate-500">Inventory risk visibility and dispensing operations.</p>
         </div>
         <div className="flex items-center gap-3">
-          <DashboardFilterBar 
-            dateRange={dateRange} 
-            onDateRangeChange={setDateRange} 
+          <DashboardFilterBar
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
             branch={selectedBranch}
             onBranchChange={setSelectedBranch}
           />
@@ -95,7 +102,7 @@ export const PharmacyDashboard: React.FC = () => {
           {/* Top KPIs */}
           <DashboardSection title="Inventory Summary" subtitle="Real-time stock levels and queue status">
             {data?.kpis.map((kpi, idx) => (
-              <DashboardKpiCard 
+              <DashboardKpiCard
                 key={idx}
                 title={kpi.title}
                 value={kpi.value}
@@ -117,7 +124,7 @@ export const PharmacyDashboard: React.FC = () => {
               </div>
               <div className="space-y-3">
                 {data?.alerts.length ? data.alerts.map((alert, idx) => (
-                  <DashboardAlertCard 
+                  <DashboardAlertCard
                     key={alert.id || idx}
                     title={alert.title}
                     message={alert.message}
@@ -136,30 +143,36 @@ export const PharmacyDashboard: React.FC = () => {
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
                   <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Stock Status Distribution</h3>
                   <div className="h-[calc(100%-3rem)]">
-                    <StatusDonutChart 
-                      data={data?.stockDistribution || []} 
+                    <StatusDonutChart
+                      data={data?.stockDistribution || []}
                     />
                   </div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
                   <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Category Distribution</h3>
                   <div className="h-[calc(100%-3rem)]">
-                    <ComparisonBarChart 
-                      data={data?.categoryDistribution || []} 
+                    <ComparisonBarChart
+                      data={data?.categoryDistribution || []}
                     />
                   </div>
                 </div>
               </div>
-              
+
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-                <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Dispensing Throughput (7d)</h3>
+                <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900 flex justify-between items-center">
+                  <span>Dispensing Throughput (7d)</span>
+                  {data?.isDemoData && (
+                    <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                      DEMO PREVIEW
+                    </span>
+                  )}
+                </h3>
                 <div className="h-[calc(100%-3rem)]">
-                  <VolumeAreaChart 
-                    data={[]} // Data gap: requires historical dispense logs aggregation
+                  <VolumeAreaChart
+                    data={data?.dispenseTrend || []}
+                    title="Dispensing Throughput"
+                    valueLabel="Prescriptions"
                   />
-                </div>
-                <div className="mt-4 p-3 bg-slate-50 rounded-lg text-center">
-                  <p className="text-xs text-slate-500 font-medium">Dispense trend data currently unavailable. Real-time queue active.</p>
                 </div>
               </div>
             </div>
@@ -192,7 +205,7 @@ export const PharmacyDashboard: React.FC = () => {
       {/* Data Label */}
       <div className="flex justify-center">
         <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-          Mixed Mode: Real Stock Levels / Demo Analytics
+          {data?.isDemoData ? 'Demo analytics preview — sample data for client walkthrough' : 'Mixed Mode: Real Stock Levels / Demo Analytics'}
         </span>
       </div>
     </div>

@@ -1,41 +1,84 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { 
-  DashboardKpiCard, 
-  DashboardAlertCard, 
-  DashboardDataTable, 
-  DashboardFilterBar 
+import React, { useEffect, useState } from 'react';
+import {
+  DashboardKpiCard,
+  DashboardAlertCard,
+  DashboardDataTable,
+  DashboardFilterBar
 } from '../../components/dashboard';
 import { clinicalOpsDashboardService } from '../../services/clinical-ops-dashboard.service';
 import type { ClinicalOpsDashboardData } from '../../types/clinical-ops-dashboard';
 import type { ClinicalWorkQueueDto } from '../../services/clinicalWorkflow.service';
-import { 
-  Activity, 
-  Users, 
-  Clock, 
-  AlertCircle, 
-  Stethoscope, 
+import {
+  Activity,
+  Users,
+  Clock,
+  AlertCircle,
+  Stethoscope,
   Loader2
 } from 'lucide-react';
+import {
+  StatusDonutChart,
+  ComparisonBarChart
+} from '../../components/analytics/charts';
+import type { StatusBreakdown, TrendPoint } from '../../types/analytics';
 
-const ClinicalOperationsDashboard: React.FC = () => {
+export const ClinicalOperationsDashboard: React.FC = () => {
   const [data, setData] = useState<ClinicalOpsDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
-  const [dateRange, setDateRange] = useState({ 
-    from: new Date().toISOString().split('T')[0], 
-    to: new Date().toISOString().split('T')[0] 
+  const [isDemoData, setIsDemoData] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    from: new Date().toISOString().split('T')[0],
+    to: new Date().toISOString().split('T')[0]
   });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        setError(null);
         const result = await clinicalOpsDashboardService.getDashboardData();
         setData(result);
+        setIsDemoData(false);
         setLastUpdated(new Date());
-      } catch {
-        setError('Failed to load clinical operations data. Please try again later.');
+      } catch (err) {
+        console.warn('Failed to load clinical operations data from backend, falling back to mock data:', err);
+        setData({
+          kpis: [
+            { title: 'Active Patients', value: 48, description: 'Currently in clinic (Demo)', severity: 'info' },
+            { title: 'Pending Triage', value: 3, description: 'Awaiting initial assessment (Demo)', severity: 'success' },
+            { title: 'Waiting for Doctor', value: 12, description: 'Ready for consultation (Demo)', severity: 'critical' },
+            { title: 'Nursing Tasks', value: 15, description: 'Open clinical actions (Demo)', severity: 'info' },
+          ],
+          alerts: [
+            { id: 'alert-1', title: 'Urgent Nursing Task', message: 'Administer IV meds - Patient: John Doe', severity: 'critical' },
+            { id: 'alert-2', title: 'Emergency Patient', message: 'Patient Jane Smith in Urgent Care queue', severity: 'critical' },
+          ],
+          flowDistribution: [
+            { label: 'Triage', value: 3 },
+            { label: 'Waiting', value: 12 },
+            { label: 'In Consultation', value: 18 },
+            { label: 'Completed', value: 15 },
+          ],
+          workloadDistribution: [
+            { label: 'General Practice', value: 40 },
+            { label: 'Pediatrics', value: 25 },
+            { label: 'Internal Medicine', value: 20 },
+            { label: 'Urgent Care', value: 15 },
+          ],
+          topDepartments: [
+            { id: 'd1', label: 'Emergency', value: 'High', trend: '↑' },
+            { id: 'd2', label: 'Pediatrics', value: 'Medium', trend: '→' },
+            { id: 'd3', label: 'General', value: 'Medium', trend: '↓' },
+          ],
+          pendingQueue: [
+            { id: 'q-1', queueNumber: 'Q-001', patientName: 'John Doe', category: 'URGENT', serviceType: 'Consultation', waitTimeMinutes: 22, status: 'WAITING' },
+            { id: 'q-2', queueNumber: 'Q-002', patientName: 'Jane Smith', category: 'EMERGENCY', serviceType: 'Triage', waitTimeMinutes: 5, status: 'TRIAGE' },
+          ] as unknown as ClinicalWorkQueueDto[],
+        });
+        setIsDemoData(true);
+        setLastUpdated(new Date());
       } finally {
         setLoading(false);
       }
@@ -43,11 +86,6 @@ const ClinicalOperationsDashboard: React.FC = () => {
 
     fetchDashboardData();
   }, []);
-
-  const flowTotal = useMemo(() =>
-    data ? data.flowDistribution.reduce((a, b) => a + b.value, 0) : 0,
-    [data]
-  );
 
   if (loading) {
     return (
@@ -83,11 +121,18 @@ const ClinicalOperationsDashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-8 bg-slate-50 min-h-screen">
+    <div className="p-6 space-y-8 bg-slate-50 min-h-screen pb-12">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Clinical Operations</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">Clinical Operations</h1>
+            {isDemoData && (
+              <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700 animate-pulse">
+                Demo Preview Mode
+              </span>
+            )}
+          </div>
           <p className="text-sm font-medium text-slate-500">Patient flow and clinical workload monitoring</p>
         </div>
         <div className="flex items-center gap-3">
@@ -105,7 +150,7 @@ const ClinicalOperationsDashboard: React.FC = () => {
       {/* Top KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {data.kpis.map((kpi, idx) => (
-          <DashboardKpiCard 
+          <DashboardKpiCard
             key={idx}
             title={kpi.title}
             value={kpi.value}
@@ -165,7 +210,7 @@ const ClinicalOperationsDashboard: React.FC = () => {
         <div className="lg:col-span-2 space-y-8">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-sm font-black tracking-tight text-slate-900 mb-4 px-1">Pending Clinical Queue</h2>
-            <DashboardDataTable 
+            <DashboardDataTable
               title="Active Patient Queue"
               columns={[
                 { header: 'Queue #', accessor: 'queueNumber' },
@@ -181,46 +226,28 @@ const ClinicalOperationsDashboard: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="text-sm font-black tracking-tight text-slate-900 mb-4">Patient Flow Distribution</h3>
-              <div className="flex flex-col gap-3 py-2">
-                {data.flowDistribution.map((item, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-slate-600">{item.label}</span>
-                      <span className="font-medium text-slate-900">{item.value}</span>
-                    </div>
-                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-slate-500 h-full transition-all duration-500"
-                        style={{ width: `${(item.value / (flowTotal || 1)) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
+              <h3 className="text-sm font-black tracking-tight text-slate-900 mb-4 flex justify-between items-center">
+                <span>Patient Flow Distribution</span>
+                {isDemoData && <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">DEMO</span>}
+              </h3>
+              <div className="h-[calc(100%-3rem)]">
+                <StatusDonutChart
+                  data={data.flowDistribution.map(f => ({ label: f.label, value: f.value })) as StatusBreakdown[]}
+                />
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="text-sm font-black tracking-tight text-slate-900 mb-4">Workload by Specialty</h3>
-              <div className="flex flex-col gap-3 py-2">
-                {data.workloadDistribution.map((item, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-slate-600">{item.label}</span>
-                      <span className="font-medium text-slate-900">{item.value}%</span>
-                    </div>
-                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-slate-400 h-full transition-all duration-500"
-                        style={{ width: `${item.value}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 p-2 bg-slate-100 rounded text-[10px] text-slate-500 italic text-center">
-                Demo Data: Workload distribution is simulated.
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
+              <h3 className="text-sm font-black tracking-tight text-slate-900 mb-4 flex justify-between items-center">
+                <span>Workload by Specialty</span>
+                {isDemoData && <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">DEMO</span>}
+              </h3>
+              <div className="h-[calc(100%-3rem)]">
+                <ComparisonBarChart
+                  data={data.workloadDistribution.map(w => ({ label: w.label, value: w.value })) as TrendPoint[]}
+                  valueLabel="Workload %"
+                />
               </div>
             </div>
           </div>
@@ -230,7 +257,7 @@ const ClinicalOperationsDashboard: React.FC = () => {
       {/* Data Label */}
       <div className="flex justify-center">
         <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-          Mixed Mode: Real Queue / Demo Analytics
+          {isDemoData ? 'Demo analytics preview — sample data for client walkthrough' : 'Mixed Mode: Real Queue / Demo Analytics'}
         </span>
       </div>
     </div>
@@ -238,5 +265,3 @@ const ClinicalOperationsDashboard: React.FC = () => {
 };
 
 export default ClinicalOperationsDashboard;
-
-
