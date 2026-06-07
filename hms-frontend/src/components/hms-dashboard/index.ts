@@ -16,3 +16,4 @@ export { HmsLoadingSkeleton } from './HmsLoadingSkeleton';
 export { HmsEmptyState } from './HmsEmptyState';
 export { HmsDataUnavailable } from './HmsDataUnavailable';
 export { HmsTrendChart } from './HmsTrendChart';
+export { HmsBalanceSheet } from './HmsBalanceSheet';
