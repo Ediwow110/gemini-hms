@@ -1,33 +1,35 @@
 import { useNavigate } from 'react-router-dom';
-import { PageHeader } from '../../components/ui/page-header';
 import { useReleasedResults } from '../../hooks/use-clinical-workflow';
+import { ReleasedResultQueueDto } from '../../services/clinicalWorkflow.service';
 import { format } from 'date-fns';
-import {
-  AlertTriangle,
-  Loader2,
-  Clock,
-  User,
-  FlaskConical,
-  SearchX,
-} from 'lucide-react';
+import { AlertTriangle, FlaskConical } from 'lucide-react';
 import axios from 'axios';
+import { HmsPageHeader } from '../../components/hms-page';
+import {
+  HmsDashboardShell,
+  HmsToolbar,
+  HmsAuditFooter,
+  HmsDrilldownTable,
+  HmsStatusChip,
+  HmsLoadingSkeleton,
+  HmsDataUnavailable,
+  HmsEmptyState,
+} from '../../components/hms-dashboard';
 
 export const ReleasedResultsPage = () => {
   const navigate = useNavigate();
-  const { data: results, isLoading, error } = useReleasedResults();
+  const { data: results, isLoading, error, refetch } = useReleasedResults();
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <PageHeader
+      <HmsDashboardShell>
+        <HmsPageHeader
           title="Released Results"
-          description="Loading released results queue..."
+          description="Results approved and released for clinical visibility."
+          badge="LIS Registry"
         />
-        <div className="card p-12 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center">
-          <Loader2 className="h-10 w-10 text-indigo-500 mx-auto mb-4 animate-spin" />
-          <p className="text-sm text-slate-500 font-medium">Loading released results...</p>
-        </div>
-      </div>
+        <HmsLoadingSkeleton rows={6} />
+      </HmsDashboardShell>
     );
   }
 
@@ -36,144 +38,158 @@ export const ReleasedResultsPage = () => {
       axios.isAxiosError(error) &&
       (error.response?.status === 403 || error.response?.status === 401);
     return (
-      <div className="space-y-6 animate-fade-in">
-        <PageHeader
+      <HmsDashboardShell>
+        <HmsPageHeader
           title="Released Results"
-          description="Error loading released results"
+          description="Results approved and released for clinical visibility."
+          badge="LIS Registry"
         />
-        <div className="card p-12 bg-white border border-rose-100 shadow-sm rounded-2xl text-center">
-          <AlertTriangle className="h-12 w-12 text-rose-400 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-slate-700 mb-2">
-            {isForbidden ? 'Access Restricted' : 'Connection Error'}
-          </h3>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
-            {isForbidden
+        <HmsDataUnavailable
+          sectionName={isForbidden ? 'Access Restricted' : 'Connection Error'}
+          expectedApi={
+            isForbidden
               ? 'You do not have permission to view released results.'
-              : 'Failed to load released results. Please try again.'}
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-6 btn bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold px-6 py-2.5 rounded-xl"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+              : 'Failed to load released results. Please try again.'
+          }
+        />
+      </HmsDashboardShell>
     );
   }
 
   const isEmpty = !results || results.length === 0;
 
+  const columns = [
+    {
+      key: 'patient',
+      header: 'Patient',
+      render: (row: ReleasedResultQueueDto) => (
+        <span className="font-bold text-slate-800 font-['IBM_Plex_Sans']">
+          {row.patientName}
+        </span>
+      ),
+    },
+    {
+      key: 'mrn',
+      header: 'MRN',
+      render: (row: ReleasedResultQueueDto) => (
+        <span className="font-['IBM_Plex_Mono'] text-slate-500 text-[10px]">
+          {row.patientNumber}
+        </span>
+      ),
+    },
+    {
+      key: 'order',
+      header: 'Order',
+      render: (row: ReleasedResultQueueDto) => (
+        <span className="font-['IBM_Plex_Mono'] text-slate-600 font-semibold text-[10px]">
+          {row.orderNumber}
+        </span>
+      ),
+    },
+    {
+      key: 'panel',
+      header: 'Panel',
+      render: (row: ReleasedResultQueueDto) => (
+        <span className="text-slate-700 font-semibold text-xs">
+          {row.panelName || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'specimen',
+      header: 'Specimen',
+      render: (row: ReleasedResultQueueDto) => (
+        <div className="flex items-center gap-1.5 text-slate-500">
+          <FlaskConical className="h-3.5 w-3.5 flex-shrink-0" />
+          <span className="font-['IBM_Plex_Mono'] text-[10px] font-semibold">
+            {row.specimenType}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'released',
+      header: 'Released',
+      render: (row: ReleasedResultQueueDto) => (
+        <span className="font-['IBM_Plex_Mono'] text-slate-600 text-[10px]">
+          {format(new Date(row.releasedAt), 'MMM d, HH:mm')}
+        </span>
+      ),
+    },
+    {
+      key: 'releasedBy',
+      header: 'Released By',
+      render: (row: ReleasedResultQueueDto) => (
+        <span className="font-['IBM_Plex_Mono'] text-slate-500 text-[10px]">
+          {row.releasedById ? row.releasedById.slice(0, 8) : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: () => <HmsStatusChip variant="success" status="Released" />,
+    },
+  ];
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar>
+          <span className="text-xs text-slate-500 font-medium">
+            {isEmpty
+              ? 'No released results'
+              : `${results.length} result${results.length !== 1 ? 's' : ''} released`}
+          </span>
+          <div className="flex-grow" />
+          <button
+            onClick={() => refetch()}
+            className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            Refresh
+          </button>
+        </HmsToolbar>
+      }
+      footer={<HmsAuditFooter dataSource="useReleasedResults → GET /api/v1/lab/released-results" />}
+    >
+      <HmsPageHeader
         title="Released Results"
-        description="Results that have been approved and released for clinical visibility."
+        description="Results approved and released for clinical visibility."
+        badge="LIS Registry"
       />
 
       {isEmpty ? (
-        <div className="card p-12 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center">
-          <SearchX className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-slate-600 mb-2">
-            No Released Results
-          </h3>
-          <p className="text-sm text-slate-400 max-w-md mx-auto">
-            No results have been released yet. Release validated results from the
-            Pending Release queue.
-          </p>
-          <button
-            onClick={() => navigate('/lab/validated')}
-            className="mt-6 btn bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold px-6 py-2.5 rounded-xl"
-          >
-            Go to Pending Release
-          </button>
-        </div>
+        <HmsEmptyState
+          title="No Released Results"
+          description="No results have been released yet. Release validated results from the Pending Release queue."
+          action={
+            <button
+              onClick={() => navigate('/lab/validated')}
+              className="text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors"
+            >
+              Go to Pending Release
+            </button>
+          }
+        />
       ) : (
-        <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50/60 text-slate-400 font-extrabold uppercase border-b border-slate-150">
-                  <th className="px-6 py-3.5">Patient</th>
-                  <th className="px-6 py-3.5">MRN</th>
-                  <th className="px-6 py-3.5">Order</th>
-                  <th className="px-6 py-3.5">Panel</th>
-                  <th className="px-6 py-3.5">Specimen</th>
-                  <th className="px-6 py-3.5">Released</th>
-                  <th className="px-6 py-3.5">Released By</th>
-                  <th className="px-6 py-3.5">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {results.map((result) => (
-                  <tr
-                    key={result.id}
-                    className="hover:bg-slate-50/30 transition-all cursor-pointer"
-                    onClick={() => navigate(`/lab/released/${result.patientId}/${result.orderId}`)}
-                  >
-                    <td className="px-6 py-4 font-black text-slate-800">
-                      {result.patientName}
-                    </td>
-                    <td className="px-6 py-4 font-mono text-slate-500 text-[10px]">
-                      {result.patientNumber}
-                    </td>
-                    <td className="px-6 py-4 font-mono text-slate-600 font-semibold text-[10px]">
-                      {result.orderNumber}
-                    </td>
-                    <td className="px-6 py-4 text-slate-700 font-semibold">
-                      {result.panelName || '—'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-slate-500">
-                        <FlaskConical className="h-3.5 w-3.5" />
-                        <span className="font-semibold text-[10px]">
-                          {result.specimenType}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-slate-500">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span className="font-medium text-[10px]">
-                          {format(new Date(result.releasedAt), 'MMM d, HH:mm')}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-slate-500">
-                        <User className="h-3.5 w-3.5" />
-                        <span className="font-medium text-[10px]">
-                          {result.releasedById
-                            ? result.releasedById.slice(0, 8)
-                            : '—'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-150">
-                        Released
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <HmsDrilldownTable
+          title="Released Results Log"
+          keyExtractor={(row: ReleasedResultQueueDto) => row.id}
+          columns={columns}
+          data={results}
+          onRowClick={(row: ReleasedResultQueueDto) => navigate(`/lab/released/${row.patientId}/${row.orderId}`)}
+        />
       )}
 
-      <div className="card p-5 bg-amber-50 border border-amber-150 rounded-2xl text-xs text-amber-800 flex items-start gap-3">
-        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div className="font-medium">
-          <p>
-            These results have been <strong>released</strong> for clinical visibility.
-            Released results are viewable by authorized staff and (where applicable)
-            to patients through the patient portal. Notification, billing integration,
-            and further amendment workflows are not available in this phase.
-          </p>
-        </div>
+      <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800">
+        <AlertTriangle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+        <p className="font-medium">
+          These results have been <strong>released</strong> for clinical visibility.
+          Notification, billing integration, and further amendment workflows are not
+          available in this phase.
+        </p>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

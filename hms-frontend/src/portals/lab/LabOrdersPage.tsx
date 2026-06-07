@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { PageHeader } from '../../components/ui/page-header';
 import { LabOrderHeader } from './components/LabOrderHeader';
-import { LabStatusBadge, LabStatus } from './components/LabStatusBadge';
+import { LabStatus, LabStatusBadge } from './components/LabStatusBadge';
 import { 
   Search,
   Filter,
@@ -13,11 +12,19 @@ import {
   Loader2,
   CheckCircle2,
   X,
-  TestTube
+  TestTube,
 } from 'lucide-react';
 import { useClinicalWorkQueue, usePatientLabResults, useReceiveLabOrder } from '../../hooks/use-clinical-workflow';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { HmsPageHeader } from '../../components/hms-page';
+import {
+  HmsDashboardShell,
+  HmsToolbar,
+  HmsAuditFooter,
+  HmsLoadingSkeleton,
+  HmsDataUnavailable,
+} from '../../components/hms-dashboard';
 
 interface LabOrder {
   id: string;
@@ -36,6 +43,7 @@ interface LabOrder {
   orderDate: string;
   urgency: 'Routine' | 'STAT';
 }
+
 
 export const LabOrdersPage = () => {
   const navigate = useNavigate();
@@ -129,34 +137,63 @@ export const LabOrdersPage = () => {
   if (errorObj) {
     const isForbidden = axios.isAxiosError(errorObj) && (errorObj.response?.status === 403 || errorObj.response?.status === 401);
     return (
-      <div className="p-8 text-center space-y-4 animate-fade-in">
-        <div className="mx-auto w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-          <AlertTriangle className="h-8 w-8" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-800">
-          {isForbidden ? 'Access Restricted' : 'Connection Error'}
-        </h2>
-        <p className="text-slate-500 max-w-md mx-auto">
-          {isForbidden 
-            ? 'You do not have permission to view the LIS queue. Please contact your administrator.' 
-            : 'Failed to connect to the clinical service. Please check your network connection or try again later.'}
-        </p>
-      </div>
+      <HmsDashboardShell>
+        <HmsPageHeader
+          title="Lab Orders Intake Queue"
+          description="View all laboratory diagnostic requests submitted by clinical departments, verify billing clearance, and track collection routing."
+          badge="LIS Intake"
+        />
+        <HmsDataUnavailable
+          sectionName={isForbidden ? 'Access Restricted' : 'Connection Error'}
+          expectedApi={
+            isForbidden
+              ? 'You do not have permission to view the LIS queue. Please contact your administrator.'
+              : 'Failed to connect to the clinical service. Please check your network connection or try again later.'
+          }
+        />
+      </HmsDashboardShell>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="p-8 text-center space-y-4 animate-fade-in">
-        <div className="animate-spin mx-auto w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
-        <p className="text-slate-500 font-medium tracking-wide animate-pulse">Loading LIS queue...</p>
-      </div>
+      <HmsDashboardShell>
+        <HmsPageHeader
+          title="Lab Orders Intake Queue"
+          description="View all laboratory diagnostic requests submitted by clinical departments, verify billing clearance, and track collection routing."
+          badge="LIS Intake"
+        />
+        <HmsLoadingSkeleton rows={8} />
+      </HmsDashboardShell>
     );
   }
 
   return (
     <>
-    <div className="space-y-6 animate-fade-in">
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black uppercase text-amber-700 bg-amber-50 border border-amber-150 px-2 py-0.5 rounded-md">
+              WIP: Masked Demographics
+            </span>
+            <span className="text-xs text-slate-500 font-medium">
+              {filteredOrders.length === 0
+                ? 'No orders'
+                : `${filteredOrders.length} order${filteredOrders.length !== 1 ? 's' : ''}`}
+            </span>
+            <div className="flex-grow" />
+            <button
+              onClick={() => window.location.reload()}
+              className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+        </HmsToolbar>
+      }
+      footer={<HmsAuditFooter dataSource="useClinicalWorkQueue + useReceiveLabOrder → GET/POST /api/v1/lab" />}
+    >
       {/* Sandbox Warning Banner */}
       <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
@@ -169,7 +206,7 @@ export const LabOrdersPage = () => {
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <PageHeader 
+        <HmsPageHeader 
           title="Lab Orders Intake Queue" 
           description="View all laboratory diagnostic requests submitted by clinical departments, verify billing clearance, and track collection routing." 
         />
@@ -383,7 +420,7 @@ export const LabOrdersPage = () => {
         </div>
 
       </div>
-    </div>
+    </HmsDashboardShell>
 
     {receiveModal && (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => { if (!receiveLabMutation.isPending) setReceiveModal(null); }}>
