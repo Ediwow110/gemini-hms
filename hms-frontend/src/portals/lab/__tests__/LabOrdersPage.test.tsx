@@ -2,12 +2,18 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { LabOrdersPage } from '../LabOrdersPage';
-import { useClinicalWorkQueue, usePatientLabResults, useReceiveLabOrder } from '../../../hooks/use-clinical-workflow';
+import { 
+  useClinicalWorkQueue, 
+  usePatientLabResults, 
+  useReceiveLabOrder,
+  usePatientClinicalSummary
+} from '../../../hooks/use-clinical-workflow';
 
 vi.mock('../../../hooks/use-clinical-workflow', () => ({
   useClinicalWorkQueue: vi.fn(),
   usePatientLabResults: vi.fn(),
   useReceiveLabOrder: vi.fn(),
+  usePatientClinicalSummary: vi.fn(),
 }));
 
 const mockNavigate = vi.fn();
@@ -52,6 +58,22 @@ const mockLabResults = [
   },
 ];
 
+const mockPatientSummary = {
+  id: 'patient-1',
+  patientId: 'patient-1',
+  patientName: 'Jane Smith',
+  patientNumber: 'MRN-456',
+  dob: new Date('1990-05-15'),
+  gender: 'Female',
+  recentEncounters: 2,
+  activePrescriptions: 1,
+  pendingLabResults: 0,
+  status: 'ACTIVE',
+  timestamp: new Date(),
+  accessLabel: 'standard',
+  isReadOnly: false,
+};
+
 const mockReceiveMutateAsync = vi.fn();
 
 function createMutation(overrides: Record<string, unknown> = {}) {
@@ -92,6 +114,13 @@ describe('LabOrdersPage Unit Tests', () => {
       error: null,
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof usePatientLabResults>);
+
+    vi.mocked(usePatientClinicalSummary).mockReturnValue({
+      data: mockPatientSummary,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof usePatientClinicalSummary>);
 
     vi.mocked(useReceiveLabOrder).mockReturnValue(createMutation());
   });
@@ -153,25 +182,27 @@ describe('LabOrdersPage Unit Tests', () => {
     expect(screen.getByText(/Connection Error/)).toBeInTheDocument();
   });
 
-  it('renders WIP / masked demographics banner and orders list', () => {
+  it('renders honesty banner and orders list', () => {
     render(
       <MemoryRouter>
         <LabOrdersPage />
       </MemoryRouter>
     );
 
-    // WIP banner
-    expect(screen.getByText(/LIS Order Intake Queue \(WIP\/Mock\)/)).toBeInTheDocument();
-    expect(screen.getByText(/masked to prevent clinical misinformation/)).toBeInTheDocument();
+    // Honesty banner
+    expect(screen.getByText(/LIS Intake Workspace \(Real — Partial\)/)).toBeInTheDocument();
+    expect(screen.getByText(/enriched from the clinical summary/)).toBeInTheDocument();
 
-    // Orders list - "Ordered" appears in both status badge and filter options
+    // Orders list
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.getByText('LIS-Q-001')).toBeInTheDocument();
-    const orderedEls = screen.getAllByText('Ordered');
-    expect(orderedEls.length).toBeGreaterThanOrEqual(1);
+    
+    // Status filter has "Ordered"
+    const orderedFilterOption = screen.getByRole('option', { name: 'Ordered' });
+    expect(orderedFilterOption).toBeInTheDocument();
 
-    // Demo badge
-    expect(screen.getByText('Demo LIS Database')).toBeInTheDocument();
+    // Production badge
+    expect(screen.getByText('LIS Production Interface')).toBeInTheDocument();
   });
 
   it('filters orders by search text', () => {
@@ -215,22 +246,10 @@ describe('LabOrdersPage Unit Tests', () => {
       </MemoryRouter>
     );
 
-    const noOrderEls = screen.getAllByText(/No orders/);
-    expect(noOrderEls.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/No orders match current criteria/)).toBeInTheDocument();
   });
 
-  it('selects an order and shows order detail panel', () => {
-    render(
-      <MemoryRouter>
-        <LabOrdersPage />
-      </MemoryRouter>
-    );
-
-    const patientName = screen.getByText('Jane Smith');
-    fireEvent.click(patientName);
-  });
-
-  it('displays order detail panel when patientId is in search params', () => {
+  it('displays order detail panel with enriched demographics when patientId is in search params', () => {
     mockSearchParamsValue = new URLSearchParams('patientId=queue-1');
 
     render(
@@ -239,15 +258,19 @@ describe('LabOrdersPage Unit Tests', () => {
       </MemoryRouter>
     );
 
-    // Order identity block
-    expect(screen.getByText(/Requested Diagnostic Panels/)).toBeInTheDocument();
-    expect(screen.getByText(/Portal Specimen & Intake Dispatch Controls/)).toBeInTheDocument();
+    // Enriched demographics (1990-05-15 should be ~36 years old in 2026)
+    expect(screen.getByText(/36Y \/ Female/)).toBeInTheDocument();
+    expect(screen.getByText(/DOB: 1990-05-15/)).toBeInTheDocument();
+
+    // Sections
+    expect(screen.getByText(/Diagnostic Panel Authorization/)).toBeInTheDocument();
+    expect(screen.getByText(/Portal Specimen & Intake Actions/)).toBeInTheDocument();
 
     // Receive Specimen button for Ordered status
     expect(screen.getByText('Receive Specimen')).toBeInTheDocument();
   });
 
-  it('shows Encode Diagnostic Results button when status is Received', () => {
+  it('shows Encode Results button when status is Received', () => {
     mockSearchParamsValue = new URLSearchParams('patientId=queue-2');
     vi.mocked(useClinicalWorkQueue).mockReturnValue({
       data: [createQueueItem({ id: 'queue-2', status: 'SERVING' })],
@@ -262,7 +285,7 @@ describe('LabOrdersPage Unit Tests', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Encode Diagnostic Results')).toBeInTheDocument();
+    expect(screen.getByText('Encode Results')).toBeInTheDocument();
   });
 
   it('opens receive modal and submits specimen receipt', async () => {
@@ -282,8 +305,9 @@ describe('LabOrdersPage Unit Tests', () => {
     // Modal appears
     expect(screen.getByText('Receive Lab Specimen')).toBeInTheDocument();
 
-    // Select specimen type (filter is [0], specimen type is [1], collection mode is [2])
+    // Select specimen type
     const selects = screen.getAllByRole('combobox');
+    // selects[0] is status filter, selects[1] is specimen type
     fireEvent.change(selects[1], { target: { value: 'Whole Blood' } });
 
     // Confirm
@@ -301,28 +325,6 @@ describe('LabOrdersPage Unit Tests', () => {
     });
   });
 
-  it('displays success message after specimen receipt', async () => {
-    mockSearchParamsValue = new URLSearchParams('patientId=queue-1');
-
-    // Start with mutation that will be pending then succeed
-    vi.mocked(useReceiveLabOrder).mockReturnValue(
-      createMutation({ isSuccess: true })
-    );
-
-    render(
-      <MemoryRouter>
-        <LabOrdersPage />
-      </MemoryRouter>
-    );
-
-    // Click receive specimen
-    const receiveButton = screen.getByText('Receive Specimen');
-    fireEvent.click(receiveButton);
-
-    // Since isSuccess is true, the success message should appear
-    // But the mutation mock is for the hook return, not the modal interaction
-  });
-
   it('shows unselected state when no order is selected', () => {
     render(
       <MemoryRouter>
@@ -330,7 +332,7 @@ describe('LabOrdersPage Unit Tests', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Select a laboratory order/)).toBeInTheDocument();
+    expect(screen.getByText(/Select an intake request/)).toBeInTheDocument();
   });
 
   it('displays STAT badge for urgent items', () => {

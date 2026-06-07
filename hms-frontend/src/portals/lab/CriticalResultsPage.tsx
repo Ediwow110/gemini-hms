@@ -1,5 +1,17 @@
 import { useState, useCallback } from 'react';
-import { PageHeader } from '../../components/ui/page-header';
+import { 
+  HmsPageHeader, 
+} from '../../components/hms-page';
+import { 
+  HmsDashboardShell, 
+  HmsToolbar, 
+  HmsAuditFooter, 
+  HmsDrilldownTable, 
+  HmsStatusChip,
+  HmsStatusVariant,
+  HmsLoadingSkeleton,
+  HmsDataUnavailable
+} from '../../components/hms-dashboard';
 import { useCriticalResults } from '../../hooks/use-lab';
 import {
   Search,
@@ -8,15 +20,24 @@ import {
   Clock,
   AlertTriangle,
   ShieldAlert,
+  ShieldX,
+  X,
   Loader2,
-  XCircle,
+  LucideIcon,
 } from 'lucide-react';
 
 export const CriticalResultsPage = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
-  const { criticalResults, isLoading, error, acknowledge, escalate, acknowledgingId, escalatingId } =
-    useCriticalResults(statusFilter);
+  const { 
+    criticalResults, 
+    isLoading, 
+    error, 
+    acknowledge, 
+    escalate, 
+    acknowledgingId, 
+    escalatingId 
+  } = useCriticalResults(statusFilter);
 
   const [showAcknowledgeModal, setShowAcknowledgeModal] = useState(false);
   const [showEscalateModal, setShowEscalateModal] = useState(false);
@@ -79,8 +100,75 @@ export const CriticalResultsPage = () => {
       r.orderNumber.toLowerCase().includes(q);
   });
 
+  if (error) {
+    return (
+      <HmsDashboardShell>
+        <HmsPageHeader
+          title="Critical Alerts & Notification Registry"
+          description="Track panic-level diagnostic results that require direct, immediate physician notification."
+          badge="LIS High Alert"
+        />
+        <HmsDataUnavailable
+          sectionName="Critical Alerts Registry"
+          expectedApi="GET /api/v1/lab/critical-results"
+        />
+      </HmsDashboardShell>
+    );
+  }
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar>
+          <div className="flex items-center gap-4 w-full">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search patient, MRN, order..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input pl-9 text-xs py-1.5 w-full bg-slate-50 border-slate-200"
+              />
+            </div>
+            <select
+              value={statusFilter || 'ALL'}
+              onChange={(e) => setStatusFilter(e.target.value === 'ALL' ? undefined : e.target.value)}
+              className="input text-xs py-1.5 w-[180px] bg-white border border-slate-200"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="OPEN">Open Alerts</option>
+              <option value="ACKNOWLEDGED">Acknowledged</option>
+              <option value="ESCALATED">Escalated</option>
+              <option value="RESOLVED">Resolved</option>
+            </select>
+          </div>
+        </HmsToolbar>
+      }
+      footer={<HmsAuditFooter dataSource="useCriticalResults → GET /api/v1/lab/critical-results" />}
+    >
+      <div className="bg-rose-950 text-rose-50 px-4 py-3 rounded-xl shadow-lg border border-rose-900 flex items-center gap-4 mb-4">
+        <div className="h-10 w-10 bg-rose-900/50 rounded-full flex items-center justify-center animate-pulse">
+           <ShieldX className="h-6 w-6 text-rose-200" />
+        </div>
+        <div>
+          <p className="text-xs font-black uppercase tracking-widest leading-none">High Alert Protocol Active</p>
+          <p className="text-[11px] font-medium text-rose-200/80 mt-1">This registry contains panic-level results requiring direct physician notification within 30 minutes.</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <HmsPageHeader
+          title="Critical Alerts & Notification Registry"
+          description="Track panic-level diagnostic results that require direct, immediate physician notification. Log clinician acknowledgment."
+        />
+        <div className="flex items-center gap-2">
+           <span className="text-[10px] font-black uppercase text-rose-700 bg-rose-50 border border-rose-150 px-3 py-1 rounded-full animate-pulse">
+            Live Panic Alerts
+          </span>
+        </div>
+      </div>
+
       {/* Mock/WIP Warning Banner */}
       <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
@@ -92,11 +180,6 @@ export const CriticalResultsPage = () => {
         </div>
       </div>
 
-      <PageHeader
-        title="Critical Alerts & Notification Registry"
-        description="Track panic-level diagnostic results that require direct, immediate physician notification. Log caller identity and clinician acknowledgment."
-      />
-
       {successMsg && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-semibold flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-emerald-600" />
@@ -104,198 +187,144 @@ export const CriticalResultsPage = () => {
         </div>
       )}
 
-      {error && (
-        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold flex items-center gap-2">
-          <XCircle className="h-4 w-4 text-rose-600" />
-          {error}
-        </div>
-      )}
-
-      {/* Filter and search bar */}
-      <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search patient, MRN, order..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input pl-9.5 text-xs py-2 w-full rounded-xl bg-slate-50 border-slate-200/80"
-          />
-        </div>
-
-        <div className="flex gap-2 w-full md:w-auto">
-          <select
-            value={statusFilter || 'ALL'}
-            onChange={(e) => setStatusFilter(e.target.value === 'ALL' ? undefined : e.target.value)}
-            className="input text-xs py-2 w-full md:w-[200px] rounded-xl bg-white border border-slate-200"
-          >
-            <option value="ALL">All Critical Results</option>
-            <option value="OPEN">Open / Pending</option>
-            <option value="ACKNOWLEDGED">Acknowledged</option>
-            <option value="ESCALATED">Escalated</option>
-            <option value="RESOLVED">Resolved</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Critical Results Queue */}
       {isLoading ? (
-        <div className="card p-12 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center space-y-3">
-          <Loader2 className="h-8 w-8 text-rose-500 mx-auto animate-spin" />
-          <p className="text-sm font-semibold text-slate-500 animate-pulse">Loading critical results...</p>
-        </div>
-      ) : filteredResults.length === 0 ? (
-        <div className="card p-12 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center space-y-3">
-          <CheckCircle className="h-8 w-8 text-emerald-400 mx-auto" />
-          <p className="text-sm font-semibold text-slate-600">No critical results found</p>
-          <p className="text-xs text-slate-400">
-            {statusFilter
-              ? `No results with status "${statusFilter}".`
-              : 'No lab results have been marked as critical.'}
-          </p>
-        </div>
+        <HmsLoadingSkeleton rows={6} />
       ) : (
-        <div className="card overflow-hidden bg-white border border-slate-200/80 shadow-sm rounded-2xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 text-slate-455 font-black uppercase tracking-wider border-b border-slate-150">
-                  <th className="px-6 py-4">Patient Profile</th>
-                  <th className="px-6 py-4">Critical Result</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Timeline</th>
-                  <th className="px-6 py-4 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-semibold text-slate-655">
-                {filteredResults.map(r => (
-                  <tr key={r.id} className={r.criticalStatus === 'OPEN' ? 'bg-rose-50/10' : ''}>
-                    <td className="px-6 py-4 space-y-0.5">
-                      <p className="font-black text-slate-800 text-sm leading-tight">{r.patientName}</p>
-                      <p className="text-[10px] text-slate-400 font-mono">MRN: {r.patientMrn}</p>
-                      <p className="text-[10px] text-indigo-600 font-mono">{r.orderNumber}</p>
-                    </td>
-
-                    <td className="px-6 py-4 space-y-1">
-                      <p className="text-rose-700 font-black">
-                        {r.testNames?.join(', ') || 'Lab Result'}
-                      </p>
-                      {r.results && typeof r.results === 'object' && !Array.isArray(r.results) && (
-                        <p className="text-[10px] text-slate-500 font-mono">
-                          {Object.entries(r.results as Record<string, unknown>)
-                            .slice(0, 3)
-                            .map(([k, v]) => `${k}: ${v}`)
-                            .join(', ')}
-                          {Object.keys(r.results as Record<string, unknown>).length > 3 ? '...' : ''}
-                        </p>
-                      )}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      {r.criticalStatus === 'OPEN' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-rose-50 text-rose-700 font-extrabold text-[9px] border border-rose-150 animate-pulse select-none">
-                          <ShieldAlert className="h-3 w-3" /> Open
-                        </span>
-                      )}
-                      {r.criticalStatus === 'ACKNOWLEDGED' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-amber-50 text-amber-700 font-extrabold text-[9px] border border-amber-100 select-none">
-                          <CheckCircle className="h-3 w-3" /> Acknowledged
-                        </span>
-                      )}
-                      {r.criticalStatus === 'ESCALATED' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-orange-50 text-orange-700 font-extrabold text-[9px] border border-orange-100 select-none">
-                          <PhoneCall className="h-3 w-3" /> Escalated
-                        </span>
-                      )}
-                      {r.criticalStatus === 'RESOLVED' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-extrabold text-[9px] border border-emerald-100 select-none">
-                          <CheckCircle className="h-3 w-3" /> Resolved
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="px-6 py-4 space-y-1 text-[10px]">
-                      {r.encodedAt && (
-                        <p className="flex items-center gap-1 text-slate-500">
-                          <Clock className="h-3 w-3" /> Encoded: {new Date(r.encodedAt).toLocaleString()}
-                        </p>
-                      )}
-                      {r.criticalAcknowledgedAt && (
-                        <p className="flex items-center gap-1 text-slate-500">
-                          <Clock className="h-3 w-3" /> Ack'd: {new Date(r.criticalAcknowledgedAt).toLocaleString()}
-                        </p>
-                      )}
-                      {r.criticalEscalatedAt && (
-                        <p className="flex items-center gap-1 text-orange-600">
-                          <Clock className="h-3 w-3" /> Escalated: {new Date(r.criticalEscalatedAt).toLocaleString()}
-                        </p>
-                      )}
-                      {r.criticalEscalationNotes && (
-                        <p className="text-slate-400 italic max-w-[200px] truncate" title={r.criticalEscalationNotes}>
-                          "{r.criticalEscalationNotes}"
-                        </p>
-                      )}
-                      {r.criticalResolvedAt && (
-                        <p className="flex items-center gap-1 text-emerald-600">
-                          <Clock className="h-3 w-3" /> Resolved: {new Date(r.criticalResolvedAt).toLocaleString()}
-                        </p>
-                      )}
-                    </td>
-
-                    <td className="px-6 py-4 text-center space-y-1.5">
-                      {r.criticalStatus === 'OPEN' && (
-                        <>
-                          <button
-                            onClick={() => handleOpenAcknowledge(r.id)}
-                            disabled={acknowledgingId === r.id}
-                            className="btn bg-rose-600 hover:bg-rose-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-[11px] shadow-sm flex items-center gap-1 mx-auto disabled:opacity-50 w-full"
-                          >
-                            {acknowledgingId === r.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <PhoneCall className="h-3 w-3" />
-                            )}
-                            Log Contact
-                          </button>
-                          <button
-                            onClick={() => handleOpenEscalate(r.id)}
-                            disabled={escalatingId === r.id}
-                            className="btn border border-orange-200 text-orange-700 hover:bg-orange-50 font-extrabold px-3 py-1 rounded-xl text-[10px] flex items-center gap-1 mx-auto disabled:opacity-50 w-full"
-                          >
-                            {escalatingId === r.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <ShieldAlert className="h-3 w-3" />
-                            )}
-                            Escalate
-                          </button>
-                        </>
-                      )}
-                      {(r.criticalStatus === 'ACKNOWLEDGED' || r.criticalStatus === 'ESCALATED') && (
-                        <span className="text-[10px] text-slate-400 font-medium block">
-                          Pending follow-up
-                        </span>
-                      )}
-                      {r.criticalStatus === 'RESOLVED' && (
-                        <span className="text-[10px] text-emerald-600 font-bold block">✓ Closed</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <HmsDrilldownTable
+          title="Active Critical Alerts"
+          description={statusFilter ? `Filtered by: ${statusFilter}` : "All identified panic-level results"}
+          keyExtractor={(r) => r.id}
+          data={filteredResults}
+          columns={[
+            {
+              key: 'patient',
+              header: 'Patient Profile',
+              render: (r) => (
+                <div className="space-y-0.5">
+                  <p className="font-black text-slate-800 text-sm leading-tight">{r.patientName}</p>
+                  <p className="text-[10px] text-slate-400 font-mono uppercase">MRN: {r.patientMrn}</p>
+                  <p className="text-[10px] text-indigo-600 font-mono">{r.orderNumber}</p>
+                </div>
+              )
+            },
+            {
+              key: 'result',
+              header: 'Critical Result',
+              render: (r) => (
+                <div className="space-y-1">
+                  <p className="text-rose-700 font-black">
+                    {r.testNames?.join(', ') || 'Lab Result'}
+                  </p>
+                  {r.results && typeof r.results === 'object' && !Array.isArray(r.results) && (
+                    <p className="text-[10px] text-slate-500 font-mono">
+                      {Object.entries(r.results as Record<string, unknown>)
+                        .slice(0, 3)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join(', ')}
+                      {Object.keys(r.results as Record<string, unknown>).length > 3 ? '...' : ''}
+                    </p>
+                  )}
+                </div>
+              )
+            },
+            {
+              key: 'status',
+              header: 'Status',
+              render: (r) => {
+                const statusMap: Record<string, { label: string; variant: HmsStatusVariant; icon: LucideIcon }> = {
+                  OPEN: { label: 'Open', variant: 'critical', icon: ShieldAlert },
+                  ACKNOWLEDGED: { label: 'Acknowledged', variant: 'warning', icon: CheckCircle },
+                  ESCALATED: { label: 'Escalated', variant: 'warning', icon: PhoneCall },
+                  RESOLVED: { label: 'Resolved', variant: 'success', icon: CheckCircle },
+                };
+                const config = statusMap[r.criticalStatus || 'OPEN'] || statusMap.OPEN;
+                return (
+                  <HmsStatusChip 
+                    status={config.label} 
+                    variant={config.variant} 
+                  />
+                );
+              }
+            },
+            {
+              key: 'timeline',
+              header: 'Timeline',
+              render: (r) => (
+                <div className="space-y-1 text-[10px]">
+                  {r.encodedAt && (
+                    <p className="flex items-center gap-1 text-slate-500">
+                      <Clock className="h-3 w-3" /> Encoded: {new Date(r.encodedAt).toLocaleString()}
+                    </p>
+                  )}
+                  {r.criticalAcknowledgedAt && (
+                    <p className="flex items-center gap-1 text-slate-500">
+                      <Clock className="h-3 w-3" /> Ack'd: {new Date(r.criticalAcknowledgedAt).toLocaleString()}
+                    </p>
+                  )}
+                  {r.criticalEscalatedAt && (
+                    <p className="flex items-center gap-1 text-orange-600">
+                      <Clock className="h-3 w-3" /> Escalated: {new Date(r.criticalEscalatedAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              )
+            },
+            {
+              key: 'actions',
+              header: 'Clinical Actions',
+              render: (r) => (
+                <div className="flex flex-col gap-1.5 min-w-[120px]">
+                  {r.criticalStatus === 'OPEN' ? (
+                    <>
+                      <button
+                        onClick={() => handleOpenAcknowledge(r.id)}
+                        disabled={acknowledgingId === r.id}
+                        className="btn bg-rose-600 hover:bg-rose-700 text-white font-black px-3 py-1.5 rounded-xl text-[10px] shadow-sm flex items-center justify-center gap-1 disabled:opacity-50"
+                      >
+                        {acknowledgingId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <PhoneCall className="h-3 w-3" />}
+                        Log Contact
+                      </button>
+                      <button
+                        onClick={() => handleOpenEscalate(r.id)}
+                        disabled={escalatingId === r.id}
+                        className="btn border border-orange-200 text-orange-700 hover:bg-orange-50 font-black px-3 py-1 rounded-xl text-[10px] flex items-center justify-center gap-1 disabled:opacity-50"
+                      >
+                        {escalatingId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldAlert className="h-3 w-3" />}
+                        Escalate
+                      </button>
+                    </>
+                  ) : r.criticalStatus === 'RESOLVED' ? (
+                    <span className="text-[10px] text-emerald-600 font-black flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" /> CLOSED
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-bold italic">
+                      Pending follow-up
+                    </span>
+                  )}
+                </div>
+              )
+            }
+          ]}
+        />
       )}
 
       {/* Acknowledge Modal */}
       {showAcknowledgeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <form onSubmit={handleConfirmAcknowledge} className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 animate-scale-in space-y-4">
-            <h4 className="font-extrabold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3">
-              Log Physician Contact
-            </h4>
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h4 className="font-extrabold text-slate-800 text-sm tracking-wider uppercase">
+                Log Physician Contact
+              </h4>
+              <button 
+                type="button" 
+                onClick={() => setShowAcknowledgeModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
             {actionError && (
               <div className="p-2 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-semibold">
@@ -304,7 +333,7 @@ export const CriticalResultsPage = () => {
             )}
 
             <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-              Document physician contact to acknowledge this critical result. This creates an audit log entry.
+              Document direct physician contact to acknowledge receipt of this critical result.
             </p>
 
             <div className="space-y-2">
@@ -317,24 +346,19 @@ export const CriticalResultsPage = () => {
               />
             </div>
 
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-2 justify-end pt-2">
+               <button
+                type="button"
+                onClick={() => setShowAcknowledgeModal(false)}
+                className="btn border border-slate-200 text-slate-650 hover:bg-slate-50 text-xs font-bold px-4 py-2.5 rounded-xl"
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
                 className="btn bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-sm"
               >
                 Log Contact
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAcknowledgeModal(false);
-                  setActiveResultId(null);
-                  setNotesText('');
-                  setActionError(null);
-                }}
-                className="btn border border-slate-200 text-slate-650 hover:bg-slate-50 text-xs font-bold px-4 py-2.5 rounded-xl"
-              >
-                Cancel
               </button>
             </div>
           </form>
@@ -345,9 +369,18 @@ export const CriticalResultsPage = () => {
       {showEscalateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <form onSubmit={handleConfirmEscalate} className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 animate-scale-in space-y-4">
-            <h4 className="font-extrabold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3">
-              Escalate Critical Result
-            </h4>
+             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h4 className="font-extrabold text-slate-800 text-sm tracking-wider uppercase">
+                Escalate Critical Result
+              </h4>
+              <button 
+                type="button" 
+                onClick={() => setShowEscalateModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
             {actionError && (
               <div className="p-2 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-semibold">
@@ -356,7 +389,7 @@ export const CriticalResultsPage = () => {
             )}
 
             <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-              Escalate to a supervisor or lab manager. Provide the reason for escalation.
+              Escalate to a supervisor or lab manager if the primary physician cannot be reached within policy limits.
             </p>
 
             <div className="space-y-2">
@@ -370,44 +403,25 @@ export const CriticalResultsPage = () => {
               />
             </div>
 
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-2 justify-end pt-2">
+               <button
+                type="button"
+                onClick={() => setShowEscalateModal(false)}
+                className="btn border border-slate-200 text-slate-650 hover:bg-slate-50 text-xs font-bold px-4 py-2.5 rounded-xl"
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
                 className="btn bg-orange-600 hover:bg-orange-700 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-sm"
               >
-                Escalate
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowEscalateModal(false);
-                  setActiveResultId(null);
-                  setNotesText('');
-                  setActionError(null);
-                }}
-                className="btn border border-slate-200 text-slate-650 hover:bg-slate-50 text-xs font-bold px-4 py-2.5 rounded-xl"
-              >
-                Cancel
+                Confirm Escalation
               </button>
             </div>
           </form>
         </div>
       )}
-
-      {/* Audit info box */}
-      {criticalResults.length > 0 && (
-        <div className="p-4 bg-indigo-50/20 border border-indigo-100/60 rounded-2xl text-xs text-indigo-800 font-semibold space-y-1">
-          <h4 className="font-bold text-indigo-900 uppercase tracking-wider text-[10px] flex items-center gap-1">
-            <ShieldAlert className="h-3.5 w-3.5" />
-            Critical Result Workflow
-          </h4>
-          <p className="text-[10.5px] leading-relaxed">
-            All critical result state changes are audited (marked critical, acknowledged, escalated, resolved).
-            External paging, SMS, email, and automatic threshold detection remain out of scope.
-          </p>
-        </div>
-      )}
-    </div>
+    </HmsDashboardShell>
   );
 };
 
