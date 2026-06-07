@@ -1,5 +1,4 @@
 import { apiClient } from '../lib/api';
-import { demoData } from '../demo-data/dashboard-demo.data';
 
 interface InvoiceItem {
   id: string;
@@ -47,11 +46,9 @@ export interface BillingDashboardData {
   kpis: BillingDashboardKpi[];
   alerts: BillingDashboardAlert[];
   invoiceStatusDistribution: { label: string; value: number }[];
-  paymentMethodDistribution: { label: string; value: number }[];
   highestOutstanding: BillingDashboardTopListEntry[];
   recentPayments: BillingDashboardTopListEntry[];
-  revenueTrend: { label: string; value: number }[];
-  isDemoData?: boolean;
+  isUnavailable?: boolean;
 }
 
 export const billingDashboardService = {
@@ -91,7 +88,6 @@ export const billingDashboardService = {
           { label: 'Unpaid', value: unpaidCount },
           { label: 'Overdue', value: overdueCount },
         ],
-        paymentMethodDistribution: demoData.billing.paymentMethodDistribution,
         highestOutstanding: invoices
           .sort((a, b) => (b.balance || 0) - (a.balance || 0))
           .slice(0, 5)
@@ -107,60 +103,17 @@ export const billingDashboardService = {
           value: `₱${p.amount.toLocaleString()}`,
           trend: 'POSTED',
         })) || [],
-        revenueTrend: [
-          { label: 'Mon', value: 12500 },
-          { label: 'Tue', value: 18400 },
-          { label: 'Wed', value: 14200 },
-          { label: 'Thu', value: 23100 },
-          { label: 'Fri', value: 21800 },
-          { label: 'Sat', value: 9500 },
-          { label: 'Sun', value: 11000 },
-        ],
-        isDemoData: false,
+        isUnavailable: false,
       };
     } catch (error) {
-      console.warn('Billing dashboard data fetch failed, falling back to mock data:', error);
+      console.warn('Billing dashboard data fetch failed, falling back to empty states:', error);
       return {
-        kpis: [
-          { title: 'Current Session', value: '₱42,500', description: 'Active cashier total (Demo)', severity: 'success' as const },
-          { title: 'Unpaid Invoices', value: 18, description: 'Pending payment (Demo)', severity: 'warning' as const },
-          { title: 'Overdue Bills', value: 5, description: 'Past due date (Demo)', severity: 'critical' as const },
-          { title: 'Total Outstanding', value: '₱184,200', description: 'Total receivables (Demo)', severity: 'info' as const },
-        ],
-        alerts: [
-          { id: 'overdue-1', title: 'Overdue Invoice', message: 'Invoice INV-2026-001 is overdue by 5 days', severity: 'critical' as const },
-          { id: 'overdue-2', title: 'Overdue Invoice', message: 'Invoice INV-2026-004 is overdue by 3 days', severity: 'critical' as const },
-        ],
-        invoiceStatusDistribution: [
-          { label: 'Paid', value: 45 },
-          { label: 'Unpaid', value: 18 },
-          { label: 'Overdue', value: 5 },
-        ],
-        paymentMethodDistribution: demoData.billing.paymentMethodDistribution,
-        highestOutstanding: [
-          { id: 'out-1', label: 'St. Jude Health Plan', value: '₱85,000', trend: 'UNPAID' },
-          { id: 'out-2', label: 'Sample Client A', value: '₱45,000', trend: 'UNPAID' },
-          { id: 'out-3', label: 'Sample Client B', value: '₱32,000', trend: 'UNPAID' },
-          { id: 'out-4', label: 'Apex Insurance Co.', value: '₱12,500', trend: 'UNPAID' },
-          { id: 'out-5', label: 'Sample Client C', value: '₱9,700', trend: 'UNPAID' },
-        ],
-        recentPayments: [
-          { id: 'pay-1', label: 'INV-2026-002', value: '₱15,200', trend: 'POSTED' },
-          { id: 'pay-2', label: 'INV-2026-003', value: '₱8,500', trend: 'POSTED' },
-          { id: 'pay-3', label: 'INV-2026-005', value: '₱12,000', trend: 'POSTED' },
-          { id: 'pay-4', label: 'INV-2026-006', value: '₱4,800', trend: 'POSTED' },
-          { id: 'pay-5', label: 'INV-2026-007', value: '₱2,000', trend: 'POSTED' },
-        ],
-        revenueTrend: [
-          { label: 'Mon', value: 12500 },
-          { label: 'Tue', value: 18400 },
-          { label: 'Wed', value: 14200 },
-          { label: 'Thu', value: 23100 },
-          { label: 'Fri', value: 21800 },
-          { label: 'Sat', value: 9500 },
-          { label: 'Sun', value: 11000 },
-        ],
-        isDemoData: true,
+        kpis: [],
+        alerts: [],
+        invoiceStatusDistribution: [],
+        highestOutstanding: [],
+        recentPayments: [],
+        isUnavailable: true,
       };
     }
   },

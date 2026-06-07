@@ -45,13 +45,8 @@ describe('PharmacyDashboard Unit Tests', () => {
         { label: 'Low', value: 2 },
         { label: 'Out', value: 1 },
       ],
-      categoryDistribution: [],
-      topDispensed: [],
       lowestStock: [],
-      dispenseTrend: [
-        { label: 'Mon', value: 142 },
-      ],
-      isDemoData: false,
+      isUnavailable: false,
     });
 
     render(
@@ -63,8 +58,9 @@ describe('PharmacyDashboard Unit Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Pharmacy Dashboard')).toBeInTheDocument();
       expect(screen.getByText('Total Inventory')).toBeInTheDocument();
-      expect(screen.getByText('Dispensing Throughput (7d)')).toBeInTheDocument();
-      expect(screen.queryByText('Demo Preview Mode')).not.toBeInTheDocument();
+      expect(screen.getByText(/Dispensing Throughput \(7d\)/)).toBeInTheDocument();
+      expect(screen.queryByText(/Live source unavailable/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Demo Preview/i)).not.toBeInTheDocument();
     });
   });
 
@@ -78,13 +74,8 @@ describe('PharmacyDashboard Unit Tests', () => {
       ],
       alerts: [],
       stockDistribution: [],
-      categoryDistribution: [],
-      topDispensed: [],
       lowestStock: [],
-      dispenseTrend: [
-        { label: 'Mon', value: 142 },
-      ],
-      isDemoData: true,
+      isUnavailable: true,
     });
 
     render(
@@ -95,8 +86,12 @@ describe('PharmacyDashboard Unit Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Pharmacy Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('Demo Preview Mode')).toBeInTheDocument();
-      expect(screen.getByText('Demo analytics preview — sample data for client walkthrough')).toBeInTheDocument();
+      expect(screen.getAllByText(/Live source unavailable/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/Live dashboard data could not be loaded/i)).toBeInTheDocument();
+      expect(screen.getByText(/Inventory & Dispense Key Metrics/)).toBeInTheDocument();
+      expect(screen.getByText(/Prescriptions Waiting Dispense/)).toBeInTheDocument();
+      expect(screen.getByText(/Lowest Stock Items/)).toBeInTheDocument();
+      expect(screen.getByText(/Operational Risks/)).toBeInTheDocument();
     });
   });
 });

@@ -45,15 +45,9 @@ describe('BillingDashboard Unit Tests', () => {
         { label: 'Unpaid', value: 3 },
         { label: 'Overdue', value: 1 },
       ],
-      paymentMethodDistribution: [
-        { label: 'Cash', value: 100 },
-      ],
       highestOutstanding: [],
       recentPayments: [],
-      revenueTrend: [
-        { label: 'Mon', value: 5000 },
-      ],
-      isDemoData: false,
+      isUnavailable: false,
     });
 
     render(
@@ -62,33 +56,24 @@ describe('BillingDashboard Unit Tests', () => {
       </MemoryRouter>
     );
 
-    // Should display loader initially, then data
     await waitFor(() => {
       expect(screen.getByText('Billing & Finance Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('Unpaid Invoices')).toBeInTheDocument();
+      expect(screen.getAllByText('Unpaid Invoices').length).toBeGreaterThan(0);
       expect(screen.getByText('₱12,500')).toBeInTheDocument();
-      expect(screen.getByText('Revenue Collection Trend (7d)')).toBeInTheDocument();
-      expect(screen.queryByText('Demo Preview Mode')).not.toBeInTheDocument();
+      expect(screen.getByText(/Revenue Collection Trend \(7d\)/)).toBeInTheDocument();
+      expect(screen.queryByText(/Live source unavailable/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Demo Preview/i)).not.toBeInTheDocument();
     });
   });
 
   it('renders successfully with fallback demo data when API fails', async () => {
     vi.mocked(billingDashboardService.getDashboardData).mockResolvedValue({
-      kpis: [
-        { title: 'Current Session', value: '₱42,500', description: 'Active cashier total (Demo)', severity: 'success' },
-        { title: 'Unpaid Invoices', value: 18, description: 'Pending payment (Demo)', severity: 'warning' },
-        { title: 'Overdue Bills', value: 5, description: 'Past due date (Demo)', severity: 'critical' },
-        { title: 'Total Outstanding', value: '₱184,200', description: 'Total receivables (Demo)', severity: 'info' },
-      ],
+      kpis: [],
       alerts: [],
       invoiceStatusDistribution: [],
-      paymentMethodDistribution: [],
       highestOutstanding: [],
       recentPayments: [],
-      revenueTrend: [
-        { label: 'Mon', value: 12500 },
-      ],
-      isDemoData: true,
+      isUnavailable: true,
     });
 
     render(
@@ -99,9 +84,12 @@ describe('BillingDashboard Unit Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Billing & Finance Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('Demo Preview Mode')).toBeInTheDocument();
-      expect(screen.getByText('₱184,200')).toBeInTheDocument();
-      expect(screen.getByText('Demo analytics preview — sample data for client walkthrough')).toBeInTheDocument();
+      expect(screen.getAllByText(/Live source unavailable/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/Live dashboard data could not be loaded/i)).toBeInTheDocument();
+      expect(screen.getByText(/Billing & Session Key Metrics/)).toBeInTheDocument();
+      expect(screen.getByText(/Highest Outstanding Bills/)).toBeInTheDocument();
+      expect(screen.getByText(/Recent Payments \(Active Session\)/)).toBeInTheDocument();
+      expect(screen.getByText(/Collection Risk Thresholds/)).toBeInTheDocument();
     });
   });
 });

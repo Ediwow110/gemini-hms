@@ -68,9 +68,10 @@ describe('AdminExecutiveDashboard Unit Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Executive Dashboard')).toBeInTheDocument();
       expect(screen.getByText('Active Patients')).toBeInTheDocument();
-      expect(screen.getByText('Patient Volume Trend')).toBeInTheDocument();
-      expect(screen.getByText('Revenue Trend')).toBeInTheDocument();
-      expect(screen.queryByText('Demo Preview Mode')).not.toBeInTheDocument();
+      expect(screen.getByText(/Patient Volume Trend/)).toBeInTheDocument();
+      expect(screen.getByText(/Revenue Trend/)).toBeInTheDocument();
+      expect(screen.queryByText(/Live source unavailable/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Demo Preview/i)).not.toBeInTheDocument();
     });
   });
 
@@ -85,8 +86,12 @@ describe('AdminExecutiveDashboard Unit Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Executive Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('Demo Preview Mode')).toBeInTheDocument();
-      expect(screen.getByText('Demo analytics preview — sample data for client walkthrough')).toBeInTheDocument();
+      expect(screen.getAllByText(/Live source unavailable/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/Live dashboard data could not be loaded/i)).toBeInTheDocument();
+      expect(screen.getByText(/Executive Key Metrics/)).toBeInTheDocument();
+      expect(screen.getByText(/Branch Volume Comparison/)).toBeInTheDocument();
+      expect(screen.getByText(/Top Outstanding Invoices/)).toBeInTheDocument();
+      expect(screen.getByText(/System Compliance & Risk/)).toBeInTheDocument();
     });
   });
 });

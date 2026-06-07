@@ -1,5 +1,5 @@
 import { apiClient } from '../lib/api';
-import { demoData } from '../demo-data/dashboard-demo.data';
+import type { PharmacyPrescriptionQueueDto } from './pharmacy.service';
 
 interface CatalogItem {
   id: string;
@@ -44,11 +44,9 @@ export interface PharmacyDashboardData {
   kpis: PharmacyDashboardKpi[];
   alerts: PharmacyDashboardAlert[];
   stockDistribution: { label: string; value: number }[];
-  categoryDistribution: { label: string; value: number }[];
-  topDispensed: PharmacyDashboardTopListEntry[];
   lowestStock: PharmacyDashboardTopListEntry[];
-  dispenseTrend: { label: string; value: number }[];
-  isDemoData?: boolean;
+  isUnavailable?: boolean;
+  activePrescriptions?: PharmacyPrescriptionQueueDto[];
 }
 
 export const pharmacyDashboardService = {
@@ -87,8 +85,6 @@ export const pharmacyDashboardService = {
           { label: 'Low', value: lowStockCount },
           { label: 'Out', value: outOfStockCount },
         ],
-        categoryDistribution: demoData.pharmacy.categoryDistribution,
-        topDispensed: demoData.pharmacy.topDispensed,
         lowestStock: catalog
           .sort((a, b) => a.currentStock - b.currentStock)
           .slice(0, 5)
@@ -98,52 +94,18 @@ export const pharmacyDashboardService = {
             value: i.currentStock,
             trend: 'CRITICAL',
           })),
-        dispenseTrend: [
-          { label: 'Mon', value: 142 },
-          { label: 'Tue', value: 168 },
-          { label: 'Wed', value: 135 },
-          { label: 'Thu', value: 180 },
-          { label: 'Fri', value: 172 },
-          { label: 'Sat', value: 95 },
-          { label: 'Sun', value: 88 },
-        ],
-        isDemoData: false,
+        isUnavailable: false,
+        activePrescriptions: queueRes.data || [],
       };
     } catch (error) {
-      console.warn('Pharmacy dashboard data fetch failed, falling back to mock data:', error);
+      console.warn('Pharmacy dashboard data fetch failed, falling back to empty states:', error);
       return {
-        kpis: [
-          { title: 'Total Inventory', value: 124, description: 'Unique medications (Demo)', severity: 'info' as const },
-          { title: 'Low Stock', value: 8, description: 'Below reorder level (Demo)', severity: 'warning' as const },
-          { title: 'Out of Stock', value: 3, description: 'Critical shortages (Demo)', severity: 'critical' as const },
-          { title: 'Dispense Queue', value: 6, description: 'Active prescriptions (Demo)', severity: 'success' as const },
-        ],
-        alerts: [
-          { id: 'lowstock-1', title: 'Low Stock', message: 'Amoxicillin 250mg is below reorder level (8/20)', severity: 'warning' as const },
-          { id: 'lowstock-2', title: 'Low Stock', message: 'Paracetamol 500mg is below reorder level (12/50)', severity: 'warning' as const },
-        ],
-        stockDistribution: [
-          { label: 'Healthy', value: 113 },
-          { label: 'Low', value: 8 },
-          { label: 'Out', value: 3 },
-        ],
-        categoryDistribution: demoData.pharmacy.categoryDistribution,
-        topDispensed: demoData.pharmacy.topDispensed,
-        lowestStock: [
-          { id: 'ls-1', label: 'Amoxicillin 250mg', value: 8, trend: 'CRITICAL' },
-          { id: 'ls-2', label: 'Paracetamol 500mg', value: 12, trend: 'CRITICAL' },
-          { id: 'ls-3', label: 'Ibuprofen 400mg', value: 14, trend: 'CRITICAL' },
-        ],
-        dispenseTrend: [
-          { label: 'Mon', value: 142 },
-          { label: 'Tue', value: 168 },
-          { label: 'Wed', value: 135 },
-          { label: 'Thu', value: 180 },
-          { label: 'Fri', value: 172 },
-          { label: 'Sat', value: 95 },
-          { label: 'Sun', value: 88 },
-        ],
-        isDemoData: true,
+        kpis: [],
+        alerts: [],
+        stockDistribution: [],
+        lowestStock: [],
+        isUnavailable: true,
+        activePrescriptions: [],
       };
     }
   },

@@ -1,61 +1,60 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Package, Pill, AlertCircle } from 'lucide-react';
 import {
-  DashboardSection,
-  DashboardKpiCard,
-  DashboardAlertCard,
-  DashboardDataTable,
-  DashboardFilterBar
-} from '../../components/dashboard';
-import {
-  VolumeAreaChart,
-  StatusDonutChart,
-  ComparisonBarChart
-} from '../../components/analytics/charts';
-import { pharmacyDashboardService, type PharmacyDashboardData, type PharmacyDashboardTopListEntry } from '../../services/pharmacy-dashboard.service';
-import { Package, AlertTriangle, Activity, ClipboardList, Loader2, AlertCircle } from 'lucide-react';
-import type { DateRange, AnalyticsSeverity } from '../../types/analytics';
-
-const INITIAL_DATE_RANGE: DateRange = {
-  from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-  to: new Date().toISOString().split('T')[0]
-};
+  HmsDashboardShell,
+  HmsToolbar,
+  HmsAuditFooter,
+  HmsKpiStrip,
+  HmsAlertRail,
+  HmsWorkQueue,
+  HmsDrilldownTable,
+  HmsSlaPanel,
+  HmsQuickActions,
+  HmsDataUnavailable,
+  HmsLoadingSkeleton,
+} from '../../components/hms-dashboard';
+import { pharmacyDashboardService } from '../../services/pharmacy-dashboard.service';
+import type { PharmacyDashboardData } from '../../services/pharmacy-dashboard.service';
 
 export const PharmacyDashboard: React.FC = () => {
-  const [dateRange, setDateRange] = useState<DateRange>(INITIAL_DATE_RANGE);
+  const navigate = useNavigate();
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<PharmacyDashboardData | null>(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const branchId = selectedBranch === 'all' ? 'main-branch' : selectedBranch;
-        const result = await pharmacyDashboardService.getDashboardData(branchId);
-        setData(result);
-        setLastUpdated(new Date());
-      } catch {
-        setError('Failed to load pharmacy dashboard data.');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const branchId = selectedBranch === 'all' ? 'main-branch' : selectedBranch;
+      const result = await pharmacyDashboardService.getDashboardData(branchId);
+      setData(result);
+      setLastUpdated(new Date());
+    } catch {
+      setError('Failed to load pharmacy dashboard data.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
     fetchData();
   }, [selectedBranch]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-3 text-center">
+      <div className="flex h-screen items-center justify-center p-6 bg-slate-50">
+        <div className="flex flex-col items-center gap-3 text-center max-w-md p-6 bg-white border border-slate-200 rounded-lg shadow-sm">
           <AlertCircle className="h-12 w-12 text-rose-500" />
           <h2 className="text-lg font-bold text-slate-900">{error}</h2>
           <button
-            onClick={() => window.location.reload()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800"
+            onClick={() => fetchData()}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors"
           >
             Retry
           </button>
@@ -64,150 +63,283 @@ export const PharmacyDashboard: React.FC = () => {
     );
   }
 
+  // Map alerts to AlertRail format
+  const railAlerts = data?.alerts.map((alert) => ({
+    id: alert.id,
+    severity: (alert.severity === 'critical' || alert.severity === 'warning' || alert.severity === 'success') 
+      ? alert.severity 
+      : 'warning' as const,
+    title: alert.title,
+    message: alert.message,
+    timestamp: 'Real-time',
+  })) || [];
+
+  // Map KPIs to KpiStrip format
+  const kpis = data?.kpis.map((kpi, idx) => ({
+    id: `kpi-${idx}`,
+    label: kpi.title,
+    value: kpi.value,
+    severity: (kpi.severity === 'info' || kpi.severity === 'success' || kpi.severity === 'warning' || kpi.severity === 'critical')
+      ? kpi.severity
+      : 'info' as const,
+  })) || [];
+
+  // Get lowest stock items
+  const lowestStockData = data?.lowestStock || [];
+  
+  // Calculate SLA values
+  const totalQueue = data?.activePrescriptions?.length ?? 0;
+  const outOfStockCount = lowestStockData.filter(i => Number(i.value) === 0).length;
+
   return (
-    <div className="p-6 space-y-8 bg-slate-50 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">Pharmacy Dashboard</h1>
-            {data?.isDemoData && (
-              <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700 animate-pulse">
-                Demo Preview Mode
-              </span>
-            )}
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar
+          branchName={selectedBranch === 'all' ? 'All Branches' : selectedBranch}
+          role="Pharmacy Dashboard"
+          lastRefreshed={lastUpdated}
+          onRefresh={fetchData}
+        >
+          <div className="flex items-center gap-2">
+            <label htmlFor="branch-select" className="text-[11px] font-medium text-slate-400">Select Branch:</label>
+            <select
+              id="branch-select"
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-700 focus:border-blue-500 focus:outline-none"
+            >
+              <option value="all">All Branches</option>
+              <option value="main-branch">Main Branch</option>
+              <option value="north-clinic">North Branch</option>
+            </select>
           </div>
-          <p className="text-sm font-medium text-slate-500">Inventory risk visibility and dispensing operations.</p>
+        </HmsToolbar>
+      }
+      footer={
+        <HmsAuditFooter
+          lastRefreshed={lastUpdated}
+          dataSource={data?.isUnavailable ? 'Live source unavailable' : 'Live Inventory/Pharmacy API'}
+        />
+      }
+    >
+      {data?.isUnavailable && (
+        <div className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-rose-600" />
+            <span className="text-[12px] font-semibold text-rose-700">Live dashboard data could not be loaded — showing unavailable state for unsupported sections</span>
+          </div>
+          <span className="text-[10px] font-bold text-rose-600 font-mono">OFFLINE</span>
         </div>
-        <div className="flex items-center gap-3">
-          <DashboardFilterBar
-            dateRange={dateRange}
-            onDateRangeChange={setDateRange}
-            branch={selectedBranch}
-            onBranchChange={setSelectedBranch}
-          />
-          <div className="text-right">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Last Updated</p>
-            <p className="text-xs font-bold text-slate-600">{lastUpdated.toLocaleTimeString()}</p>
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex h-[60vh] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-        </div>
-      ) : (
-        <>
-          {/* Top KPIs */}
-          <DashboardSection title="Inventory Summary" subtitle="Real-time stock levels and queue status">
-            {data?.kpis.map((kpi, idx) => (
-              <DashboardKpiCard
-                key={idx}
-                title={kpi.title}
-                value={kpi.value}
-                description={kpi.description}
-                severity={kpi.severity as AnalyticsSeverity}
-                icon={kpi.title.includes('Inventory') ? Package : kpi.title.includes('Stock') ? AlertTriangle : kpi.title.includes('Queue') ? ClipboardList : Activity}
-              />
-            ))}
-          </DashboardSection>
-
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            {/* Risk Panel */}
-            <div className="lg:col-span-1 space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Inventory Risks</h2>
-                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 text-[10px] font-black">
-                  {data?.alerts.length || 0} ALERTS
-                </span>
-              </div>
-              <div className="space-y-3">
-                {data?.alerts.length ? data.alerts.map((alert, idx) => (
-                  <DashboardAlertCard
-                    key={alert.id || idx}
-                    title={alert.title}
-                    message={alert.message}
-                    severity={alert.severity as AnalyticsSeverity}
-                    timestamp="Now"
-                  />
-                )) : (
-                  <div className="text-center py-8 text-slate-400 text-sm font-medium">No critical stock risks</div>
-                )}
-              </div>
-            </div>
-
-            {/* Analytics */}
-            <div className="lg:col-span-2 space-y-8">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-                  <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Stock Status Distribution</h3>
-                  <div className="h-[calc(100%-3rem)]">
-                    <StatusDonutChart
-                      data={data?.stockDistribution || []}
-                    />
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-                  <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Category Distribution</h3>
-                  <div className="h-[calc(100%-3rem)]">
-                    <ComparisonBarChart
-                      data={data?.categoryDistribution || []}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-                <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900 flex justify-between items-center">
-                  <span>Dispensing Throughput (7d)</span>
-                  {data?.isDemoData && (
-                    <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
-                      DEMO PREVIEW
-                    </span>
-                  )}
-                </h3>
-                <div className="h-[calc(100%-3rem)]">
-                  <VolumeAreaChart
-                    data={data?.dispenseTrend || []}
-                    title="Dispensing Throughput"
-                    valueLabel="Prescriptions"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Top Tables */}
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            <DashboardDataTable<PharmacyDashboardTopListEntry>
-              title="Top Dispensed Medications"
-              columns={[
-                { header: 'Medication', accessor: 'label' },
-                { header: 'Quantity', accessor: 'value', className: 'font-bold text-slate-900' },
-                { header: 'Trend', accessor: (item) => item.trend || 'Stable', className: 'text-emerald-500' },
-              ]}
-              data={data?.topDispensed || []}
-            />
-            <DashboardDataTable<PharmacyDashboardTopListEntry>
-              title="Lowest Stock Items"
-              columns={[
-                { header: 'Medication', accessor: 'label' },
-                { header: 'Current Stock', accessor: 'value', className: 'font-bold text-slate-900' },
-                { header: 'Status', accessor: (item) => item.trend || 'LOW', className: 'text-rose-500' },
-              ]}
-              data={data?.lowestStock || []}
-            />
-          </div>
-        </>
       )}
 
-      {/* Data Label */}
-      <div className="flex justify-center">
-        <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-          {data?.isDemoData ? 'Demo analytics preview — sample data for client walkthrough' : 'Mixed Mode: Real Stock Levels / Demo Analytics'}
-        </span>
-      </div>
-    </div>
+      {/* Top Alert Rail for Stock Risks */}
+      <HmsAlertRail alerts={railAlerts} loading={loading} />
+
+      {/* KPI Strip */}
+      {data?.isUnavailable ? (
+        <HmsDataUnavailable
+          sectionName="Inventory & Dispense Key Metrics"
+          expectedApi="/v1/inventory/catalog, /v1/pharmacy/prescriptions"
+        />
+      ) : (
+        <HmsKpiStrip metrics={kpis} loading={loading} />
+      )}
+
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 space-y-3">
+            <HmsLoadingSkeleton variant="table" />
+            <HmsLoadingSkeleton variant="table" />
+          </div>
+          <div className="space-y-3">
+            <HmsLoadingSkeleton variant="panel" />
+            <HmsLoadingSkeleton variant="panel" />
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {/* Main Work Content (2/3) */}
+          <div className="lg:col-span-2 space-y-3">
+            {/* Active Prescriptions Queue */}
+            {data?.isUnavailable ? (
+              <HmsDataUnavailable
+                sectionName="Prescriptions Waiting Dispense"
+                expectedApi="/v1/pharmacy/prescriptions"
+              />
+            ) : (
+              <HmsWorkQueue
+                title="Prescriptions Waiting Dispense"
+                description="Active queue of prescription orders awaiting pharmacist fulfillment"
+                data={data?.activePrescriptions || []}
+                keyExtractor={(item) => item.id}
+                columns={[
+                  {
+                    key: 'patient',
+                    header: 'Patient',
+                    render: (item) => (
+                      <div>
+                        <div className="font-semibold text-slate-800">{item.patientName}</div>
+                        <div className="text-[10px] font-mono text-slate-400">{item.patientNumber}</div>
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'medication',
+                    header: 'Medication / Rx',
+                    render: (item) => (
+                      <div>
+                        <span className="font-semibold text-slate-800">{item.medicationName}</span>
+                        <span className="ml-2 text-slate-400 font-mono text-[11px]">({item.dosage} / {item.frequency})</span>
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'prescribedBy',
+                    header: 'Prescribed By',
+                    render: (item) => <span className="text-slate-600">{item.prescribedByName || item.prescribedBy}</span>
+                  },
+                  {
+                    key: 'action',
+                    header: '',
+                    width: 'w-20',
+                    render: () => (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/pharmacy')}
+                        className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 focus:underline"
+                      >
+                        Dispense →
+                      </button>
+                    )
+                  }
+                ]}
+                emptyMessage="No prescriptions currently waiting in the active queue"
+                maxRows={5}
+                viewAllLink="/pharmacy"
+                viewAllLabel="Open Dispense Hub"
+              />
+            )}
+
+            {/* Lowest Stock Items */}
+            {data?.isUnavailable ? (
+              <HmsDataUnavailable
+                sectionName="Lowest Stock Items"
+                expectedApi="/v1/inventory/catalog"
+              />
+            ) : (
+              <HmsDrilldownTable
+                title="Lowest Stock Items"
+                description="Inventory items at critical levels or facing stock-outs"
+                data={lowestStockData}
+                keyExtractor={(item) => item.id}
+                columns={[
+                  {
+                    key: 'medication',
+                    header: 'Medication',
+                    render: (item) => <span className="font-semibold text-slate-800">{item.label}</span>
+                  },
+                  {
+                    key: 'stock',
+                    header: 'Current Stock',
+                    render: (item) => (
+                      <span className={`font-mono font-bold ${Number(item.value) === 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                        {item.value}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    render: (item) => (
+                      <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
+                        Number(item.value) === 0
+                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        {Number(item.value) === 0 ? 'OUT OF STOCK' : 'LOW STOCK'}
+                      </span>
+                    )
+                  }
+                ]}
+                emptyMessage="All tracked inventory levels are healthy"
+                maxRows={5}
+                viewAllLink="/pharmacy/inventory"
+                viewAllLabel="Open Inventory Manager"
+              />
+            )}
+
+            {/* Near Expiry — Unavailable */}
+            <HmsDataUnavailable
+              sectionName="Medication Near Expiry"
+              expectedApi="/api/v1/inventory/alerts/expiry"
+              expectedPhase="Phase 2"
+            />
+
+            {/* Stock Anomalies — Unavailable */}
+            <HmsDataUnavailable
+              sectionName="Stock Discrepancies & Anomalies"
+              expectedApi="/api/v1/inventory/alerts/anomalies"
+              expectedPhase="Phase 2"
+            />
+          </div>
+
+          {/* Operational Metrics and Quick Actions (1/3) */}
+          <div className="space-y-3">
+            {/* SLA Risk Panel */}
+            {data?.isUnavailable ? (
+              <HmsDataUnavailable
+                sectionName="Operational Risks"
+                expectedApi="/v1/pharmacy/prescriptions, /v1/inventory/catalog"
+              />
+            ) : (
+              <HmsSlaPanel
+                title="Operational Risks"
+                items={[
+                  {
+                    id: 'sla-queue',
+                    label: 'Dispense Queue Backlog',
+                    value: totalQueue,
+                    status: totalQueue > 5 ? 'at_risk' : 'on_track',
+                    drilldownHref: '/pharmacy',
+                  },
+                  {
+                    id: 'sla-stockout',
+                    label: 'Critical Stockouts',
+                    value: outOfStockCount,
+                    status: outOfStockCount > 0 ? 'breached' : 'on_track',
+                    drilldownHref: '/pharmacy/inventory',
+                  }
+                ]}
+              />
+            )}
+
+            {/* Top Dispensed Meds — Unavailable */}
+            <HmsDataUnavailable
+              sectionName="Top Dispensed Medications"
+              expectedApi="/api/v1/pharmacy/analytics/top-dispensed"
+              expectedPhase="Phase 2"
+            />
+
+            {/* Dispensing Throughput — Unavailable */}
+            <HmsDataUnavailable
+              sectionName="Dispensing Throughput (7d)"
+              expectedApi="/api/v1/pharmacy/analytics/throughput"
+              expectedPhase="Phase 2"
+            />
+
+            {/* Quick Actions */}
+            <HmsQuickActions
+              title="Quick Actions"
+              actions={[
+                { id: 'disp-hub', label: 'Dispense Queue', icon: <Pill className="h-4 w-4 text-blue-500" />, href: '/pharmacy' },
+                { id: 'inv-mgr', label: 'Drug Inventory', icon: <Package className="h-4 w-4 text-emerald-500" />, href: '/pharmacy/inventory' },
+              ]}
+            />
+          </div>
+        </div>
+      )}
+    </HmsDashboardShell>
   );
 };
+
+export default PharmacyDashboard;

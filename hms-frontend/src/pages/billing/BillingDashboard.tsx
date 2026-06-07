@@ -1,61 +1,58 @@
 import React, { useState, useEffect } from 'react';
+import { DollarSign, Coins, CreditCard, AlertCircle } from 'lucide-react';
 import {
-  DashboardSection,
-  DashboardKpiCard,
-  DashboardAlertCard,
-  DashboardDataTable,
-  DashboardFilterBar
-} from '../../components/dashboard';
-import {
-  VolumeAreaChart,
-  StatusDonutChart,
-  ComparisonBarChart
-} from '../../components/analytics/charts';
-import { billingDashboardService, type BillingDashboardData } from '../../services/billing-dashboard.service';
-import { DollarSign, AlertTriangle, Activity, Loader2, AlertCircle } from 'lucide-react';
-import type { DateRange, AnalyticsSeverity } from '../../types/analytics';
-
-const INITIAL_DATE_RANGE: DateRange = {
-  from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-  to: new Date().toISOString().split('T')[0]
-};
+  HmsDashboardShell,
+  HmsToolbar,
+  HmsAuditFooter,
+  HmsKpiStrip,
+  HmsAlertRail,
+  HmsWorkQueue,
+  HmsDrilldownTable,
+  HmsSlaPanel,
+  HmsQuickActions,
+  HmsDataUnavailable,
+  HmsLoadingSkeleton,
+} from '../../components/hms-dashboard';
+import { billingDashboardService } from '../../services/billing-dashboard.service';
+import type { BillingDashboardData } from '../../services/billing-dashboard.service';
 
 export const BillingDashboard: React.FC = () => {
-  const [dateRange, setDateRange] = useState<DateRange>(INITIAL_DATE_RANGE);
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<BillingDashboardData | null>(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const branchId = selectedBranch === 'all' ? 'main-branch' : selectedBranch;
-        const result = await billingDashboardService.getDashboardData(branchId);
-        setData(result);
-        setLastUpdated(new Date());
-      } catch {
-        setError('Failed to load billing dashboard data.');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const branchId = selectedBranch === 'all' ? 'main-branch' : selectedBranch;
+      const result = await billingDashboardService.getDashboardData(branchId);
+      setData(result);
+      setLastUpdated(new Date());
+    } catch {
+      setError('Failed to load billing dashboard data.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
     fetchData();
   }, [selectedBranch]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-3 text-center">
+      <div className="flex h-screen items-center justify-center p-6 bg-slate-50">
+        <div className="flex flex-col items-center gap-3 text-center max-w-md p-6 bg-white border border-slate-200 rounded-lg shadow-sm">
           <AlertCircle className="h-12 w-12 text-rose-500" />
           <h2 className="text-lg font-bold text-slate-900">{error}</h2>
           <button
-            onClick={() => window.location.reload()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800"
+            onClick={() => fetchData()}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors"
           >
             Retry
           </button>
@@ -64,150 +61,252 @@ export const BillingDashboard: React.FC = () => {
     );
   }
 
+  // Map alerts to AlertRail format
+  const railAlerts = data?.alerts.map((alert) => ({
+    id: alert.id,
+    severity: (alert.severity === 'critical' || alert.severity === 'warning' || alert.severity === 'success')
+      ? alert.severity
+      : 'critical' as const,
+    title: alert.title,
+    message: alert.message,
+    timestamp: 'Real-time',
+  })) || [];
+
+  // Map KPIs to KpiStrip format
+  const kpis = data?.kpis.map((kpi, idx) => ({
+    id: `kpi-${idx}`,
+    label: kpi.title,
+    value: kpi.value,
+    severity: (kpi.severity === 'info' || kpi.severity === 'success' || kpi.severity === 'warning' || kpi.severity === 'critical')
+      ? kpi.severity
+      : 'info' as const,
+  })) || [];
+
+  const unpaidCount = Number(data?.kpis.find(k => k.title.includes('Unpaid'))?.value || 0);
+  const overdueCount = Number(data?.kpis.find(k => k.title.includes('Overdue'))?.value || 0);
+
   return (
-    <div className="p-6 space-y-8 bg-slate-50 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">Billing & Finance Dashboard</h1>
-            {data?.isDemoData && (
-              <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700 animate-pulse">
-                Demo Preview Mode
-              </span>
-            )}
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar
+          branchName={selectedBranch === 'all' ? 'All Branches' : selectedBranch}
+          role="Billing & Finance Dashboard"
+          lastRefreshed={lastUpdated}
+          onRefresh={fetchData}
+        >
+          <div className="flex items-center gap-2">
+            <label htmlFor="branch-select" className="text-[11px] font-medium text-slate-400">Select Branch:</label>
+            <select
+              id="branch-select"
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-700 focus:border-blue-500 focus:outline-none"
+            >
+              <option value="all">All Branches</option>
+              <option value="main-branch">Main Branch</option>
+              <option value="north-clinic">North Branch</option>
+            </select>
           </div>
-          <p className="text-sm font-medium text-slate-500">Revenue monitoring, invoice tracking, and collection risk visibility.</p>
+        </HmsToolbar>
+      }
+      footer={
+        <HmsAuditFooter
+          lastRefreshed={lastUpdated}
+          dataSource={data?.isUnavailable ? 'Live source unavailable' : 'Live Billing/Cashier API'}
+        />
+      }
+    >
+      {data?.isUnavailable && (
+        <div className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-rose-600" />
+            <span className="text-[12px] font-semibold text-rose-700">Live dashboard data could not be loaded — showing unavailable state for unsupported sections</span>
+          </div>
+          <span className="text-[10px] font-bold text-rose-600 font-mono">OFFLINE</span>
         </div>
-        <div className="flex items-center gap-3">
-          <DashboardFilterBar
-            dateRange={dateRange}
-            onDateRangeChange={setDateRange}
-            branch={selectedBranch}
-            onBranchChange={setSelectedBranch}
-          />
-          <div className="text-right">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Last Updated</p>
-            <p className="text-xs font-bold text-slate-600">{lastUpdated.toLocaleTimeString()}</p>
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex h-[60vh] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-        </div>
-      ) : (
-        <>
-          {/* Top KPIs */}
-          <DashboardSection title="Financial Overview" subtitle="Real-time collection and receivables status">
-            {data?.kpis.map((kpi, idx) => (
-              <DashboardKpiCard
-                key={idx}
-                title={kpi.title}
-                value={kpi.value}
-                description={kpi.description}
-                severity={kpi.severity as AnalyticsSeverity}
-                icon={kpi.title.includes('Session') ? Activity : kpi.title.includes('Unpaid') ? AlertTriangle : kpi.title.includes('Overdue') ? AlertTriangle : DollarSign}
-              />
-            ))}
-          </DashboardSection>
-
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            {/* Risk Panel */}
-            <div className="lg:col-span-1 space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Collection Risks</h2>
-                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 text-[10px] font-black">
-                  {data?.alerts.length || 0} URGENT
-                </span>
-              </div>
-              <div className="space-y-3">
-                {data?.alerts.length ? data.alerts.map((alert, idx) => (
-                  <DashboardAlertCard
-                    key={alert.id || idx}
-                    title={alert.title}
-                    message={alert.message}
-                    severity={alert.severity as AnalyticsSeverity}
-                    timestamp="Real-time"
-                  />
-                )) : (
-                  <div className="text-center py-8 text-slate-400 text-sm font-medium">No high-risk overdue invoices</div>
-                )}
-              </div>
-            </div>
-
-            {/* Analytics */}
-            <div className="lg:col-span-2 space-y-8">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-                  <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Invoice Status Distribution</h3>
-                  <div className="h-[calc(100%-3rem)]">
-                    <StatusDonutChart
-                      data={data?.invoiceStatusDistribution || []}
-                    />
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-                  <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900">Payment Method Distribution</h3>
-                  <div className="h-[calc(100%-3rem)]">
-                    <ComparisonBarChart
-                      data={data?.paymentMethodDistribution || []}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-                <h3 className="mb-4 text-sm font-black tracking-tight text-slate-900 flex justify-between items-center">
-                  <span>Revenue Collection Trend (7d)</span>
-                  {data?.isDemoData && (
-                    <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
-                      DEMO PREVIEW
-                    </span>
-                  )}
-                </h3>
-                <div className="h-[calc(100%-3rem)]">
-                  <VolumeAreaChart
-                    data={data?.revenueTrend || []}
-                    title="Revenue Trend"
-                    valueLabel="Revenue (₱)"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Top Tables */}
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            <DashboardDataTable
-              title="Highest Outstanding"
-              columns={[
-                { header: 'Client', accessor: 'label' },
-                { header: 'Balance', accessor: 'value', className: 'font-bold text-slate-900' },
-                { header: 'Status', accessor: 'trend', className: 'text-rose-500' },
-              ]}
-              data={data?.highestOutstanding || []}
-            />
-            <DashboardDataTable
-              title="Recent Payments"
-              columns={[
-                { header: 'Invoice #', accessor: 'label' },
-                { header: 'Amount', accessor: 'value', className: 'font-bold text-slate-900' },
-                { header: 'Status', accessor: 'trend', className: 'text-emerald-500' },
-              ]}
-              data={data?.recentPayments || []}
-            />
-          </div>
-        </>
       )}
 
-      {/* Data Label */}
-      <div className="flex justify-center">
-        <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-          {data?.isDemoData ? 'Demo analytics preview — sample data for client walkthrough' : 'Mixed Mode: Real Financials / Demo Analytics'}
-        </span>
-      </div>
-    </div>
+      {/* Top Alert Rail for overdue accounts */}
+      <HmsAlertRail alerts={railAlerts} loading={loading} />
+
+      {/* KPI Strip */}
+      {data?.isUnavailable ? (
+        <HmsDataUnavailable
+          sectionName="Billing & Session Key Metrics"
+          expectedApi="/v1/billing/invoices, /v1/billing/sessions/active"
+        />
+      ) : (
+        <HmsKpiStrip metrics={kpis} loading={loading} />
+      )}
+
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 space-y-3">
+            <HmsLoadingSkeleton variant="table" />
+            <HmsLoadingSkeleton variant="table" />
+          </div>
+          <div className="space-y-3">
+            <HmsLoadingSkeleton variant="panel" />
+            <HmsLoadingSkeleton variant="panel" />
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {/* Main Content (2/3) */}
+          <div className="lg:col-span-2 space-y-3">
+            {/* Highest Outstanding Accounts */}
+            {data?.isUnavailable ? (
+              <HmsDataUnavailable
+                sectionName="Highest Outstanding Bills"
+                expectedApi="/v1/billing/invoices"
+              />
+            ) : (
+              <HmsDrilldownTable
+                title="Highest Outstanding Bills"
+                description="Top billing accounts with largest pending receivables balances"
+                data={data?.highestOutstanding || []}
+                keyExtractor={(item) => item.id}
+                columns={[
+                  {
+                    key: 'client',
+                    header: 'Client / Patient',
+                    render: (item) => <span className="font-semibold text-slate-800">{item.label}</span>
+                  },
+                  {
+                    key: 'balance',
+                    header: 'Outstanding Balance',
+                    render: (item) => <span className="font-mono font-bold text-rose-600">{item.value}</span>
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    render: (item) => (
+                      <span className="inline-flex items-center rounded-md bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 text-[11px] font-semibold">
+                        {item.trend || 'UNPAID'}
+                      </span>
+                    )
+                  }
+                ]}
+                emptyMessage="No accounts with outstanding balances"
+                maxRows={5}
+                viewAllLink="/billing"
+                viewAllLabel="Open Registry"
+              />
+            )}
+
+            {/* Recent Payments (Active Session) */}
+            {data?.isUnavailable ? (
+              <HmsDataUnavailable
+                sectionName="Recent Payments (Active Session)"
+                expectedApi="/v1/billing/sessions/active"
+              />
+            ) : (
+              <HmsWorkQueue
+                title="Recent Payments (Active Session)"
+                description="Payments logged in the current active cashier session"
+                data={data?.recentPayments || []}
+                keyExtractor={(item) => item.id}
+                columns={[
+                  {
+                    key: 'invoice',
+                    header: 'Invoice Number',
+                    render: (item) => <span className="font-semibold text-slate-800">{item.label}</span>
+                  },
+                  {
+                    key: 'amount',
+                    header: 'Amount Paid',
+                    render: (item) => <span className="font-mono font-bold text-emerald-600">{item.value}</span>
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    render: (item) => (
+                      <span className="inline-flex items-center rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold">
+                        {item.trend || 'POSTED'}
+                      </span>
+                    )
+                  }
+                ]}
+                emptyMessage="No payments recorded in this session yet"
+                maxRows={5}
+                viewAllLink="/billing"
+                viewAllLabel="Open Ledger"
+              />
+            )}
+
+            {/* Cashier Variance — Unavailable */}
+            <HmsDataUnavailable
+              sectionName="Daily Cashier Variance Logs"
+              expectedApi="/api/v1/billing/cashier/variance"
+              expectedPhase="Phase 2"
+            />
+
+            {/* Reconciliation Issues — Unavailable */}
+            <HmsDataUnavailable
+              sectionName="Reconciliation Discrepancies"
+              expectedApi="/api/v1/billing/reconciliation/issues"
+              expectedPhase="Phase 2"
+            />
+
+            {/* Revenue Trend (7d) — Unavailable */}
+            <HmsDataUnavailable
+              sectionName="Revenue Collection Trend (7d)"
+              expectedApi="/api/v1/billing/analytics/revenue-trend"
+              expectedPhase="Phase 2"
+            />
+          </div>
+
+          {/* SLA / Risk Sidebar (1/3) */}
+          <div className="space-y-3">
+            {/* SLA Panel */}
+            {data?.isUnavailable ? (
+              <HmsDataUnavailable
+                sectionName="Collection Risk Thresholds"
+                expectedApi="/v1/billing/invoices"
+              />
+            ) : (
+              <HmsSlaPanel
+                title="Collection Risk Thresholds"
+                items={[
+                  {
+                    id: 'sla-unpaid',
+                    label: 'Unpaid Invoices',
+                    value: unpaidCount,
+                    status: unpaidCount > 10 ? 'at_risk' : 'on_track',
+                    drilldownHref: '/billing',
+                  },
+                  {
+                    id: 'sla-overdue',
+                    label: 'Overdue Bills',
+                    value: overdueCount,
+                    status: overdueCount > 0 ? 'breached' : 'on_track',
+                    drilldownHref: '/billing',
+                  }
+                ]}
+              />
+            )}
+
+            {/* Payment Method Distribution — Unavailable */}
+            <HmsDataUnavailable
+              sectionName="Payment Method Distribution"
+              expectedApi="/api/v1/billing/analytics/payment-methods"
+              expectedPhase="Phase 2"
+            />
+
+            {/* Quick Actions */}
+            <HmsQuickActions
+              title="Quick Actions"
+              actions={[
+                { id: 'inv-reg', label: 'Invoice Registry', icon: <DollarSign className="h-4 w-4 text-blue-500" />, href: '/billing' },
+                { id: 'cash-close', label: 'Cashier closing', icon: <Coins className="h-4 w-4 text-amber-500" />, href: '/billing/cashier-closing' },
+                { id: 'claims-db', label: 'Claims Dashboard', icon: <CreditCard className="h-4 w-4 text-emerald-500" />, href: '/claims' },
+              ]}
+            />
+          </div>
+        </div>
+      )}
+    </HmsDashboardShell>
   );
 };
+
+export default BillingDashboard;
