@@ -84,7 +84,8 @@ describe('SpecimenReceivingPage Unit Tests', () => {
     });
 
     render(<SpecimenReceivingPage />);
-    expect(screen.getByText(/Loading pending specimens/i)).toBeInTheDocument();
+    const shimmer = document.querySelector('.animate-shimmer');
+    expect(shimmer).toBeInTheDocument();
   });
 
   it('renders empty queue state when there are no specimens', () => {
@@ -97,7 +98,7 @@ describe('SpecimenReceivingPage Unit Tests', () => {
     });
 
     render(<SpecimenReceivingPage />);
-    expect(screen.getByText(/No pending specimens to receive/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pending Specimens — data not available yet/i)).toBeInTheDocument();
   });
 
   it('renders error alert when error is provided', () => {
@@ -110,6 +111,7 @@ describe('SpecimenReceivingPage Unit Tests', () => {
     });
 
     render(<SpecimenReceivingPage />);
-    expect(screen.getByText('Network Timeout Exception')).toBeInTheDocument();
+    expect(screen.getByText(/Specimen Receiving — data not available yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/GET \/api\/v1\/lab\/specimens\/pending/i)).toBeInTheDocument();
   });
 });

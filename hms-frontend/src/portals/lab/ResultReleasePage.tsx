@@ -10,6 +10,14 @@ import {
   Loader2,
   ShieldAlert,
 } from 'lucide-react';
+import {
+  HmsDashboardShell,
+  HmsToolbar,
+  HmsAuditFooter,
+  HmsDataUnavailable,
+  HmsLoadingSkeleton,
+  HmsDrilldownTable,
+} from '../../components/hms-dashboard';
 
 export const ResultReleasePage = () => {
   const { results, isLoading, error, refetch } = useReleasableResults();
@@ -33,6 +41,76 @@ export const ResultReleasePage = () => {
     }
   }, [refetch]);
 
+  const columns = [
+    {
+      key: 'patient',
+      header: 'Patient',
+      width: 'w-[180px]',
+      render: (r: typeof results[number]) => (
+        <div className="font-sans">
+          <p className="font-bold text-slate-800 text-xs leading-tight">{r.patientName}</p>
+          <p className="text-[10px] text-slate-400 font-mono mt-0.5">MRN: {r.patientMrn}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'orderId',
+      header: 'Order ID',
+      width: 'w-[120px]',
+      render: (r: typeof results[number]) => (
+        <span className="text-[10px] text-blue-650 font-bold">{r.orderNumber}</span>
+      ),
+    },
+    {
+      key: 'tests',
+      header: 'Tests',
+      render: (r: typeof results[number]) => (
+        <span className="text-[10px] text-slate-600 font-semibold font-sans">
+          {r.testNames?.join(', ') || 'N/A'}
+        </span>
+      ),
+    },
+    {
+      key: 'validated',
+      header: 'Validated',
+      width: 'w-[100px]',
+      render: () => (
+        <span className="inline-flex items-center px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded text-[9px] font-bold uppercase">
+          Approved
+        </span>
+      ),
+    },
+    {
+      key: 'validatedAt',
+      header: 'Validated At',
+      width: 'w-[140px]',
+      render: (r: typeof results[number]) => (
+        <span className="text-[10px] text-slate-500 font-mono">
+          {r.validatedAt ? new Date(r.validatedAt).toLocaleString() : 'N/A'}
+        </span>
+      ),
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      width: 'w-[140px]',
+      render: (r: typeof results[number]) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleRelease(r.id); }}
+          disabled={releasingId === r.id}
+          className="bg-blue-650 hover:bg-blue-755 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] shadow-sm flex items-center gap-1 mx-auto disabled:opacity-50 cursor-pointer"
+        >
+          {releasingId === r.id ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Send className="h-3 w-3" />
+          )}
+          Release
+        </button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4 animate-fade-in font-sans text-slate-700">
       {/* Sandbox Warning Banner */}
@@ -51,7 +129,6 @@ export const ResultReleasePage = () => {
           title="Diagnostic Dispatch & Release Desk"
           description="Review and release validated lab results. Released results are signed, audited, and dispatched to patient EMR."
         />
-
         <div className="text-[10px] font-bold uppercase text-blue-700 bg-blue-50 border border-blue-150 px-2.5 py-1 rounded-lg select-none">
           LIS Director Desk
         </div>
@@ -71,96 +148,37 @@ export const ResultReleasePage = () => {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="bg-white border border-slate-200 p-8 rounded-lg shadow-sm text-center space-y-2">
-          <Loader2 className="h-6 w-6 text-blue-600 mx-auto animate-spin" />
-          <p className="text-xs font-bold text-slate-500 animate-pulse font-sans">Loading validated results awaiting release...</p>
-        </div>
-      ) : error ? (
-        <div className="bg-white border border-slate-200 p-6 rounded-lg shadow-sm text-center space-y-2">
-          <XCircle className="h-6 w-6 text-rose-500 mx-auto" />
-          <p className="text-xs font-bold text-slate-700 font-sans">Unable to load results</p>
-          <p className="text-[11px] text-slate-550">{error}</p>
-        </div>
-      ) : results.length === 0 ? (
-        <div className="bg-white border border-slate-200 p-8 rounded-lg shadow-sm text-center space-y-2">
-          <CheckCircle className="h-6 w-6 text-emerald-500 mx-auto" />
-          <p className="text-xs font-bold text-slate-605 font-sans">No results awaiting release</p>
-          <p className="text-[11px] text-slate-455 font-sans">All validated results have been released.</p>
-        </div>
-      ) : (
-        <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 text-slate-455 font-bold uppercase tracking-wider border-b border-slate-200">
-                  <th className="px-4 py-3">Patient</th>
-                  <th className="px-4 py-3">Order ID</th>
-                  <th className="px-4 py-3">Tests</th>
-                  <th className="px-4 py-3">Validated</th>
-                  <th className="px-4 py-3">Validated At</th>
-                  <th className="px-4 py-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-mono text-slate-655">
-                {results.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/30">
-                    <td className="px-4 py-3 font-sans">
-                      <p className="font-bold text-slate-800 text-xs leading-tight">{r.patientName}</p>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">MRN: {r.patientMrn}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-[10px] text-blue-650 font-bold">{r.orderNumber}</span>
-                    </td>
-                    <td className="px-4 py-3 font-sans">
-                      <span className="text-[10px] text-slate-600 font-semibold">
-                        {r.testNames?.join(', ') || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-sans">
-                      <span className="inline-flex items-center px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded text-[9px] font-bold uppercase">
-                        Approved
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-[10px] text-slate-500">
-                        {r.validatedAt ? new Date(r.validatedAt).toLocaleString() : 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-center font-sans">
-                      <button
-                        onClick={() => handleRelease(r.id)}
-                        disabled={releasingId === r.id}
-                        className="bg-blue-650 hover:bg-blue-755 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] shadow-sm flex items-center gap-1 mx-auto disabled:opacity-50 cursor-pointer"
-                      >
-                        {releasingId === r.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Send className="h-3 w-3" />
-                        )}
-                        Release Result
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <HmsDashboardShell
+        toolbar={<HmsToolbar onRefresh={refetch} />}
+        footer={<HmsAuditFooter dataSource="Laboratory LIS Service" lastRefreshed={new Date()} />}
+      >
+        {isLoading ? (
+          <HmsLoadingSkeleton rows={6} />
+        ) : error ? (
+          <HmsDataUnavailable sectionName="Result Release Desk" expectedApi="GET /api/v1/lab/results/releasable" />
+        ) : results.length === 0 ? (
+          <HmsDataUnavailable sectionName="Results Awaiting Release" expectedApi="GET /api/v1/lab/results/releasable" />
+        ) : (
+          <div className="space-y-4">
+            <HmsDrilldownTable
+              title="Validated Results Awaiting Release"
+              description={`${results.length} result(s) ready for diagnostic dispatch`}
+              columns={columns}
+              data={results}
+              keyExtractor={(r) => r.id}
+            />
+            <div className="p-3 bg-blue-50/30 border border-blue-100/60 rounded-lg text-xs text-blue-800 font-medium space-y-1">
+              <h4 className="font-bold text-blue-900 uppercase tracking-wider text-[10px] flex items-center gap-1">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Release Authorization Protocol
+              </h4>
+              <p className="text-[10.5px] leading-relaxed">
+                Releasing a result is officially recorded and audited. This updates the result status for downstream clinical visibility and patient EMR access. Only validated (APPROVED) results can be released.
+              </p>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Audit info box */}
-      {results.length > 0 && (
-        <div className="p-3 bg-blue-50/30 border border-blue-100/60 rounded-lg text-xs text-blue-800 font-medium space-y-1">
-          <h4 className="font-bold text-blue-900 uppercase tracking-wider text-[10px] flex items-center gap-1">
-            <ShieldAlert className="h-3.5 w-3.5" />
-            Release Authorization Protocol
-          </h4>
-          <p className="text-[10.5px] leading-relaxed">
-            Releasing a result is officially recorded and audited. This updates the result status for downstream clinical visibility and patient EMR access. Only validated (APPROVED) results can be released.
-          </p>
-        </div>
-      )}
+        )}
+      </HmsDashboardShell>
     </div>
   );
 };

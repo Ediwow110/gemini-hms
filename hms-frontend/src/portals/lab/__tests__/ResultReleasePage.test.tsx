@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ResultReleasePage } from '../ResultReleasePage';
 import { useReleasableResults } from '../../../hooks/use-lab';
@@ -39,21 +40,21 @@ describe('ResultReleasePage Unit Tests', () => {
   });
 
   it('renders releasable result work queue items', () => {
-    render(<ResultReleasePage />);
+    render(<MemoryRouter><ResultReleasePage /></MemoryRouter>);
 
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.getByText('MRN: MRN-456')).toBeInTheDocument();
     expect(screen.getByText('ORD-2026-001')).toBeInTheDocument();
     expect(screen.getByText('Complete Blood Count, Lipid Panel')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Release Result/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Release$/i })).toBeInTheDocument();
   });
 
   it('triggers release post call on action click', async () => {
     vi.mocked(apiClient.post).mockResolvedValueOnce({ data: {} });
 
-    render(<ResultReleasePage />);
+    render(<MemoryRouter><ResultReleasePage /></MemoryRouter>);
 
-    const releaseButton = screen.getByRole('button', { name: /Release Result/i });
+    const releaseButton = screen.getByRole('button', { name: /Release$/i });
     fireEvent.click(releaseButton);
 
     expect(apiClient.post).toHaveBeenCalledWith('/v1/lab/results/result-123/release');
