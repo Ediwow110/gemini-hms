@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { PageHeader } from '../../components/ui/page-header';
-import { LabOrderHeader } from './components/LabOrderHeader';
+import { HmsPageHeader, HmsSafetyBar } from '../../components/hms-page';
 import { ResultFlagBadge } from './components/ResultFlagBadge';
 import {
   FileCheck2,
@@ -12,6 +11,10 @@ import {
   User,
   TrendingDown,
   Loader2,
+  Hash,
+  UserCheck,
+  BriefcaseMedical,
+  CreditCard,
 } from 'lucide-react';
 import { useLabDraftEncodingContext, useValidateLabResult } from '../../hooks/use-clinical-workflow';
 import type { LabResultDraftContextDto } from '../../services/clinicalWorkflow.service';
@@ -60,26 +63,6 @@ function deriveParameters(context: LabResultDraftContextDto): VerifiedParameter[
   });
 }
 
-function buildOrderHeaderData(context: LabResultDraftContextDto) {
-  const age = context.dob
-    ? Math.floor(
-        (new Date().getTime() - new Date(context.dob).getTime()) /
-          (365.25 * 24 * 60 * 60 * 1000)
-      )
-    : 0;
-  return {
-    id: context.orderNumber || context.orderId,
-    patientName: context.patientName || '[REDACTED]',
-    patientAge: age,
-    mrn: context.patientNumber || '—',
-    dob: context.dob ? new Date(context.dob).toLocaleDateString() : '—',
-    accessCode: context.accessionNumber || context.orderId.slice(0, 8).toUpperCase(),
-    physician: context.requestedById || undefined,
-    department: undefined,
-    billingStatus: 'Prepaid' as const,
-  };
-}
-
 export const ResultValidationPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -126,20 +109,20 @@ export const ResultValidationPage = () => {
 
   if (!patientId || !orderId) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <PageHeader
+      <div className="space-y-4 animate-fade-in font-sans text-slate-700">
+        <HmsPageHeader
           title="Clinical Validation & QA Review"
           description="Select an encoded result from the work queue to validate."
         />
-        <div className="card p-12 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center">
-          <FileCheck2 className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-slate-600 mb-2">No Result Selected</h3>
-          <p className="text-sm text-slate-400 max-w-md mx-auto">
+        <div className="bg-white border border-slate-200 p-8 rounded-lg shadow-sm text-center">
+          <FileCheck2 className="h-10 w-10 text-slate-350 mx-auto mb-3" />
+          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">No Result Selected</h3>
+          <p className="text-[11px] text-slate-450 max-w-xs mx-auto">
             Navigate to the Specimen Work Queue and select a result in "Encoded" status to begin validation.
           </p>
           <button
             onClick={() => navigate('/lab/orders')}
-            className="mt-6 btn bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold px-6 py-2.5 rounded-xl"
+            className="mt-4 border border-slate-200 hover:bg-slate-50 text-slate-650 px-4 py-2 rounded-lg text-xs font-bold cursor-pointer"
           >
             Go to Lab Orders
           </button>
@@ -150,14 +133,14 @@ export const ResultValidationPage = () => {
 
   if (isLoading && !context) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <PageHeader
+      <div className="space-y-4 animate-fade-in font-sans text-slate-755">
+        <HmsPageHeader
           title="Clinical Validation & QA Review"
           description="Loading validation context..."
         />
-        <div className="card p-12 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center">
-          <Loader2 className="h-10 w-10 text-indigo-500 mx-auto mb-4 animate-spin" />
-          <p className="text-sm text-slate-500 font-medium">Loading order and result data...</p>
+        <div className="bg-white border border-slate-200 p-8 rounded-lg shadow-sm text-center">
+          <Loader2 className="h-6 w-6 text-blue-650 mx-auto mb-2 animate-spin" />
+          <p className="text-xs text-slate-500 font-medium">Loading order and result data...</p>
         </div>
       </div>
     );
@@ -166,17 +149,17 @@ export const ResultValidationPage = () => {
   if (error && !context) {
     const isForbidden = axios.isAxiosError(error) && (error.response?.status === 403 || error.response?.status === 401);
     return (
-      <div className="space-y-6 animate-fade-in">
-        <PageHeader
+      <div className="space-y-4 animate-fade-in font-sans text-slate-755">
+        <HmsPageHeader
           title="Clinical Validation & QA Review"
           description="Error loading validation context"
         />
-        <div className="card p-12 bg-white border border-rose-100 shadow-sm rounded-2xl text-center">
-          <AlertTriangle className="h-12 w-12 text-rose-400 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-slate-700 mb-2">
+        <div className="bg-white border border-rose-100 p-8 rounded-lg shadow-sm text-center">
+          <AlertTriangle className="h-10 w-10 text-rose-500 mx-auto mb-3" />
+          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
             {isForbidden ? 'Access Restricted' : 'Connection Error'}
           </h3>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
+          <p className="text-[11px] text-slate-450 max-w-xs mx-auto">
             {isForbidden
               ? 'You do not have permission to access this lab result.'
               : 'Failed to load the validation context. Please try again.'}
@@ -187,37 +170,88 @@ export const ResultValidationPage = () => {
   }
 
   const parameters = context ? deriveParameters(context) : [];
-  const orderHeaderData = context ? buildOrderHeaderData(context) : null;
   const panelName = context?.panelName || 'Laboratory Panel';
   const draftRemarks = context?.draftRemarks;
+  const dobStr = context?.dob ? new Date(context.dob).toLocaleDateString() : '—';
+  const age = context?.dob
+    ? Math.floor(
+        (new Date().getTime() - new Date(context.dob).getTime()) /
+          (365.25 * 24 * 60 * 60 * 1000)
+      )
+    : 0;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <PageHeader
+    <div className="space-y-4 animate-fade-in font-sans text-slate-700">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <HmsPageHeader
           title="Clinical Validation & QA Review"
           description="Perform supervisor verification of encoded parameters. Approve or return for correction."
         />
 
-        <div className="text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-150 px-3.5 py-1.5 rounded-xl select-none">
+        <div className="text-[10px] font-bold uppercase text-blue-700 bg-blue-50 border border-blue-150 px-2.5 py-1 rounded-lg select-none">
           LIS Supervisor Station
         </div>
       </div>
 
-      {orderHeaderData && (
-        <LabOrderHeader order={orderHeaderData} />
+      {context && (
+        <HmsSafetyBar
+          patientName={context.patientName}
+          mrn={context.patientNumber}
+          dob={dobStr}
+          age={age}
+          gender="Unavailable"
+          allergies="Unavailable"
+          insurance="Unavailable"
+        />
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Lab Order Details & Metadata */}
+      {context && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white border border-slate-200 p-4 rounded-lg shadow-sm">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Lab Order ID</span>
+            <span className="text-xs font-bold text-slate-700 font-mono flex items-center gap-1">
+              <Hash className="h-3 w-3 text-slate-400" />
+              {context.orderNumber || context.orderId}
+            </span>
+          </div>
 
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Access Code</span>
+            <span className="text-xs font-bold text-slate-700 font-mono flex items-center gap-1">
+              <UserCheck className="h-3 w-3 text-slate-400" />
+              {context.accessionNumber || context.orderId.slice(0, 8).toUpperCase()}
+            </span>
+          </div>
+
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Physician / Source</span>
+            <span className="text-xs font-bold text-slate-700 flex items-center gap-1 truncate font-mono">
+              <BriefcaseMedical className="h-3 w-3 text-slate-400" />
+              {context.requestedById || 'Unavailable'}
+            </span>
+          </div>
+
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Billing Clearance</span>
+            <div className="inline-block mt-0.5">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-emerald-200/60 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase select-none font-mono">
+                <CreditCard className="h-3 w-3" />
+                Prepaid
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left Column: Parameter Verification List */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
-
-            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <FileCheck2 className="h-4.5 w-4.5 text-indigo-500" />
-                <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase">
+                <FileCheck2 className="h-4 w-4 text-blue-600" />
+                <h3 className="font-bold text-slate-800 text-xs tracking-wider uppercase">
                   Pending Verification: {panelName}
                 </h3>
               </div>
@@ -230,19 +264,19 @@ export const ResultValidationPage = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/60 text-slate-400 font-extrabold uppercase border-b border-slate-150">
-                    <th className="px-6 py-3.5">Parameter</th>
-                    <th className="px-6 py-3.5">Encoded Value</th>
-                    <th className="px-6 py-3.5">Flag</th>
-                    <th className="px-6 py-3.5">Unit</th>
-                    <th className="px-6 py-3.5">Reference Range</th>
-                    <th className="px-6 py-3.5">Delta Check (Prev)</th>
+                  <tr className="bg-slate-50/60 text-slate-400 font-bold uppercase border-b border-slate-200">
+                    <th className="px-4 py-2.5">Parameter</th>
+                    <th className="px-4 py-2.5 text-center">Encoded Value</th>
+                    <th className="px-4 py-2.5">Flag</th>
+                    <th className="px-4 py-2.5">Unit</th>
+                    <th className="px-4 py-2.5">Reference Range</th>
+                    <th className="px-4 py-2.5">Delta Check (Prev)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 font-mono">
                   {parameters.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-slate-400 font-semibold">
+                      <td colSpan={6} className="px-4 py-6 text-center text-slate-400 font-medium font-sans">
                         No encoded parameters found for this result.
                       </td>
                     </tr>
@@ -253,22 +287,22 @@ export const ResultValidationPage = () => {
                       return (
                         <tr
                           key={index}
-                          className={`hover:bg-slate-50/30 transition-all ${param.flag === 'Critical' ? 'bg-rose-50/20' : ''}`}
+                          className={`hover:bg-slate-50/30 transition-all ${param.flag === 'Critical' ? 'bg-rose-50/25' : ''}`}
                         >
-                          <td className="px-6 py-4 font-black text-slate-800">{param.name}</td>
-                          <td className={`px-6 py-4 font-black text-sm ${isAlert ? 'text-indigo-700' : 'text-slate-800'}`}>
+                          <td className="px-4 py-3 font-sans font-bold text-slate-800">{param.name}</td>
+                          <td className={`px-4 py-3 text-center font-bold text-sm ${isAlert ? 'text-blue-700' : 'text-slate-800'}`}>
                             {param.value}
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-3">
                             <ResultFlagBadge flag={param.flag} />
                           </td>
-                          <td className="px-6 py-4 text-slate-500 font-mono text-[10px]">{param.unit}</td>
-                          <td className="px-6 py-4 text-slate-500 font-mono text-[10px]">{param.refRange}</td>
-                          <td className="px-6 py-4 text-slate-500 font-semibold font-mono text-[10px]">
+                          <td className="px-4 py-3 text-slate-500 text-[10px]">{param.unit}</td>
+                          <td className="px-4 py-3 text-slate-500 text-[10px]">{param.refRange}</td>
+                          <td className="px-4 py-3 text-slate-500 font-sans text-[10px]">
                             {param.previousValue ? (
-                              <span className="flex items-center gap-1">
+                              <span className="flex items-center gap-1 font-mono">
                                 {param.previousValue}
-                                <TrendingDown className="h-3.5 w-3.5 text-slate-400" />
+                                <TrendingDown className="h-3.5 w-3.5 text-slate-400 font-sans" />
                               </span>
                             ) : 'N/A'}
                           </td>
@@ -281,14 +315,14 @@ export const ResultValidationPage = () => {
             </div>
 
             {/* Encoder Details Banner */}
-            <div className="p-5 bg-slate-50/50 border-t border-slate-100 flex flex-col md:flex-row justify-between gap-4 text-xs font-semibold text-slate-650">
+            <div className="p-4 bg-slate-50/50 border-t border-slate-200 flex flex-col sm:flex-row justify-between gap-3 text-xs text-slate-650">
               <div className="space-y-1">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Encoded By</span>
-                <p className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Encoded By</span>
+                <p className="flex items-center gap-1.5 font-mono">
                   <User className="h-3.5 w-3.5 text-slate-400" />
-                  {context?.draftLastEditedById || 'Unknown'}
+                  {context?.draftLastEditedById || 'Unavailable'}
                 </p>
-                <p className="flex items-center gap-1.5">
+                <p className="flex items-center gap-1.5 font-mono">
                   <Clock className="h-3.5 w-3.5 text-slate-400" />
                   {context?.draftLastEditedAt
                     ? new Date(context.draftLastEditedAt).toLocaleString()
@@ -297,38 +331,36 @@ export const ResultValidationPage = () => {
               </div>
 
               {draftRemarks && (
-                <div className="flex-1 max-w-md bg-white border border-slate-200/60 p-3.5 rounded-xl space-y-1.5">
-                  <span className="text-[10px] font-black text-slate-450 uppercase tracking-wider block">Med-Tech Remarks</span>
-                  <p className="text-slate-600 font-medium italic">"{draftRemarks}"</p>
+                <div className="flex-1 max-w-sm bg-white border border-slate-200 p-3 rounded-lg space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Med-Tech Remarks</span>
+                  <p className="text-slate-600 italic">"{draftRemarks}"</p>
                 </div>
               )}
             </div>
-
           </div>
         </div>
 
         {/* Right Column: Actions and Decisions */}
-        <div className="space-y-6">
-
+        <div className="space-y-4">
           {rejectMode ? (
-            <form onSubmit={handleRejectSubmit} className="card p-5 bg-white border border-rose-100 shadow-sm rounded-2xl space-y-4">
-              <div className="p-4 bg-rose-50/50 border border-rose-100 rounded-xl flex gap-3 text-xs">
-                <AlertTriangle className="h-5 w-5 text-rose-600 mt-0.5 flex-shrink-0 animate-pulse" />
+            <form onSubmit={handleRejectSubmit} className="bg-white border border-slate-200 p-4 rounded-lg shadow-sm space-y-3">
+              <div className="p-3 bg-rose-50/50 border border-rose-100 rounded-lg flex gap-2.5 text-xs">
+                <AlertTriangle className="h-4.5 w-4.5 text-rose-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h5 className="font-extrabold text-rose-800">Return to Encoder</h5>
-                  <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
-                    This will discard approval, flag the results as rejected, and route it back to the entry queue with your feedback.
+                  <h5 className="font-bold text-rose-800">Return to Encoder</h5>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    This will discard approval, flag the results as rejected, and route it back to the entry queue.
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2 text-xs">
-                <label className="text-[10px] font-black text-slate-400 uppercase block">Rejection Feedback Notes</label>
+              <div className="space-y-1.5 text-xs">
+                <label className="text-[10px] font-bold text-slate-400 uppercase block">Rejection Feedback Notes</label>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="Explain what parameters need review or recalibration..."
-                  className="input min-h-[90px] text-xs py-2 w-full rounded-xl bg-white border border-slate-200"
+                  className="w-full min-h-[80px] p-2.5 text-xs rounded-lg bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-250/20"
                   required
                 />
               </div>
@@ -336,48 +368,48 @@ export const ResultValidationPage = () => {
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="btn bg-rose-650 hover:bg-rose-750 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm"
+                  className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer"
                 >
                   Return to Entry Desk
                 </button>
                 <button
                   type="button"
                   onClick={() => setRejectMode(false)}
-                  className="btn border border-slate-200 text-slate-650 hover:bg-slate-50 text-xs font-semibold px-4 py-2.5 rounded-xl"
+                  className="border border-slate-200 hover:bg-slate-50 text-slate-650 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
               </div>
             </form>
           ) : (
-            <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
-              <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3">
+            <div className="bg-white border border-slate-200 p-4 rounded-lg shadow-sm space-y-3">
+              <h3 className="font-bold text-slate-800 text-xs tracking-wider uppercase border-b border-slate-100 pb-2">
                 Validation Decision
               </h3>
 
               {isConflict && (
-                <div className="p-3 bg-amber-50 border border-amber-150 rounded-xl text-xs text-amber-800 font-semibold flex items-center gap-2">
+                <div className="p-3 bg-amber-50 border border-amber-150 rounded-lg text-xs text-amber-800 font-semibold flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                   This result was modified by another user. Please refresh and try again.
                 </div>
               )}
 
               {validateMutation.isError && !isConflict && (
-                <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-700 font-semibold">
+                <div className="p-3 bg-rose-50 border border-rose-100 rounded-lg text-xs text-rose-750 font-semibold">
                   Validation failed. Please try again.
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-2.5">
+              <div className="grid grid-cols-1 gap-2">
                 <button
                   onClick={handleApprove}
                   disabled={isLoading || !context}
-                  className="w-full btn bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 rounded-lg flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {validateMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <CheckCircle className="h-4 w-4" />
+                    <CheckCircle className="h-3.5 w-3.5" />
                   )}
                   {validateMutation.isPending ? 'Validating...' : 'Approve & Sign Assay'}
                 </button>
@@ -385,30 +417,28 @@ export const ResultValidationPage = () => {
                 <button
                   onClick={() => setRejectMode(true)}
                   disabled={isLoading}
-                  className="w-full btn border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full border border-rose-200 hover:bg-rose-50 text-rose-700 text-xs font-bold py-2.5 rounded-lg flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
-                  <XCircle className="h-4 w-4" /> Reject & Return to Encoder
+                  <XCircle className="h-3.5 w-3.5" /> Reject & Return to Encoder
                 </button>
               </div>
 
               <p className="text-[10px] text-slate-400 font-medium text-center leading-normal">
-                Approving this result will apply your supervisor signature and move the order to the validated queue. Release will be implemented in a future phase.
+                Approving this result will apply your supervisor signature and move the order to the validated queue.
               </p>
             </div>
           )}
 
           {/* Validation Guidelines */}
-          <div className="card p-5 bg-slate-50 border border-slate-200/60 rounded-2xl space-y-2 text-xs text-slate-600 font-semibold">
+          <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-lg space-y-1.5 text-[11px] text-slate-600">
             <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Supervisor QA Protocol</h4>
-            <ul className="list-disc pl-4 space-y-1.5 text-[10.5px]">
+            <ul className="list-disc pl-4 space-y-1 font-medium">
               <li>Verify that specimen barcode IDs match the accession card perfectly.</li>
               <li>Check delta values. Changes of &gt;20% must be audited for specimen mix-ups.</li>
               <li>If any values fall in critical range, proceed with immediate physician contact before release.</li>
             </ul>
           </div>
-
         </div>
-
       </div>
     </div>
   );
