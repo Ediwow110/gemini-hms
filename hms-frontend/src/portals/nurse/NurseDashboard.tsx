@@ -1,30 +1,28 @@
 import { useNavigate } from 'react-router-dom';
-import { 
-  Users, 
-  FlaskConical, 
-  CheckSquare, 
-  ChevronRight, 
-  ClipboardList, 
-  UserPlus, 
-  AlertOctagon, 
+import {
+  FlaskConical,
+  CheckSquare,
+  UserPlus,
   AlertTriangle,
-  ArrowRight,
-  Heart,
-  Activity
+  Activity,
 } from 'lucide-react';
-import { PageHeader } from '../../components/ui/page-header';
-import { AnalyticsMetricCard, InsightPanel } from '../../components/analytics';
-import { TriagePriorityBadge, TriagePriorityLevel } from './components/TriagePriorityBadge';
+import {
+  HmsDashboardShell,
+  HmsToolbar,
+  HmsAuditFooter,
+  HmsKpiStrip,
+  HmsAlertRail,
+  HmsWorkQueue,
+  HmsSlaPanel,
+  HmsDrilldownTable,
+  HmsQuickActions,
+  HmsLoadingSkeleton,
+} from '../../components/hms-dashboard';
 import { useClinicalDashboardSummary, useClinicalWorkQueue } from '../../hooks/use-clinical-workflow';
 import { useNursingTasks } from '../../hooks/use-nursing-tasks';
 import { format } from 'date-fns';
 import axios from 'axios';
-
-const mapCategoryToPriority = (category?: string): TriagePriorityLevel => {
-  if (category === 'EMERGENCY') return 2;
-  if (category === 'PRIORITY') return 3;
-  return 4;
-};
+import type { ClinicalWorkQueueDto } from '../../services/clinicalWorkflow.service';
 
 export const NurseDashboard = () => {
   const navigate = useNavigate();
@@ -33,231 +31,339 @@ export const NurseDashboard = () => {
   const { data: queueData, isLoading: isQueueLoading, error: queueError } = useClinicalWorkQueue();
   const { tasks: nursingTasks, isLoading: isNursingLoading } = useNursingTasks();
 
-  const realTaskCount = nursingTasks.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length;
-
   const isLoading = isSummaryLoading || isQueueLoading || isNursingLoading;
   const errorObj = summaryError || queueError;
+  const realTaskCount = Array.isArray(nursingTasks)
+    ? nursingTasks.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length
+    : 0;
 
+  // ── Error State ──
   if (errorObj) {
     const isForbidden = axios.isAxiosError(errorObj) && (errorObj.response?.status === 403 || errorObj.response?.status === 401);
     return (
-      <div className="p-8 text-center space-y-4 animate-fade-in">
-        <div className="mx-auto w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-          <AlertTriangle className="h-8 w-8" />
+      <div className="mx-auto max-w-[1440px] px-4 py-16 text-center space-y-4">
+        <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center border border-rose-100">
+          <AlertTriangle className="h-7 w-7" />
         </div>
-        <h2 className="text-xl font-bold text-slate-800">
+        <h2 className="text-lg font-bold text-slate-800">
           {isForbidden ? 'Access Restricted' : 'Connection Error'}
         </h2>
-        <p className="text-slate-500 max-w-md mx-auto">
-          {isForbidden 
-            ? 'You do not have permission to view the nursing dashboard. Please contact your administrator if you believe this is an error.' 
+        <p className="text-[13px] text-slate-500 max-w-md mx-auto">
+          {isForbidden
+            ? 'You do not have permission to view the nursing dashboard. Please contact your administrator if you believe this is an error.'
             : 'Failed to connect to the clinical service. Please check your network connection or try again later.'}
         </p>
       </div>
     );
   }
 
+  // ── Loading State ──
   if (isLoading) {
     return (
-      <div className="p-8 text-center space-y-4 animate-fade-in">
-        <div className="animate-spin mx-auto w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
-        <p className="text-slate-500 font-medium tracking-wide animate-pulse">Loading nursing dashboard...</p>
+      <div className="mx-auto max-w-[1440px] px-4 py-4 space-y-4">
+        <div className="flex flex-wrap gap-x-6 gap-y-3 animate-pulse">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-1 border-l-2 border-l-slate-200 pl-3">
+              <div className="h-3 w-20 rounded bg-slate-100" />
+              <div className="h-5 w-16 rounded bg-slate-100" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 space-y-3">
+            <HmsLoadingSkeleton variant="table" />
+            <HmsLoadingSkeleton variant="table" />
+          </div>
+          <div className="space-y-3">
+            <HmsLoadingSkeleton variant="panel" />
+            <HmsLoadingSkeleton variant="panel" />
+          </div>
+        </div>
       </div>
     );
   }
 
-  // Derived metrics from summary and queue
+  // ── Derived Metrics ──
   const metrics = [
-    { title: 'Patients Assigned', value: summary?.pendingTriage ?? 0, icon: Users, description: 'Active triage queue', severity: 'info' as const, href: '/nurse/triage' },
-    { title: 'Vitals Due', value: summary?.pendingTriage ?? 0, icon: Activity, description: 'Waiting for vitals', severity: 'warning' as const, href: '/nurse/vitals' },
-    { title: 'Critical Vitals', value: 0, icon: AlertOctagon, description: 'Critical vitals alerts WIP', severity: 'success' as const },
-    { title: 'Specimen Queue', value: queueData?.filter(q => q.serviceType === 'LABORATORY' && q.status !== 'COMPLETED').length ?? 0, icon: FlaskConical, description: 'Specimens to collect', severity: 'info' as const, href: '/nurse/specimens' },
-    { title: 'Nursing Tasks', value: realTaskCount, icon: CheckSquare, description: 'Open or in progress', severity: 'warning' as const, href: '/nurse/tasks' },
-    { title: 'Ready for Doctor', value: summary?.waitingForDoctor ?? 0, icon: Heart, description: 'Clinical handoff ready', severity: 'success' as const },
+    {
+      id: 'triage-waiting',
+      label: 'Triage Waiting',
+      value: summary?.pendingTriage ?? '—',
+      severity: 'info' as const,
+      href: '/nurse/triage',
+    },
+    {
+      id: 'vitals-due',
+      label: 'Vitals Due',
+      value: summary?.pendingTriage ?? '—',
+      severity: 'warning' as const,
+      href: '/nurse/vitals',
+    },
+    {
+      id: 'specimens',
+      label: 'Specimen Queue',
+      value: queueData?.filter((q: ClinicalWorkQueueDto) => q.serviceType === 'LABORATORY' && q.status !== 'COMPLETED').length ?? 0,
+      severity: 'info' as const,
+      href: '/nurse/specimens',
+    },
+    {
+      id: 'nursing-tasks',
+      label: 'Nursing Tasks',
+      value: realTaskCount,
+      severity: realTaskCount > 10 ? 'warning' as const : 'info' as const,
+      href: '/nurse/tasks',
+    },
+    {
+      id: 'handoff',
+      label: 'Ready for Doctor',
+      value: summary?.waitingForDoctor ?? '—',
+      severity: 'success' as const,
+      href: '/doctor/queue',
+    },
+    {
+      id: 'critical-vitals',
+      label: 'Critical Vitals',
+      value: '—',
+      severity: 'info' as const,
+    },
   ];
 
-  // Map live queue data for triage (patients with serviceType RECEPTION/CASHIER/DOCTOR or generally the active queue)
-  const triageQueue = queueData 
+  // ── Alerts ──
+  const alerts: Array<{ id: string; severity: 'critical' | 'warning' | 'success'; title: string; message: string }> = [];
+
+  // ── Triage Queue ──
+  const triageItems = queueData
     ? queueData
-        .filter(item => item.status !== 'COMPLETED' && item.status !== 'CANCELLED')
+        .filter((item: ClinicalWorkQueueDto) => item.status !== 'COMPLETED' && item.status !== 'CANCELLED')
         .slice(0, 5)
-        .map(item => ({
+        .map((item: ClinicalWorkQueueDto) => ({
           id: item.id,
           patientId: item.patientId,
           name: item.patientName || '[REDACTED]',
           time: item.timestamp ? format(new Date(item.timestamp), 'hh:mm a') : 'N/A',
-          reason: item.category === 'EMERGENCY' ? 'Emergency medical evaluation needed' : 'Clinical evaluation triage',
-          priority: mapCategoryToPriority(item.category),
+          priority: item.category === 'EMERGENCY' ? 'emergency' as const
+                    : item.category === 'PRIORITY' ? 'critical' as const
+                    : item.category === 'URGENT' ? 'urgent' as const
+                    : 'routine' as const,
         }))
     : [];
 
-  const vitalsAlerts: Array<{ id: string; name: string; alert: string; time: string }> = [];
+  // ── Specimen Queue ──
+  const specimenItems = queueData
+    ? queueData
+        .filter((q: ClinicalWorkQueueDto) => q.serviceType === 'LABORATORY' && q.status !== 'COMPLETED')
+        .slice(0, 5)
+        .map((item: ClinicalWorkQueueDto) => ({
+          id: item.id,
+          patientId: item.patientId,
+          name: item.patientName || '[REDACTED]',
+          time: item.timestamp ? format(new Date(item.timestamp), 'hh:mm a') : 'N/A',
+        }))
+    : [];
 
+  // ── Nursing Tasks by Urgency ──
+  const taskItems = Array.isArray(nursingTasks)
+    ? nursingTasks
+        .filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS')
+        .slice(0, 8)
+        .map(t => ({
+          id: t.id,
+          title: t.title || 'Unnamed Task',
+          patientName: t.patientName || '—',
+          priority: t.priority === 'HIGH' || t.priority === 'URGENT' ? 'critical' as const
+                    : t.priority === 'MEDIUM' ? 'urgent' as const
+                    : 'routine' as const,
+          status: t.status === 'IN_PROGRESS' ? ('In Progress' as const) : ('Open' as const),
+          statusVariant: t.status === 'IN_PROGRESS' ? ('success' as const) : ('warning' as const),
+          patientId: t.patientId,
+        }))
+    : [];
+
+  // ── SLA — Vitals Compliance ──
+  const slaItems = summary ? [
+    {
+      id: 'vitals-overdue',
+      label: 'Vitals Overdue',
+      value: summary.pendingTriage > 0 ? summary.pendingTriage : 0,
+      status: (summary.pendingTriage ?? 0) > 5 ? 'at_risk' as const
+              : (summary.pendingTriage ?? 0) > 0 ? 'at_risk' as const
+              : 'on_track' as const,
+      drilldownHref: '/nurse/vitals',
+    },
+    {
+      id: 'handoff-ready',
+      label: 'Handoff Ready',
+      value: summary.waitingForDoctor ?? 0,
+      status: (summary.waitingForDoctor ?? 0) > 3 ? 'at_risk' as const : 'on_track' as const,
+      drilldownHref: '/doctor/queue',
+    },
+  ] : [];
+
+  // ── Quick Actions ──
+  const actions = [
+    { id: 'intake', label: 'Patient Intake', icon: <UserPlus className="h-4 w-4" />, href: '/nurse/intake' },
+    { id: 'vitals', label: 'Record Vitals', icon: <Activity className="h-4 w-4" />, href: '/nurse/vitals' },
+    { id: 'tasks', label: 'Task Board', icon: <CheckSquare className="h-4 w-4" />, href: '/nurse/tasks' },
+    { id: 'specimens', label: 'Specimen Collection', icon: <FlaskConical className="h-4 w-4" />, href: '/nurse/specimens' },
+  ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      
-      {/* WIP Banner */}
-      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
-        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Nurse Portal (Real — Advanced nursing workflow WIP)</h5>
-          <p className="font-medium mt-0.5">
-            Task board, vitals recording, and triage queue use real API data. Critical vitals alerts, care plans, MAR, staff scheduling, and patient acuity scoring remain out of scope.
-          </p>
-        </div>
-      </div>
-
-      <div className="flex justify-between items-center">
-        <PageHeader 
-          title="Nursing Operations Hub" 
-          description="Nurse portal workspace for patient check-in, triage logging, vital signs monitoring, and specimen routing." 
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar
+          branchName={summary?.branchId ?? undefined}
+          role="Nurse"
+          lastRefreshed={summary?.timestamp ? new Date(summary.timestamp) : undefined}
         />
-        
-        <div className="flex gap-2">
-          <button 
-            onClick={() => navigate('/nurse/intake')}
-            className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 text-xs py-2 px-4"
-          >
-            <UserPlus className="h-4 w-4" /> Patient Intake
-          </button>
+      }
+      footer={
+        <HmsAuditFooter
+          lastRefreshed={summary?.timestamp ? new Date(summary.timestamp) : undefined}
+          dataSource={summary?.accessLabel === 'PUBLIC' ? 'Live API' : 'Clinical API'}
+        />
+      }
+    >
+      {/* Alert Rail */}
+      <HmsAlertRail alerts={alerts} />
+
+      {/* KPI Strip */}
+      <HmsKpiStrip metrics={metrics} />
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Left Column — 2/3 */}
+        <div className="lg:col-span-2 space-y-3">
+          {/* Triage Queue */}
+          <HmsWorkQueue
+            title="Triage Queue"
+            data={triageItems}
+            keyExtractor={(item) => item.id}
+            columns={[
+              { key: 'priority', header: 'Priority', width: 'w-24', render: (item) => (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className={`h-2 w-2 rounded-full ${
+                    item.priority === 'emergency' ? 'bg-rose-500'
+                    : item.priority === 'critical' ? 'bg-amber-500'
+                    : item.priority === 'urgent' ? 'bg-blue-500'
+                    : 'bg-slate-400'
+                  }`} />
+                  <span className={`text-[11px] font-semibold ${
+                    item.priority === 'emergency' ? 'text-rose-700'
+                    : item.priority === 'critical' ? 'text-amber-700'
+                    : item.priority === 'urgent' ? 'text-blue-700'
+                    : 'text-slate-500'
+                  }`}>
+                    {item.priority.toUpperCase()}
+                  </span>
+                </span>
+              )},
+              { key: 'patient', header: 'Patient', render: (item) => (
+                <span className="font-semibold text-slate-800">{item.name}</span>
+              )},
+              { key: 'time', header: 'Since', width: 'w-20', render: (item) => (
+                <span className="font-mono text-slate-400">{item.time}</span>
+              )},
+              { key: 'action', header: '', width: 'w-24', render: (item) => (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); navigate(`/nurse/triage?patientId=${item.patientId}`); }}
+                  className="text-[12px] font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  Start Triage →
+                </button>
+              )},
+            ]}
+            loading={isLoading}
+            emptyMessage="No patients in triage queue"
+            maxRows={5}
+            viewAllLink="/nurse/triage"
+          />
+
+          {/* Specimen Collection Queue */}
+          <HmsWorkQueue
+            title="Specimen Collection"
+            data={specimenItems}
+            keyExtractor={(item) => item.id}
+            emptyMessage="No specimens pending collection"
+            columns={[
+              { key: 'patient', header: 'Patient', render: (item) => (
+                <span className="font-semibold text-slate-800">{item.name}</span>
+              )},
+              { key: 'time', header: 'Since', width: 'w-20', render: (item) => (
+                <span className="font-mono text-slate-400">{item.time}</span>
+              )},
+              { key: 'action', header: '', width: 'w-28', render: (item) => (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); navigate(`/nurse/specimens?patientId=${item.patientId}`); }}
+                  className="text-[12px] font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  Collect →
+                </button>
+              )},
+            ]}
+            loading={isLoading}
+            maxRows={5}
+            viewAllLink="/nurse/specimens"
+          />
+
+          {/* Nursing Tasks by Urgency */}
+          <HmsDrilldownTable
+            title="Nursing Tasks by Urgency"
+            data={taskItems}
+            keyExtractor={(item) => item.id}
+            emptyMessage="No open nursing tasks"
+            columns={[
+              { key: 'task', header: 'Task', render: (item) => (
+                <span className="font-semibold text-slate-800">{item.title}</span>
+              )},
+              { key: 'patient', header: 'Patient', render: (item) => (
+                <span className="text-slate-600">{item.patientName}</span>
+              )},
+              { key: 'priority', header: 'Priority', width: 'w-20', render: (item) => (
+                <span className={`text-[11px] font-semibold ${
+                  item.priority === 'critical' ? 'text-rose-700'
+                  : item.priority === 'urgent' ? 'text-blue-700'
+                  : 'text-slate-500'
+                }`}>
+                  {item.priority.toUpperCase()}
+                </span>
+              )},
+              { key: 'status', header: 'Status', width: 'w-24', render: (item) => (
+                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
+                  item.statusVariant === 'success'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  {item.status}
+                </span>
+              )},
+              { key: 'action', header: '', width: 'w-20', render: (item) => (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); navigate(`/nurse/tasks?taskId=${item.id}`); }}
+                  className="text-[12px] font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  Open →
+                </button>
+              )},
+            ]}
+          />
         </div>
-      </div>
 
-      {/* Grid: High-level KPI summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-        {metrics.map((m) => <AnalyticsMetricCard key={m.title} {...m} />)}
-      </div>
-
-      <InsightPanel insights={[{ title: 'Nursing dashboard stays task-first', description: 'Vitals, specimens, handoff, and active task queues remain the primary decision surface; executive charts were intentionally avoided.', severity: 'info', actionLabel: 'Open Tasks', actionTo: '/nurse/tasks' }]} title="Nursing worklist guidance" />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Triage & Queue */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Triage Queue List */}
-          <div className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4 rounded-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase flex items-center gap-2">
-                <ClipboardList className="h-4 w-4 text-indigo-500" />
-                Urgent Triage Queue
-              </h3>
-              <button 
-                onClick={() => navigate('/nurse/triage')}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
-              >
-                Full Triage Queue <ChevronRight className="h-4.5 w-4.5" />
-              </button>
-            </div>
-
-            <div className="divide-y divide-slate-100">
-              {triageQueue.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 font-medium text-xs">No active patients in triage queue.</div>
-              ) : (
-                triageQueue.map((item) => (
-                  <div key={item.id} className="py-3.5 flex items-center justify-between gap-3 text-xs">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800">{item.name}</span>
-                        <span className="text-[10px] text-slate-400 font-semibold">{item.time}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 font-medium">{item.reason}</p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <TriagePriorityBadge level={item.priority} showIcon={false} />
-                      <button
-                        onClick={() => navigate(`/nurse/triage?patientId=${item.patientId}`)}
-                        className="btn text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
-                      >
-                        Start Triage
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Vitals Alerts & Quick Links */}
-        <div className="space-y-6">
-          {/* Critical Alerts */}
-          <div className="card p-5 bg-rose-50/50 border border-rose-100/80 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
-              <h3 className="font-bold text-rose-800 text-sm tracking-wider uppercase flex items-center gap-2">
-                <AlertOctagon className="h-4 w-4 text-rose-600 animate-pulse" />
-                Vitals Alert Panel
-              </h3>
-              <span className="bg-rose-100 text-rose-700 text-[9px] font-black px-2 py-0.5 rounded-full">
-                2 Alerts
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {vitalsAlerts.map((alert) => (
-                <div key={alert.id} className="p-3.5 bg-white border border-rose-200/60 rounded-xl space-y-2 text-xs">
-                  <div className="flex justify-between items-start">
-                    <span className="font-bold text-slate-900">{alert.name}</span>
-                    <span className="text-[10px] text-slate-400">{alert.time}</span>
-                  </div>
-                  <p className="text-rose-700 font-bold bg-rose-50/50 px-2 py-1 rounded-lg border border-rose-100/50">
-                    {alert.alert}
-                  </p>
-                  <button 
-                    onClick={() => navigate('/nurse/vitals')}
-                    className="w-full text-center bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold py-1.5 rounded-lg border border-rose-100 transition-colors"
-                  >
-                    Open Vitals Sheet
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Right Column — 1/3 */}
+        <div className="space-y-3">
+          {/* SLA Panel — Vitals Compliance */}
+          {slaItems.length > 0 && (
+            <HmsSlaPanel title="Vitals &amp; Handoff" items={slaItems} />
+          )}
 
           {/* Quick Actions */}
-          <div className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4 rounded-2xl">
-            <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3">
-              Quick Navigations
-            </h3>
-
-            <div className="grid grid-cols-1 gap-2.5">
-              <button 
-                onClick={() => navigate('/nurse/vitals')}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-2xl text-left text-xs font-semibold text-slate-700 group transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-indigo-500" />
-                  Record Patient Vitals
-                </span>
-                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-all group-hover:translate-x-1" />
-              </button>
-
-              <button 
-                onClick={() => navigate('/nurse/tasks')}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-2xl text-left text-xs font-semibold text-slate-700 group transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <CheckSquare className="h-4 w-4 text-indigo-500" />
-                  Nursing Worklist Board
-                </span>
-                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-all group-hover:translate-x-1" />
-              </button>
-
-              <button 
-                onClick={() => navigate('/nurse/specimens')}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-2xl text-left text-xs font-semibold text-slate-700 group transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <FlaskConical className="h-4 w-4 text-indigo-500" />
-                  Specimen Collection Desk
-                </span>
-                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-all group-hover:translate-x-1" />
-              </button>
-            </div>
-          </div>
+          <HmsQuickActions actions={actions} title="Actions" />
         </div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
+
 export default NurseDashboard;

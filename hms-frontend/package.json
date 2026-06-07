@@ -15,6 +15,8 @@
     "verify:security": "npx tsx scripts/verify-security-config.ts"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.100.9",
     "@tanstack/react-table": "^8.21.3",

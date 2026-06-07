@@ -57,8 +57,8 @@ describe('DoctorDashboard Runtime Tests', () => {
     });
 
     // Verify it doesn't show clinical dashboard headings or elements
-    expect(screen.queryByText('Clinical Command Center')).not.toBeInTheDocument();
-    expect(screen.queryByText('Patients Waiting')).not.toBeInTheDocument();
+    expect(screen.queryByText('Assigned Patients')).not.toBeInTheDocument();
+    expect(screen.queryByText('My Patient Queue')).not.toBeInTheDocument();
   });
 
   it('renders Access Restricted when 401 Unauthorized is returned', async () => {
@@ -137,9 +137,9 @@ describe('DoctorDashboard Runtime Tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Clinical Command Center')).toBeInTheDocument();
+      expect(screen.getByText('Assigned Patients')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('No active patients in your queue.')).toBeInTheDocument();
+    expect(screen.getByText('No active patients in queue')).toBeInTheDocument();
   });
 });

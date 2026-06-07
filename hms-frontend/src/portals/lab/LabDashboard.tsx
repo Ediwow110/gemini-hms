@@ -1,25 +1,29 @@
 import { useNavigate } from 'react-router-dom';
-import { 
-  FileText, 
-  FlaskConical, 
-  CheckSquare, 
-  FileCheck2, 
-  ShieldAlert, 
+import { useState, useEffect } from 'react';
+import {
+  FlaskConical,
+  FileText,
   AlertTriangle,
-  Send, 
+  Send,
   Inbox,
-  ArrowRight,
-  TrendingUp,
-  Loader2,
+  FileCheck2,
 } from 'lucide-react';
-import { PageHeader } from '../../components/ui/page-header';
-import { ChartCard, InsightPanel, StatusDonutChart, TrendLineChart } from '../../components/analytics';
-import { labInsights, labStatusBreakdown, labTrendData } from '../../data/analytics/clinicalAnalytics.mock';
-import { SpecimenWorkQueue } from './components/SpecimenWorkQueue';
-import { CriticalResultPanel } from './components/CriticalResultPanel';
-import { TurnaroundTimeCard } from './components/TurnaroundTimeCard';
+import {
+  HmsDashboardShell,
+  HmsToolbar,
+  HmsAuditFooter,
+  HmsKpiStrip,
+  HmsAlertRail,
+  HmsWorkQueue,
+  HmsSlaPanel,
+  HmsDrilldownTable,
+  HmsQuickActions,
+  HmsTrendChart,
+  HmsDataUnavailable,
+} from '../../components/hms-dashboard';
 import { usePendingSpecimens, useCriticalResults, useTurnaroundMetrics } from '../../hooks/use-lab';
 import { format } from 'date-fns';
+import type { PendingSpecimenDto, CriticalResultDto, TurnaroundMetricDto } from '../../services/lab.service';
 
 export const LabDashboard = () => {
   const navigate = useNavigate();
@@ -32,261 +36,308 @@ export const LabDashboard = () => {
   const isLoading = loadingSpecimens || loadingCritical || loadingTat;
   const hasError = errorSpecimens || errorCritical || errorTat;
 
+  // ── Load timestamp (captured once when loading completes) ──
+  const [loadedTimestamp, setLoadedTimestamp] = useState(null as Date | null);
+  useEffect(() => {
+    if (!isLoading && !loadedTimestamp) {
+      setLoadedTimestamp(new Date());
+    }
+  }, [isLoading, loadedTimestamp]);
+
   // ──── Derived Metrics ────
-  const pendingCount = pendingSpecimens.length;
-  const criticalOpenCount = openCriticalResults.length;
-  const totalResults = tatData?.totalResults ?? 0;
+  const pendingCount = Array.isArray(pendingSpecimens) ? pendingSpecimens.length : 0;
+  const criticalOpenCount = Array.isArray(openCriticalResults) ? openCriticalResults.length : 0;
   const releasedCount = tatData?.releasedCount ?? 0;
   const pendingResultsCount = tatData?.pendingCount ?? 0;
 
   const avgSpecToRelease = tatData?.metrics
-    ?.find(m => m.field === 'specimenToRelease')?.averageMinutes ?? null;
+    ?.find((m: TurnaroundMetricDto) => m.field === 'specimenToRelease')?.averageMinutes ?? null;
 
   const missingTimestampCount = tatData?.metrics
-    ?.reduce((sum, m) => sum + m.missingTimestampCount, 0) ?? 0;
+    ?.reduce((sum: number, m: TurnaroundMetricDto) => sum + (m.missingTimestampCount ?? 0), 0) ?? 0;
 
-  // ──── Map pending specimens to SpecimenItem format ────
-  const specimenItems = pendingSpecimens.map(s => ({
+  // ──── Map specimens ────
+  const specimenItems = (Array.isArray(pendingSpecimens) ? pendingSpecimens : []).map((s: PendingSpecimenDto) => ({
     id: s.id,
-    patientName: s.patientName,
-    mrn: s.patientMrn,
-    specimenType: s.specimenType,
-    container: '—',
-    testName: s.testNames?.join(', ') || s.specimenType,
+    patientName: s.patientName || '—',
+    mrn: s.patientMrn || '—',
+    specimenType: s.specimenType || '—',
+    testName: Array.isArray(s.testNames) ? s.testNames.join(', ') : s.specimenType || '—',
     collectedTime: s.collectedAt ? format(new Date(s.collectedAt), 'hh:mm a') : '—',
     status: s.status === 'RECEIVED' ? 'Received' as const : 'Collected' as const,
-    urgency: 'Routine' as const,
   }));
 
-  // ──── Map critical results to CriticalResultItem format ────
-  const criticalItems = openCriticalResults.map(r => ({
+  // ──── Map critical results ────
+  const criticalItems = (Array.isArray(openCriticalResults) ? openCriticalResults : []).map((r: CriticalResultDto) => ({
     id: r.id,
-    patientName: r.patientName,
-    mrn: r.patientMrn,
-    testName: r.testNames?.join(', ') || 'Lab Result',
-    parameterName: '',
-    value: 'Critical',
-    refRange: '',
-    physicianName: '',
-    physicianPhone: '',
+    patientName: r.patientName || '—',
+    mrn: r.patientMrn || '—',
+    testName: Array.isArray(r.testNames) ? r.testNames.join(', ') : 'Lab Result',
     reportedAt: r.encodedAt ? format(new Date(r.encodedAt), 'MMM dd, hh:mm a') : 'Unknown',
-    isNotified: false,
   }));
 
-  // ──── TAT cards from real data ────
+  // ──── TAT cards ────
   const tatCards = tatData?.metrics
-    ?.filter(m => m.count > 0)
-    ?.map(m => ({
-      testName: m.label,
-      targetMinutes: 0,
-      averageMinutes: m.averageMinutes || 0,
-      complianceRate: 1,
-      totalTests: m.count,
-      overdueCount: 0,
+    ?.filter((m: TurnaroundMetricDto) => m.count > 0)
+    ?.map((m: TurnaroundMetricDto) => ({
+      id: m.field || m.label,
+      label: m.label || m.field,
+      value: m.averageMinutes ? `${Math.round(m.averageMinutes)}m` : '—',
+      status: (m.averageMinutes !== null && m.averageMinutes > 120 ? 'breached' : m.averageMinutes !== null && m.averageMinutes > 60 ? 'at_risk' : 'on_track') as 'breached' | 'at_risk' | 'on_track',
+      drilldownHref: '/lab/turnaround',
+      threshold: 120,
+      current: m.averageMinutes ? Math.round(m.averageMinutes) : 0,
     })) ?? [];
 
-  // ──── Loading State ────
-  if (isLoading) {
-    return (
-      <div className="p-8 text-center space-y-4 animate-fade-in">
-        <Loader2 className="mx-auto w-8 h-8 text-indigo-500 animate-spin" />
-        <p className="text-slate-500 font-medium tracking-wide animate-pulse">Loading Lab Dashboard...</p>
-      </div>
-    );
-  }
-
   // ──── Error State ────
-  if (hasError) {
+  if (hasError && !isLoading) {
     return (
-      <div className="p-8 text-center space-y-4 animate-fade-in">
-        <div className="mx-auto w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-          <AlertTriangle className="h-8 w-8" />
+      <div className="mx-auto max-w-[1440px] px-4 py-16 text-center space-y-4">
+        <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center border border-rose-100">
+          <AlertTriangle className="h-7 w-7" />
         </div>
-        <h2 className="text-xl font-bold text-slate-800">Connection Error</h2>
-        <p className="text-slate-500 max-w-md mx-auto">
+        <h2 className="text-lg font-bold text-slate-800">Connection Error</h2>
+        <p className="text-[13px] text-slate-500 max-w-md mx-auto">
           Failed to load lab dashboard data. Please check your network connection or try again later.
         </p>
       </div>
     );
   }
 
-  // ──── Metrics Cards ────
-  const metricsCards = [
-    { label: 'Pending Specimens', count: pendingCount, icon: FlaskConical, color: 'text-amber-600 bg-amber-50 border-amber-105', route: '/lab/specimens' },
-    { label: 'Total Lab Results', count: totalResults, icon: FileText, color: 'text-blue-600 bg-blue-50 border-blue-105', route: '/lab/encoding' },
-    { label: 'Released Results', count: releasedCount, icon: Send, color: 'text-emerald-600 bg-emerald-50 border-emerald-105', route: '/lab/release' },
-    { label: 'In Progress', count: pendingResultsCount, icon: CheckSquare, color: 'text-violet-600 bg-violet-50 border-violet-105', route: '/lab/encoding' },
-    { label: 'Open Critical', count: criticalOpenCount, icon: ShieldAlert, color: 'text-rose-600 bg-rose-50 border-rose-105', route: '/lab/critical-results' },
-    { label: 'Avg TAT (Spec→Rel)', count: avgSpecToRelease !== null ? `${avgSpecToRelease}m` : '—', icon: TrendingUp, color: 'text-indigo-600 bg-indigo-50 border-indigo-105', route: '/lab/turnaround' },
-    { label: 'Missing Timestamps', count: missingTimestampCount, icon: AlertTriangle, color: 'text-slate-600 bg-slate-50 border-slate-105', route: '/lab/turnaround' },
+  // ──── Loading State ────
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-[1440px] px-4 py-4 space-y-4">
+        <div className="flex flex-wrap gap-x-6 gap-y-3 animate-pulse">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-1 border-l-2 border-l-slate-200 pl-3">
+              <div className="h-3 w-20 rounded bg-slate-100" />
+              <div className="h-5 w-16 rounded bg-slate-100" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 space-y-3">
+            <div className="h-48 animate-pulse rounded-lg bg-slate-100" />
+            <div className="h-32 animate-pulse rounded-lg bg-slate-100" />
+          </div>
+          <div className="space-y-3">
+            <div className="h-48 animate-pulse rounded-lg bg-slate-100" />
+            <div className="h-24 animate-pulse rounded-lg bg-slate-100" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Metrics ──
+  const metrics = [
+    { id: 'pending-spec', label: 'Pending Specimens', value: pendingCount, severity: 'info' as const, href: '/lab/specimens' },
+    { id: 'in-progress', label: 'In Progress', value: pendingResultsCount, severity: 'warning' as const, href: '/lab/encoding' },
+    { id: 'released', label: 'Released Today', value: releasedCount, severity: 'success' as const, href: '/lab/release' },
+    { id: 'critical', label: 'Open Critical', value: criticalOpenCount, severity: criticalOpenCount > 0 ? 'critical' as const : 'success' as const, href: '/lab/critical-results' },
+    { id: 'avg-tat', label: 'Avg TAT', value: avgSpecToRelease !== null ? `${avgSpecToRelease}m` : '—', severity: 'info' as const, href: '/lab/turnaround' },
+    { id: 'missing-ts', label: 'Missing TS', value: missingTimestampCount, severity: missingTimestampCount > 0 ? 'warning' as const : 'success' as const, href: '/lab/turnaround' },
+  ];
+
+  // ── Alerts ──
+  const alertItems = criticalItems.slice(0, 3).map((r) => ({
+    id: `crit-${r.id}`,
+    severity: 'critical' as const,
+    title: `Critical: ${r.testName}`,
+    message: `${r.patientName} — ${r.reportedAt}`,
+    actionLabel: 'View Result',
+    actionHref: `/lab/critical-results?resultId=${r.id}`,
+  }));
+
+  // ── Pending work stages ──
+  const pendingWorkItems = tatData?.metrics
+    ?.filter((m: TurnaroundMetricDto) => m.field?.includes('pending') || m.field?.includes('encode') || m.field?.includes('validate'))
+    ?.map((m: TurnaroundMetricDto) => ({
+      id: m.field || m.label,
+      label: m.label || m.field,
+      count: m.count ?? 0,
+    })) ?? [];
+
+  const pendingTableItems = pendingWorkItems.length > 0
+    ? pendingWorkItems.map((w) => ({
+        id: w.id,
+        stage: w.label,
+        count: w.count,
+      }))
+    : [];
+
+  // ── Quick Actions ──
+  const actions = [
+    { id: 'orders', label: 'Lab Orders Queue', icon: <Inbox className="h-4 w-4" />, href: '/lab/orders' },
+    { id: 'specimens', label: 'Specimen Receiving', icon: <FlaskConical className="h-4 w-4" />, href: '/lab/specimens' },
+    { id: 'encode', label: 'Result Encoding', icon: <FileText className="h-4 w-4" />, href: '/lab/encoding' },
+    { id: 'validate', label: 'Verification', icon: <FileCheck2 className="h-4 w-4" />, href: '/lab/validation' },
+    { id: 'release', label: 'Release Results', icon: <Send className="h-4 w-4" />, href: '/lab/release' },
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      
-      {/* WIP Banner */}
-      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
-        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Laboratory Dashboard (Partial — Real Metrics)</h5>
-          <p className="font-medium mt-0.5">
-            Dashboard metrics come from real lab APIs (pending specimens, critical results, turnaround). Specimen tracking, result workflow pages, and release are Real. Full LIS analytics, SLA breach detection, trend forecasting, and analyzer integration remain out of scope.
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <PageHeader 
-          title="Laboratory Dashboard" 
-          description="Lab technician workspace for tracking specimens, encoding diagnostics, validating assays, and releasing clinical results." 
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar
+          role="Lab Technician"
+          lastRefreshed={loadedTimestamp ?? undefined}
         />
-      </div>
+      }
+      footer={
+        <HmsAuditFooter
+          lastRefreshed={loadedTimestamp ?? undefined}
+          dataSource="Live API (specimens, critical results, TAT)"
+        />
+      }
+    >
+      {/* Alert Rail */}
+      <HmsAlertRail alerts={alertItems} />
 
-      {/* Grid: High-level KPI summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        {metricsCards.map((m, index) => {
-          const Icon = m.icon;
-          return (
-            <button
-              key={index}
-              onClick={() => navigate(m.route)}
-              className="card p-4 flex flex-col justify-between gap-4 bg-white border border-slate-200/80 shadow-sm rounded-2xl hover:shadow-md hover:border-indigo-200 transition-all text-left"
-            >
-              <div className="flex items-center justify-between">
-                <div className={`p-2 rounded-xl border ${m.color}`}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <span className="text-lg font-black text-slate-800">{m.count}</span>
-              </div>
-              <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 leading-tight">{m.label}</p>
-            </button>
-          );
-        })}
-      </div>
+      {/* KPI Strip */}
+      <HmsKpiStrip metrics={metrics} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <ChartCard title="Turnaround time trend" description="Sandbox trend overlaid with live TAT summaries when APIs are expanded." height={280}>
-          <TrendLineChart data={labTrendData} title="Lab turnaround time trend" valueLabel="Orders" secondaryLabel="Completed" />
-        </ChartCard>
-        <ChartCard title="Pending vs completed status" description="Decision chart for validation/release queue pressure." height={280}>
-          <StatusDonutChart data={labStatusBreakdown} title="Lab status breakdown" />
-        </ChartCard>
-        <InsightPanel insights={labInsights} title="Lab operations alerts" />
-      </div>
-
-      {/* Grid Layout: Main queue, alerts, and quick actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Columns: Specimen Worklist & Critical Alerts */}
-        <div className="lg:col-span-2 space-y-6">
-          {specimenItems.length > 0 ? (
-            <SpecimenWorkQueue specimens={specimenItems} limit={5} />
-          ) : (
-            <div className="card p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center">
-              <p className="text-xs text-slate-400 font-semibold">No pending specimens to display.</p>
-            </div>
-          )}
-          
-          {criticalItems.length > 0 ? (
-            <CriticalResultPanel items={criticalItems} />
-          ) : (
-            <div className="card p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center">
-              <p className="text-xs text-slate-400 font-semibold">No open critical results.</p>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Turnaround time & Quick Actions */}
-        <div className="space-y-6">
-          {/* Quick Actions Panel */}
-          <div className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4 rounded-2xl">
-            <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3">
-              Laboratory Actions
-            </h3>
-
-            <div className="grid grid-cols-1 gap-2.5">
-              <button 
-                onClick={() => navigate('/lab/orders')}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-2xl text-left text-xs font-semibold text-slate-700 group transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <Inbox className="h-4 w-4 text-indigo-500" />
-                  View Lab Orders Queue
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Left Column — 2/3 */}
+        <div className="lg:col-span-2 space-y-3">
+          {/* Specimen Work Queue */}
+          <HmsWorkQueue
+            title="Specimen Work Queue"
+            data={specimenItems}
+            keyExtractor={(item) => item.id}
+            columns={[
+              { key: 'patient', header: 'Patient', render: (item) => (
+                <span className="font-semibold text-slate-800">{item.patientName}</span>
+              )},
+              { key: 'specimen', header: 'Specimen', render: (item) => (
+                <span className="text-slate-600">{item.specimenType}</span>
+              )},
+              { key: 'test', header: 'Test', render: (item) => (
+                <span className="text-slate-600 truncate max-w-[160px] inline-block">{item.testName}</span>
+              )},
+              { key: 'collected', header: 'Collected', width: 'w-20', render: (item) => (
+                <span className="font-mono text-slate-400">{item.collectedTime}</span>
+              )},
+              { key: 'status', header: 'Status', width: 'w-24', render: (item) => (
+                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
+                  item.status === 'Received'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  {item.status}
                 </span>
-                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-all group-hover:translate-x-1" />
-              </button>
-
-              <button 
-                onClick={() => navigate('/lab/specimens')}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-2xl text-left text-xs font-semibold text-slate-700 group transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <FlaskConical className="h-4 w-4 text-indigo-500" />
-                  Specimen Receiving Desk
-                </span>
-                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-all group-hover:translate-x-1" />
-              </button>
-
-              <button 
-                onClick={() => navigate('/lab/encoding')}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-2xl text-left text-xs font-semibold text-slate-700 group transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-indigo-500" />
-                  Result Entry & Encoding
-                </span>
-                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-all group-hover:translate-x-1" />
-              </button>
-
-              <button 
-                onClick={() => navigate('/lab/validation')}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-2xl text-left text-xs font-semibold text-slate-700 group transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <FileCheck2 className="h-4 w-4 text-indigo-500" />
-                  Verification & Validation
-                </span>
-                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-all group-hover:translate-x-1" />
-              </button>
-
-              <button 
-                onClick={() => navigate('/lab/release')}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-2xl text-left text-xs font-semibold text-slate-700 group transition-all"
-              >
-                <span className="flex items-center gap-2">
-                  <Send className="h-4 w-4 text-indigo-500" />
-                  Release Final Results
-                </span>
-                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 transition-all group-hover:translate-x-1" />
-              </button>
-            </div>
-          </div>
-
-          {/* Turnaround time widget */}
-          {tatCards.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-slate-800 text-xs tracking-wider uppercase flex items-center gap-1.5">
-                  <TrendingUp className="h-4 w-4 text-indigo-500" />
-                  TAT Metrics
-                </h3>
+              )},
+              { key: 'action', header: '', width: 'w-20', render: (item) => (
                 <button
-                  onClick={() => navigate('/lab/turnaround')}
-                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700"
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); navigate(`/lab/specimens?specimenId=${item.id}`); }}
+                  className="text-[12px] font-semibold text-blue-600 hover:text-blue-700"
                 >
-                  Details
+                  Process →
                 </button>
-              </div>
+              )},
+            ]}
+            loading={isLoading}
+            emptyMessage="No pending specimens"
+            maxRows={6}
+            viewAllLink="/lab/specimens"
+          />
 
-              <div className="space-y-3.5">
-                {tatCards.map((tat, idx) => (
-                  <TurnaroundTimeCard key={idx} data={tat} />
-                ))}
-              </div>
-            </div>
+          {/* Pending Validation/Release Table */}
+          {pendingTableItems.length > 0 ? (
+            <HmsDrilldownTable
+              title="Pending Work by Stage"
+              data={pendingTableItems}
+              keyExtractor={(item) => item.id}
+              columns={[
+                { key: 'stage', header: 'Stage', render: (item) => (
+                  <span className="font-semibold text-slate-800">{item.stage}</span>
+                )},
+                { key: 'count', header: 'Count', width: 'w-16', render: (item) => (
+                  <span className="font-mono font-bold text-slate-900">{item.count}</span>
+                )},
+              ]}
+              maxRows={6}
+              viewAllLink="/lab/encoding"
+            />
+          ) : (
+            <HmsDataUnavailable
+              sectionName="Pending Validation/Release"
+              expectedApi="/api/v1/lab/pending-stages"
+              expectedPhase="Stage-level breakdown"
+            />
           )}
+
+          {/* TAT Trend Chart */}
+          <HmsTrendChart
+            title="TAT Trend (14 days)"
+            description="Turnaround time trend — data pending live integration"
+            chart={
+              <div className="flex items-center justify-center h-full text-[12px] text-slate-400 font-medium">
+                Chart data pending API integration
+              </div>
+            }
+            height={200}
+            empty
+          />
+        </div>
+
+        {/* Right Column — 1/3 */}
+        <div className="space-y-3">
+          {/* TAT SLA Compliance */}
+          {tatCards.length > 0 ? (
+            <HmsSlaPanel title="TAT SLA Compliance" items={tatCards} />
+          ) : (
+            <HmsDataUnavailable
+              sectionName="TAT SLA Compliance"
+              expectedApi="/api/v1/lab/turnaround-metrics"
+              expectedPhase="Requires TAT data"
+            />
+          )}
+
+          {/* Critical Results */}
+          {criticalItems.length > 0 ? (
+            <HmsDrilldownTable
+              title="Critical Results"
+              data={criticalItems}
+              keyExtractor={(item) => item.id}
+              columns={[
+                { key: 'patient', header: 'Patient', render: (item) => (
+                  <span className="font-semibold text-slate-800">{item.patientName}</span>
+                )},
+                { key: 'test', header: 'Test', render: (item) => (
+                  <span className="text-slate-600">{item.testName}</span>
+                )},
+                { key: 'reported', header: 'Reported', width: 'w-28', render: (item) => (
+                  <span className="font-mono text-slate-400 text-[11px]">{item.reportedAt}</span>
+                )},
+                { key: 'action', header: '', width: 'w-16', render: (item) => (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/lab/critical-results?resultId=${item.id}`); }}
+                    className="text-[12px] font-semibold text-rose-600 hover:text-rose-700"
+                  >
+                    View →
+                  </button>
+                )},
+              ]}
+              maxRows={5}
+              viewAllLink="/lab/critical-results"
+            />
+          ) : (
+            <HmsDataUnavailable
+              sectionName="Critical Results"
+              expectedApi="/api/v1/lab/critical-results"
+              expectedPhase="No open critical results"
+            />
+          )}
+
+          {/* Quick Actions */}
+          <HmsQuickActions actions={actions} title="Lab Actions" columns={1} />
         </div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

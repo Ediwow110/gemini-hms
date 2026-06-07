@@ -1,0 +1,132 @@
+import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
+import { HmsEmptyState } from './HmsEmptyState';
+
+interface DrilldownColumn<T> {
+  key: string;
+  header: string;
+  width?: string;
+  sortable?: boolean;
+  render: (item: T) => ReactNode;
+}
+
+interface HmsDrilldownTableProps<T> {
+  title: string;
+  description?: string;
+  columns: DrilldownColumn<T>[];
+  data: T[];
+  keyExtractor: (item: T) => string | number;
+  loading?: boolean;
+  emptyMessage?: string;
+  onRowClick?: (item: T) => void;
+  rowHref?: (item: T) => string;
+  maxRows?: number;
+  viewAllLink?: string;
+  viewAllLabel?: string;
+}
+
+export const HmsDrilldownTable = <T,>({
+  title,
+  description,
+  columns,
+  data,
+  keyExtractor,
+  loading,
+  emptyMessage,
+  onRowClick,
+  rowHref,
+  maxRows,
+  viewAllLink,
+  viewAllLabel = 'View All',
+}: HmsDrilldownTableProps<T>) => {
+  const navigate = useNavigate();
+  const visible = maxRows ? data.slice(0, maxRows) : data;
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5">
+        <div>
+          <h3 className="text-[14px] font-bold text-slate-800">{title}</h3>
+          {description && <p className="text-[12px] text-slate-500 mt-0.5">{description}</p>}
+        </div>
+        {viewAllLink && data.length > (maxRows ?? Infinity) && (
+          <button
+            type="button"
+            onClick={() => navigate(viewAllLink)}
+            className="flex items-center gap-0.5 text-[12px] font-semibold text-blue-600 hover:text-blue-700"
+          >
+            {viewAllLabel} <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-[12px]" role="table" aria-label={title}>
+          <thead className="bg-slate-50/50">
+            <tr>
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 ${col.width ?? ''}`}
+                >
+                  {col.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  {columns.map((col) => (
+                    <td key={col.key} className="px-3 py-2.5">
+                      <div className="h-3 w-full rounded bg-slate-100" />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : visible.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="py-6">
+                  <HmsEmptyState
+                    title={emptyMessage ?? 'No records'}
+                    description=""
+                  />
+                </td>
+              </tr>
+            ) : (
+              visible.map((item) => {
+                const id = keyExtractor(item);
+                const handleClick = () => {
+                  if (rowHref) navigate(rowHref(item));
+                  else onRowClick?.(item);
+                };
+                const isClickable = !!(onRowClick || rowHref);
+
+                return (
+                  <tr
+                    key={id}
+                    className={`transition-colors ${isClickable ? 'cursor-pointer hover:bg-slate-50' : ''} even:bg-slate-50/30`}
+                    onClick={isClickable ? handleClick : undefined}
+                    role={isClickable ? 'button' : undefined}
+                    tabIndex={isClickable ? 0 : undefined}
+                    onKeyDown={isClickable ? (e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') handleClick(); } : undefined}
+                  >
+                    {columns.map((col) => (
+                      <td key={col.key} className={`px-3 py-2.5 font-medium text-slate-600 ${col.width ?? ''}`}>
+                        {col.render(item)}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default HmsDrilldownTable;
