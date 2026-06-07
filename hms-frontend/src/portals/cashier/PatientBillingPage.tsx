@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { PageHeader } from '../../components/ui/page-header';
 import { 
-  User, 
   Coins, 
-  ShieldCheck, 
   CheckCircle, 
   AlertTriangle, 
-  ArrowLeft, 
   Receipt,
   FileText
 } from 'lucide-react';
@@ -19,6 +15,8 @@ import { useUser } from '../../hooks/use-user';
 import { useAutoDraft } from '../../lib/autodraft/useAutoDraft';
 import { DraftRecoveryDialog } from '../../lib/autodraft/DraftRecoveryDialog';
 import { safeDeleteAutoDraft } from '../../lib/autodraft/indexedDbDraftStore';
+import { HmsDashboardShell, HmsToolbar, HmsAuditFooter } from '../../components/hms-dashboard';
+import { HmsPageHeader, HmsSafetyBar } from '../../components/hms-page';
 
 type BillingDraftData = {
   paymentMethod: string;
@@ -41,6 +39,13 @@ export const PatientBillingPage = () => {
   const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
   const [receiptData, setReceiptData] = useState<{ id?: string } | null>(null);
   const [submitError, setSubmitError] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState<Date | undefined>(undefined);
+
+  useEffect(() => {
+    if (!invLoading && !sessionLoading) {
+      setLastUpdated(new Date());
+    }
+  }, [invLoading, sessionLoading]);
 
   const paymentMethod = formData.paymentMethod;
 
@@ -85,63 +90,39 @@ export const PatientBillingPage = () => {
   const { data: handoffData } = usePatientBillingHandoff(patientId);
   const hasHandoff = !!handoffData;
 
-  if (invLoading || sessionLoading) {
-    return (
-      <div className="p-8 text-center space-y-4 animate-fade-in">
-        <div className="animate-spin mx-auto w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
-        <p className="text-slate-500 font-medium tracking-wide animate-pulse">Loading billing details...</p>
-      </div>
-    );
-  }
-
-  if (invError || !invoice) {
-    return (
-      <div className="p-8 text-center space-y-4 animate-fade-in">
-        <div className="mx-auto w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-          <AlertTriangle className="h-8 w-8" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-800">Invoice Not Found</h2>
-        <p className="text-slate-500 max-w-md mx-auto">
-          The requested invoice could not be located in this branch. Please verify the invoice ID or browse directory list.
-        </p>
-        <button onClick={() => navigate('/cashier/invoices')} className="btn btn-primary text-xs font-bold px-4 py-2 rounded-xl">
-          Return to Directory
-        </button>
-      </div>
-    );
-  }
-
-  // Demographics fallback check for UUID vs mock (required for Target 17)
   const isRealUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(patientId);
-  const patientName = invoice.order?.patient 
+  const patientName = invoice?.order?.patient 
     ? (isRealUuid ? '[REDACTED] (Access Restricted)' : `${invoice.order.patient.firstName} ${invoice.order.patient.lastName}`)
     : 'Walk-in Patient';
 
   const patient = {
     name: patientName,
-    mrn: invoice.order?.patient?.patientNumber 
+    mrn: invoice?.order?.patient?.patientNumber 
       ? (isRealUuid ? '[REDACTED]' : invoice.order.patient.patientNumber) 
       : 'WALK-IN',
     age: 'N/A',
     gender: 'N/A',
-    insurance: 'Self Pay',
-    policyNo: 'N/A',
+    insurance: 'Unavailable',
+    policyNo: 'Unavailable',
     coPayPercent: 100
   };
 
-  const billItems: BillItem[] = [
-    {
-      id: invoice.id,
-      name: `Invoice #${invoice.invoiceNumber || invoice.id.substring(0, 8)}`,
-      category: 'Billing Charges',
-      quantity: 1,
-      unitPrice: Number(invoice.totalAmount),
-      subtotal: Number(invoice.totalAmount),
-    }
-  ];
+  const billItems: BillItem[] = useMemo(() => {
+    if (!invoice) return [];
+    return [
+      {
+        id: invoice.id,
+        name: `Invoice #${invoice.invoiceNumber || invoice.id.substring(0, 8)}`,
+        category: 'Billing Charges',
+        quantity: 1,
+        unitPrice: Number(invoice.totalAmount),
+        subtotal: Number(invoice.totalAmount),
+      }
+    ];
+  }, [invoice]);
 
-  const amountPaid = Number(invoice.paidAmount);
-  const totalAmount = Number(invoice.totalAmount);
+  const amountPaid = invoice ? Number(invoice.paidAmount) : 0;
+  const totalAmount = invoice ? Number(invoice.totalAmount) : 0;
   const remainingBalance = totalAmount - amountPaid;
 
   const handleMethodChange = (methodId: string) => {
@@ -166,9 +147,8 @@ export const PatientBillingPage = () => {
   const handleConfirmPayment = async () => {
     setShowConfirmation(false);
     setSubmitError('');
-    if (!session) return;
+    if (!session || !invoice) return;
     try {
-      // eslint-disable-next-line react-hooks/purity
       const idempotencyKey = `PAY-${invoice.id}-${Date.now()}`;
       const res = await postPayment({
         invoiceId: invoice.id,
@@ -185,14 +165,52 @@ export const PatientBillingPage = () => {
     }
   };
 
+  if (invLoading || sessionLoading) {
+    return (
+      <div className="p-8 text-center space-y-4 animate-fade-in">
+        <div className="animate-spin mx-auto w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <p className="text-slate-500 font-medium tracking-wide animate-pulse">Loading billing details...</p>
+      </div>
+    );
+  }
+
+  if (invError || !invoice) {
+    return (
+      <div className="p-8 text-center space-y-4 bg-white border border-slate-200 rounded-lg max-w-md mx-auto mt-12 shadow-sm animate-fade-in">
+        <div className="mx-auto w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-sans">Invoice Not Found</h2>
+        <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed font-sans">
+          The requested invoice could not be located in this branch. Please verify the invoice ID or browse the directory list.
+        </p>
+        <button 
+          onClick={() => navigate('/cashier')} 
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors font-sans shadow-sm"
+        >
+          Return to Directory
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 pb-12 animate-fade-in">
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar 
+          branchName={currentUser?.branchId || undefined} 
+          role={currentUser?.roles?.join(', ') || 'Cashier Operator'} 
+          lastRefreshed={lastUpdated}
+        />
+      }
+      footer={<HmsAuditFooter lastRefreshed={lastUpdated} dataSource="Billing POS Service" version="v2.1" />}
+    >
       {!session && (
-        <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-805 font-bold">
-          <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2 text-xs text-amber-800 font-bold font-sans">
+          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
           <div>
             <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Active Shift Drawer Session Required</h5>
-            <p className="font-medium mt-0.5">
+            <p className="font-medium mt-0.5 text-slate-700">
               Please open a cashier shift drawer session to enable invoice checkout and payment processing.
             </p>
           </div>
@@ -211,91 +229,69 @@ export const PatientBillingPage = () => {
       ) : null}
 
       {autoDraft.lastDraft ? (
-        <p className="text-[10px] text-slate-400 text-right -mb-4">
-          Local draft saved {new Date(autoDraft.lastDraft.updatedAt).toLocaleTimeString()}
+        <p className="text-[10px] text-slate-400 text-right -mb-2 font-sans font-medium">
+          Local draft saved <span className="font-mono">{new Date(autoDraft.lastDraft.updatedAt).toLocaleTimeString()}</span>
         </p>
       ) : null}
 
       {payError && (
-        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-750 font-bold">
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-bold font-sans">
           {payError}
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => navigate('/cashier')}
-            className="p-2 border border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-800 rounded-xl transition-all"
-          >
-            <ArrowLeft className="h-4.5 w-4.5" />
-          </button>
-          <PageHeader 
-            title="Patient Payment Desk" 
-            description="Reconcile physician consults, clinic procedures, and LIS/RIS orders to process patient checkout bills." 
-          />
-        </div>
-      </div>
+      <HmsPageHeader 
+        title="Patient Payment Desk" 
+        description="Reconcile physician consults, clinic procedures, and LIS/RIS orders to process patient checkout bills."
+        onBack={() => navigate('/cashier')}
+      />
 
-      <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="flex items-center gap-3.5 border-b md:border-b-0 md:border-r border-slate-100 pb-4 md:pb-0">
-          <div className="h-11 w-11 rounded-2xl bg-indigo-50 border border-indigo-150 flex items-center justify-center text-indigo-600 shadow-sm">
-            <User className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="font-black text-slate-800 text-[13px] leading-tight">{patient.name}</h4>
-            <span className="text-[10px] text-slate-400 font-mono font-bold uppercase">MRN: {patient.mrn}</span>
-          </div>
-        </div>
-
-        <div className="space-y-1 text-xs">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Billing Status</span>
-          <p className="font-bold text-slate-700">{invoice.status}</p>
-        </div>
-
-        <div className="space-y-1 text-xs col-span-2">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Payer Policy</span>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 font-bold text-indigo-755 bg-indigo-50 border border-indigo-150 px-2 py-0.5 rounded-lg">
-              <ShieldCheck className="h-3.5 w-3.5 text-indigo-500" /> {patient.insurance}
-            </span>
-          </div>
-        </div>
-      </div>
+      <HmsSafetyBar
+        patientName={patient.name}
+        mrn={patient.mrn}
+        dob={undefined}
+        age={patient.age}
+        gender={patient.gender}
+        allergies="N/A"
+        insurance={patient.insurance}
+        policyNo={patient.policyNo}
+      />
 
       {!showReceipt ? (
-        <form onSubmit={handleProcessSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <form onSubmit={handleProcessSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 space-y-3">
             <InvoiceSummaryCard
               invoiceNo={invoice.invoiceNumber || invoice.id.substring(0, 8)}
               items={billItems}
               discount={0}
               tax={0}
               hmoShare={0}
+              className="!rounded-lg"
             />
 
-            <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
-              <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-1.5">
-                <Coins className="h-4.5 w-4.5 text-indigo-500" />
+            <div className="bg-white border border-slate-200 p-4 rounded-lg shadow-sm space-y-2">
+              <h3 className="font-bold text-slate-900 text-[10px] tracking-wider uppercase border-b border-slate-100 pb-1.5 flex items-center gap-1 font-sans">
+                <Coins className="h-4 w-4 text-blue-500" />
                 Billing Adjustments & Discounts
               </h3>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              <p className="text-xs text-slate-500 font-medium leading-relaxed font-sans">
                 Special senior citizen discounts and HMO adjudications must be requested and approved in billing workflows prior to payment posting.
               </p>
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-3">
             <PaymentMethodPanel 
               amountDue={remainingBalance} 
               onMethodChange={handleMethodChange} 
+              className="!rounded-lg"
             />
 
-            <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
-              <h4 className="font-bold text-slate-800 text-xs tracking-wider uppercase border-b border-slate-100 pb-2">
+            <div className="bg-white border border-slate-200 p-4 rounded-lg shadow-sm space-y-3">
+              <h4 className="font-bold text-slate-900 text-[10px] tracking-wider uppercase border-b border-slate-100 pb-1.5 font-sans">
                 Checkout Summary
               </h4>
-              <div className="space-y-3.5 text-xs font-semibold">
+              <div className="space-y-2 text-xs font-semibold font-sans">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Already Paid:</span>
                   <span className="font-mono text-slate-800">₱{amountPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
@@ -306,17 +302,17 @@ export const PatientBillingPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Payment Mode:</span>
-                  <span className="font-black text-slate-800 capitalize">{paymentMethod}</span>
+                  <span className="font-bold text-slate-800 capitalize">{paymentMethod}</span>
                 </div>
 
                 {hasHandoff && (
-                  <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1 text-center font-bold uppercase tracking-wider">
+                  <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg py-1 text-center font-bold uppercase tracking-wider font-sans">
                     Clinical Handoff Active
                   </div>
                 )}
 
                 {submitError && (
-                  <p className="text-[10px] text-rose-650 font-extrabold uppercase tracking-wide">
+                  <p className="text-[10px] text-rose-650 font-extrabold uppercase tracking-wide font-sans">
                     {submitError}
                   </p>
                 )}
@@ -324,9 +320,9 @@ export const PatientBillingPage = () => {
                 <button
                   type="submit"
                   disabled={payLoading || remainingBalance <= 0 || !session}
-                  className="btn btn-success w-full py-3 text-xs font-black rounded-xl shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-sans"
                 >
-                  <CheckCircle className="h-4.5 w-4.5" /> {payLoading ? 'Processing...' : 'Process Payment Clearance'}
+                  <CheckCircle className="h-4 w-4" /> {payLoading ? 'Processing...' : 'Process Payment Clearance'}
                 </button>
               </div>
             </div>
@@ -334,39 +330,38 @@ export const PatientBillingPage = () => {
         </form>
       ) : (
         /* Receipt preview */
-        <div className="card p-8 bg-white border border-slate-200 shadow-lg rounded-3xl max-w-xl mx-auto space-y-6 animate-scale-in relative">
-          
+        <div className="bg-white border border-slate-200 p-6 shadow-sm rounded-lg max-w-md mx-auto space-y-4 animate-scale-in">
           <div className="text-center space-y-1">
-            <Receipt className="h-10 w-10 text-emerald-600 mx-auto" />
-            <h3 className="font-extrabold text-slate-800 text-lg uppercase tracking-wider">Gemini Hospital Billing</h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Branch POS Receipt Terminal</p>
+            <Receipt className="h-8 w-8 text-emerald-600 mx-auto" />
+            <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider font-sans">Gemini Hospital Billing</h3>
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest font-sans">Branch POS Receipt Terminal</p>
           </div>
 
-          <div className="border-t border-b border-slate-100 py-4 space-y-2 text-xs">
+          <div className="border-t border-b border-slate-100 py-3 space-y-1.5 text-xs">
             <div className="flex justify-between">
-              <span className="text-slate-400 font-bold">Receipt ID:</span>
-              <span className="font-mono font-black text-slate-800">{receiptData?.id?.substring(0, 8) || 'N/A'}</span>
+              <span className="text-slate-400 font-bold font-sans">Receipt ID:</span>
+              <span className="font-mono font-bold text-slate-800">{receiptData?.id?.substring(0, 8) || 'N/A'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400 font-bold">Invoice Cleared:</span>
-              <span className="font-mono font-black text-slate-800">{invoice.invoiceNumber || invoice.id.substring(0, 8)}</span>
+              <span className="text-slate-400 font-bold font-sans">Invoice Cleared:</span>
+              <span className="font-mono font-bold text-slate-800">{invoice.invoiceNumber || invoice.id.substring(0, 8)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400 font-bold">Patient Name:</span>
-              <span className="font-black text-slate-800">{patient.name}</span>
+              <span className="text-slate-400 font-bold font-sans">Patient Name:</span>
+              <span className="font-bold text-slate-800 font-sans">{patient.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400 font-bold">MRN:</span>
-              <span className="font-mono font-bold text-slate-850">{patient.mrn}</span>
+              <span className="text-slate-400 font-bold font-sans">MRN:</span>
+              <span className="font-mono font-bold text-slate-800">{patient.mrn}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400 font-bold">Processed Time:</span>
-              <span className="font-bold text-slate-800">Today, Just now</span>
+              <span className="text-slate-400 font-bold font-sans">Processed Time:</span>
+              <span className="font-bold text-slate-800 font-sans">Today, Just now</span>
             </div>
           </div>
 
-          <div className="space-y-2 text-xs">
-            <h5 className="font-black text-slate-400 uppercase text-[10px] tracking-wider">Cleared Charges</h5>
+          <div className="space-y-1.5 text-xs font-sans">
+            <h5 className="font-bold text-slate-400 uppercase text-[9px] tracking-wider font-sans">Cleared Charges</h5>
             {billItems.map((bi) => (
               <div key={bi.id} className="flex justify-between font-semibold">
                 <span className="text-slate-700">{bi.name} x{bi.quantity}</span>
@@ -375,61 +370,59 @@ export const PatientBillingPage = () => {
             ))}
           </div>
 
-          <div className="border-t border-slate-100 pt-4 space-y-2 text-xs">
-            <div className="flex justify-between font-bold text-slate-900 text-sm">
+          <div className="border-t border-slate-100 pt-3 space-y-1.5 text-xs">
+            <div className="flex justify-between font-bold text-slate-900 text-sm font-sans">
               <span>Amount Paid:</span>
               <span className="font-mono">₱{remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
             </div>
-            <div className="flex justify-between text-[10px] text-slate-450 font-bold uppercase">
+            <div className="flex justify-between text-[9px] text-slate-450 font-bold uppercase font-sans">
               <span>Payment Mode:</span>
               <span>{paymentMethod}</span>
             </div>
           </div>
 
-          <div className="p-3 bg-emerald-50 border border-emerald-150 rounded-2xl flex gap-2 text-xs text-emerald-800 font-bold justify-center items-center">
-            <CheckCircle className="h-4.5 w-4.5 text-emerald-600 flex-shrink-0" />
+          <div className="p-2.5 bg-emerald-50 border border-emerald-150 rounded-lg flex gap-1.5 text-xs text-emerald-800 font-bold justify-center items-center font-sans">
+            <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
             Billing cleared. POS Terminal receipt registered in audit logs.
           </div>
 
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                setShowReceipt(false);
-                navigate('/cashier');
-              }}
-              className="btn bg-indigo-600 hover:bg-indigo-755 text-white text-xs font-black py-2.5 rounded-xl w-full"
-            >
-              Done & Return
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setShowReceipt(false);
+              navigate('/cashier');
+            }}
+            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors font-sans shadow-sm"
+          >
+            Done & Return
+          </button>
         </div>
       )}
 
-      <div className="max-w-xl mx-auto p-4.5 bg-slate-50 border border-slate-150/70 rounded-2xl text-[10px] text-slate-450 font-bold uppercase tracking-wider flex items-center gap-2">
-        <FileText className="h-4.5 w-4.5 text-indigo-500" />
-        <span>Branch POS POS terminal audit logs auto-generated on checkout confirm.</span>
+      <div className="max-w-md mx-auto p-3 bg-slate-50 border border-slate-200 rounded-lg text-[9px] text-slate-500 font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 font-sans shadow-sm">
+        <FileText className="h-4 w-4 text-blue-500" />
+        <span>Branch POS terminal audit logs auto-generated on checkout confirm.</span>
       </div>
 
       {showConfirmation && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white border border-slate-200/85 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl animate-scale-in">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-2xl bg-amber-50 border border-amber-150 flex items-center justify-center text-amber-600">
-                <AlertTriangle className="h-5 w-5" />
+          <div className="bg-white border border-slate-200 rounded-lg p-5 max-w-sm w-full space-y-3 shadow-md">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+                <AlertTriangle className="h-4.5 w-4.5" />
               </div>
               <div>
-                <h4 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Confirm Payment</h4>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">Invoice #{invoice.invoiceNumber || invoice.id.substring(0, 8)}</p>
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider font-sans">Confirm Payment</h4>
+                <p className="text-[9px] text-slate-400 font-bold uppercase font-mono">Invoice #{invoice.invoiceNumber || invoice.id.substring(0, 8)}</p>
               </div>
             </div>
-            <p className="text-xs font-semibold text-slate-500 leading-relaxed">
-              Are you sure you want to process the payment of <span className="text-slate-800 font-bold">₱{remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span> using <span className="text-indigo-650 font-bold capitalize">{paymentMethod}</span>?
+            <p className="text-xs font-semibold text-slate-500 leading-relaxed font-sans">
+              Are you sure you want to process the payment of <span className="text-slate-800 font-bold">₱{remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span> using <span className="text-blue-600 font-bold capitalize">{paymentMethod}</span>?
             </p>
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-1 font-sans">
               <button
                 type="button"
                 onClick={() => setShowConfirmation(false)}
-                className="btn border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold py-2.5 rounded-xl flex-1 transition-all"
+                className="border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold py-1.5 rounded-lg flex-1 transition-all"
               >
                 Cancel
               </button>
@@ -437,16 +430,15 @@ export const PatientBillingPage = () => {
                 type="button"
                 onClick={handleConfirmPayment}
                 disabled={payLoading}
-                className="btn btn-success text-xs font-black py-2.5 rounded-xl flex-1 flex items-center justify-center gap-1.5 shadow-sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded-lg flex-1 flex items-center justify-center gap-1.5 shadow-sm transition-all"
               >
-                <CheckCircle className="h-4.5 w-4.5" /> Confirm
+                <CheckCircle className="h-4 w-4" /> Confirm
               </button>
             </div>
           </div>
         </div>
       )}
-
-    </div>
+    </HmsDashboardShell>
   );
 };
 

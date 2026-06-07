@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { PageHeader } from '../../components/ui/page-header';
-import { Play, LogOut, Scale, ShieldCheck } from 'lucide-react';
+import { Play, LogOut, Scale, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useActiveSession } from '../../hooks/use-billing';
 import { useUser } from '../../hooks/use-user';
+import { HmsDashboardShell, HmsToolbar, HmsAuditFooter } from '../../components/hms-dashboard';
+import { HmsPageHeader, HmsFormContainer } from '../../components/hms-page';
 
 export const CashierSessionPage: React.FC = () => {
   const user = useUser();
@@ -12,6 +13,13 @@ export const CashierSessionPage: React.FC = () => {
   const [actualClosingBalance, setActualClosingBalance] = useState<string>('');
   const [remarks, setRemarks] = useState<string>('');
   const [submitError, setSubmitError] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState<Date | undefined>(undefined);
+
+  React.useEffect(() => {
+    if (!loading) {
+      setLastUpdated(new Date());
+    }
+  }, [loading]);
 
   const cashPayments = session?.payments
     ?.filter((p) => p.paymentMethod === 'CASH' && p.status === 'POSTED')
@@ -69,42 +77,35 @@ export const CashierSessionPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-xs text-slate-400">
-        Loading cashier session status...
+      <div className="p-8 text-center bg-white border border-slate-200 rounded-lg shadow-sm space-y-3 max-w-sm mx-auto mt-12 animate-fade-in">
+        <div className="animate-spin mx-auto w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full" />
+        <p className="text-xs text-slate-500 font-medium tracking-wide animate-pulse font-sans">Loading cashier session status...</p>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6 pb-12 animate-fade-in">
-      <PageHeader 
-        title="POS Teller Drawer Console" 
-        description="Monitor current cash-in-drawer starting floats, reconcile drawer balances, and close cashier shifts." 
-      />
+  const content = () => {
+    if (session) {
+      const actualVal = parseFloat(actualClosingBalance);
+      const isVariance = !isNaN(actualVal) && actualVal !== expectedCash;
+      const varianceAmount = !isNaN(actualVal) ? actualVal - expectedCash : 0;
 
-      {error && (
-        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-750 font-bold">
-          {error}
-        </div>
-      )}
-
-      {session ? (
-        /* Active session details */
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
-            <h4 className="font-bold text-slate-800 text-xs tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-1.5">
-              <ShieldCheck className="h-4.5 w-4.5 text-indigo-500" />
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {/* Shift Details */}
+          <div className="bg-white border border-slate-200 p-4 rounded-lg shadow-sm space-y-3.5">
+            <h4 className="font-bold text-slate-900 text-[10px] tracking-wider uppercase border-b border-slate-100 pb-1.5 flex items-center gap-1 font-sans">
+              <ShieldCheck className="h-4 w-4 text-blue-500" />
               Active Shift Status
             </h4>
-            <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between font-semibold border-b border-slate-50 pb-1.5">
-                <span className="text-slate-500">Session ID:</span>
-                <span className="font-mono font-bold text-slate-800">{session.id}</span>
+            <div className="space-y-2 text-xs font-sans">
+              <div className="flex justify-between font-semibold border-b border-slate-50 pb-1">
+                <span className="text-slate-550">Session ID:</span>
+                <span className="font-mono font-bold text-slate-800 break-all text-right max-w-[150px]">{session.id}</span>
               </div>
-              <div className="flex justify-between font-semibold border-b border-slate-50 pb-1.5">
-                <span className="text-slate-500">Shift Started:</span>
-                <span className="font-bold text-slate-800">{new Date(session.openedAt).toLocaleTimeString()}</span>
+              <div className="flex justify-between font-semibold border-b border-slate-50 pb-1">
+                <span className="text-slate-550">Shift Started:</span>
+                <span className="font-mono font-bold text-slate-800">{new Date(session.openedAt).toLocaleTimeString()}</span>
               </div>
               <div className="flex justify-between font-bold pt-1">
                 <span className="text-slate-900">Current Status:</span>
@@ -115,113 +116,150 @@ export const CashierSessionPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
-            <h4 className="font-bold text-slate-800 text-xs tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-1.5">
-              <Scale className="h-4.5 w-4.5 text-indigo-500" />
+          {/* Collections Reconciliation */}
+          <div className="bg-white border border-slate-200 p-4 rounded-lg shadow-sm space-y-3.5">
+            <h4 className="font-bold text-slate-900 text-[10px] tracking-wider uppercase border-b border-slate-100 pb-1.5 flex items-center gap-1 font-sans">
+              <Scale className="h-4 w-4 text-blue-500" />
               Collections Reconciliation
             </h4>
-            <div className="space-y-2.5 text-xs font-semibold">
-              <div className="flex justify-between border-b border-slate-50 pb-1.5">
-                <span className="text-slate-500">Starting Drawer:</span>
-                <span className="font-mono text-slate-800">₱{Number(session.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+            <div className="space-y-2 text-xs font-sans">
+              <div className="flex justify-between border-b border-slate-550/10 pb-1 font-semibold">
+                <span className="text-slate-550">Starting Float:</span>
+                <span className="font-mono text-slate-800">{`₱${Number(session.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-50 pb-1.5">
-                <span className="text-slate-500">CASH Payments:</span>
-                <span className="font-mono text-slate-850">₱{cashPayments.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+              <div className="flex justify-between border-b border-slate-550/10 pb-1 font-semibold">
+                <span className="text-slate-550">CASH Payments:</span>
+                <span className="font-mono text-slate-850">{`₱${cashPayments.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}</span>
               </div>
-              <div className="flex justify-between font-bold pt-1.5 text-sm">
-                <span className="text-slate-900">Expected Balance:</span>
-                <span className="font-mono text-slate-900">₱{expectedCash.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+              <div className="flex justify-between font-bold pt-1 text-slate-900">
+                <span>Expected Drawer:</span>
+                <span className="font-mono">{`₱${expectedCash.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}</span>
               </div>
             </div>
           </div>
 
-          <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl">
-            <form onSubmit={handleCloseSession} className="space-y-4">
-              <h4 className="font-bold text-slate-800 text-xs tracking-wider uppercase border-b border-slate-100 pb-3">
-                Shift Closure Reconcile
-              </h4>
-              <div className="space-y-3.5 text-xs">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-450 uppercase block">Actual Counted Cash</label>
-                  <input
-                    type="number"
-                    value={actualClosingBalance}
-                    onChange={(e) => setActualClosingBalance(e.target.value)}
-                    className="input font-mono font-bold text-slate-800 text-sm py-2 bg-slate-50 border border-slate-200 rounded-xl w-full"
-                    step="0.01"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-455 uppercase block">Variance Remarks</label>
-                  <textarea
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    placeholder="Enter reason for count discrepancy..."
-                    className="input text-xs py-2 bg-slate-50 border border-slate-200 rounded-xl w-full min-h-[60px]"
-                  />
-                </div>
-
-                {submitError && (
-                  <p className="text-[10px] text-rose-600 font-extrabold uppercase tracking-wide">
-                    {submitError}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs font-black py-2.5 rounded-xl w-full flex items-center justify-center gap-1 shadow-sm"
-                >
-                  <LogOut className="h-4 w-4" /> Close Shift Session
-                </button>
-              </div>
-            </form>
-          </div>
-
-        </div>
-      ) : (
-        /* Open Shift Form */
-        <div className="card p-6 bg-white border border-slate-200/80 shadow-md rounded-3xl max-w-md mx-auto space-y-4">
-          <h4 className="font-extrabold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-2">
-            <Play className="h-4 w-4 text-indigo-500 fill-current" />
-            Open Cashier Shift Drawer
-          </h4>
-          <form onSubmit={handleOpenSession} className="space-y-4 text-xs font-semibold text-slate-650">
+          {/* Reconcile and Close Form */}
+          <HmsFormContainer
+            title="Shift Closure Reconcile"
+            description="Declare physical cash drawer count and remarks to commit closing audit log."
+            onSubmit={handleCloseSession}
+            columns={1}
+            error={submitError}
+            actions={
+              <button
+                type="submit"
+                className="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1 shadow-sm transition-colors font-sans"
+              >
+                <LogOut className="h-3.5 w-3.5" /> Close Shift Session
+              </button>
+            }
+          >
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-455 uppercase block">Starting Drawer Float (₱)</label>
+              <label htmlFor="actual-closing-balance" className="text-[10px] font-bold text-slate-500 uppercase block font-sans">Actual Counted Cash (₱) <span className="text-rose-500">*</span></label>
               <input
+                id="actual-closing-balance"
                 type="number"
-                value={openingBalance}
-                onChange={(e) => setOpeningBalance(e.target.value)}
-                placeholder="5,000.00"
-                className="input font-mono font-bold text-slate-800 text-sm py-2 bg-slate-50 border border-slate-200 rounded-xl w-full"
+                value={actualClosingBalance}
+                onChange={(e) => setActualClosingBalance(e.target.value)}
+                className="font-mono font-bold text-slate-800 text-sm p-2 bg-slate-50 border border-slate-200 rounded-lg w-full focus:outline-none focus:ring-1 focus:ring-rose-500"
                 step="0.01"
                 required
+                placeholder="0.00"
               />
             </div>
-            <div className="p-3 bg-indigo-50/50 border border-indigo-150/60 rounded-2xl text-[11px] text-slate-550 leading-relaxed font-semibold">
-              Opening float defines starting cash in physical drawer. Opening shift triggers security audit logs for tracking teller drawer variance.
+
+            <div className="space-y-1.5">
+              <label htmlFor="variance-remarks" className="text-[10px] font-bold text-slate-500 uppercase block font-sans">
+                Variance Remarks {isVariance && <span className="text-rose-500 font-extrabold">* (Required due to variance)</span>}
+              </label>
+              <textarea
+                id="variance-remarks"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Describe reason for cash drawer discrepancy..."
+                className="text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg w-full min-h-[60px] focus:outline-none focus:ring-1 focus:ring-rose-500 font-sans"
+              />
             </div>
 
-            {submitError && (
-              <p className="text-[10px] text-rose-600 font-extrabold uppercase tracking-wide">
-                {submitError}
-              </p>
+            {isVariance && (
+              <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg flex gap-1.5 text-[11px] text-rose-800 font-bold font-sans">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-rose-600" />
+                <div>
+                  <span className="block uppercase tracking-wider text-[9px]">Drawer Discrepancy Detected</span>
+                  <span className="font-normal block text-slate-700 mt-0.5">
+                    Counted cash differs from expected balance by <strong className="font-mono">{`${varianceAmount > 0 ? '+' : ''}₱${varianceAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}</strong>. Variance remarks are strictly required.
+                  </span>
+                </div>
+              </div>
             )}
+          </HmsFormContainer>
+        </div>
+      );
+    }
 
+    /* Open Shift Form */
+    return (
+      <div className="max-w-md mx-auto">
+        <HmsFormContainer
+          title="Open Cashier Shift Drawer"
+          description="Initialize your cashier shift drawer float. Opening a drawer registers a security audit footprint."
+          onSubmit={handleOpenSession}
+          columns={1}
+          error={submitError}
+          actions={
             <button
               type="submit"
-              className="btn btn-primary text-xs font-black py-2.5 rounded-xl w-full flex items-center justify-center gap-1.5"
+              className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors font-sans shadow-sm"
             >
-              <Play className="h-4 w-4 fill-current" /> Open Drawer Shift
+              <Play className="h-3.5 w-3.5 fill-current" /> Open Drawer Shift
             </button>
-          </form>
+          }
+        >
+          <div className="space-y-1.5">
+            <label htmlFor="opening-balance" className="text-[10px] font-bold text-slate-500 uppercase block font-sans">Starting Drawer Float (₱) <span className="text-rose-500">*</span></label>
+            <input
+              id="opening-balance"
+              type="number"
+              value={openingBalance}
+              onChange={(e) => setOpeningBalance(e.target.value)}
+              placeholder="5,000.00"
+              className="font-mono font-bold text-slate-800 text-sm p-2 bg-slate-50 border border-slate-200 rounded-lg w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+              step="0.01"
+              required
+            />
+          </div>
+          <div className="p-2.5 bg-blue-50/50 border border-blue-150/60 rounded-lg text-[11px] text-slate-600 leading-relaxed font-semibold font-sans">
+            Opening float defines starting cash in physical drawer. Opening shift triggers security audit logs for tracking teller drawer variance.
+          </div>
+        </HmsFormContainer>
+      </div>
+    );
+  };
+
+  return (
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar 
+          branchName={user?.branchId || undefined} 
+          role={user?.roles?.join(', ') || 'Cashier Teller'} 
+          lastRefreshed={lastUpdated}
+        />
+      }
+      footer={<HmsAuditFooter lastRefreshed={lastUpdated} dataSource="Cash Drawer Console API" version="v2.1" />}
+    >
+      <HmsPageHeader 
+        title="POS Teller Drawer Console" 
+        description="Monitor current cash-in-drawer starting floats, reconcile drawer balances, and close cashier shifts." 
+      />
+
+      {error && (
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-bold font-sans">
+          {error}
         </div>
       )}
 
-    </div>
+      {content()}
+    </HmsDashboardShell>
   );
 };
 
