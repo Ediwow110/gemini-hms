@@ -26,7 +26,7 @@ export interface AuditSearchParams {
 }
 
 export class ComplianceService {
-  private auditBase = '/audit';
+  private auditBase = '/v1/audit';
   private complianceBase = '/v1/compliance';
 
   async getAuditEvents(params?: AuditSearchParams): Promise<{ data: AuditLogEntry[]; total: number; page: number; pageSize: number }> {

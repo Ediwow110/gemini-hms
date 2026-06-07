@@ -5,7 +5,7 @@ import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
 @UseGuards(PermissionsGuard)
-@Controller('audit')
+@Controller('api/v1/audit')
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
