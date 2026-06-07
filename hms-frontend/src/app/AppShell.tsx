@@ -10,10 +10,11 @@ import {
   Clock
 } from 'lucide-react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo, useEffect } from 'react';
 
 import { useUser, useAuth } from '../hooks/use-user';
 import { RoleBasedSidebar } from './RoleBasedSidebar';
+import { CommandPalette } from './CommandPalette';
 
 const MemoizedSidebar = memo(RoleBasedSidebar);
 MemoizedSidebar.displayName = 'MemoizedSidebar';
@@ -22,11 +23,22 @@ export const AppShell = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const user = useUser();
 
   const { logout } = useAuth();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
 
@@ -85,14 +97,17 @@ export const AppShell = () => {
             </button>
 
             {/* Search */}
-            <div className={`relative hidden md:block transition-all duration-300 ease-out ${searchFocused ? 'max-w-lg' : 'max-w-sm'} w-full`}>
+            <div className="relative hidden md:block transition-all duration-300 ease-out max-w-sm w-full">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
               <input
                 type="text"
-                placeholder="Search patients, orders, or staff..."
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200/80 rounded-xl text-sm placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all duration-300"
+                placeholder="Search patients, orders, or staff... (Ctrl+K)"
+                onClick={() => setIsCommandPaletteOpen(true)}
+                onFocus={(e) => {
+                  e.target.blur();
+                  setIsCommandPaletteOpen(true);
+                }}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200/80 rounded-xl text-sm placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all duration-300 cursor-pointer"
               />
             </div>
           </div>
@@ -219,6 +234,8 @@ export const AppShell = () => {
             </div>
           </div>
         )}
+        {/* Command Palette */}
+        <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
       </div>
     </div>
   );

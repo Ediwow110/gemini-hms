@@ -30,7 +30,10 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         isBranchScoped: item.isBranchScoped,
         zone: item.zone,
       });
-    });
+    })
+    .filter((item, index, self) =>
+      self.findIndex((t) => t.to === item.to) === index
+    );
 
   const filteredItems = query === ''
     ? allowedItems

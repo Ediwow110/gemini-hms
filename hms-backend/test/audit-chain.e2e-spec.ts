@@ -141,7 +141,7 @@ describe('Audit Chain of Custody (e2e)', () => {
 
     // 3. Verify custody chain via API
     await request(app.getHttpServer())
-      .get('/audit/verify')
+      .get('/api/v1/audit/verify')
       .expect(200)
       .expect((res) => {
         expect(res.body.isValid).toBe(true);
@@ -167,7 +167,7 @@ describe('Audit Chain of Custody (e2e)', () => {
 
     // 5. Verify custody chain detection of tampering
     await request(app.getHttpServer())
-      .get('/audit/verify')
+      .get('/api/v1/audit/verify')
       .expect(200)
       .expect((res) => {
         expect(res.body.isValid).toBe(false);
