@@ -52,8 +52,8 @@ export const ClinicalOperationsDashboard: React.FC = () => {
             { title: 'Nursing Tasks', value: 15, description: 'Open clinical actions (Demo)', severity: 'info' },
           ],
           alerts: [
-            { id: 'alert-1', title: 'Urgent Nursing Task', message: 'Administer IV meds - Patient: John Doe', severity: 'critical' },
-            { id: 'alert-2', title: 'Emergency Patient', message: 'Patient Jane Smith in Urgent Care queue', severity: 'critical' },
+            { id: 'alert-1', title: 'Urgent Nursing Task', message: 'Administer IV meds - Patient: Demo Patient A', severity: 'critical' },
+            { id: 'alert-2', title: 'Emergency Patient', message: 'Patient Demo Patient B in Urgent Care queue', severity: 'critical' },
           ],
           flowDistribution: [
             { label: 'Triage', value: 3 },
@@ -73,8 +73,8 @@ export const ClinicalOperationsDashboard: React.FC = () => {
             { id: 'd3', label: 'General', value: 'Medium', trend: '↓' },
           ],
           pendingQueue: [
-            { id: 'q-1', queueNumber: 'Q-001', patientName: 'John Doe', category: 'URGENT', serviceType: 'Consultation', waitTimeMinutes: 22, status: 'WAITING' },
-            { id: 'q-2', queueNumber: 'Q-002', patientName: 'Jane Smith', category: 'EMERGENCY', serviceType: 'Triage', waitTimeMinutes: 5, status: 'TRIAGE' },
+            { id: 'q-1', queueNumber: 'Q-001', patientName: 'Demo Patient A', category: 'URGENT', serviceType: 'Consultation', waitTimeMinutes: 22, status: 'WAITING' },
+            { id: 'q-2', queueNumber: 'Q-002', patientName: 'Demo Patient B', category: 'EMERGENCY', serviceType: 'Triage', waitTimeMinutes: 5, status: 'TRIAGE' },
           ] as unknown as ClinicalWorkQueueDto[],
         });
         setIsDemoData(true);

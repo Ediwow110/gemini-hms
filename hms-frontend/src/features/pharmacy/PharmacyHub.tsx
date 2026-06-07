@@ -16,6 +16,7 @@ import {
 export const PharmacyHub = () => {
   const user = useUser();
   const { data: orders, isLoading: ordersLoading, refetch: refetchOrders } = usePrescriptionQueue("ACTIVE");
+  const safeOrders = Array.isArray(orders) ? orders : [];
   const { data: stock, isLoading: stockLoading, refetch: refetchStock } = useDrugCatalog();
   const dispenseMutation = useDispenseMedication();
   const { data: lowStockItems } = useLowStockAlerts();
@@ -28,7 +29,7 @@ export const PharmacyHub = () => {
   const [showDispenseModal, setShowDispenseModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const selectedOrder = orders?.find((o) => o.id === selectedOrderId);
+  const selectedOrder = safeOrders.find((o) => o.id === selectedOrderId);
   const drugItems = (stock || []).filter((item) => item.type === "DRUG");
 
   const lowStockAlerts = lowStockItems || [];
@@ -46,7 +47,7 @@ export const PharmacyHub = () => {
   const handleOpenDispense = (orderId: string) => {
     setErrorMessage(null);
     setSelectedOrderId(orderId);
-    const order = orders?.find((o) => o.id === orderId);
+    const order = safeOrders.find((o) => o.id === orderId);
     if (order) {
       const matches = getMatchingDrugs(order.medicationName);
       if (matches.length > 0) {
@@ -64,7 +65,7 @@ export const PharmacyHub = () => {
     if (!selectedOrderId || !selectedItemId) return;
 
     setErrorMessage(null);
-    const orderForDispense = orders?.find((o) => o.id === selectedOrderId);
+    const orderForDispense = safeOrders.find((o) => o.id === selectedOrderId);
     try {
       await dispenseMutation.mutateAsync({
         prescriptionId: selectedOrderId,
@@ -126,7 +127,7 @@ export const PharmacyHub = () => {
             </span>
           </div>
 
-          {!orders || orders.length === 0 ? (
+          {safeOrders.length === 0 ? (
             <div className="text-center py-8 text-slate-400 text-sm">
               No active prescriptions awaiting dispensing.
             </div>
@@ -142,7 +143,7 @@ export const PharmacyHub = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {orders.map((order) => {
+                  {safeOrders.map((order) => {
                     const matches = getMatchingDrugs(order.medicationName);
                     const hasStock = matches.some((m) => {
                       const s = getStockForItem(m.id);

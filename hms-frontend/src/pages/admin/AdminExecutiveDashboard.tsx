@@ -84,7 +84,7 @@ export const AdminExecutiveDashboard: React.FC = () => {
             { title: 'Pending Approval', message: 'Refund request for Invoice #INV-2026-001 awaits review.', severity: 'warning' as const },
           ],
           criticalLabs: [
-            { title: 'Abnormal Lab Result', message: 'Critical Potassium level detected for Patient P-101.', severity: 'critical' as const }
+            { title: 'Abnormal Lab Result', message: 'Critical Potassium level detected for Sample Patient 001.', severity: 'critical' as const }
           ],
         });
         setTopLists({
@@ -97,10 +97,10 @@ export const AdminExecutiveDashboard: React.FC = () => {
           ],
           unpaidBills: [
             { id: '1', label: 'Corp Health Plan', value: '$12,000' },
-            { id: '2', label: 'Private Patient X', value: '$4,500' },
+            { id: '2', label: 'Anonymous Client A', value: '$4,500' },
             { id: '3', label: 'HMO North', value: '$3,200' },
             { id: '4', label: 'City Insurance', value: '$2,100' },
-            { id: '5', label: 'Private Patient Y', value: '$1,800' },
+            { id: '5', label: 'Anonymous Client B', value: '$1,800' },
           ],
         });
         setIsDemoData(true);

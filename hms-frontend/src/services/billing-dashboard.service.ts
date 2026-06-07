@@ -139,10 +139,10 @@ export const billingDashboardService = {
         paymentMethodDistribution: demoData.billing.paymentMethodDistribution,
         highestOutstanding: [
           { id: 'out-1', label: 'St. Jude Health Plan', value: '₱85,000', trend: 'UNPAID' },
-          { id: 'out-2', label: 'Juan Dela Cruz', value: '₱45,000', trend: 'UNPAID' },
-          { id: 'out-3', label: 'Maria Clara', value: '₱32,000', trend: 'UNPAID' },
+          { id: 'out-2', label: 'Sample Client A', value: '₱45,000', trend: 'UNPAID' },
+          { id: 'out-3', label: 'Sample Client B', value: '₱32,000', trend: 'UNPAID' },
           { id: 'out-4', label: 'Apex Insurance Co.', value: '₱12,500', trend: 'UNPAID' },
-          { id: 'out-5', label: 'Cardo Dalisay', value: '₱9,700', trend: 'UNPAID' },
+          { id: 'out-5', label: 'Sample Client C', value: '₱9,700', trend: 'UNPAID' },
         ],
         recentPayments: [
           { id: 'pay-1', label: 'INV-2026-002', value: '₱15,200', trend: 'POSTED' },

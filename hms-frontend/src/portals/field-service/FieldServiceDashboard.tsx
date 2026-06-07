@@ -48,17 +48,22 @@ export const FieldServiceDashboard: React.FC = () => {
     const fetchJobs = async () => {
       try {
         const response = await apiClient.get('/logistics/technician/jobs');
-        setJobs(response.data);
+        const data = response.data;
+        const normalizedJobs = {
+          deliveries: Array.isArray(data?.deliveries) ? data.deliveries : [],
+          installations: Array.isArray(data?.installations) ? data.installations : [],
+        };
+        setJobs(normalizedJobs);
         setIsDemoData(false);
       } catch (error) {
         console.warn('Failed to fetch jobs from backend, loading mock data:', error);
         setJobs({
           deliveries: [
-            { id: '1', customer: 'St. Jude Hospital Network', address: 'Building A, Room 102', status: 'IN_PROGRESS' },
-            { id: '2', customer: 'Juan Dela Cruz', address: '123 Rizal Street, Manila', status: 'COMPLETED' },
+            { id: '1', customer: 'Client Hospital A', address: 'Site Location 1', status: 'IN_PROGRESS' },
+            { id: '2', customer: 'Demo Patient A', address: '123 Demo Street, Sample City', status: 'COMPLETED' },
           ],
           installations: [
-            { id: '3', customer: 'MediClinics Diagnostic', address: 'Floor 2, Lab Station B', status: 'PENDING' },
+            { id: '3', customer: 'Client Diagnostic B', address: 'Site Location 2', status: 'PENDING' },
           ],
         });
         setIsDemoData(true);

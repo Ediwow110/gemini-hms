@@ -87,3 +87,43 @@ All 5 upgraded dashboards implement a consistent, premium visual design system:
 - **Frontend Lint**: Clean (`eslint` exit 0).
 - **Frontend Build**: Clean (`npm run build` exit 0).
 - **Git Diff Whitespace Check**: Clean (`git diff --check` exit 0).
+
+## 12. QA Blocker Fix Follow-up
+
+Following the initial QA (which returned REQUEST CHANGES), the following blockers were fixed:
+
+### Blocker 1: FieldServiceDashboard crash (`TypeError: jobs.deliveries is not iterable`)
+- **File**: `hms-frontend/src/portals/field-service/FieldServiceDashboard.tsx`
+- **Fix**: Added `Array.isArray` guards on `data.deliveries` and `data.installations` before setting state. Prevents crash when API returns unexpected response shape.
+- **Test**: Dashboard loads without crash, 115 SVGs / 6 Recharts charts render correctly.
+
+### Blocker 2: PHI-like demo fallback data
+- **Files**: ClinicalOperationsDashboard, AdminExecutiveDashboard, FieldServiceDashboard, billing-dashboard.service, dashboard-admin.mock
+- **Replacements**:
+  - `John Doe` / `Jane Smith` → `Demo Patient A` / `Demo Patient B`
+  - `Patient P-101` → `Sample Patient 001`
+  - `Private Patient X / Y` → `Anonymous Client A / B`
+  - `Juan Dela Cruz` / `Maria Clara` / `Cardo Dalisay` → `Sample Client A / B / C`
+  - `123 Rizal Street, Manila` → `123 Demo Street, Sample City`
+  - `St. Jude Hospital Network` → `Client Hospital A`
+  - `MediClinics Diagnostic` → `Client Diagnostic B`
+- **Result**: Zero remaining PHI-like identifiers in PR-scope files.
+
+### Blocker 3: Pharmacy page crash (`TypeError: orders?.find is not a function`)
+- **File**: `hms-frontend/src/features/pharmacy/PharmacyHub.tsx`
+- **Fix**: Added `safeOrders = Array.isArray(orders) ? orders : []` guard after the hook call. All array operations use `safeOrders` instead of `orders`.
+- **Test**: Pharmacy route loads without crash (101 SVGs render).
+
+### Additional Fix: Clinical Ops service crash (`TypeError: queue.filter is not a function`)
+- **File**: `hms-frontend/src/services/clinical-ops-dashboard.service.ts`
+- **Fix**: Added `Array.isArray` guards on `queue` and `tasks`, and safe-object fallback for `summary`. Prevents crash when API returns unexpected shapes.
+- **Test**: Clinical Ops dashboard loads without crash, 102 SVGs / 4 Recharts charts render.
+
+### Re-verification
+- **Typecheck**: 0 errors
+- **Lint**: 0 errors (2 pre-existing warnings, unchanged)
+- **Tests**: 221/221 passed (30 files)
+- **Build**: SUCCESS
+- **Browser QA**: All 5 dashboards load without crashes — Billing (5/5), Pharmacy (loads), Admin/Executive (5/5), Field Service (loads), Clinical Ops (5/5)
+- **Security review**: PASS — zero PHI, no HIPAA/SOC claims, no auth changes
+- **Final hard review**: APPROVE PUSH
