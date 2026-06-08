@@ -2,15 +2,37 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+// Custom plugin to dynamically shim es-toolkit/compat/* imports.
+// Recharts imports from 'es-toolkit/compat/*', which es-toolkit's exports maps to CommonJS.
+// This generates broken prebundle code in Vite dev. This plugin shims those imports to load
+// from the main ESM entrypoint 'es-toolkit/compat' instead.
+function esToolkitCompatPlugin() {
+  return {
+    name: 'es-toolkit-compat-shim',
+    resolveId(source: string) {
+      if (source.startsWith('es-toolkit/compat/') && source !== 'es-toolkit/compat') {
+        return `\0shim:${source}`
+      }
+      return null
+    },
+    load(id: string) {
+      if (id.startsWith('\0shim:es-toolkit/compat/')) {
+        const name = id.replace('\0shim:es-toolkit/compat/', '')
+        return `import { ${name} } from 'es-toolkit/compat';\nexport default ${name};\n`
+      }
+      return null
+    }
+  }
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [esToolkitCompatPlugin(), react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
       'use-sync-external-store/with-selector.js': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
       'use-sync-external-store/shim/with-selector.js': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
       'use-sync-external-store/shim/with-selector': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
-      'es-toolkit/compat/get': path.resolve(__dirname, './src/shims/es-toolkit-compat-get.ts'),
     },
   },
   // Prebundle CommonJS dependencies to avoid runtime ESM/CommonJS conversion crashes in browser
