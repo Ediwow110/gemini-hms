@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from './app/AppShell';
@@ -41,13 +41,10 @@ const Reports = lazy(() => import('./features/reports/Reports').then(m => ({ def
 const Inventory = lazy(() => import('./features/inventory/Inventory').then(m => ({ default: m.Inventory })));
 const InventoryDetail = lazy(() => import('./features/inventory/InventoryDetail').then(m => ({ default: m.InventoryDetail })));
 const StockReceiving = lazy(() => import('./features/inventory/StockReceiving').then(m => ({ default: m.StockReceiving })));
-const LabEncode = lazy(() => import('./features/laboratory/LabEncode').then(m => ({ default: m.LabEncode })));
-const LabResultList = lazy(() => import('./features/laboratory/LabResultList').then(m => ({ default: m.LabResultList })));
-const LabApproval = lazy(() => import('./features/laboratory/LabApproval').then(m => ({ default: m.LabApproval })));
-const PrintPreview = lazy(() => import('./features/laboratory/PrintPreview').then(m => ({ default: m.PrintPreview })));
 const ValidatedResultsPage = lazy(() => import('./portals/lab/ValidatedResultsPage').then(m => ({ default: m.ValidatedResultsPage })));
 const ReleasedResultsPage = lazy(() => import('./portals/lab/ReleasedResultsPage').then(m => ({ default: m.ReleasedResultsPage })));
 const ReleasedResultDetailPage = lazy(() => import('./portals/lab/ReleasedResultDetailPage').then(m => ({ default: m.ReleasedResultDetailPage })));
+const LegacyResultRedirectBridge = lazy(() => import('./portals/lab/LegacyResultRedirectBridge').then(m => ({ default: m.LegacyResultRedirectBridge })));
 
 // Specialized Operational & Compliance Panels
 const EMRWorkspace = lazy(() => import('./features/emr/EMRWorkspace').then(m => ({ default: m.EMRWorkspace })));
@@ -302,10 +299,10 @@ const router = createBrowserRouter([
           { path: 'inventory', element: <PermissionRoute permission="inventory.item.view"><LazyPage><Inventory /></LazyPage></PermissionRoute> },
           { path: 'inventory/:id', element: <PermissionRoute permission="inventory.item.view"><LazyPage><InventoryDetail /></LazyPage></PermissionRoute> },
           { path: 'inventory/receiving', element: <PermissionRoute permission="inventory.stock.receive"><LazyPage><StockReceiving /></LazyPage></PermissionRoute> },
-          { path: 'lab/results', element: <PermissionRoute permission="lab.result.view"><LazyPage><LabResultList /></LazyPage></PermissionRoute> },
-          { path: 'lab/results/:id/encode', element: <PermissionRoute permission="lab.result.encode"><LazyPage><LabEncode /></LazyPage></PermissionRoute> },
-          { path: 'lab/results/:id/approval', element: <PermissionRoute permission="lab.result.approve"><LazyPage><LabApproval /></LazyPage></PermissionRoute> },
-          { path: 'lab/results/:id/print-preview', element: <PermissionRoute permission="lab.result.view"><LazyPage><PrintPreview /></LazyPage></PermissionRoute> },
+          { path: 'lab/results', element: <Navigate to="/lab/orders" replace /> },
+          { path: 'lab/results/:id/encode', element: <PermissionRoute permission="lab.result.encode"><LazyPage><LegacyResultRedirectBridge mode="encode" /></LazyPage></PermissionRoute> },
+          { path: 'lab/results/:id/approval', element: <PermissionRoute permission="lab.result.approve"><LazyPage><LegacyResultRedirectBridge mode="approval" /></LazyPage></PermissionRoute> },
+          { path: 'lab/results/:id/print-preview', element: <PermissionRoute permission="lab.result.view"><LazyPage><LegacyResultRedirectBridge mode="print-preview" /></LazyPage></PermissionRoute> },
           { path: 'lab/validated', element: <PermissionRoute permission="lab.result.view"><LazyPage><ValidatedResultsPage /></LazyPage></PermissionRoute> },
           { path: 'lab/released', element: <PermissionRoute permission="lab.result.view"><LazyPage><ReleasedResultsPage /></LazyPage></PermissionRoute> },
           { path: 'lab/released/:patientId/:orderId', element: <PermissionRoute permission="lab.result.view"><LazyPage><ReleasedResultDetailPage /></LazyPage></PermissionRoute> },
