@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { Database, AlertTriangle, Cpu, HardDrive } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Database, Cpu, HardDrive, ShieldAlert } from 'lucide-react';
 import { RetentionJobCard, RetentionJob } from './components/RetentionJobCard';
 import ComplianceScopeFilter from './components/ComplianceScopeFilter';
+import { useRetentionStatus } from '../../hooks/use-compliance';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const RetentionManagementPage: React.FC = () => {
   const [scope, setScope] = useState({ tenantId: 'all', branchId: 'all' });
+  const { status: retentionData, loading } = useRetentionStatus();
+
+  // Policies remain mock until a Policy Management API is implemented
   const [jobs, setJobs] = useState<RetentionJob[]>([
     {
       id: "RET-101",
@@ -31,24 +37,10 @@ export const RetentionManagementPage: React.FC = () => {
       recordsProcessed: 432,
       tenantName: "St. Jude Hospital Network",
       branchName: "St. Jude Metro"
-    },
-    {
-      id: "RET-103",
-      policyName: "Temporary Patient Intake Queue Records",
-      description: "Prune active triage tickets and intake forms. Operational requirement: 1 year maximum.",
-      retentionPeriodYears: 1,
-      targetCategory: "Triage & Queue Metadata",
-      lastRun: "2026-05-20 01:00:00",
-      nextRun: "2026-05-22 01:00:00",
-      status: "IDLE",
-      recordsProcessed: 98,
-      tenantName: "MediClinics Group",
-      branchName: "MediClinics Central"
     }
   ]);
 
   const handleTriggerDryRun = (id: string) => {
-    // Notify dry-run start
     setJobs(prev => prev.map(j => {
       if (j.id === id) {
         return { ...j, status: 'RUNNING' };
@@ -56,6 +48,15 @@ export const RetentionManagementPage: React.FC = () => {
       return j;
     }));
   };
+
+  // Aggregate real stats from the backend
+  const stats = useMemo(() => {
+    if (!retentionData) return { totalScanned: 0, archived: 0 };
+    const values = Object.values(retentionData) as { active: number; archived: number }[];
+    const total = values.reduce((acc, curr) => acc + curr.active + curr.archived, 0);
+    const archived = values.reduce((acc, curr) => acc + curr.archived, 0);
+    return { totalScanned: total, archived };
+  }, [retentionData]);
 
   // Filter jobs based on selected tenant/branch scopes
   const filteredJobs = jobs.filter(j => {
@@ -67,73 +68,86 @@ export const RetentionManagementPage: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
-      {/* Title Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Data Retention & Archive Management
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Configure automated database clean-up rules, set PHI retention timelines, and trigger policy dry-runs</p>
+    <HmsDashboardShell>
+      <div className="space-y-6 pb-12">
+        <HmsPageHeader
+          title="Data Retention & Archive Management"
+          description="Configure automated database clean-up rules, set PHI retention timelines, and trigger policy dry-runs"
+        />
+
+        {/* Scope Selector */}
+        <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
+
+        {/* Honest Labeling Banner */}
+        <div className="p-4 bg-indigo-50 border border-indigo-150 rounded-2xl flex gap-3 text-xs text-indigo-900 leading-normal">
+          <Database className="h-5 w-5 text-indigo-600 flex-shrink-0" />
+          <div>
+            <p className="font-bold uppercase tracking-tight">Backend Connectivity Enabled</p>
+            <p className="mt-0.5 opacity-90">
+              Retention statistics are now derived from the live database. Policy management and enforcement execution remain in simulation mode until the Governance API is finalized.
+            </p>
+          </div>
         </div>
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2 text-[10px] text-amber-800 leading-normal max-w-md">
-          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-          <p>
-            <strong>Sandbox Safety Rule:</strong> Database pruning and storage optimization tools execute solely in sandbox mode. No real delete or delete-cascade commands are dispatched to database structures.
-          </p>
+
+        {/* Storage stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Total Scanned Records</p>
+              <p className="text-xl font-extrabold text-slate-850 tracking-tight font-mono">
+                {loading ? '...' : stats.totalScanned.toLocaleString()}
+              </p>
+            </div>
+            <div className="p-2.5 bg-indigo-50 text-indigo-650 rounded-xl">
+              <Database className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Archived Records</p>
+              <p className="text-xl font-extrabold text-indigo-650 tracking-tight font-mono">
+                {loading ? '...' : stats.archived.toLocaleString()}
+              </p>
+            </div>
+            <div className="p-2.5 bg-indigo-50 text-indigo-650 rounded-xl">
+              <HardDrive className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Active Policy Rules</p>
+              <p className="text-xl font-extrabold text-slate-850 tracking-tight font-mono">{filteredJobs.length} Configured</p>
+            </div>
+            <div className="p-2.5 bg-indigo-50 text-indigo-650 rounded-xl">
+              <Cpu className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
+
+        {/* Jobs Grid */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center px-1">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Data Pruning Policies (Simulated)</h3>
+            <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+              <ShieldAlert className="h-3.5 w-3.5" />
+              <span className="text-[10px] font-bold uppercase">Sandbox Mode</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {filteredJobs.map((job) => (
+              <RetentionJobCard
+                key={job.id}
+                job={job}
+                onTriggerDryRun={handleTriggerDryRun}
+              />
+            ))}
+          </div>
         </div>
       </div>
-
-      {/* Scope Selector */}
-      <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
-
-      {/* Storage stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Total Scanned Records</p>
-            <p className="text-xl font-extrabold text-slate-850 tracking-tight font-mono">1,735 Records</p>
-          </div>
-          <div className="p-2.5 bg-indigo-50 text-indigo-650 rounded-xl">
-            <Database className="h-5 w-5" />
-          </div>
-        </div>
-
-        <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Simulated Savings</p>
-            <p className="text-xl font-extrabold text-indigo-650 tracking-tight font-mono">41.8 MB Free</p>
-          </div>
-          <div className="p-2.5 bg-indigo-50 text-indigo-650 rounded-xl">
-            <HardDrive className="h-5 w-5" />
-          </div>
-        </div>
-
-        <div className="p-4 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">Active Policy Rules</p>
-            <p className="text-xl font-extrabold text-slate-850 tracking-tight font-mono">{filteredJobs.length} Configured</p>
-          </div>
-          <div className="p-2.5 bg-indigo-50 text-indigo-650 rounded-xl">
-            <Cpu className="h-5 w-5" />
-          </div>
-        </div>
-      </div>
-
-      {/* Jobs Grid */}
-      <div className="space-y-4">
-        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Data Pruning Policies</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredJobs.map((job) => (
-            <RetentionJobCard
-              key={job.id}
-              job={job}
-              onTriggerDryRun={handleTriggerDryRun}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
+      <HmsAuditFooter />
+    </HmsDashboardShell>
   );
 };
 
