@@ -2,37 +2,27 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Custom plugin to dynamically shim es-toolkit/compat/* imports.
-// Recharts imports from 'es-toolkit/compat/*', which es-toolkit's exports maps to CommonJS.
-// This generates broken prebundle code in Vite dev. This plugin shims those imports to load
-// from the main ESM entrypoint 'es-toolkit/compat' instead.
-function esToolkitCompatPlugin() {
-  return {
-    name: 'es-toolkit-compat-shim',
-    resolveId(source: string) {
-      if (source.startsWith('es-toolkit/compat/') && source !== 'es-toolkit/compat') {
-        return `\0shim:${source}`
-      }
-      return null
-    },
-    load(id: string) {
-      if (id.startsWith('\0shim:es-toolkit/compat/')) {
-        const name = id.replace('\0shim:es-toolkit/compat/', '')
-        return `import { ${name} } from 'es-toolkit/compat';\nexport default ${name};\n`
-      }
-      return null
-    }
-  }
-}
-
 export default defineConfig({
-  plugins: [esToolkitCompatPlugin(), react()],
+  plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
       'use-sync-external-store/with-selector.js': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
       'use-sync-external-store/shim/with-selector.js': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
       'use-sync-external-store/shim/with-selector': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
+      
+      // ESM Shims for es-toolkit/compat paths to prevent Vite/Rolldown prebundle crashes in dev
+      'es-toolkit/compat/last': path.resolve(__dirname, './src/shims/es-toolkit-compat/last.ts'),
+      'es-toolkit/compat/maxBy': path.resolve(__dirname, './src/shims/es-toolkit-compat/maxBy.ts'),
+      'es-toolkit/compat/minBy': path.resolve(__dirname, './src/shims/es-toolkit-compat/minBy.ts'),
+      'es-toolkit/compat/get': path.resolve(__dirname, './src/shims/es-toolkit-compat/get.ts'),
+      'es-toolkit/compat/omit': path.resolve(__dirname, './src/shims/es-toolkit-compat/omit.ts'),
+      'es-toolkit/compat/sumBy': path.resolve(__dirname, './src/shims/es-toolkit-compat/sumBy.ts'),
+      'es-toolkit/compat/sortBy': path.resolve(__dirname, './src/shims/es-toolkit-compat/sortBy.ts'),
+      'es-toolkit/compat/throttle': path.resolve(__dirname, './src/shims/es-toolkit-compat/throttle.ts'),
+      'es-toolkit/compat/isPlainObject': path.resolve(__dirname, './src/shims/es-toolkit-compat/isPlainObject.ts'),
+      'es-toolkit/compat/range': path.resolve(__dirname, './src/shims/es-toolkit-compat/range.ts'),
+      'es-toolkit/compat/uniqBy': path.resolve(__dirname, './src/shims/es-toolkit-compat/uniqBy.ts'),
     },
   },
   // Prebundle CommonJS dependencies to avoid runtime ESM/CommonJS conversion crashes in browser

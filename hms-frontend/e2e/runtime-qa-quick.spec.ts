@@ -48,9 +48,35 @@ test.describe.serial('runtime QA', () => {
   test.beforeAll(async ({ browser }) => {
     page = await browser.newPage({ viewport: { width: 1366, height: 768 } });
     page.on('console', (msg) => {
-      if (msg.type() === 'error' && sanitize(msg.text())) errors.push(msg.text());
+      const text = msg.text();
+      const isError = msg.type() === 'error';
+      if (isError && sanitize(text)) {
+        errors.push(text);
+      }
+      
+      // Specifically target critical runtime module/interop/Type errors in console output
+      const isCriticalRuntimeError =
+        text.includes('TypeError') ||
+        /require_[a-zA-Z0-9_$]+ is not a function/.test(text) ||
+        /is not a function/.test(text) ||
+        text.includes('Failed to load module script') ||
+        text.includes('failed to resolve') ||
+        text.includes('Failed to fetch dynamically imported module') ||
+        text.includes('is not exported by');
+        
+      if (isCriticalRuntimeError && (isError || text.includes('Error') || text.includes('Exception'))) {
+        errors.push(`CRITICAL_RUNTIME: ${text}`);
+      }
     });
     page.on('pageerror', (err) => errors.push(`PAGE: ${err.message}`));
+  });
+
+  test.afterEach(async () => {
+    const criticalErrors = errors.filter((e) => e.startsWith('PAGE:') || e.startsWith('CRITICAL_RUNTIME:'));
+    expect(
+      criticalErrors,
+      `Critical page/runtime errors found so far:\n${criticalErrors.join('\n')}`,
+    ).toEqual([]);
   });
 
   test('login form renders on /login', async () => {
@@ -148,7 +174,7 @@ test.describe.serial('runtime QA', () => {
     await sleep(61_000);
 
     const dashLogins: { email: string; label: string; routes: string[] }[] = [
-      { email: 'admin@hospital.com', label: 'Super Admin', routes: ['/admin', '/admin/reports', '/admin/audit-logs', '/admin/security'] },
+      { email: 'admin@hospital.com', label: 'Super Admin', routes: ['/admin', '/admin/reports', '/admin/audit-logs', '/admin/security', '/admin/executive'] },
       { email: 'patient@hospital.com', label: 'Patient', routes: ['/patient', '/patient/lab-results', '/patient/billing', '/patient/prescriptions'] },
       { email: 'doctor@hospital.com', label: 'Doctor', routes: ['/doctor'] },
       { email: 'branch.admin@hospital.com', label: 'Branch Admin', routes: ['/branch-admin'] },
