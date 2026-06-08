@@ -1,26 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Truck, ChevronRight, Loader2 } from 'lucide-react';
-import { apiClient } from '../../../lib/api';
+import React from 'react';
+import { Truck, ChevronRight } from 'lucide-react';
+import { useFieldServiceShipments } from '../../../hooks/use-field-service';
+import { HmsLoadingSkeleton, HmsEmptyState } from '../../../components/hms-dashboard';
 
 export const DeliveryJobTable: React.FC = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [shipments, setShipments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchShipments = async () => {
-      try {
-        setLoading(true);
-        const response = await apiClient.get('/logistics/shipments');
-        setShipments(response.data);
-      } catch (error) {
-        console.error('Failed to fetch shipments:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchShipments();
-  }, []);
+  const { data: shipments, isLoading, error } = useFieldServiceShipments();
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
@@ -28,14 +12,14 @@ export const DeliveryJobTable: React.FC = () => {
         <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Active Deliveries</h3>
       </div>
       <div className="divide-y divide-slate-100">
-        {loading ? (
-          <div className="p-12 flex justify-center">
-            <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+        {isLoading ? (
+          <HmsLoadingSkeleton variant="table" rows={4} />
+        ) : error ? (
+          <div className="p-12 text-center text-sm font-bold text-rose-500">
+            Failed to load shipments.
           </div>
-        ) : shipments.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 font-bold uppercase tracking-widest text-sm">
-            No active shipments found
-          </div>
+        ) : !shipments || shipments.length === 0 ? (
+          <HmsEmptyState title="No active shipments" description="No active shipments found." />
         ) : (
           shipments.map((shipment) => (
             <div key={shipment.id} className="p-5 hover:bg-slate-50 transition-colors flex items-center justify-between group cursor-pointer">
