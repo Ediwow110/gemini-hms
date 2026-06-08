@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Coins, 
@@ -40,6 +40,7 @@ export const PatientBillingPage = () => {
   const [receiptData, setReceiptData] = useState<{ id?: string } | null>(null);
   const [submitError, setSubmitError] = useState<string>('');
   const [lastUpdated, setLastUpdated] = useState<Date | undefined>(undefined);
+  const idempotencyKeyRef = useRef<string>('');
 
   useEffect(() => {
     if (!invLoading && !sessionLoading) {
@@ -53,6 +54,7 @@ export const PatientBillingPage = () => {
     setShowRecovery(true);
     setFormData({ paymentMethod: 'cash' });
     setIsDirty(false);
+    idempotencyKeyRef.current = '';
   }, [invoiceId]);
 
   const route = useMemo(
@@ -149,7 +151,10 @@ export const PatientBillingPage = () => {
     setSubmitError('');
     if (!session || !invoice) return;
     try {
-      const idempotencyKey = `PAY-${invoice.id}-${Date.now()}`;
+      if (!idempotencyKeyRef.current) {
+        idempotencyKeyRef.current = `PAY-${invoice.id}-${Math.random().toString(36).substring(2, 15)}`;
+      }
+      const idempotencyKey = idempotencyKeyRef.current;
       const res = await postPayment({
         invoiceId: invoice.id,
         cashierSessionId: session.id,

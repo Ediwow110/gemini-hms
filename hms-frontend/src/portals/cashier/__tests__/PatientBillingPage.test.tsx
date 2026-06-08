@@ -113,13 +113,49 @@ describe('PatientBillingPage Runtime Tests', () => {
           amount: 1000,
           paymentMethod: 'CASH',
         },
-        expect.stringMatching(/^PAY-invoice-123-\d+$/)
+        expect.stringMatching(/^PAY-invoice-123-[a-z0-9]+$/)
       );
     });
 
     await waitFor(() => {
       expect(screen.getByText(/Billing cleared. POS Terminal receipt registered in audit logs./i)).toBeInTheDocument();
     });
+  });
+
+  it('reuses the same idempotency key when retrying after payment failure', async () => {
+    mockPostPayment
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockResolvedValueOnce({ id: 'payment-rcpt-123' });
+
+    render(
+      <MemoryRouter initialEntries={['/cashier/billing?invoice=INV-2026-001']}>
+        <PatientBillingPage />
+      </MemoryRouter>
+    );
+
+    const submitBtn = screen.getByRole('button', { name: /Process Payment Clearance/i });
+
+    // First attempt — payment fails
+    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Confirm/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    });
+
+    const firstKey = mockPostPayment.mock.calls[0][1];
+
+    // Second attempt — payment succeeds
+    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Confirm/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Billing cleared. POS Terminal receipt registered in audit logs./i)).toBeInTheDocument();
+    });
+
+    const secondKey = mockPostPayment.mock.calls[1][1];
+    expect(secondKey).toBe(firstKey);
+    expect(mockPostPayment).toHaveBeenCalledTimes(2);
   });
 
   it('renders redacted demographics when in real UUID patient mode', () => {
