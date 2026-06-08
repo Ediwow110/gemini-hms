@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'child_process';
+import { spawn, spawnSync, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
@@ -95,7 +95,7 @@ async function main() {
   deleteViteCache();
 
   const BACKEND_DIR = path.resolve(FRONTEND_DIR, '../hms-backend');
-  let backendProcess: any = null;
+  let backendProcess: ChildProcess | null = null;
   const backendAlreadyUp = await isBackendUp();
 
   if (!backendAlreadyUp) {
@@ -105,14 +105,14 @@ async function main() {
       shell: true,
     });
     
-    backendProcess.stdout?.on('data', (data: any) => {
+    backendProcess.stdout?.on('data', (data: Buffer | string) => {
       const output = data.toString();
       if (output.includes('running on port') || output.includes('mapped')) {
         console.log(`[Backend Server]: ${output.trim()}`);
       }
     });
 
-    backendProcess.stderr?.on('data', (data: any) => {
+    backendProcess.stderr?.on('data', (data: Buffer | string) => {
       console.error(`[Backend Error]: ${data.toString().trim()}`);
     });
 
