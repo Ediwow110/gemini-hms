@@ -10,6 +10,7 @@ export default defineConfig({
       'use-sync-external-store/with-selector.js': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
       'use-sync-external-store/shim/with-selector.js': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
       'use-sync-external-store/shim/with-selector': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
+      'es-toolkit/compat/get': path.resolve(__dirname, './src/shims/es-toolkit-compat-get.ts'),
     },
   },
   // Prebundle CommonJS dependencies to avoid runtime ESM/CommonJS conversion crashes in browser
