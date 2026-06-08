@@ -1,11 +1,36 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ReleasedResultDetailPage } from '../ReleasedResultDetailPage';
-import { useReleasedLabResultDetail } from '../../../hooks/use-clinical-workflow';
+import {
+  useReleasedLabResultDetail,
+  usePatientClinicalSummary,
+  useParameterDefinitions,
+} from '../../../hooks/use-clinical-workflow';
+import { labService } from '../../../services/lab.service';
 
 vi.mock('../../../hooks/use-clinical-workflow', () => ({
   useReleasedLabResultDetail: vi.fn(),
+  usePatientClinicalSummary: vi.fn(),
+  useParameterDefinitions: vi.fn(),
+}));
+
+vi.mock('../../../hooks/use-user', () => ({
+  usePermissions: () => ({
+    hasPermission: () => true,
+  }),
+}));
+
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    invalidateQueries: vi.fn(),
+  }),
+}));
+
+vi.mock('../../../services/lab.service', () => ({
+  labService: {
+    requestAmendment: vi.fn(),
+  },
 }));
 
 const mockNavigate = vi.fn();
@@ -41,17 +66,46 @@ const mockResult = {
   isReadOnly: true,
 };
 
+const mockPatientSummary = {
+  patientName: 'Jane Smith',
+  patientNumber: 'MRN-456',
+  dob: new Date('1990-05-15'),
+  gender: 'Female',
+};
+
+const mockDefinitions = [
+  {
+    parameterName: 'Hemoglobin',
+    code: 'Hemoglobin',
+    unit: 'g/dL',
+    referenceRangeText: '12-16',
+  },
+];
+
 describe('ReleasedResultDetailPage Unit Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockParams.patientId = 'patient-1';
     mockParams.orderId = 'order-1';
+
     vi.mocked(useReleasedLabResultDetail).mockReturnValue({
       data: mockResult,
       isLoading: false,
       error: null,
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useReleasedLabResultDetail>);
+
+    vi.mocked(usePatientClinicalSummary).mockReturnValue({
+      data: mockPatientSummary,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof usePatientClinicalSummary>);
+
+    vi.mocked(useParameterDefinitions).mockReturnValue({
+      data: mockDefinitions,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useParameterDefinitions>);
   });
 
   it('renders loading skeleton when data is loading', () => {
@@ -161,12 +215,12 @@ describe('ReleasedResultDetailPage Unit Tests', () => {
       </MemoryRouter>
     );
 
-    // Result values
+    // Result values (rendered in both screen and print containers)
     expect(screen.getByText('Result Values')).toBeInTheDocument();
-    expect(screen.getByText('Hemoglobin')).toBeInTheDocument();
-    expect(screen.getByText('14.2')).toBeInTheDocument();
-    expect(screen.getByText('WBC')).toBeInTheDocument();
-    expect(screen.getByText('7.5')).toBeInTheDocument();
+    expect(screen.getAllByText('Hemoglobin').length).toBe(2);
+    expect(screen.getAllByText('14.2').length).toBe(2);
+    expect(screen.getAllByText('WBC').length).toBe(2);
+    expect(screen.getAllByText('7.5').length).toBe(2);
 
     // Remarks
     expect(screen.getByText('Remarks')).toBeInTheDocument();
@@ -198,7 +252,7 @@ describe('ReleasedResultDetailPage Unit Tests', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('No result values recorded.')).toBeInTheDocument();
+    expect(screen.getAllByText('No result values recorded.').length).toBe(2);
   });
 
   it('navigates back to released list on back button click', () => {
@@ -224,5 +278,45 @@ describe('ReleasedResultDetailPage Unit Tests', () => {
     // Scope notice spans text nodes, match across the parent
     expect(screen.getByText(/This result has been/)).toBeInTheDocument();
     expect(screen.getByText(/separate workflows/)).toBeInTheDocument();
+  });
+
+  it('triggers window.print when print button is clicked', () => {
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {});
+    render(
+      <MemoryRouter>
+        <ReleasedResultDetailPage />
+      </MemoryRouter>
+    );
+
+    const printButton = screen.getByRole('button', { name: /Print Result/i });
+    fireEvent.click(printButton);
+
+    expect(printSpy).toHaveBeenCalled();
+    printSpy.mockRestore();
+  });
+
+  it('opens amendment request modal and submits reason', async () => {
+    vi.mocked(labService.requestAmendment).mockResolvedValue({});
+    render(
+      <MemoryRouter>
+        <ReleasedResultDetailPage />
+      </MemoryRouter>
+    );
+
+    const amendBtn = screen.getByRole('button', { name: /Request Amendment/i });
+    fireEvent.click(amendBtn);
+
+    // Check modal header exists
+    expect(screen.getByText('Requires clinical supervisor authorization.')).toBeInTheDocument();
+
+    const input = screen.getByPlaceholderText(/Recalibrated WBC counts/i);
+    fireEvent.change(input, { target: { value: 'Typo in Hemoglobin' } });
+
+    const submitBtn = screen.getByRole('button', { name: /Submit Request/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(labService.requestAmendment).toHaveBeenCalledWith('detail-1', 'Typo in Hemoglobin');
+    });
   });
 });
