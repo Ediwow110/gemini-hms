@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Calendar, AlertTriangle, Users, CheckCircle, HelpCircle } from 'lucide-react';
 import { AccessReviewPanel } from './components/AccessReviewPanel';
 import { useAccessReview } from '../../hooks/use-compliance';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const AccessReviewsPage: React.FC = () => {
   const [reviewPeriod, setReviewPeriod] = useState('Q2-2026');
@@ -45,16 +47,12 @@ export const AccessReviewsPage: React.FC = () => {
   void certifiedCount;
 
   return (
-    <div className="space-y-6">
-      {/* Title Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Access Certification Reviews
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Verify employee privilege scope boundaries, enforce MFA, and audit stale credentials</p>
-        </div>
-      </div>
+    <HmsDashboardShell>
+      <div className="space-y-6 pb-12">
+        <HmsPageHeader
+          title="Access Certification Reviews"
+          description="Verify employee privilege scope boundaries, enforce MFA, and audit stale credentials"
+        />
 
       {/* Review Settings Card */}
       <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
@@ -134,7 +132,9 @@ export const AccessReviewsPage: React.FC = () => {
           <AccessReviewPanel users={allUsers} onActionComplete={handleActionComplete} />
         )}
       </div>
-    </div>
+      </div>
+      <HmsAuditFooter />
+    </HmsDashboardShell>
   );
 };
 

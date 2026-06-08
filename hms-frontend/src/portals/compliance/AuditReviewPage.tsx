@@ -3,6 +3,8 @@ import { Search, Eye, FileText, CheckCircle, HelpCircle } from 'lucide-react';
 import { StatusBadge } from '../../components/feedback/StatusBadge';
 import ComplianceScopeFilter from './components/ComplianceScopeFilter';
 import { useAuditEvents } from '../../hooks/use-compliance';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const AuditReviewPage: React.FC = () => {
   const [, setScope] = useState({ tenantId: 'all', branchId: 'all' });
@@ -41,16 +43,12 @@ export const AuditReviewPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Title Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Audit Log Review
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Verify system event trails, configuration mutations, and role assignments</p>
-        </div>
-      </div>
+    <HmsDashboardShell>
+      <div className="space-y-6 pb-12">
+        <HmsPageHeader
+          title="Audit Log Review"
+          description="Verify system event trails, configuration mutations, and role assignments"
+        />
 
       {/* Scope Selector */}
       <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
@@ -190,7 +188,9 @@ export const AuditReviewPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+      <HmsAuditFooter />
+    </HmsDashboardShell>
   );
 };
 

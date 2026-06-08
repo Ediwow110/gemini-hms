@@ -18,6 +18,8 @@ import { complianceInsights, complianceReportColumns, complianceReportRows, comp
 import PHIAccessTable from './components/PHIAccessTable';
 import { StatusBadge } from '../../components/feedback/StatusBadge';
 import { useAuditEvents, useAccessReview } from '../../hooks/use-compliance';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const ComplianceDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -49,18 +51,14 @@ export const ComplianceDashboard: React.FC = () => {
   const staleAccountsCount = accessReview?.staleAccountsCount || 0;
 
   return (
-    <div className="space-y-6">
-      {/* Title Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Compliance & Governance Workspace
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Real-time PHI monitor, audit-chain verifier, and data privacy dashboard</p>
-        </div>
-      </div>
+    <HmsDashboardShell>
+      <div className="space-y-6 pb-12">
+        <HmsPageHeader
+          title="Compliance & Governance Workspace"
+          description="Real-time PHI monitor, audit-chain verifier, and data privacy dashboard"
+        />
 
-      {/* Scope Filter */}
+        {/* Scope Filter */}
       <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
 
       {/* Risk Metrics Row */}
@@ -247,7 +245,9 @@ export const ComplianceDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+      <HmsAuditFooter />
+    </HmsDashboardShell>
   );
 };
 
