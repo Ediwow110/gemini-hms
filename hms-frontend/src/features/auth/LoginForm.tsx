@@ -59,7 +59,7 @@ export const LoginForm = () => {
     navigate(path, { replace: true });
   };
 
-  const isDev = import.meta.env.MODE !== 'production';
+  const isDev = !!import.meta.env.DEV;
 
   const {
     register,

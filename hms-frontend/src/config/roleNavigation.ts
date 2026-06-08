@@ -215,9 +215,9 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Pharmacy Workspace',
     items: [
-      { label: 'Pharmacy Dashboard', to: '/pharmacy', icon: LayoutDashboard, permission: PERMISSIONS.INVENTORY_DISPENSE, allowedRoles: ['Pharmacist'], zone: 'staff', isBranchScoped: true },
-      { label: 'Dispense Queue', to: '/pharmacy/dispense', icon: Pill, permission: PERMISSIONS.INVENTORY_DISPENSE, allowedRoles: ['Pharmacist'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
-      { label: 'Drug Inventory', to: '/pharmacy/inventory', icon: Package, permission: PERMISSIONS.INVENTORY_VIEW, allowedRoles: ['Pharmacist'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
+      { label: 'Pharmacy Dashboard', to: '/pharmacy/dashboard', icon: LayoutDashboard, permission: PERMISSIONS.INVENTORY_VIEW, allowedRoles: ['Pharmacist'], zone: 'staff', isBranchScoped: true },
+      { label: 'Dispense Queue', to: '/pharmacy', icon: Pill, permission: PERMISSIONS.INVENTORY_DISPENSE, allowedRoles: ['Pharmacist'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
+      { label: 'Drug Inventory', to: '/pharmacy', icon: Package, permission: PERMISSIONS.INVENTORY_VIEW, allowedRoles: ['Pharmacist'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
     ],
   },
   {

@@ -95,6 +95,11 @@ describe("Dashboard route access control", () => {
       ],
       description: "Procurement dashboard accessible to procurement roles",
     },
+    {
+      path: "pharmacy/dashboard",
+      expectedRoles: ["Super Admin", "Branch Admin", "Pharmacist"],
+      description: "Pharmacy dashboard accessible to pharmacy roles",
+    },
   ];
 
   describe("portalRoutes contains expected dashboard entries", () => {

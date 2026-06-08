@@ -263,7 +263,7 @@ export const PharmacyDashboard: React.FC = () => {
                 ]}
                 emptyMessage="All tracked inventory levels are healthy"
                 maxRows={5}
-                viewAllLink="/pharmacy/inventory"
+                viewAllLink="/pharmacy"
                 viewAllLabel="Open Inventory Manager"
               />
             )}
@@ -307,7 +307,7 @@ export const PharmacyDashboard: React.FC = () => {
                     label: 'Critical Stockouts',
                     value: outOfStockCount,
                     status: outOfStockCount > 0 ? 'breached' : 'on_track',
-                    drilldownHref: '/pharmacy/inventory',
+                    drilldownHref: '/pharmacy',
                   }
                 ]}
               />
@@ -332,7 +332,7 @@ export const PharmacyDashboard: React.FC = () => {
               title="Quick Actions"
               actions={[
                 { id: 'disp-hub', label: 'Dispense Queue', icon: <Pill className="h-4 w-4 text-blue-500" />, href: '/pharmacy' },
-                { id: 'inv-mgr', label: 'Drug Inventory', icon: <Package className="h-4 w-4 text-emerald-500" />, href: '/pharmacy/inventory' },
+                { id: 'inv-mgr', label: 'Drug Inventory', icon: <Package className="h-4 w-4 text-emerald-500" />, href: '/pharmacy' },
               ]}
             />
           </div>

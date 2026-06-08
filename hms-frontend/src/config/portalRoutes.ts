@@ -28,6 +28,7 @@ export const portalRoutes: RouteGuardConfig[] = [
 
   // Finance/Supply routes (Staff, Branch Scoped)
   { path: 'pharmacy', requiredPermission: PERMISSIONS.INVENTORY_DISPENSE, allowedRoles: ['Super Admin', 'Branch Admin', 'Pharmacist'], zone: 'staff', isBranchScoped: true },
+  { path: 'pharmacy/dashboard', requiredPermission: PERMISSIONS.INVENTORY_VIEW, allowedRoles: ['Super Admin', 'Branch Admin', 'Pharmacist'], zone: 'staff', isBranchScoped: true },
   { path: 'pharmacy/dispense', requiredPermission: PERMISSIONS.INVENTORY_DISPENSE, allowedRoles: ['Super Admin', 'Branch Admin', 'Pharmacist'], zone: 'staff', isBranchScoped: true },
   { path: 'pharmacy/inventory', requiredPermission: PERMISSIONS.INVENTORY_VIEW, allowedRoles: ['Super Admin', 'Branch Admin', 'Pharmacist'], zone: 'staff', isBranchScoped: true },
   { path: 'billing', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff', isBranchScoped: true },

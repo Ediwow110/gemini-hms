@@ -17,22 +17,12 @@ export const AuditFooter = () => {
       sessionStorage.setItem('hms_session_id', localSessId);
     }
 
-    const detectIp = async () => {
-      try {
-        const res = await fetch('https://api.ipify.org?format=json');
-        const data = await res.json();
-        setSessionInfo(prev => ({
-          ...prev,
-          ipAddress: data.ip,
-          sessionId: localSessId!,
-        }));
-      } catch {
-        setSessionInfo(prev => ({
-          ...prev,
-          ipAddress: 'Client Connection Gateway',
-          sessionId: localSessId!,
-        }));
-      }
+    const detectIp = () => {
+      setSessionInfo(prev => ({
+        ...prev,
+        ipAddress: 'Client Connection Gateway',
+        sessionId: localSessId!,
+      }));
     };
 
     void detectIp();

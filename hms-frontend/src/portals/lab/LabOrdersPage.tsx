@@ -90,10 +90,10 @@ export const LabOrdersPage = () => {
 
         return {
           id: item.id,
-          patientName: item.patientName || 'Unknown Patient',
+          patientName: item.patientName || '[REDACTED]',
           patientAge: 0,
           patientGender: 'Unknown',
-          mrn: item.patientNumber,
+          mrn: item.patientNumber || '[REDACTED]',
           dob: 'N/A',
           accessCode: `LIS-${item.queueNumber}`,
           physician: 'Attending Physician',

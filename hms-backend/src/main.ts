@@ -6,6 +6,15 @@ import cookieParser from 'cookie-parser';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const isProd = process.env.NODE_ENV === 'production';
+
+  // In production, dangerous auth bypasses must be disabled
+  const mfaDisabled = process.env.DISABLE_AUTH_VERIFICATION === 'true';
+  if (mfaDisabled && isProd) {
+    logger.error(
+      'CRITICAL SECURITY HAZARD: DISABLE_AUTH_VERIFICATION bypass is not allowed in production. Failing closed.',
+    );
+    process.exit(1);
+  }
   const app = await NestFactory.create(AppModule, {
     logger: isProd
       ? ['error', 'warn', 'log']
