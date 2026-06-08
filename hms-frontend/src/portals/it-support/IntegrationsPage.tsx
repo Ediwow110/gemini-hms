@@ -1,6 +1,8 @@
 import React from 'react';
 import ITScopeFilter from './components/ITScopeFilter';
 import IntegrationStatusCard, { IntegrationItem } from './components/IntegrationStatusCard';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const IntegrationsPage: React.FC = () => {
   const mockIntegrations: IntegrationItem[] = [
@@ -49,23 +51,24 @@ export const IntegrationsPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            System Integrations
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">HL7, FHIR, DICOM, REST APIs, webhooks, and external connector health</p>
+    <HmsDashboardShell>
+      <div className="space-y-6 pb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <HmsPageHeader
+            title="System Integrations"
+            description="HL7, FHIR, DICOM, REST APIs, webhooks, and external connector health"
+          />
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
+            <strong>Sandbox Notice:</strong> Integration data is simulated. No real HL7/FHIR messages or API calls are sent.
+          </div>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          <strong>Sandbox Notice:</strong> Integration data is simulated. No real HL7/FHIR messages or API calls are sent.
-        </div>
+
+        <ITScopeFilter />
+
+        <IntegrationStatusCard integrations={mockIntegrations} />
       </div>
-
-      <ITScopeFilter />
-
-      <IntegrationStatusCard integrations={mockIntegrations} />
-    </div>
+      <HmsAuditFooter />
+    </HmsDashboardShell>
   );
 };
 

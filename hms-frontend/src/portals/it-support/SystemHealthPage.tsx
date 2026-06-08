@@ -3,6 +3,8 @@ import { Cpu, HardDrive, Wifi, Server, Zap, Database } from 'lucide-react';
 import ITScopeFilter from './components/ITScopeFilter';
 import SystemHealthCard from './components/SystemHealthCard';
 import ServiceStatusPanel, { ServiceStatusItem } from './components/ServiceStatusPanel';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const SystemHealthPage: React.FC = () => {
   const mockServices: ServiceStatusItem[] = [
@@ -17,35 +19,35 @@ export const SystemHealthPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Title Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            System Health Monitor
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Service uptime, infrastructure status, database connections, and dependency health</p>
+    <HmsDashboardShell>
+      <div className="space-y-6 pb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <HmsPageHeader
+            title="System Health Monitor"
+            description="Service uptime, infrastructure status, database connections, and dependency health"
+          />
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
+            <strong>Sandbox Notice:</strong> All health metrics are simulated. No real infrastructure monitoring is running.
+          </div>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          <strong>Sandbox Notice:</strong> All health metrics are simulated. No real infrastructure monitoring is running.
+
+        <ITScopeFilter />
+
+        {/* Health Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SystemHealthCard title="API Cluster Uptime" value="99.97%" icon={Cpu} status="HEALTHY" description="NestJS API gateway, p99 45ms" />
+          <SystemHealthCard title="Database Health" value="Active" icon={Database} status="HEALTHY" description="PostgreSQL 15 — 2 replicas, 0 lag" />
+          <SystemHealthCard title="Cache Layer" value="2ms" icon={Zap} status="HEALTHY" description="Redis 7 — 98% hit rate, 12k keys" />
+          <SystemHealthCard title="Worker Nodes" value="3 / 4" icon={Server} status="DEGRADED" description="1 worker node unresponsive (SMS queue)" />
+          <SystemHealthCard title="Storage Volumes" value="62%" icon={HardDrive} status="HEALTHY" description="240 GB used of 400 GB provisioned" />
+          <SystemHealthCard title="Network I/O" value="1.2 Gbps" icon={Wifi} status="HEALTHY" description="Ingress/Egress balanced, 0 packet loss" />
         </div>
+
+        {/* Service Status Table */}
+        <ServiceStatusPanel services={mockServices} />
       </div>
-
-      <ITScopeFilter />
-
-      {/* Health Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <SystemHealthCard title="API Cluster Uptime" value="99.97%" icon={Cpu} status="HEALTHY" description="NestJS API gateway, p99 45ms" />
-        <SystemHealthCard title="Database Health" value="Active" icon={Database} status="HEALTHY" description="PostgreSQL 15 — 2 replicas, 0 lag" />
-        <SystemHealthCard title="Cache Layer" value="2ms" icon={Zap} status="HEALTHY" description="Redis 7 — 98% hit rate, 12k keys" />
-        <SystemHealthCard title="Worker Nodes" value="3 / 4" icon={Server} status="DEGRADED" description="1 worker node unresponsive (SMS queue)" />
-        <SystemHealthCard title="Storage Volumes" value="62%" icon={HardDrive} status="HEALTHY" description="240 GB used of 400 GB provisioned" />
-        <SystemHealthCard title="Network I/O" value="1.2 Gbps" icon={Wifi} status="HEALTHY" description="Ingress/Egress balanced, 0 packet loss" />
-      </div>
-
-      {/* Service Status Table */}
-      <ServiceStatusPanel services={mockServices} />
-    </div>
+      <HmsAuditFooter />
+    </HmsDashboardShell>
   );
 };
 

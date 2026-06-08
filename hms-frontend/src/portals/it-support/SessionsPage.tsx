@@ -1,6 +1,8 @@
 import React from 'react';
 import ITScopeFilter from './components/ITScopeFilter';
 import SessionActivityTable, { SessionEntry } from './components/SessionActivityTable';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const SessionsPage: React.FC = () => {
   const mockSessions: SessionEntry[] = [
@@ -43,23 +45,24 @@ export const SessionsPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Active User Sessions
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Cross-tenant session monitoring, client analytics, and simulated revocation controls</p>
+    <HmsDashboardShell>
+      <div className="space-y-6 pb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <HmsPageHeader
+            title="Active User Sessions"
+            description="Cross-tenant session monitoring, client analytics, and simulated revocation controls"
+          />
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
+            <strong>Sandbox Notice:</strong> Session data is simulated. Revoke actions affect UI only and do not terminate real sessions.
+          </div>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          <strong>Sandbox Notice:</strong> Session data is simulated. Revoke actions affect UI only and do not terminate real sessions.
-        </div>
+
+        <ITScopeFilter />
+
+        <SessionActivityTable sessions={mockSessions} />
       </div>
-
-      <ITScopeFilter />
-
-      <SessionActivityTable sessions={mockSessions} />
-    </div>
+      <HmsAuditFooter />
+    </HmsDashboardShell>
   );
 };
 

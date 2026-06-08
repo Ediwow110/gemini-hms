@@ -1,6 +1,8 @@
 import React from 'react';
 import ITScopeFilter from './components/ITScopeFilter';
 import BackupStatusCard, { BackupEntry } from './components/BackupStatusCard';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const BackupRestorePage: React.FC = () => {
   const mockBackups: BackupEntry[] = [
@@ -31,23 +33,24 @@ export const BackupRestorePage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Backup & Disaster Recovery
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Database snapshots, WAL archives, VM snapshots, and RPO/RTO compliance</p>
+    <HmsDashboardShell>
+      <div className="space-y-6 pb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <HmsPageHeader
+            title="Backup & Disaster Recovery"
+            description="Database snapshots, WAL archives, VM snapshots, and RPO/RTO compliance"
+          />
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
+            <strong>Sandbox Notice:</strong> Backup data is simulated. No real backups, downloads, or restores are triggered.
+          </div>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          <strong>Sandbox Notice:</strong> Backup data is simulated. No real backups, downloads, or restores are triggered.
-        </div>
+
+        <ITScopeFilter />
+
+        <BackupStatusCard backups={mockBackups} rpoTarget="≤ 1 Hour" rtoTarget="≤ 4 Hours" />
       </div>
-
-      <ITScopeFilter />
-
-      <BackupStatusCard backups={mockBackups} rpoTarget="≤ 1 Hour" rtoTarget="≤ 4 Hours" />
-    </div>
+      <HmsAuditFooter />
+    </HmsDashboardShell>
   );
 };
 

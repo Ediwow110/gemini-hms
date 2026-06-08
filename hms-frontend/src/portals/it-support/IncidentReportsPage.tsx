@@ -2,6 +2,8 @@ import React from 'react';
 import ITScopeFilter from './components/ITScopeFilter';
 import IncidentTimeline from './components/IncidentTimeline';
 import { useSupportTickets } from '../../hooks/use-it-support';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
 
 export const IncidentReportsPage: React.FC = () => {
   // Fetch HIGH and URGENT tickets as incidents
@@ -29,31 +31,25 @@ export const IncidentReportsPage: React.FC = () => {
     }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Incident Reports & Postmortems
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">System outages, security alerts, degradation events, and resolution tracking</p>
-        </div>
+    <HmsDashboardShell>
+      <div className="space-y-6 pb-12">
+        <HmsPageHeader
+          title="Incident Reports & Postmortems"
+          description="System outages, security alerts, degradation events, and resolution tracking"
+        />
+
+        <ITScopeFilter />
+
+        {loading ? (
+          <HmsLoadingSkeleton variant="alert-rail" />
+        ) : allIncidents.length === 0 ? (
+          <HmsEmptyState title="No incidents found" description="High-priority tickets will appear here as incidents." />
+        ) : (
+          <IncidentTimeline incidents={allIncidents} />
+        )}
       </div>
-
-      <ITScopeFilter />
-
-      {loading ? (
-        <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-xs text-slate-400">
-          Loading incidents...
-        </div>
-      ) : allIncidents.length === 0 ? (
-        <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-xs text-slate-400">
-          <p className="font-bold">No incidents found</p>
-          <p className="mt-1">High-priority tickets will appear here as incidents.</p>
-        </div>
-      ) : (
-        <IncidentTimeline incidents={allIncidents} />
-      )}
-    </div>
+      <HmsAuditFooter />
+    </HmsDashboardShell>
   );
 };
 
