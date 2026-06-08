@@ -90,18 +90,30 @@ test.describe.serial('runtime QA', () => {
     email: string, expectFailure: boolean, label: string,
     patientPortalExpected?: boolean,
   ): Promise<void> {
-    await page.context().clearCookies();
-    await page.goto('/login', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('input[name="email"]')).toBeVisible({ timeout: 20_000 });
-    await page.locator('input[name="tenantCode"]').fill(TENANT_CODE);
-    await page.locator('input[name="email"]').fill(email);
-    await page.locator('input[name="password"]').fill(DEFAULT_PASSWORD);
+    let loginResp;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await page.context().clearCookies();
+      await page.goto('/login', { waitUntil: 'domcontentloaded' });
+      await expect(page.locator('input[name="email"]')).toBeVisible({ timeout: 20_000 });
+      await page.locator('input[name="tenantCode"]').fill(TENANT_CODE);
+      await page.locator('input[name="email"]').fill(email);
+      await page.locator('input[name="password"]').fill(DEFAULT_PASSWORD);
 
-    const loginRespPromise = page.waitForResponse(
-      (r) => r.url().includes('/api/v1/auth/login'),
-    );
-    await page.locator('button[type="submit"]').click();
-    const loginResp = await loginRespPromise;
+      const loginRespPromise = page.waitForResponse(
+        (r) => r.url().includes('/api/v1/auth/login'),
+      );
+      await page.locator('button[type="submit"]').click();
+      loginResp = await loginRespPromise;
+      if (loginResp.status() === 429 && attempt === 0) {
+        await sleep(61_000);
+        continue;
+      }
+      break;
+    }
+
+    if (!loginResp) {
+      throw new Error(`No login response captured for ${label}`);
+    }
 
     if (expectFailure) {
       expect(loginResp.status(), `${label} POST /auth/login expected 401`).toBe(401);
