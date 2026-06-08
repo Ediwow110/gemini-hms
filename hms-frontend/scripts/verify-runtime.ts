@@ -54,7 +54,7 @@ function runVerification(): boolean {
   console.log('Running Playwright dashboard route smoke checks...');
   const result = spawnSync(
     'npx',
-    ['playwright', 'test', 'e2e/runtime-qa-quick.spec.ts', '-g', 'dashboard routes render for key roles'],
+    ['playwright', 'test', 'e2e/runtime-qa-quick.spec.ts', '-g', 'render for key roles'],
     {
       cwd: FRONTEND_DIR,
       stdio: 'inherit',
@@ -85,9 +85,10 @@ async function main() {
   deleteViteCache();
 
   console.log('Starting Vite dev server...');
-  const viteProcess = spawn('npx', ['vite'], {
+  const viteBin = path.join(FRONTEND_DIR, 'node_modules', 'vite', 'bin', 'vite.js');
+  const viteProcess = spawn('node', [viteBin], {
     cwd: FRONTEND_DIR,
-    shell: true,
+    shell: false,
     detached: process.platform !== 'win32', // detached on Unix to allow group kill
   });
 
