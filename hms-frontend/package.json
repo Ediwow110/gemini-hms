@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:clinical": "npx tsx scripts/verify-clinical-readonly-wiring.ts",
-    "verify:security": "npx tsx scripts/verify-security-config.ts"
+    "verify:security": "npx tsx scripts/verify-security-config.ts",
+    "verify:runtime": "npx tsx scripts/verify-runtime.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
