@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { PageHeader } from '../../components/ui/page-header';
+import React, { useState, useEffect } from 'react';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
+import { AdminShellNotice } from './components/AdminShellNotice';
 import { BranchActivityPanel } from './components/BranchActivityPanel';
-import { Building, Plus, AlertTriangle, Search, Filter } from 'lucide-react';
+import { Building, Plus, Search, Filter } from 'lucide-react';
 import { StatusBadge } from '../../components/feedback/StatusBadge';
 
 interface BranchItem {
@@ -21,6 +23,12 @@ interface BranchItem {
 export const BranchesPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const mockBranches: BranchItem[] = [
     {
@@ -69,23 +77,25 @@ export const BranchesPage: React.FC = () => {
     b.tenant.toLowerCase().includes(search.toLowerCase())
   );
 
-  return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      {/* Sandbox Warning Banner */}
-      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
-        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Branches Sandbox Shell</h5>
-          <p className="font-medium mt-0.5">
-            This module configures branches in local sandbox memory. Physical facilities, capacity matrices, and local network link parameters are simulated. No database updates are persisted to the HMS backend core API.
-          </p>
-        </div>
-      </div>
+  if (loading) {
+    return (
+      <HmsDashboardShell>
+        <HmsLoadingSkeleton variant="kpi" />
+        <HmsLoadingSkeleton variant="table" rows={3} />
+      </HmsDashboardShell>
+    );
+  }
 
+  return (
+    <HmsDashboardShell
+      footer={<HmsAuditFooter dataSource="Mock branch data (sandbox)" />}
+    >
+      <AdminShellNotice />
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <PageHeader 
-          title="Branch Directory" 
-          description="Manage and trace physical hospital networks, capacities, and network latency thresholds." 
+        <HmsPageHeader
+          title="Branch Directory"
+          description="Manage and trace physical hospital networks, capacities, and network latency thresholds."
+          badge="Sandbox"
         />
         <button 
           onClick={() => setShowCreateModal(true)}
@@ -95,14 +105,12 @@ export const BranchesPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Grid: Health Card Overviews */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {mockBranches.map((b) => (
           <BranchActivityPanel key={b.id} branch={b} />
         ))}
       </div>
 
-      {/* Filtering Header */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
@@ -122,49 +130,55 @@ export const BranchesPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Branches Table */}
-      <div className="card overflow-hidden bg-white border border-slate-200/80 shadow-sm rounded-2xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50/80 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Branch Details</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Tenant</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Beds Capacity</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Clinical Staff</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Link Latency</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">SLA Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs">
-              {filteredBranches.map((b) => (
-                <tr key={b.id} className="hover:bg-indigo-50/10">
-                  <td className="px-6 py-4 font-bold text-slate-800">
-                    <div>
-                      <p>{b.name}</p>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">Director: {b.director} | ID: {b.id}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-semibold text-slate-600">{b.tenant}</td>
-                  <td className="px-6 py-4 text-center font-bold text-slate-700">{b.beds}</td>
-                  <td className="px-6 py-4 text-slate-600 font-medium">
-                    {b.doctors} Doctors / {b.nurses} Nurses
-                  </td>
-                  <td className="px-6 py-4 font-mono font-bold text-slate-700">{b.latency}ms</td>
-                  <td className="px-6 py-4">
-                    <StatusBadge 
-                      status={b.status} 
-                      type={b.status === 'ACTIVE' ? 'success' : b.status === 'MAINTENANCE' ? 'warning' : 'danger'} 
-                    />
-                  </td>
+      {filteredBranches.length === 0 ? (
+        <HmsEmptyState
+          title="No matching branches"
+          description="Try adjusting your search query."
+          icon={<Building className="h-6 w-6" />}
+        />
+      ) : (
+        <div className="card overflow-hidden bg-white border border-slate-200/80 shadow-sm rounded-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50/80 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Branch Details</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Tenant</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Beds Capacity</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Clinical Staff</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Link Latency</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">SLA Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {filteredBranches.map((b) => (
+                  <tr key={b.id} className="hover:bg-indigo-50/10">
+                    <td className="px-6 py-4 font-bold text-slate-800">
+                      <div>
+                        <p>{b.name}</p>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">Director: {b.director} | ID: {b.id}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-semibold text-slate-600">{b.tenant}</td>
+                    <td className="px-6 py-4 text-center font-bold text-slate-700">{b.beds}</td>
+                    <td className="px-6 py-4 text-slate-600 font-medium">
+                      {b.doctors} Doctors / {b.nurses} Nurses
+                    </td>
+                    <td className="px-6 py-4 font-mono font-bold text-slate-700">{b.latency}ms</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge 
+                        status={b.status} 
+                        type={b.status === 'ACTIVE' ? 'success' : b.status === 'MAINTENANCE' ? 'warning' : 'danger'} 
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Provision Branch Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-scale-in relative">
@@ -179,13 +193,11 @@ export const BranchesPage: React.FC = () => {
                 <p className="text-xs text-slate-400 mt-0.5">Mock governance sandbox execution</p>
               </div>
             </div>
-            
             <div className="space-y-3 text-xs text-slate-600 leading-relaxed border-t border-b border-slate-100 py-4">
               <p className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 font-medium">
                 This triggers a simulated branch provisioning template. Configuration mappings, bed counts, and clinical routing rules are evaluated in local memory. No database modifications are committed.
               </p>
             </div>
-
             <div className="mt-5 flex gap-2">
               <button 
                 onClick={() => setShowCreateModal(false)}
@@ -197,7 +209,7 @@ export const BranchesPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </HmsDashboardShell>
   );
 };
 export default BranchesPage;

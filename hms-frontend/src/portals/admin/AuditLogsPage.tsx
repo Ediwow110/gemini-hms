@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { PageHeader } from '../../components/ui/page-header';
+import React, { useState, useEffect } from 'react';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
+import { AdminShellNotice } from './components/AdminShellNotice';
 import { AuditEventTable } from './components/AuditEventTable';
 import { AlertTriangle, Search } from 'lucide-react';
 
@@ -26,6 +28,12 @@ export const AuditLogsPage: React.FC = () => {
   const [selectedEventType, setSelectedEventType] = useState<string>('ALL');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const mockEvents: AuditEvent[] = [
     {
@@ -103,7 +111,6 @@ export const AuditLogsPage: React.FC = () => {
     const matchesBranch = selectedBranch === 'ALL' || e.branch === selectedBranch;
     const matchesEventType = selectedEventType === 'ALL' || e.action === selectedEventType;
 
-    // Simple date boundary match
     let matchesDate = true;
     if (startDate) {
       matchesDate = matchesDate && e.timestamp >= `${startDate} 00:00:00`;
@@ -121,32 +128,29 @@ export const AuditLogsPage: React.FC = () => {
   const uniqueBranches = Array.from(new Set(mockEvents.map(e => e.branch)));
   const uniqueEventTypes = Array.from(new Set(mockEvents.map(e => e.action)));
 
+  if (loading) {
+    return (
+      <HmsDashboardShell>
+        <HmsLoadingSkeleton variant="table" rows={5} />
+      </HmsDashboardShell>
+    );
+  }
+
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      {/* Sandbox Warning Banner */}
-      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
-        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Audit Sandbox Shell</h5>
-          <p className="font-medium mt-0.5">
-            This workspace registers audit records in-memory. Cryptographic logs, integrity block chaining, and actor histories are simulations for visual validation. No live audit triggers are committed to the HMS database layer.
-          </p>
-        </div>
-      </div>
+    <HmsDashboardShell
+      footer={<HmsAuditFooter dataSource="Mock audit data (sandbox)" />}
+    >
+      <AdminShellNotice />
+      <HmsPageHeader
+        title="System Audit Trails"
+        description="Trace cryptographically chained event activities, user operations, and resource changes."
+        badge="Sandbox"
+      />
 
-      <div className="flex justify-between items-center">
-        <PageHeader 
-          title="System Audit Trails" 
-          description="Trace cryptographically chained event activities, user operations, and resource changes." 
-        />
-      </div>
-
-      {/* Advanced Filters Grid */}
       <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
         <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Advanced Audit Filters</h4>
         
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 text-xs">
-          {/* Text Search */}
           <div className="space-y-1.5">
             <label className="font-bold text-slate-700">Search Text</label>
             <div className="relative">
@@ -161,7 +165,6 @@ export const AuditLogsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* User Filter */}
           <div className="space-y-1.5">
             <label className="font-bold text-slate-700">User / Actor</label>
             <select
@@ -174,7 +177,6 @@ export const AuditLogsPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Role Filter */}
           <div className="space-y-1.5">
             <label className="font-bold text-slate-700">Role</label>
             <select
@@ -187,7 +189,6 @@ export const AuditLogsPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Risk Level Filter */}
           <div className="space-y-1.5">
             <label className="font-bold text-slate-700">Risk Severity</label>
             <select 
@@ -202,7 +203,6 @@ export const AuditLogsPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Tenant Filter */}
           <div className="space-y-1.5">
             <label className="font-bold text-slate-700">Tenant Scope</label>
             <select
@@ -215,7 +215,6 @@ export const AuditLogsPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Branch Filter */}
           <div className="space-y-1.5">
             <label className="font-bold text-slate-700">Branch Scope</label>
             <select
@@ -228,7 +227,6 @@ export const AuditLogsPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Event Type Filter */}
           <div className="space-y-1.5">
             <label className="font-bold text-slate-700">Event Type (Action)</label>
             <select
@@ -241,7 +239,6 @@ export const AuditLogsPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Date Range Filters */}
           <div className="space-y-1.5">
             <label className="font-bold text-slate-700">Date Range</label>
             <div className="flex gap-1.5">
@@ -262,9 +259,16 @@ export const AuditLogsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Audit Log Table */}
-      <AuditEventTable events={filteredEvents} />
-    </div>
+      {filteredEvents.length === 0 ? (
+        <HmsEmptyState
+          title="No matching audit events"
+          description="Try adjusting your filters or search query."
+          icon={<AlertTriangle className="h-6 w-6" />}
+        />
+      ) : (
+        <AuditEventTable events={filteredEvents} />
+      )}
+    </HmsDashboardShell>
   );
 };
 export default AuditLogsPage;

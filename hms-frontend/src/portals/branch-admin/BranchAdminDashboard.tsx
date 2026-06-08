@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { PageHeader } from '../../components/ui/page-header';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../components/hms-dashboard';
+import { BranchAdminShellNotice } from './components/BranchAdminShellNotice';
 import {
   AnalyticsMetricCard,
   ChartCard,
@@ -28,16 +30,31 @@ import type { DateRange } from '../../types/analytics';
 export const BranchAdminDashboard: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange>(defaultDateRange);
   const [department, setDepartment] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <HmsDashboardShell>
+        <HmsLoadingSkeleton variant="kpi" />
+        <HmsLoadingSkeleton variant="table" rows={4} />
+      </HmsDashboardShell>
+    );
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">
-        <strong>Branch sandbox analytics:</strong> Branch operation signals are mock data until branch command-center APIs are available. Drilldowns link only to existing routes.
-      </div>
-      <PageHeader
+    <HmsDashboardShell
+      footer={<HmsAuditFooter dataSource="Mock branch analytics (sandbox)" />}
+    >
+      <BranchAdminShellNotice />
+      <HmsPageHeader
         title="Branch Operations Command Center"
         description="Patient flow, queue delays, room utilization, staffing coverage, revenue risk, and operational alerts."
-        breadcrumbs={[{ label: 'Branch Admin', to: '/branch-admin' }, { label: 'Dashboard' }]}
+        badge="Sandbox"
         actions={<button type="button" onClick={() => window.location.reload()} aria-label="Refresh branch dashboard" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"><RefreshCw className="h-4 w-4" /> Refresh</button>}
       />
       <DashboardFilterBar dateRange={dateRange} onDateRangeChange={setDateRange} department={department} onDepartmentChange={setDepartment} />
@@ -52,7 +69,7 @@ export const BranchAdminDashboard: React.FC = () => {
         <InsightPanel insights={branchInsights} title="Branch alerts and decisions" />
         <div className="xl:col-span-2"><ReportTable columns={delayedPatientColumns} rows={delayedPatientRows} caption="Delayed patients drilldown table" /></div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

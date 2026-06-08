@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { PageHeader } from '../../components/ui/page-header';
+import React, { useState, useEffect } from 'react';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
+import { AdminShellNotice } from './components/AdminShellNotice';
 import { UserAccessTable } from './components/UserAccessTable';
-import { UserPlus, AlertTriangle, Search, Filter } from 'lucide-react';
+import { UserPlus, Search, Filter, Users } from 'lucide-react';
 
 interface UserItem {
   id: string;
@@ -18,6 +20,12 @@ interface UserItem {
 export const UsersPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const mockUsers: UserItem[] = [
     {
@@ -83,23 +91,24 @@ export const UsersPage: React.FC = () => {
     u.role.toLowerCase().includes(search.toLowerCase())
   );
 
-  return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      {/* Sandbox Warning Banner */}
-      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
-        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI User Directory Sandbox</h5>
-          <p className="font-medium mt-0.5">
-            This workspace displays user credentials and assignments in-memory. Resetting multi-factor authentication (MFA), updating user lockouts, or editing credentials are simulated. No database persistence updates are made.
-          </p>
-        </div>
-      </div>
+  if (loading) {
+    return (
+      <HmsDashboardShell>
+        <HmsLoadingSkeleton variant="table" rows={5} />
+      </HmsDashboardShell>
+    );
+  }
 
+  return (
+    <HmsDashboardShell
+      footer={<HmsAuditFooter dataSource="Mock user data (sandbox)" />}
+    >
+      <AdminShellNotice />
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <PageHeader 
-          title="User Directory & Scopes" 
-          description="Centralised audit and directory of active personnel, MFA security alignments, and locks." 
+        <HmsPageHeader
+          title="User Directory & Scopes"
+          description="Centralised audit and directory of active personnel, MFA security alignments, and locks."
+          badge="Sandbox"
         />
         <button 
           onClick={() => setShowCreateModal(true)}
@@ -109,7 +118,6 @@ export const UsersPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Filtering Header */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
@@ -126,10 +134,16 @@ export const UsersPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Access Table */}
-      <UserAccessTable users={filteredUsers} />
+      {filteredUsers.length === 0 ? (
+        <HmsEmptyState
+          title="No matching users"
+          description="Try adjusting your search query."
+          icon={<Users className="h-6 w-6" />}
+        />
+      ) : (
+        <UserAccessTable users={filteredUsers} />
+      )}
 
-      {/* Provision User Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-scale-in relative">
@@ -144,13 +158,11 @@ export const UsersPage: React.FC = () => {
                 <p className="text-xs text-slate-400 mt-0.5">Mock governance sandbox execution</p>
               </div>
             </div>
-            
             <div className="space-y-3 text-xs text-slate-600 leading-relaxed border-t border-b border-slate-100 py-4">
               <p className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 font-medium">
                 This triggers a simulated user invitation and provisioning flow. Email invites, temporary password setups, and branch bindings are tested in-memory with no changes persisted to the database.
               </p>
             </div>
-
             <div className="mt-5 flex gap-2">
               <button 
                 onClick={() => setShowCreateModal(false)}
@@ -162,7 +174,7 @@ export const UsersPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </HmsDashboardShell>
   );
 };
 export default UsersPage;

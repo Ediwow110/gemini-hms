@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { PageHeader } from '../../components/ui/page-header';
+import React, { useState, useEffect } from 'react';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../components/hms-dashboard';
+import { AdminShellNotice } from './components/AdminShellNotice';
 import { PermissionMatrix } from './components/PermissionMatrix';
-import { Shield, AlertTriangle, Key, Users } from 'lucide-react';
+import { Shield, Key, Users } from 'lucide-react';
 
 export const RolesPermissionsPage: React.FC = () => {
   const mockRoles = [
@@ -14,31 +16,33 @@ export const RolesPermissionsPage: React.FC = () => {
   ];
 
   const [selectedRole, setSelectedRole] = useState<string>('Super Admin');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <HmsDashboardShell>
+        <HmsLoadingSkeleton variant="table" rows={6} />
+      </HmsDashboardShell>
+    );
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      {/* Sandbox Warning Banner */}
-      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
-        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI RBAC Sandbox Shell</h5>
-          <p className="font-medium mt-0.5">
-            This administration matrix operates in local sandbox memory. Multi-factor authentication (MFA) requirements, granular authorization rules, and tenant/branch scoped permissions are simulated. No database mappings are altered.
-          </p>
-        </div>
-      </div>
+    <HmsDashboardShell
+      footer={<HmsAuditFooter dataSource="Mock RBAC data (sandbox)" />}
+    >
+      <AdminShellNotice />
+      <HmsPageHeader
+        title="RBAC Governance & Permissions"
+        description="Edit application authorization roles, map permissions, and verify role bounds."
+        badge="Sandbox"
+      />
 
-      <div className="flex justify-between items-center">
-        <PageHeader 
-          title="RBAC Governance & Permissions" 
-          description="Edit application authorization roles, map permissions, and verify role bounds." 
-        />
-      </div>
-
-      {/* Role Details and Configuration */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Column: Role List & Scoping Metadata */}
         <div className="space-y-6">
           <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
             <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-2">
@@ -62,14 +66,13 @@ export const RolesPermissionsPage: React.FC = () => {
                     <div>
                       <p className={`font-bold ${isActive ? 'text-indigo-900' : 'text-slate-800 group-hover:text-slate-900'}`}>{role}</p>
                       <p className="text-[9px] text-slate-400 font-semibold mt-0.5 uppercase tracking-wide">
-                        {role === 'Super Admin' 
-                          ? 'Global Governance Access' 
-                          : role.includes('Admin') 
-                          ? 'Tenant Scope Scoped' 
+                        {role === 'Super Admin'
+                          ? 'Global Governance Access'
+                          : role.includes('Admin')
+                          ? 'Tenant Scope Scoped'
                           : 'Branch Context Scoped'}
                       </p>
                     </div>
-                    
                     <div className="flex gap-2">
                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider ${
                         role === 'Super Admin' || role === 'Branch Admin'
@@ -100,12 +103,11 @@ export const RolesPermissionsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Permission Matrix */}
         <div className="lg:col-span-2">
           <PermissionMatrix selectedRole={selectedRole} />
         </div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 export default RolesPermissionsPage;

@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
-import { PageHeader } from '../../components/ui/page-header';
-import { Settings, AlertTriangle, ShieldCheck, Mail, ShieldAlert, Sliders } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../components/hms-dashboard';
+import { AdminShellNotice } from './components/AdminShellNotice';
+import { Settings, ShieldCheck, Mail, ShieldAlert, Sliders } from 'lucide-react';
 
 export const SystemSettingsPage: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [mfaEnforce, setMfaEnforce] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState('60');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,28 +23,26 @@ export const SystemSettingsPage: React.FC = () => {
     }, 4000);
   };
 
-  return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      {/* Sandbox Warning Banner */}
-      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
-        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Global Settings Sandbox</h5>
-          <p className="font-medium mt-0.5">
-            This settings console configures global parameters in local sandbox memory. Multi-tenant rules, authentication thresholds, and gateway SMTP parameters are simulated. No backend config alterations are saved.
-          </p>
-        </div>
-      </div>
+  if (loading) {
+    return (
+      <HmsDashboardShell>
+        <HmsLoadingSkeleton variant="panel" />
+      </HmsDashboardShell>
+    );
+  }
 
-      <div className="flex justify-between items-center">
-        <PageHeader 
-          title="Global System Settings" 
-          description="Configure global multi-tenant controls, security thresholds, and network parameters." 
-        />
-      </div>
+  return (
+    <HmsDashboardShell
+      footer={<HmsAuditFooter dataSource="Mock settings (sandbox)" />}
+    >
+      <AdminShellNotice />
+      <HmsPageHeader
+        title="Global System Settings"
+        description="Configure global multi-tenant controls, security thresholds, and network parameters."
+        badge="Sandbox"
+      />
 
       <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Security and Credentials Policies */}
         <div className="lg:col-span-2 space-y-6">
           <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-5">
             <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-2">
@@ -114,7 +120,6 @@ export const SystemSettingsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Save Configurations Controls */}
         <div className="space-y-6">
           <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
             <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-2">
@@ -157,7 +162,7 @@ export const SystemSettingsPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </HmsDashboardShell>
   );
 };
 export default SystemSettingsPage;

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { PageHeader } from '../../components/ui/page-header';
+import React, { useState, useEffect } from 'react';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../components/hms-dashboard';
+import { AdminShellNotice } from './components/AdminShellNotice';
 import { SecurityAlertPanel } from './components/SecurityAlertPanel';
 import { 
   ShieldAlert, 
@@ -64,6 +66,12 @@ export const SecurityCenterPage: React.FC = () => {
   const [activeMfaScan, setActiveMfaScan] = useState(false);
   const [activeTab, setActiveTab] = useState<'alerts' | 'users' | 'sessions' | 'policies'>('alerts');
   const [activeActionModal, setActiveActionModal] = useState<{ type: string; details?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const mockMetrics: SecurityMetric[] = [
     { label: "Failed Logins (24h)", value: "8 Attempts", subtext: "Average is 1.2 per day", severity: "WARNING" },
@@ -163,23 +171,25 @@ export const SecurityCenterPage: React.FC = () => {
     }
   };
 
-  return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      {/* Sandbox Warning Banner */}
-      <div className="p-4 bg-amber-50 border border-amber-150 rounded-2xl flex gap-3 text-xs text-amber-800">
-        <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-        <div>
-          <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Security Sandbox Shell</h5>
-          <p className="font-medium mt-0.5">
-            This module displays security monitoring streams in-memory. Threat logs, account lockouts, active sessions, and compliance policies are mock representations. No active firewall rules or intrusion prevention systems are initialized.
-          </p>
-        </div>
-      </div>
+  if (loading) {
+    return (
+      <HmsDashboardShell>
+        <HmsLoadingSkeleton variant="kpi" />
+        <HmsLoadingSkeleton variant="alert-rail" />
+      </HmsDashboardShell>
+    );
+  }
 
+  return (
+    <HmsDashboardShell
+      footer={<HmsAuditFooter dataSource="Mock security data (sandbox)" />}
+    >
+      <AdminShellNotice />
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <PageHeader 
-          title="Security Center Console" 
-          description="Global monitoring of threat indicators, failed credentials, and session telemetry." 
+        <HmsPageHeader
+          title="Security Center Console"
+          description="Global monitoring of threat indicators, failed credentials, and session telemetry."
+          badge="Sandbox"
         />
         <button 
           onClick={handleMfaScan}
@@ -198,7 +208,6 @@ export const SecurityCenterPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Grid: KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {mockMetrics.map((m, i) => (
           <div key={i} className={`card p-4 border shadow-sm rounded-2xl ${getMetricStyle(m.severity)}`}>
@@ -209,7 +218,6 @@ export const SecurityCenterPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Navigation Tabs for Security Dashboard */}
       <div className="flex border-b border-slate-200 overflow-x-auto whitespace-nowrap">
         <button
           onClick={() => setActiveTab('alerts')}
@@ -254,10 +262,8 @@ export const SecurityCenterPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content Area based on Active Tab */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* TAB 1: ALERTS & INCIDENTS */}
           {activeTab === 'alerts' && (
             <div className="space-y-6">
               <SecurityAlertPanel alerts={mockAlerts} />
@@ -299,11 +305,9 @@ export const SecurityCenterPage: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 2: MFA & LOCKS */}
           {activeTab === 'users' && (
             <div className="space-y-6">
               
-              {/* Locked Accounts Panel */}
               <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase flex items-center gap-2">
@@ -351,7 +355,6 @@ export const SecurityCenterPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* MFA Compliance Panel */}
               <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase flex items-center gap-2">
@@ -399,7 +402,6 @@ export const SecurityCenterPage: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 3: ACTIVE SESSIONS */}
           {activeTab === 'sessions' && (
             <div className="space-y-6">
               
@@ -452,7 +454,6 @@ export const SecurityCenterPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Security Action Shell */}
               <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
                 <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-2">
                   <ShieldAlert className="h-4.5 w-4.5 text-indigo-500" />
@@ -491,11 +492,9 @@ export const SecurityCenterPage: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 4: TRENDS & POLICIES */}
           {activeTab === 'policies' && (
             <div className="space-y-6">
               
-              {/* Failed Login Trends Chart */}
               <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
                 <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-2">
                   <Activity className="h-4.5 w-4.5 text-indigo-500" />
@@ -526,7 +525,6 @@ export const SecurityCenterPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Permission Changes Log */}
               <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
                 <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-2">
                   <Fingerprint className="h-4.5 w-4.5 text-indigo-500" />
@@ -553,7 +551,6 @@ export const SecurityCenterPage: React.FC = () => {
 
         </div>
 
-        {/* Right Column: Key policies checklist */}
         <div className="space-y-6">
           <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
             <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-2">
@@ -596,7 +593,6 @@ export const SecurityCenterPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Security Action Modal Dialog */}
       {activeActionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-scale-in relative">
@@ -637,7 +633,7 @@ export const SecurityCenterPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </HmsDashboardShell>
   );
 };
 export default SecurityCenterPage;

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { PageHeader } from '../../components/ui/page-header';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../components/hms-dashboard';
+import { AdminShellNotice } from './components/AdminShellNotice';
 import {
   AnalyticsMetricCard,
   ChartCard,
@@ -31,17 +33,31 @@ export const SuperAdminDashboard: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange>(defaultDateRange);
   const [tenant, setTenant] = useState('all');
   const [branch, setBranch] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <HmsDashboardShell>
+        <HmsLoadingSkeleton variant="kpi" />
+        <HmsLoadingSkeleton variant="table" rows={4} />
+      </HmsDashboardShell>
+    );
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">
-        <strong>Sandbox analytics:</strong> These command-center metrics are mock/sandbox data prepared for future analytics APIs. No tenant provisioning, security enforcement, exports, or operational mutations are performed from this dashboard.
-      </div>
-
-      <PageHeader
+    <HmsDashboardShell
+      footer={<HmsAuditFooter dataSource="Mock analytics (sandbox)" />}
+    >
+      <AdminShellNotice />
+      <HmsPageHeader
         title="Platform Command Center"
         description="Multi-tenant operations, security posture, system health, and drilldown-ready governance signals."
-        breadcrumbs={[{ label: 'Admin', to: '/admin' }, { label: 'Command Center' }]}
+        badge="Sandbox"
         actions={(
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => window.location.reload()} aria-label="Refresh platform command center" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">
@@ -51,7 +67,6 @@ export const SuperAdminDashboard: React.FC = () => {
           </div>
         )}
       />
-
       <DashboardFilterBar
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
@@ -61,11 +76,9 @@ export const SuperAdminDashboard: React.FC = () => {
         branch={branch}
         onBranchChange={setBranch}
       />
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
         {superAdminMetrics.map((metric) => <AnalyticsMetricCard key={metric.title} {...metric} />)}
       </div>
-
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <ChartCard title="Tenant growth and active users" description="Tracks tenant count against user growth to highlight scaling pressure." height={320}>
           <TrendLineChart data={tenantGrowthTrend} title="Tenant growth trend" valueLabel="Tenants" secondaryLabel="Active users" />
@@ -74,7 +87,6 @@ export const SuperAdminDashboard: React.FC = () => {
           <ComparisonBarChart data={roleActivityComparison} title="Active users by role" valueLabel="Users" />
         </ChartCard>
       </div>
-
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <ChartCard title="Security events by severity" description="Prioritize critical/high-risk investigation queues." height={280}>
           <StatusDonutChart data={securitySeverityBreakdown} title="Security events by severity" />
@@ -86,12 +98,11 @@ export const SuperAdminDashboard: React.FC = () => {
           <HeatmapGrid data={branchLoadHeatmap} title="Branch department load" />
         </ChartCard>
       </div>
-
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="xl:col-span-1"><InsightPanel insights={adminInsights} title="Risk and operations insights" /></div>
         <div className="xl:col-span-2"><ReportTable columns={tenantHealthColumns} rows={tenantHealthRows} caption="Tenant health drilldown table" /></div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

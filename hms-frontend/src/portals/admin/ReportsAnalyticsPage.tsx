@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CalendarClock, RefreshCw } from 'lucide-react';
-import { PageHeader } from '../../components/ui/page-header';
+import { HmsPageHeader } from '../../components/hms-page';
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../components/hms-dashboard';
+import { AdminShellNotice } from './components/AdminShellNotice';
 import {
   AnalyticsMetricCard,
   ChartCard,
@@ -32,17 +34,31 @@ export const ReportsAnalyticsPage: React.FC = () => {
   const [tenant, setTenant] = useState('all');
   const [branch, setBranch] = useState('all');
   const [reportType, setReportType] = useState('operations');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <HmsDashboardShell>
+        <HmsLoadingSkeleton variant="kpi" />
+        <HmsLoadingSkeleton variant="table" rows={4} />
+      </HmsDashboardShell>
+    );
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">
-        <strong>Sandbox report architecture:</strong> Analytics are mock data. Export and schedule actions are disabled until governed backend endpoints, reason capture, and audit logging exist.
-      </div>
-
-      <PageHeader
+    <HmsDashboardShell
+      footer={<HmsAuditFooter dataSource="Mock analytics (sandbox)" />}
+    >
+      <AdminShellNotice />
+      <HmsPageHeader
         title="System Reports & Performance Analytics"
         description="Operational reporting workspace for transactions, APIs, background jobs, storage, and export governance."
-        breadcrumbs={[{ label: 'Admin', to: '/admin' }, { label: 'Reports' }]}
+        badge="Sandbox"
         actions={(
           <div className="flex flex-wrap items-start gap-3">
             <ReportExportButton label="Export operations summary" sensitive requiresReason />
@@ -55,7 +71,6 @@ export const ReportsAnalyticsPage: React.FC = () => {
           </div>
         )}
       />
-
       <DashboardFilterBar
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
@@ -68,11 +83,9 @@ export const ReportsAnalyticsPage: React.FC = () => {
         onReportTypeChange={setReportType}
         reportTypeOptions={[{ label: 'Operations', value: 'operations' }, { label: 'Security', value: 'security' }, { label: 'Storage', value: 'storage' }]}
       />
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
         {adminReportMetrics.map((metric) => <AnalyticsMetricCard key={metric.title} {...metric} />)}
       </div>
-
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <ChartCard title="Transaction volume trend" description="Operational volume for staffing and queue capacity planning." height={300}>
           <VolumeAreaChart data={transactionVolumeTrend} title="Transaction volume trend" valueLabel="Transactions" />
@@ -87,12 +100,11 @@ export const ReportsAnalyticsPage: React.FC = () => {
           <StatusDonutChart data={jobStatusBreakdown} title="Background job status" />
         </ChartCard>
       </div>
-
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div><InsightPanel insights={adminInsights} title="Report anomalies and recommendations" /></div>
         <div className="xl:col-span-2"><ReportTable columns={backgroundJobColumns} rows={backgroundJobRows} caption="Background jobs report table" /></div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

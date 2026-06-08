@@ -1,6 +1,6 @@
 import type React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SuperAdminDashboard } from '../../portals/admin/SuperAdminDashboard';
 import { ReportsAnalyticsPage } from '../../portals/admin/ReportsAnalyticsPage';
@@ -48,8 +48,12 @@ vi.mock('../../hooks/use-it-support', () => ({
 const renderPage = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
 describe('dashboard intelligence pages', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
   it('SuperAdminDashboard renders KPIs, charts, insights, and drilldown table', () => {
     renderPage(<SuperAdminDashboard />);
+    act(() => { vi.advanceTimersByTime(800); });
     expect(screen.getByText('Platform Command Center')).toBeInTheDocument();
     expect(screen.getByText('Total Tenants')).toBeInTheDocument();
     expect(screen.getByText('Risk and operations insights')).toBeInTheDocument();
@@ -58,6 +62,7 @@ describe('dashboard intelligence pages', () => {
 
   it('ReportsAnalyticsPage uses disabled WIP export instead of fake export toast', () => {
     renderPage(<ReportsAnalyticsPage />);
+    act(() => { vi.advanceTimersByTime(800); });
     expect(screen.getByText('System Reports & Performance Analytics')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Export operations summary WIP/i })).toBeDisabled();
     expect(screen.queryByText(/Generating simulated report bundle/i)).not.toBeInTheDocument();
