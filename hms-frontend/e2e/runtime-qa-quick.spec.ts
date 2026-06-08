@@ -300,6 +300,7 @@ test.describe.serial('runtime QA', () => {
         (r) => r.url().includes('/patient-portal/prescriptions/') && r.url().includes('/refill-request'),
         { timeout: 15_000 },
       );
+      page.once('dialog', (dialog) => dialog.accept());
       await refillBtn.click();
       const resp = await refillResp;
       // 201 (created) or 409 (already pending) are both acceptable
@@ -322,6 +323,7 @@ test.describe.serial('runtime QA', () => {
         (r) => r.url().includes('/patient-portal/medical-record-requests'),
         { timeout: 15_000 },
       );
+      page.once('dialog', (dialog) => dialog.accept());
       await recordRequest.click();
       const resp = await recordResp;
       expect(resp.status(), 'Medical record request status').toBeGreaterThanOrEqual(200);

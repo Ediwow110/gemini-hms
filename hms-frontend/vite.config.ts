@@ -12,17 +12,21 @@ export default defineConfig({
       'use-sync-external-store/shim/with-selector': path.resolve(__dirname, './src/shims/use-sync-external-store-with-selector.ts'),
     },
   },
+  // Prebundle CommonJS dependencies to avoid runtime ESM/CommonJS conversion crashes in browser
+  // (e.g. recharts imports CommonJS modules like 'es-toolkit/compat/get' directly)
   optimizeDeps: {
     include: [
       'decimal.js-light',
+      'es-toolkit',
       'eventemitter3',
+      'recharts',
       'tiny-invariant',
       'react-is',
       'use-sync-external-store/with-selector.js',
       'use-sync-external-store/shim/with-selector.js',
       'use-sync-external-store/shim/with-selector',
     ],
-    exclude: ['recharts', 'es-toolkit'],
+    exclude: [],
   },
   build: {
     chunkSizeWarningLimit: 400,
