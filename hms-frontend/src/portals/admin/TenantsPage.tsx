@@ -22,6 +22,7 @@ interface TenantItem {
 
 export const TenantsPage: React.FC = () => {
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'HEALTHY' | 'DEGRADED' | 'CRITICAL'>('ALL');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -72,10 +73,12 @@ export const TenantsPage: React.FC = () => {
     }
   ];
 
-  const filteredTenants = mockTenants.filter(t => 
-    t.name.toLowerCase().includes(search.toLowerCase()) ||
-    t.id.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredTenants = mockTenants.filter(t => {
+    const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase()) ||
+      t.id.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   if (loading) {
     return (
@@ -122,12 +125,19 @@ export const TenantsPage: React.FC = () => {
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
         </div>
-        <button 
-          onClick={() => setShowCreateModal(true)}
-          className="btn border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
-        >
-          <Filter className="h-4 w-4" /> Filter Status
-        </button>
+        <div className="relative">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'HEALTHY' | 'DEGRADED' | 'CRITICAL')}
+            className="appearance-none btn border border-slate-200 bg-white text-slate-650 hover:bg-slate-50 pl-9 pr-8 py-2.5 text-xs font-bold rounded-xl cursor-pointer focus:outline-none"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="HEALTHY">Healthy</option>
+            <option value="DEGRADED">Degraded</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+          <Filter className="absolute left-3 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+        </div>
       </div>
 
       {filteredTenants.length === 0 ? (
