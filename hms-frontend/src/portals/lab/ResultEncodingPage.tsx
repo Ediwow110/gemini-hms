@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { HmsPageHeader, HmsSafetyBar } from '../../components/hms-page';
 import { ResultFlagBadge, ResultFlag } from './components/ResultFlagBadge';
 import { useSaveDraftLabResult, useLabDraftEncodingContext, useParameterDefinitions } from '../../hooks/use-clinical-workflow';
@@ -45,7 +45,9 @@ function computeAge(dob: Date): number {
 }
 
 export const ResultEncodingPage = () => {
-  const { patientId, orderId } = useParams<{ patientId: string; orderId: string }>();
+  const [searchParams] = useSearchParams();
+  const patientId = searchParams.get('patientId');
+  const orderId = searchParams.get('orderId');
 
   const { data: context, isLoading, isError } = useLabDraftEncodingContext(patientId || '', orderId || '');
   const { data: definitions, isLoading: catLoading, isError: catError } = useParameterDefinitions(orderId || '');

@@ -10,15 +10,6 @@ import type {
   LabResultDraftSummaryDto,
 } from '../../../services/clinicalWorkflow.service';
 
-// Mock router params to provide patientId and orderId
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useParams: () => ({ patientId: 'patient-1', orderId: 'order-1' }),
-  };
-});
-
 // Mock clinical workflow hooks
 vi.mock('../../../hooks/use-clinical-workflow', () => ({
   useLabDraftEncodingContext: vi.fn(),
@@ -98,7 +89,7 @@ describe('ResultEncodingPage Unit Tests', () => {
       isError: false,
     } as unknown as UseQueryResult<LabResultDraftContextDto, Error>);
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/lab/encoding?patientId=patient-1&orderId=order-1']}>
         <ResultEncodingPage />
       </MemoryRouter>
     );
@@ -117,7 +108,7 @@ describe('ResultEncodingPage Unit Tests', () => {
       error: new Error('Network'),
     } as unknown as UseQueryResult<LabResultDraftContextDto, Error>);
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/lab/encoding?patientId=patient-1&orderId=order-1']}>
         <ResultEncodingPage />
       </MemoryRouter>
     );
@@ -126,7 +117,7 @@ describe('ResultEncodingPage Unit Tests', () => {
 
   it('renders context data and allows draft save', async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/lab/encoding?patientId=patient-1&orderId=order-1']}>
         <ResultEncodingPage />
       </MemoryRouter>
     );

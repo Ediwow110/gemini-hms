@@ -397,7 +397,11 @@ export const LabOrdersPage = () => {
 
                     {selectedOrder.status === 'Received' && (
                       <button
-                        onClick={() => navigate(`/lab/encoding?id=${selectedOrder.id}`)}
+                        onClick={() => {
+                          const queueItem = queueData?.find(r => r.id === selectedOrder.id);
+                          const patientId = queueItem?.patientId || '';
+                          navigate(`/lab/encoding?patientId=${patientId}&orderId=${selectedOrder.id}`);
+                        }}
                         className="btn bg-violet-600 hover:bg-violet-700 text-white text-xs font-black px-5 py-3 rounded-xl flex items-center gap-2 shadow-md transition-all active:scale-95"
                       >
                         <Activity className="h-4 w-4" /> Encode Results
