@@ -81,8 +81,55 @@ function terminateProcessTree(pid: number) {
   }
 }
 
+async function isBackendUp(): Promise<boolean> {
+  return new Promise((resolve) => {
+    http.get('http://localhost:3000/health', (res) => {
+      resolve(res.statusCode === 200);
+    }).on('error', () => {
+      resolve(false);
+    });
+  });
+}
+
 async function main() {
   deleteViteCache();
+
+  const BACKEND_DIR = path.resolve(FRONTEND_DIR, '../hms-backend');
+  let backendProcess: any = null;
+  const backendAlreadyUp = await isBackendUp();
+
+  if (!backendAlreadyUp) {
+    console.log('Backend not detected. Starting backend server dynamically...');
+    backendProcess = spawn('npm', ['run', 'start:dev'], {
+      cwd: BACKEND_DIR,
+      shell: true,
+    });
+    
+    backendProcess.stdout?.on('data', (data: any) => {
+      const output = data.toString();
+      if (output.includes('running on port') || output.includes('mapped')) {
+        console.log(`[Backend Server]: ${output.trim()}`);
+      }
+    });
+
+    backendProcess.stderr?.on('data', (data: any) => {
+      console.error(`[Backend Error]: ${data.toString().trim()}`);
+    });
+
+    console.log('Waiting for backend server to be ready...');
+    try {
+      await waitForServer('http://localhost:3000/health', 90000);
+      console.log('Backend server is ready.');
+    } catch (e) {
+      console.error('Backend server failed to start within timeout.');
+      if (backendProcess.pid) {
+        terminateProcessTree(backendProcess.pid);
+      }
+      throw e;
+    }
+  } else {
+    console.log('Existing backend server detected at http://localhost:3000.');
+  }
 
   console.log('Starting Vite dev server...');
   const viteBin = path.join(FRONTEND_DIR, 'node_modules', 'vite', 'bin', 'vite.js');
@@ -112,6 +159,10 @@ async function main() {
   } finally {
     if (viteProcess.pid) {
       terminateProcessTree(viteProcess.pid);
+    }
+    if (backendProcess && backendProcess.pid) {
+      console.log('Stopping dynamically started backend server...');
+      terminateProcessTree(backendProcess.pid);
     }
   }
 
