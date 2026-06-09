@@ -520,16 +520,20 @@ export class AuthService {
     const availableBranches = userBranches.map((ub) => ub.branch);
 
     // Auto-assign branch when user has exactly one eligible branch
-    const resolvedBranchId = branchId ?? (availableBranches.length === 1 ? availableBranches[0].id : undefined);
+    const resolvedBranchId =
+      branchId ??
+      (availableBranches.length === 1 ? availableBranches[0].id : undefined);
 
     // Persist auto-assigned branch on session for stateful tracking
     if (resolvedBranchId && resolvedBranchId !== branchId) {
-      await this.prisma.session.update({
-        where: { id: sessionId },
-        data: { branchId: resolvedBranchId },
-      }).catch(() => {
-        // non-critical; session may already have branchId or be transient
-      });
+      await this.prisma.session
+        .update({
+          where: { id: sessionId },
+          data: { branchId: resolvedBranchId },
+        })
+        .catch(() => {
+          // non-critical; session may already have branchId or be transient
+        });
     }
 
     const GLOBAL_PORTAL_ROLES = new Set([

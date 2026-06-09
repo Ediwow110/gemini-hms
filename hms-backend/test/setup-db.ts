@@ -16,7 +16,7 @@ async function main() {
     // Push the schema
     execSync('npx prisma db push --accept-data-loss', {
       stdio: 'inherit',
-      env: { ...process.env, DATABASE_URL: dbUrl }
+      env: { ...process.env, DATABASE_URL: dbUrl },
     });
 
     // Apply the trigger
@@ -43,7 +43,7 @@ async function main() {
         FOR EACH ROW
         EXECUTE FUNCTION prevent_audit_log_modification();
     `;
-    
+
     await prisma.$executeRawUnsafe(sql);
     console.log('Audit log immutability trigger applied to test database.');
     await prisma.$disconnect();

@@ -45,10 +45,10 @@
     "passport-jwt": "^4.0.1",
     "pdfkit": "^0.18.0",
     "pg": "^8.20.0",
+    "prisma": "7.9.0-dev.13",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "speakeasy": "^2.0.0",
-    "prisma": "^7.8.0"
+    "speakeasy": "^2.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
