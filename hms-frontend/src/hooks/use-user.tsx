@@ -1,6 +1,6 @@
 // @refresh reset
 /* eslint-disable react-refresh/only-export-components -- Co-locating context and hooks is acceptable for this prototype */
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { apiClient } from '../lib/api';
 
 export interface UserState {
@@ -73,11 +73,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<unknown>(null);
+  const lastDiagnosticKeyRef = useRef<string | null>(null);
 
   const logDiagnostics = (phase: string, error: unknown) => {
     if (import.meta.env.DEV) {
       const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string };
-      console.error("[Auth Diagnostics]", {
+      const diagnosticKey = [
+        phase,
+        err?.response?.status ?? 'network',
+        err?.response?.data?.message || err?.message || 'unknown',
+        window.location.pathname,
+      ].join(':');
+
+      // Avoid flooding the Vite terminal with the same auth bootstrap failure repeatedly.
+      if (lastDiagnosticKeyRef.current === diagnosticKey) {
+        return;
+      }
+      lastDiagnosticKeyRef.current = diagnosticKey;
+
+      console.warn("[Auth Diagnostics]", {
         phase,
         endpoint: "/v1/auth/me",
         status: err?.response?.status,
@@ -147,13 +161,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const interceptor = apiClient.interceptors.response.use(
       (response) => response,
       (error) => {
+        const requestUrl = error.config?.url as string | undefined;
+
         if (error.response?.status === 401) {
           if (mounted) {
             setUser(null);
             // Avoid infinite loop if already null
           }
-        } else if (error.response?.status !== 200) {
-           logDiagnostics('interceptor', error);
+        } else if (!requestUrl?.includes('/v1/auth/me') && error.response?.status !== 200) {
+          logDiagnostics('interceptor', error);
         }
         return Promise.reject(error);
       }
