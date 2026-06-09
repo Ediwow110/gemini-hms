@@ -5,6 +5,7 @@ import { HmsToolbar, HmsAuditFooter, HmsStatusChip, HmsDrilldownTable } from '..
 import { Search, FileText, RefreshCw } from 'lucide-react';
 import { useInvoices } from '../../hooks/use-billing';
 import { useUser } from '../../hooks/use-user';
+import { safeMoney } from '../../lib/safe-money';
 
 export const InvoicesPage = () => {
   const navigate = useNavigate();
@@ -45,7 +46,7 @@ export const InvoicesPage = () => {
       header: 'Amount',
       render: (inv: typeof invoices[0]) => (
         <span className="font-mono font-bold text-slate-800">
-          {Number(inv.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₱
+          {safeMoney(inv.totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₱
         </span>
       ),
     },
@@ -54,7 +55,7 @@ export const InvoicesPage = () => {
       header: 'Paid',
       render: (inv: typeof invoices[0]) => (
         <span className="font-mono text-slate-500">
-          {Number(inv.paidAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₱
+          {safeMoney(inv.paidAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₱
         </span>
       ),
     },

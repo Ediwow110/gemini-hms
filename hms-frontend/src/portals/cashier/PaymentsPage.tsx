@@ -11,6 +11,7 @@ import { Search, Receipt, Printer, Info, AlertCircle } from 'lucide-react';
 import { useActiveSession } from '../../hooks/use-billing';
 import { useUser } from '../../hooks/use-user';
 import { ActiveSessionDto } from '../../services/billing-frontend.service';
+import { safeMoney } from '../../lib/safe-money';
 
 type PaymentRecord = ActiveSessionDto['payments'][number];
 
@@ -84,7 +85,7 @@ export const PaymentsPage: React.FC = () => {
       width: 'text-right',
       render: (rcp: PaymentRecord) => (
         <span className="font-mono font-bold text-slate-900">
-          ₱{Number(rcp.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          ₱{safeMoney(rcp.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
         </span>
       )
     },

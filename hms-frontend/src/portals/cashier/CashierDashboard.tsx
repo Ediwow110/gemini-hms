@@ -5,13 +5,14 @@ import { PageHeader } from '../../components/ui/page-header';
 import { ChartCard, InsightPanel, StatusDonutChart, VolumeAreaChart } from '../../components/analytics';
 import { cashierInsights, cashierVolumeTrend, paymentMethodBreakdown } from '../../data/analytics/clinicalAnalytics.mock';
 import { useInvoices, useActiveSession } from '../../hooks/use-billing';
+import { safeMoney } from '../../lib/safe-money';
 
 export const CashierDashboard = () => {
   const navigate = useNavigate();
   const { invoices, loading: invLoading } = useInvoices();
   const { session, loading: sessLoading } = useActiveSession();
 
-  const totalOutstanding = useMemo(() => invoices.reduce((sum, inv) => sum + Number(inv.totalAmount) - Number(inv.paidAmount), 0), [invoices]);
+  const totalOutstanding = useMemo(() => invoices.reduce((sum, inv) => sum + safeMoney(inv.totalAmount) - safeMoney(inv.paidAmount), 0), [invoices]);
   const pendingCount = useMemo(() => invoices.filter(i => i.status === 'PENDING' || i.status === 'UNPAID').length, [invoices]);
   const paidCount = useMemo(() => invoices.filter(i => i.status === 'PAID' || i.status === 'COMPLETED').length, [invoices]);
 
@@ -128,7 +129,7 @@ export const CashierDashboard = () => {
                     <p className="text-[10px] text-slate-400">{new Date(inv.createdAt).toLocaleDateString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-bold text-slate-700">{Number(inv.totalAmount).toLocaleString()} ₱</p>
+                    <p className="text-xs font-bold text-slate-700">{safeMoney(inv.totalAmount).toLocaleString()} ₱</p>
                     <p className="text-[10px] text-slate-400">{inv.status}</p>
                   </div>
                 </div>

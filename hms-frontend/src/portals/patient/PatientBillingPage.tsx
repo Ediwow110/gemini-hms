@@ -4,6 +4,7 @@ import PatientPortalShellNotice from './components/PatientPortalShellNotice';
 import { usePatientInvoices } from '../../hooks/use-patient-portal';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
+import { safeMoney } from '../../lib/safe-money';
 
 export const PatientBillingPage: React.FC = () => {
   const { invoices, loading } = usePatientInvoices();
@@ -11,13 +12,13 @@ export const PatientBillingPage: React.FC = () => {
   const displayInvoices = invoices.map((inv) => ({
     id: inv.id,
     service: `Invoice ${inv.invoiceNumber || inv.id.substring(0, 8)}`,
-    amount: Number(inv.balance > 0 ? inv.totalAmount : inv.paidAmount),
+    amount: safeMoney(inv.balance) > 0 ? safeMoney(inv.totalAmount) : safeMoney(inv.paidAmount),
     date: new Date(inv.createdAt).toLocaleDateString(),
     status: inv.status === 'PAID' ? 'PAID' as const : inv.status === 'PARTIAL' ? 'PARTIAL' as const : 'UNPAID' as const,
   }));
 
   const outstandingBalance = invoices.reduce(
-    (sum, inv) => sum + Number(inv.balance),
+    (sum, inv) => sum + safeMoney(inv.balance),
     0,
   );
 

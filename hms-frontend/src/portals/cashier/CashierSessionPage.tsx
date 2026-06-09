@@ -4,6 +4,7 @@ import { useActiveSession } from '../../hooks/use-billing';
 import { useUser } from '../../hooks/use-user';
 import { HmsDashboardShell, HmsToolbar, HmsAuditFooter } from '../../components/hms-dashboard';
 import { HmsPageHeader, HmsFormContainer } from '../../components/hms-page';
+import { safeMoney } from '../../lib/safe-money';
 
 export const CashierSessionPage: React.FC = () => {
   const user = useUser();
@@ -23,9 +24,9 @@ export const CashierSessionPage: React.FC = () => {
 
   const cashPayments = session?.payments
     ?.filter((p) => p.paymentMethod === 'CASH' && p.status === 'POSTED')
-    ?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+    ?.reduce((sum, p) => sum + safeMoney(p.amount), 0) || 0;
 
-  const expectedCash = Number(session?.openingBalance || 0) + cashPayments;
+  const expectedCash = safeMoney(session?.openingBalance) + cashPayments;
 
   const handleOpenSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +126,7 @@ export const CashierSessionPage: React.FC = () => {
             <div className="space-y-2 text-xs font-sans">
               <div className="flex justify-between border-b border-slate-550/10 pb-1 font-semibold">
                 <span className="text-slate-550">Starting Float:</span>
-                <span className="font-mono text-slate-800">{`₱${Number(session.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}</span>
+                <span className="font-mono text-slate-800">{`₱${safeMoney(session.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}</span>
               </div>
               <div className="flex justify-between border-b border-slate-550/10 pb-1 font-semibold">
                 <span className="text-slate-550">CASH Payments:</span>

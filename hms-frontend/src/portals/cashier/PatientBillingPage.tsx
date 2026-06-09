@@ -17,6 +17,7 @@ import { DraftRecoveryDialog } from '../../lib/autodraft/DraftRecoveryDialog';
 import { safeDeleteAutoDraft } from '../../lib/autodraft/indexedDbDraftStore';
 import { HmsDashboardShell, HmsToolbar, HmsAuditFooter } from '../../components/hms-dashboard';
 import { HmsPageHeader, HmsSafetyBar } from '../../components/hms-page';
+import { safeMoney } from '../../lib/safe-money';
 
 type BillingDraftData = {
   paymentMethod: string;
@@ -117,14 +118,14 @@ export const PatientBillingPage = () => {
         name: `Invoice #${invoice.invoiceNumber || invoice.id.substring(0, 8)}`,
         category: 'Billing Charges',
         quantity: 1,
-        unitPrice: Number(invoice.totalAmount),
-        subtotal: Number(invoice.totalAmount),
+        unitPrice: safeMoney(invoice.totalAmount),
+        subtotal: safeMoney(invoice.totalAmount),
       }
     ];
   }, [invoice]);
 
-  const amountPaid = invoice ? Number(invoice.paidAmount) : 0;
-  const totalAmount = invoice ? Number(invoice.totalAmount) : 0;
+  const amountPaid = invoice ? safeMoney(invoice.paidAmount) : 0;
+  const totalAmount = invoice ? safeMoney(invoice.totalAmount) : 0;
   const remainingBalance = totalAmount - amountPaid;
 
   const handleMethodChange = (methodId: string) => {
