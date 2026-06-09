@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
 import { AdminShellNotice } from './components/AdminShellNotice';
@@ -31,7 +31,7 @@ export const TenantsPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const mockTenants: TenantItem[] = [
+  const mockTenants: TenantItem[] = useMemo(() => [
     {
       id: "TEN-001",
       name: "St. Jude Hospital Network",
@@ -71,14 +71,14 @@ export const TenantsPage: React.FC = () => {
       errorRate: 0.005,
       region: "EU-West"
     }
-  ];
+  ], []);
 
-  const filteredTenants = mockTenants.filter(t => {
+  const filteredTenants = useMemo(() => mockTenants.filter(t => {
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.id.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  }), [mockTenants, search, statusFilter]);
 
   if (loading) {
     return (

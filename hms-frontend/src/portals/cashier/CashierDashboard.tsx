@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
 import { CreditCard, FileText, Clock, Users, TrendingUp, ArrowRight, HelpCircle, DollarSign } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
 import { ChartCard, InsightPanel, StatusDonutChart, VolumeAreaChart } from '../../components/analytics';
@@ -10,9 +11,9 @@ export const CashierDashboard = () => {
   const { invoices, loading: invLoading } = useInvoices();
   const { session, loading: sessLoading } = useActiveSession();
 
-  const totalOutstanding = invoices.reduce((sum, inv) => sum + Number(inv.totalAmount) - Number(inv.paidAmount), 0);
-  const pendingCount = invoices.filter(i => i.status === 'PENDING' || i.status === 'UNPAID').length;
-  const paidCount = invoices.filter(i => i.status === 'PAID' || i.status === 'COMPLETED').length;
+  const totalOutstanding = useMemo(() => invoices.reduce((sum, inv) => sum + Number(inv.totalAmount) - Number(inv.paidAmount), 0), [invoices]);
+  const pendingCount = useMemo(() => invoices.filter(i => i.status === 'PENDING' || i.status === 'UNPAID').length, [invoices]);
+  const paidCount = useMemo(() => invoices.filter(i => i.status === 'PAID' || i.status === 'COMPLETED').length, [invoices]);
 
   return (
     <div className="space-y-6 animate-fade-in">

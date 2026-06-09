@@ -86,7 +86,7 @@ export const PatientBillingPage = () => {
 
   const handleClose = useCallback(() => setShowRecovery(false), []);
 
-  const invoice = invoices.find(inv => inv.id === invoiceId || inv.invoiceNumber === invoiceId);
+  const invoice = useMemo(() => invoices.find(inv => inv.id === invoiceId || inv.invoiceNumber === invoiceId), [invoices, invoiceId]);
   const patientId = invoice?.order?.patient?.id || '';
   // Load clinical handoff data if patientId exists (required for Target 12)
   const { data: handoffData } = usePatientBillingHandoff(patientId);

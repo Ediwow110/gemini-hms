@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useUser } from "../../hooks/use-user";
 import { usePrescriptionQueue, useDrugCatalog, useDispenseMedication, useLowStockAlerts, useStockMovements } from "../../hooks/use-pharmacy";
 import { PageHeader } from "../../components/ui/page-header";
@@ -16,7 +16,7 @@ import {
 export const PharmacyHub = () => {
   const user = useUser();
   const { data: orders, isLoading: ordersLoading, refetch: refetchOrders } = usePrescriptionQueue("ACTIVE");
-  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeOrders = useMemo(() => Array.isArray(orders) ? orders : [], [orders]);
   const { data: stock, isLoading: stockLoading, refetch: refetchStock } = useDrugCatalog();
   const dispenseMutation = useDispenseMedication();
   const { data: lowStockItems } = useLowStockAlerts();
@@ -30,21 +30,21 @@ export const PharmacyHub = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedOrder = safeOrders.find((o) => o.id === selectedOrderId);
-  const drugItems = (stock || []).filter((item) => item.type === "DRUG");
+  const drugItems = useMemo(() => (stock || []).filter((item) => item.type === "DRUG"), [stock]);
 
-  const lowStockAlerts = lowStockItems || [];
+  const lowStockAlerts = useMemo(() => lowStockItems || [], [lowStockItems]);
   const lowStockCount = lowStockAlerts.length;
 
-  const getMatchingDrugs = (medicationName: string) => {
+  const getMatchingDrugs = useCallback((medicationName: string) => {
     const name = medicationName.toLowerCase();
     return drugItems.filter(
       (item) =>
         item.name.toLowerCase().includes(name) ||
         item.sku.toLowerCase().includes(name),
     );
-  };
+  }, [drugItems]);
 
-  const handleOpenDispense = (orderId: string) => {
+  const handleOpenDispense = useCallback((orderId: string) => {
     setErrorMessage(null);
     setSelectedOrderId(orderId);
     const order = safeOrders.find((o) => o.id === orderId);
@@ -59,9 +59,9 @@ export const PharmacyHub = () => {
       }
     }
     setShowDispenseModal(true);
-  };
+  }, [safeOrders, getMatchingDrugs]);
 
-  const handleConfirmDispense = async () => {
+  const handleConfirmDispense = useCallback(async () => {
     if (!selectedOrderId || !selectedItemId) return;
 
     setErrorMessage(null);
@@ -86,11 +86,11 @@ export const PharmacyHub = () => {
         "Failed to dispense medication";
       setErrorMessage(msg);
     }
-  };
+  }, [selectedOrderId, selectedItemId, safeOrders, dispenseQuantity, dispenseMutation]);
 
-  const getStockForItem = (itemId: string) => {
+  const getStockForItem = useCallback((itemId: string) => {
     return stock?.find((s) => s.id === itemId);
-  };
+  }, [stock]);
 
   if (ordersLoading || stockLoading) {
     return (
