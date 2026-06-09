@@ -22,13 +22,14 @@ const queryClient = new QueryClient({
 
 // Core routes — eagerly loaded (always needed)
 import { RoleRedirect } from './app/RoleRedirect';
-import { PatientList } from './features/patients/PatientList';
-import { RegisterPatient } from './features/patients/RegisterPatient';
-import { PatientProfile } from './features/patients/PatientProfile';
-import { CreateOrder } from './features/orders/CreateOrder';
-import { Queue } from './features/queue/Queue';
 
 // Lazy-loaded — split by feature/portal (named exports need .then() adapter)
+const PatientList = lazy(() => import('./features/patients/PatientList').then(m => ({ default: m.PatientList })));
+const RegisterPatient = lazy(() => import('./features/patients/RegisterPatient').then(m => ({ default: m.RegisterPatient })));
+const PatientProfile = lazy(() => import('./features/patients/PatientProfile').then(m => ({ default: m.PatientProfile })));
+const CreateOrder = lazy(() => import('./features/orders/CreateOrder').then(m => ({ default: m.CreateOrder })));
+const Queue = lazy(() => import('./features/queue/Queue').then(m => ({ default: m.Queue })));
+
 const Billing = lazy(() => import('./features/billing/Billing').then(m => ({ default: m.Billing })));
 const BillingDashboard = lazy(() => import('./pages/billing/BillingDashboard').then(m => ({ default: m.BillingDashboard })));
 const CashierClosing = lazy(() => import('./features/billing/CashierClosing').then(m => ({ default: m.CashierClosing })));
@@ -265,11 +266,11 @@ const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <RoleRedirect /> },
-          { path: 'patients', element: <PermissionRoute permission="patient.view"><PatientList /></PermissionRoute> },
-          { path: 'patients/new', element: <PermissionRoute permission="patient.create"><RegisterPatient /></PermissionRoute> },
-          { path: 'patients/:id', element: <PermissionRoute permission="patient.view"><PatientProfile /></PermissionRoute> },
-          { path: 'orders/new', element: <PermissionRoute permission="order.create"><CreateOrder /></PermissionRoute> },
-          { path: 'queue', element: <PermissionRoute permission="queue.view"><Queue /></PermissionRoute> },
+          { path: 'patients', element: <PermissionRoute permission="patient.view"><LazyPage><PatientList /></LazyPage></PermissionRoute> },
+          { path: 'patients/new', element: <PermissionRoute permission="patient.create"><LazyPage><RegisterPatient /></LazyPage></PermissionRoute> },
+          { path: 'patients/:id', element: <PermissionRoute permission="patient.view"><LazyPage><PatientProfile /></LazyPage></PermissionRoute> },
+          { path: 'orders/new', element: <PermissionRoute permission="order.create"><LazyPage><CreateOrder /></LazyPage></PermissionRoute> },
+          { path: 'queue', element: <PermissionRoute permission="queue.view"><LazyPage><Queue /></LazyPage></PermissionRoute> },
           // Lazy-loaded routes below
            { path: 'billing/dashboard', element: <PermissionRoute permission="billing.invoice.view"><LazyPage><BillingDashboard /></LazyPage></PermissionRoute> },
            { path: 'billing', element: <PermissionRoute permission="billing.invoice.view"><LazyPage><Billing /></LazyPage></PermissionRoute> },

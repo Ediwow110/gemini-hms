@@ -17,6 +17,7 @@ export function useSyncExternalStoreWithSelector(
     instRef.current = { hasValue: false, value: null };
   }
   
+  // eslint-disable-next-line react-hooks/refs
   const inst = instRef.current;
 
   const hasMemoRef = useRef(false);
@@ -54,14 +55,14 @@ export function useSyncExternalStoreWithSelector(
       () => memoizedSelector(getSnapshot()),
       maybeGetServerSnapshot === null ? (() => undefined) : () => memoizedSelector(maybeGetServerSnapshot()),
     ];
-  }, [getSnapshot, getServerSnapshot, selector, isEqual]);
+  }, [getSnapshot, getServerSnapshot, selector, isEqual, inst]);
 
   const value = useSyncExternalStore(subscribe, instMemo[0], instMemo[1]);
 
   useEffect(() => {
     inst.hasValue = true;
     inst.value = value;
-  }, [value]);
+  }, [value, inst]);
 
   useDebugValue(value);
 

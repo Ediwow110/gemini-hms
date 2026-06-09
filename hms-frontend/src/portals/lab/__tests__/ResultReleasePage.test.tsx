@@ -1,18 +1,12 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ResultReleasePage } from '../ResultReleasePage';
-import { useReleasableResults } from '../../../hooks/use-lab';
-import { apiClient } from '../../../lib/api';
+import { useReleasableResults, useReleaseResult } from '../../../hooks/use-lab';
 
 vi.mock('../../../hooks/use-lab', () => ({
   useReleasableResults: vi.fn(),
-}));
-
-vi.mock('../../../lib/api', () => ({
-  apiClient: {
-    post: vi.fn(),
-  },
+  useReleaseResult: vi.fn(),
 }));
 
 describe('ResultReleasePage Unit Tests', () => {
@@ -27,17 +21,25 @@ describe('ResultReleasePage Unit Tests', () => {
   };
 
   const mockRefetch = vi.fn();
+  const mockMutate = vi.fn();
 
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(useReleasableResults).mockReturnValue({
-      results: [mockResult],
+      data: [mockResult],
       isLoading: false,
       error: null,
       refetch: mockRefetch,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    } as unknown as ReturnType<typeof useReleasableResults>);
+
+    vi.mocked(useReleaseResult).mockReturnValue({
+      mutate: mockMutate,
+      isPending: false,
+      error: null,
+      variables: null,
+    } as unknown as ReturnType<typeof useReleaseResult>);
   });
+
 
   it('renders releasable result work queue items', () => {
     render(<MemoryRouter><ResultReleasePage /></MemoryRouter>);
@@ -49,17 +51,12 @@ describe('ResultReleasePage Unit Tests', () => {
     expect(screen.getByRole('button', { name: /Release$/i })).toBeInTheDocument();
   });
 
-  it('triggers release post call on action click', async () => {
-    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: {} });
-
+  it('triggers release mutate call on action click', async () => {
     render(<MemoryRouter><ResultReleasePage /></MemoryRouter>);
 
     const releaseButton = screen.getByRole('button', { name: /Release$/i });
     fireEvent.click(releaseButton);
 
-    expect(apiClient.post).toHaveBeenCalledWith('/v1/lab/results/result-123/release');
-    await waitFor(() => {
-      expect(mockRefetch).toHaveBeenCalled();
-    });
+    expect(mockMutate).toHaveBeenCalledWith('result-123', expect.any(Object));
   });
 });

@@ -47,7 +47,7 @@ export function useAutoDraft<TFormData>(
     isDirty,
     ttlHours = 72,
     appVersion,
-    idleMs = 2000,
+    idleMs = 3000,
     periodicMs = 30000,
   } = options;
 

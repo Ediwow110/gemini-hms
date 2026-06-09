@@ -21,6 +21,6 @@ describe('NotificationCenterPage Redesign', () => {
     expect(screen.getByText('Notification Center')).toBeInTheDocument();
     expect(screen.getByText('Sandbox')).toBeInTheDocument();
     expect(screen.getByText('Integration Bridges Sandbox')).toBeInTheDocument();
-    expect(screen.getByText('Unread (Mock)')).toBeInTheDocument();
+    expect(screen.getByText('Unread')).toBeInTheDocument();
   });
 });

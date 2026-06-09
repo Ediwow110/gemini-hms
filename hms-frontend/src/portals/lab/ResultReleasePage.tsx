@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { HmsPageHeader } from '../../components/hms-page';
-import { useReleasableResults } from '../../hooks/use-lab';
-import { apiClient } from '../../lib/api';
+import { useReleasableResults, useReleaseResult } from '../../hooks/use-lab';
 import {
   Send,
   CheckCircle,
@@ -20,26 +19,18 @@ import {
 } from '../../components/hms-dashboard';
 
 export const ResultReleasePage = () => {
-  const { results, isLoading, error, refetch } = useReleasableResults();
-  const [releasingId, setReleasingId] = useState<string | null>(null);
-  const [releaseError, setReleaseError] = useState<string | null>(null);
+  const { data: results = [], isLoading, error, refetch } = useReleasableResults();
+  const releaseMutation = useReleaseResult();
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleRelease = useCallback(async (resultId: string) => {
-    setReleasingId(resultId);
-    setReleaseError(null);
     setSuccessMsg(null);
-    try {
-      await apiClient.post(`/v1/lab/results/${resultId}/release`);
-      setSuccessMsg('Result released successfully. Signature and notification logged.');
-      await refetch();
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
-      setReleaseError(axiosErr?.response?.data?.message || axiosErr?.message || 'Failed to release result');
-    } finally {
-      setReleasingId(null);
-    }
-  }, [refetch]);
+    releaseMutation.mutate(resultId, {
+      onSuccess: () => {
+        setSuccessMsg('Result released successfully. Signature and notification logged.');
+      },
+    });
+  }, [releaseMutation]);
 
   const columns = [
     {
@@ -97,10 +88,10 @@ export const ResultReleasePage = () => {
       render: (r: typeof results[number]) => (
         <button
           onClick={(e) => { e.stopPropagation(); handleRelease(r.id); }}
-          disabled={releasingId === r.id}
+          disabled={releaseMutation.isPending && releaseMutation.variables === r.id}
           className="bg-blue-650 hover:bg-blue-755 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] shadow-sm flex items-center gap-1 mx-auto disabled:opacity-50 cursor-pointer"
         >
-          {releasingId === r.id ? (
+          {releaseMutation.isPending && releaseMutation.variables === r.id ? (
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
             <Send className="h-3 w-3" />
@@ -110,6 +101,10 @@ export const ResultReleasePage = () => {
       ),
     },
   ];
+
+  const releaseError = releaseMutation.error
+    ? ((releaseMutation.error as { response?: { data?: { message?: string } } })?.response?.data?.message || releaseMutation.error.message || 'Failed to release result')
+    : null;
 
   return (
     <div className="space-y-4 animate-fade-in font-sans text-slate-700">

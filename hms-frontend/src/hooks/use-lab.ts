@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { labService, PendingSpecimenDto, ReleasableResultDto, CriticalResultDto, TurnaroundSummaryDto } from '../services/lab.service';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../lib/api';
+import { labService, PendingSpecimenDto, CriticalResultDto, TurnaroundSummaryDto } from '../services/lab.service';
 
 // ──── Pending Specimens ────
 
@@ -42,36 +44,23 @@ export function usePendingSpecimens(): UsePendingSpecimensReturn {
 
 // ──── Releasable Results ────
 
-export interface UseReleasableResultsReturn {
-  results: ReleasableResultDto[];
-  isLoading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
+export const useReleasableResults = () => {
+  return useQuery({
+    queryKey: ['lab', 'results', 'releasable'],
+    queryFn: () => labService.getReleasableResults(),
+  });
+};
 
-export function useReleasableResults(): UseReleasableResultsReturn {
-  const [results, setResults] = useState<ReleasableResultDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await labService.getReleasableResults();
-      setResults(data);
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(axiosErr?.response?.data?.message || axiosErr?.message || 'Failed to load releasable results');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { results, isLoading, error, refetch: fetch };
-}
+export const useReleaseResult = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (resultId: string) => apiClient.post(`/v1/lab/results/${resultId}/release`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['lab', 'results', 'releasable'] });
+      void queryClient.invalidateQueries({ queryKey: ['lab', 'results', 'released'] });
+    },
+  });
+};
 
 // ──── Critical Results ────
 

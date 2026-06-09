@@ -1,11 +1,23 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Bell, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import IntegrationShellNotice from './components/IntegrationShellNotice';
 import NotificationInbox from './components/NotificationInbox';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
+import { useIntegrationNotifications } from '../../hooks/use-integration';
 
 export const NotificationCenterPage: React.FC = () => {
+  const { data: notifications = [] } = useIntegrationNotifications();
+
+  const stats = useMemo(() => {
+    return {
+      unread: notifications.filter(n => n.status === 'UNREAD').length,
+      pending: notifications.filter(n => n.severity === 'HIGH' || n.severity === 'CRITICAL').length,
+      read: notifications.filter(n => n.status === 'READ').length,
+      failed: 0, // No failure state in current schema, keep as 0
+    };
+  }, [notifications]);
+
   return (
     <HmsDashboardShell>
       <div className="space-y-6 pb-12">
@@ -21,30 +33,30 @@ export const NotificationCenterPage: React.FC = () => {
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-indigo-500" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unread (Mock)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unread</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">8</p>
+            <p className="text-2xl font-black text-slate-900">{stats.unread}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-amber-500" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pending (Mock)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Priority</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">3</p>
+            <p className="text-2xl font-black text-slate-900">{stats.pending}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Read (Mock)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Read</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">24</p>
+            <p className="text-2xl font-black text-slate-900">{stats.read}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <XCircle className="h-4 w-4 text-rose-500" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Failed (Mock)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Errors</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">1</p>
+            <p className="text-2xl font-black text-slate-900">{stats.failed}</p>
           </div>
         </div>
 
