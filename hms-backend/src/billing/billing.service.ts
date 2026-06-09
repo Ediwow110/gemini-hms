@@ -1612,17 +1612,20 @@ export class BillingService {
     if (!reversal) {
       throw new NotFoundException('Payment reversal request not found');
     }
-    await this.approvals.processRequest(
-      tenantId,
-      userId,
-      reversal.approvalRequestId,
-      'REJECTED',
-      { remarks: dto.remarks },
-      branchId,
-    );
-    return this.prisma.paymentReversal.update({
-      where: { id: reversalId },
-      data: { status: REVERSAL_STATUS.REJECTED },
+    return this.prisma.$transaction(async (tx) => {
+      await this.approvals.processRequest(
+        tenantId,
+        userId,
+        reversal.approvalRequestId,
+        'REJECTED',
+        { remarks: dto.remarks },
+        branchId,
+        tx,
+      );
+      return this.prisma.paymentReversal.update({
+        where: { id: reversalId },
+        data: { status: REVERSAL_STATUS.REJECTED },
+      });
     });
   }
 
@@ -1667,17 +1670,20 @@ export class BillingService {
     if (!reversal) {
       throw new NotFoundException('Payment reversal request not found');
     }
-    await this.approvals.processRequest(
-      tenantId,
-      userId,
-      reversal.approvalRequestId,
-      'REJECTED',
-      { remarks: dto.remarks },
-      branchId,
-    );
-    return this.prisma.paymentReversal.update({
-      where: { id: reversalId },
-      data: { status: REVERSAL_STATUS.REJECTED },
+    return this.prisma.$transaction(async (tx) => {
+      await this.approvals.processRequest(
+        tenantId,
+        userId,
+        reversal.approvalRequestId,
+        'REJECTED',
+        { remarks: dto.remarks },
+        branchId,
+        tx,
+      );
+      return this.prisma.paymentReversal.update({
+        where: { id: reversalId },
+        data: { status: REVERSAL_STATUS.REJECTED },
+      });
     });
   }
 }
