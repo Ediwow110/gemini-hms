@@ -255,6 +255,18 @@ export const useSaveTriage = () => {
           roleScope,
         ],
       });
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          'clinical-workflow',
+          'triage',
+          user?.tenantId,
+          user?.branchId,
+          user?.id,
+          roleScope,
+          patientId,
+        ],
+      });
     },
   });
 };
@@ -949,6 +961,17 @@ export const useValidateLabResult = () => {
           user?.id,
           roleScope,
           patientId,
+        ],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          'clinical-workflow',
+          'validated-results',
+          user?.tenantId,
+          user?.branchId,
+          user?.id,
+          roleScope,
         ],
       });
     },

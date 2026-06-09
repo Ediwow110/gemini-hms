@@ -77,6 +77,21 @@ export const useDispenseMedication = () => {
           roleScope,
         ],
       });
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          'pharmacy',
+          'low-stock-alerts',
+          user?.tenantId,
+          user?.branchId,
+          user?.id,
+          roleScope,
+        ],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ['pharmacy', 'stock-movements'],
+      });
     },
   });
 };
