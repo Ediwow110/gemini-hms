@@ -132,14 +132,14 @@ export const PharmacyHub = () => {
               No active prescriptions awaiting dispensing.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+              <table className="w-full text-left text-xs min-w-[600px] border-separate border-spacing-0">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase">Patient</th>
-                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase">Medication</th>
-                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-center">Status</th>
-                    <th className="px-4 py-3 text-right">Action</th>
+                    <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-semibold text-slate-500 uppercase border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Patient</th>
+                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase border-b border-slate-200">Medication</th>
+                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-center border-b border-slate-200">Status</th>
+                    <th className="px-4 py-3 text-right border-b border-slate-200">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -151,25 +151,25 @@ export const PharmacyHub = () => {
                     });
 
                     return (
-                      <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-4 py-3">
+                      <tr key={order.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/50 px-4 py-3 border-b border-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                           <p className="font-bold text-slate-800">{order.patientName}</p>
                           <p className="text-[10px] text-slate-400">
                             {order.patientNumber} &middot; Rx: {order.id.slice(0, 8)}
                           </p>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 border-b border-slate-100">
                           <p className="font-semibold text-slate-700">{order.medicationName}</p>
                           <p className="text-[10px] text-slate-500">
                             {order.dosage} &middot; {order.frequency} &middot; {order.duration}
                           </p>
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center border-b border-slate-100">
                           <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
                             PENDING
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right border-b border-slate-100">
                           <button
                             onClick={() => handleOpenDispense(order.id)}
                             disabled={!hasStock}
@@ -207,14 +207,14 @@ export const PharmacyHub = () => {
               No drug catalog data available.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+              <table className="w-full text-left text-xs min-w-[500px] border-separate border-spacing-0">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase">Item</th>
-                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase">SKU</th>
-                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-right">Stock</th>
-                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-right">Reorder</th>
+                    <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-semibold text-slate-500 uppercase border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Item</th>
+                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase border-b border-slate-200">SKU</th>
+                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-right border-b border-slate-200">Stock</th>
+                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-right border-b border-slate-200">Reorder</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -231,8 +231,8 @@ export const PharmacyHub = () => {
                           : "hover:bg-slate-50/50";
 
                       return (
-                        <tr key={item.id} className={`${bgClass} transition-colors`}>
-                          <td className="px-4 py-3">
+                        <tr key={item.id} className={`${bgClass} transition-colors group`}>
+                          <td className={`sticky left-0 z-10 border-b border-slate-100 px-4 py-3 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] ${isOut ? 'bg-rose-50/90' : isLow ? 'bg-amber-50/90' : 'bg-white group-hover:bg-slate-50/50'}`}>
                             <div className="flex items-center gap-2">
                               <span
                                 className={`h-2 w-2 rounded-full ${
@@ -242,10 +242,10 @@ export const PharmacyHub = () => {
                               <p className="font-bold text-slate-800">{item.name}</p>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-slate-500 font-mono text-[10px]">
+                          <td className="px-4 py-3 text-slate-500 font-mono text-[10px] border-b border-slate-100">
                             {item.sku}
                           </td>
-                          <td className="px-4 py-3 text-right font-bold text-slate-900">
+                          <td className="px-4 py-3 text-right font-bold text-slate-900 border-b border-slate-100">
                             {item.quantity} {item.unit}
                             {isLow && (
                               <span className="block text-[9px] text-amber-600 font-semibold flex items-center justify-end gap-0.5">
@@ -253,7 +253,7 @@ export const PharmacyHub = () => {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-right text-slate-400 font-bold">
+                          <td className="px-4 py-3 text-right text-slate-400 font-bold border-b border-slate-100">
                             {item.reorderLevel}
                           </td>
                         </tr>

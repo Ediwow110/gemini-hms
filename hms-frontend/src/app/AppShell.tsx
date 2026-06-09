@@ -97,7 +97,7 @@ export const AppShell = () => {
             </button>
 
             {/* Search */}
-            <div className="relative hidden md:block transition-all duration-300 ease-out max-w-sm w-full">
+            <div className="relative transition-all duration-300 ease-out max-w-sm w-full md:block hidden">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
               <input
                 type="text"
@@ -110,9 +110,17 @@ export const AppShell = () => {
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-200/80 rounded-xl text-sm placeholder:text-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all duration-300 cursor-pointer"
               />
             </div>
+
+            {/* Mobile Search Icon */}
+            <button 
+              onClick={() => setIsCommandPaletteOpen(true)}
+              className="md:hidden p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-all"
+            >
+              <Search className="h-5 w-5" />
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 lg:gap-3">
+          <div className="flex items-center gap-1.5 lg:gap-3">
             {/* Quick Create */}
             <button 
               onClick={() => setShowQuickCreate(true)} 
@@ -120,6 +128,14 @@ export const AppShell = () => {
             >
               <PlusCircle className="h-4 w-4" />
               <span>Quick Create</span>
+            </button>
+
+            {/* Mobile Quick Create Icon */}
+            <button 
+              onClick={() => setShowQuickCreate(true)}
+              className="md:hidden p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all border border-indigo-100"
+            >
+              <PlusCircle className="h-5 w-5" />
             </button>
 
             {/* Branch selector */}

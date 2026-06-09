@@ -148,36 +148,36 @@ export const TenantsPage: React.FC = () => {
         />
       ) : (
         <div className="card overflow-hidden bg-white border border-slate-200/80 shadow-sm rounded-2xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+          <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+            <table className="w-full text-sm text-left min-w-[800px] border-separate border-spacing-0">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Tenant Name</th>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Subscription Tier</th>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Branches</th>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Total Users</th>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Storage Used</th>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">API SLA Status</th>
+                  <th className="sticky left-0 z-10 bg-slate-50 px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Tenant Name</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Subscription Tier</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center border-b border-slate-200">Branches</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center border-b border-slate-200">Total Users</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Storage Used</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">API SLA Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredTenants.map((t) => (
-                  <tr key={t.id} className="hover:bg-indigo-50/10">
-                    <td className="px-6 py-4 font-bold text-slate-800">
+                  <tr key={t.id} className="hover:bg-indigo-50/10 group">
+                    <td className="sticky left-0 z-10 bg-white group-hover:bg-indigo-50/10 px-6 py-4 font-bold text-slate-800 border-b border-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                       <div>
                         <p>{t.name}</p>
                         <p className="text-[10px] text-slate-400 font-mono mt-0.5">ID: {t.id} | Region: {t.region}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 border-b border-slate-100">
                       <span className="bg-indigo-50 border border-indigo-100 text-indigo-700 font-extrabold px-2 py-0.5 rounded-md">
                         {t.tier}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center font-bold text-slate-700">{t.branchCount}</td>
-                    <td className="px-6 py-4 text-center font-bold text-slate-700">{t.userCount}</td>
-                    <td className="px-6 py-4 font-semibold text-slate-600">{t.dbSize}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center font-bold text-slate-700 border-b border-slate-100">{t.branchCount}</td>
+                    <td className="px-6 py-4 text-center font-bold text-slate-700 border-b border-slate-100">{t.userCount}</td>
+                    <td className="px-6 py-4 font-semibold text-slate-600 border-b border-slate-100">{t.dbSize}</td>
+                    <td className="px-6 py-4 border-b border-slate-100">
                       <div className="flex items-center gap-2">
                         <StatusBadge 
                           status={t.status} 

@@ -62,7 +62,7 @@ export const LoginPage = () => {
       {/* Login Card (Right Side) */}
       <div className="relative z-10 w-full max-w-[480px] animate-slide-in-right">
         {/* Glassmorphic Container */}
-        <div className="bg-white/95 backdrop-blur-3xl rounded-3xl shadow-2xl border border-white/40 p-8 lg:p-12 relative overflow-hidden">
+        <div className="bg-white/95 backdrop-blur-3xl rounded-3xl shadow-2xl border border-white/40 p-6 sm:p-8 lg:p-12 relative overflow-hidden">
           
           {/* Subtle top glare */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white to-transparent opacity-50" />
