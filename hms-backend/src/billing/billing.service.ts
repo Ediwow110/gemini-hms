@@ -495,46 +495,46 @@ export class BillingService {
       );
     }
 
-    // Calculate current reversible amount
-    const reversals = await this.prisma.paymentReversal.findMany({
-      where: {
-        paymentId: payment.id,
-        tenantId,
-        branchId,
-        status: { in: [REVERSAL_STATUS.PENDING, REVERSAL_STATUS.APPLIED] },
-      },
-    });
-
-    const currentReversedAmount = reversals.reduce(
-      (sum, r) => sum + Number(r.amount),
-      0,
-    );
-
-    if (dto.amount + currentReversedAmount > Number(payment.amount)) {
-      throw new BadRequestException(
-        `Refund amount ₱${dto.amount} exceeds remaining reversible amount ₱${
-          Number(payment.amount) - currentReversedAmount
-        }`,
-      );
-    }
-
-    // Block duplicate pending refund requests for this payment
-    const pending = await this.prisma.approvalRequest.findFirst({
-      where: {
-        tenantId,
-        recordId: payment.id,
-        type: REVERSAL_TYPE.REFUND,
-        status: 'PENDING',
-      },
-    });
-
-    if (pending) {
-      throw new ConflictException(
-        'A refund request for this payment is already pending approval',
-      );
-    }
-
     const request = await this.prisma.$transaction(async (tx) => {
+      // Calculate current reversible amount (inside transaction for atomicity)
+      const reversals = await tx.paymentReversal.findMany({
+        where: {
+          paymentId: payment.id,
+          tenantId,
+          branchId,
+          status: { in: [REVERSAL_STATUS.PENDING, REVERSAL_STATUS.APPLIED] },
+        },
+      });
+
+      const currentReversedAmount = reversals.reduce(
+        (sum, r) => sum + Number(r.amount),
+        0,
+      );
+
+      if (dto.amount + currentReversedAmount > Number(payment.amount)) {
+        throw new BadRequestException(
+          `Refund amount ₱${dto.amount} exceeds remaining reversible amount ₱${
+            Number(payment.amount) - currentReversedAmount
+          }`,
+        );
+      }
+
+      // Block duplicate pending refund requests for this payment
+      const pending = await tx.approvalRequest.findFirst({
+        where: {
+          tenantId,
+          recordId: payment.id,
+          type: REVERSAL_TYPE.REFUND,
+          status: 'PENDING',
+        },
+      });
+
+      if (pending) {
+        throw new ConflictException(
+          'A refund request for this payment is already pending approval',
+        );
+      }
+
       const approvalReq = await this.approvals.createRequest(
         tenantId,
         userId,
@@ -629,21 +629,23 @@ export class BillingService {
       );
     }
 
-    // Block void if any pending or applied reversal exists
-    const existingReversal = await this.prisma.paymentReversal.findFirst({
-      where: {
-        paymentId: payment.id,
-        status: { in: [REVERSAL_STATUS.PENDING, REVERSAL_STATUS.APPLIED] },
-      },
-    });
-
-    if (existingReversal) {
-      throw new ConflictException(
-        'Payment cannot be voided because a refund or void request is already pending or applied',
-      );
-    }
-
     const request = await this.prisma.$transaction(async (tx) => {
+      // Block void if any pending or applied reversal exists (inside transaction for atomicity)
+      const existingReversal = await tx.paymentReversal.findFirst({
+        where: {
+          paymentId: payment.id,
+          tenantId,
+          branchId,
+          status: { in: [REVERSAL_STATUS.PENDING, REVERSAL_STATUS.APPLIED] },
+        },
+      });
+
+      if (existingReversal) {
+        throw new ConflictException(
+          'Payment cannot be voided because a refund or void request is already pending or applied',
+        );
+      }
+
       const approvalReq = await this.approvals.createRequest(
         tenantId,
         userId,
