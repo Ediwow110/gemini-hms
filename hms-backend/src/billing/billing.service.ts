@@ -1560,6 +1560,10 @@ export class BillingService {
       include: {
         payments: {
           include: {
+            reversals: {
+              where: { status: 'APPLIED' },
+              select: { id: true, amount: true, type: true },
+            },
             invoice: { include: { order: { include: { patient: true } } } },
           },
         },

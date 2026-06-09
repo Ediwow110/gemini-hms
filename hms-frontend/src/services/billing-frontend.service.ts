@@ -30,6 +30,11 @@ export interface ActiveSessionDto {
     paymentMethod: string;
     status: string;
     createdAt: string;
+    reversals?: Array<{
+      id: string;
+      amount: number;
+      type: string;
+    }>;
     invoice: {
       invoiceNumber: string;
       order: {
@@ -68,12 +73,8 @@ export class BillingFrontendService {
   }
 
   async getActiveSession(): Promise<ActiveSessionDto | null> {
-    try {
-      const res = await apiClient.get(`${this.baseUrl}/sessions/active`);
-      return res.data;
-    } catch {
-      return null;
-    }
+    const res = await apiClient.get(`${this.baseUrl}/sessions/active`);
+    return res.data;
   }
 
   async openSession(dto: OpenSessionDto): Promise<ActiveSessionDto> {

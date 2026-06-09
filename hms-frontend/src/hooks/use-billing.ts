@@ -35,8 +35,10 @@ export function useActiveSession() {
     try {
       const res = await billingFrontendService.getActiveSession();
       setSession(res);
-    } catch {
+    } catch (err: unknown) {
       setSession(null);
+      const axiosErr = err as { response?: { data?: { message?: string } } } | null;
+      setError(axiosErr?.response?.data?.message || 'Failed to load active session');
     } finally {
       setLoading(false);
     }

@@ -546,6 +546,17 @@ export const useReceiveLabOrder = () => {
       queryClient.invalidateQueries({
         queryKey: [
           'clinical-workflow',
+          'work-queue',
+          user?.tenantId,
+          user?.branchId,
+          user?.id,
+          roleScope,
+        ],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          'clinical-workflow',
           'orders',
           user?.tenantId,
           user?.branchId,
@@ -740,6 +751,17 @@ export const useReleaseLabResult = () => {
     onSuccess: (_data, variables) => {
       const { patientId } = variables;
       const roleScope = user?.roles?.join(',');
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          'clinical-workflow',
+          'work-queue',
+          user?.tenantId,
+          user?.branchId,
+          user?.id,
+          roleScope,
+        ],
+      });
 
       queryClient.invalidateQueries({
         queryKey: [

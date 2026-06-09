@@ -10,12 +10,12 @@ export function safeMoney(value: unknown, fallback = 0): number {
     return Number.isFinite(parsed) ? parsed : fallback;
   }
   if (typeof value === 'object' && value !== null) {
-    if ('toNumber' in value && typeof (value as any).toNumber === 'function') {
-      const n = (value as any).toNumber();
+    if ('toNumber' in value && typeof (value as { toNumber: unknown }).toNumber === 'function') {
+      const n = (value as { toNumber: () => number }).toNumber();
       return Number.isFinite(n) ? n : fallback;
     }
-    if ('valueOf' in value && typeof (value as any).valueOf === 'function') {
-      const n = Number((value as any).valueOf());
+    if ('valueOf' in value && typeof (value as { valueOf: unknown }).valueOf === 'function') {
+      const n = Number((value as { valueOf: () => unknown }).valueOf());
       return Number.isFinite(n) ? n : fallback;
     }
   }

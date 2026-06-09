@@ -24,7 +24,12 @@ export const CashierSessionPage: React.FC = () => {
 
   const cashPayments = session?.payments
     ?.filter((p) => p.paymentMethod === 'CASH' && p.status === 'POSTED')
-    ?.reduce((sum, p) => sum + safeMoney(p.amount), 0) || 0;
+    ?.reduce((sum, p) => {
+      const refunds = p.reversals
+        ?.filter((r) => r.type === 'REFUND')
+        ?.reduce((rSum, r) => rSum + safeMoney(r.amount), 0) || 0;
+      return sum + safeMoney(p.amount) - refunds;
+    }, 0) || 0;
 
   const expectedCash = safeMoney(session?.openingBalance) + cashPayments;
 
