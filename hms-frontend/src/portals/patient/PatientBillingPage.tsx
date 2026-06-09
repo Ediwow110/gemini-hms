@@ -4,10 +4,11 @@ import PatientPortalShellNotice from './components/PatientPortalShellNotice';
 import { usePatientInvoices } from '../../hooks/use-patient-portal';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
+import { AlertCircle } from 'lucide-react';
 import { safeMoney } from '../../lib/safe-money';
 
 export const PatientBillingPage: React.FC = () => {
-  const { invoices, loading } = usePatientInvoices();
+  const { invoices, loading, error } = usePatientInvoices();
 
   const displayInvoices = invoices.map((inv) => ({
     id: inv.id,
@@ -34,6 +35,12 @@ export const PatientBillingPage: React.FC = () => {
 
         {loading ? (
           <HmsLoadingSkeleton />
+        ) : error ? (
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center space-y-3">
+            <AlertCircle className="h-8 w-8 text-rose-500 mx-auto" />
+            <p className="text-sm font-semibold text-slate-700">Unable to load invoices</p>
+            <p className="text-xs text-slate-500">{error}</p>
+          </div>
         ) : displayInvoices.length === 0 ? (
           <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-slate-400 space-y-2">
             <HmsEmptyState 
