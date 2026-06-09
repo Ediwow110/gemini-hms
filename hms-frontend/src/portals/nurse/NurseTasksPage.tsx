@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { PageHeader } from '../../components/ui/page-header';
 import { NursingTaskBoard } from './components/NursingTaskBoard';
 import { useNursingTasks } from '../../hooks/use-nursing-tasks';
-import { Plus, X, Filter } from 'lucide-react';
+import { Plus, X, Filter, AlertCircle } from 'lucide-react';
 import type { CreateNurseTaskPayload, QueryNurseTaskParams } from '../../services/nursing.service';
 
 export const NurseTasksPage = () => {
@@ -23,6 +23,12 @@ export const NurseTasksPage = () => {
   } = useNursingTasks(queryParams);
 
   const [isPending, setIsPending] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  function extractMutationError(err: unknown, fallback: string): string {
+    const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+    return axiosErr?.response?.data?.message || axiosErr?.message || fallback;
+  }
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     title: '',
@@ -31,36 +37,48 @@ export const NurseTasksPage = () => {
   });
 
   const handleStart = useCallback(async (id: string) => {
+    setSubmitError(null);
     setIsPending(true);
     try {
       await startTask(id);
+    } catch (err) {
+      setSubmitError(extractMutationError(err, 'Failed to start task'));
     } finally {
       setIsPending(false);
     }
   }, [startTask]);
 
   const handleComplete = useCallback(async (id: string) => {
+    setSubmitError(null);
     setIsPending(true);
     try {
       await completeTask(id);
+    } catch (err) {
+      setSubmitError(extractMutationError(err, 'Failed to complete task'));
     } finally {
       setIsPending(false);
     }
   }, [completeTask]);
 
   const handleCancel = useCallback(async (id: string) => {
+    setSubmitError(null);
     setIsPending(true);
     try {
       await cancelTask(id);
+    } catch (err) {
+      setSubmitError(extractMutationError(err, 'Failed to cancel task'));
     } finally {
       setIsPending(false);
     }
   }, [cancelTask]);
 
   const handleReopen = useCallback(async (id: string) => {
+    setSubmitError(null);
     setIsPending(true);
     try {
       await reopenTask(id);
+    } catch (err) {
+      setSubmitError(extractMutationError(err, 'Failed to reopen task'));
     } finally {
       setIsPending(false);
     }
@@ -69,11 +87,14 @@ export const NurseTasksPage = () => {
   const handleCreateSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.title.trim()) return;
+    setSubmitError(null);
     setIsPending(true);
     try {
       await createTask(createForm as CreateNurseTaskPayload);
       setCreateForm({ title: '', description: '', priority: 'MEDIUM' });
       setShowCreateModal(false);
+    } catch (err) {
+      setSubmitError(extractMutationError(err, 'Failed to create task'));
     } finally {
       setIsPending(false);
     }
@@ -123,6 +144,13 @@ export const NurseTasksPage = () => {
           </button>
         </div>
       </div>
+
+      {submitError && (
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          {submitError}
+        </div>
+      )}
 
       <NursingTaskBoard
         tasks={mappedTasks}
