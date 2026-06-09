@@ -53,12 +53,7 @@ export const ReleasedResultDetailPage = () => {
       setShowAmendModal(false);
       setAmendReason('');
       queryClient.invalidateQueries({
-        queryKey: [
-          'clinical-workflow',
-          'released-lab-result-detail',
-          patientId,
-          orderId,
-        ],
+        queryKey: ['clinical-workflow', 'released-lab-result-detail'],
       });
     } catch {
       setAmendError('Failed to submit amendment request. Make sure the result is in RELEASED status.');
