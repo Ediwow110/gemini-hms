@@ -519,6 +519,19 @@ export class AuthService {
 
     const availableBranches = userBranches.map((ub) => ub.branch);
 
+    // Auto-assign branch when user has exactly one eligible branch
+    const resolvedBranchId = branchId ?? (availableBranches.length === 1 ? availableBranches[0].id : undefined);
+
+    // Persist auto-assigned branch on session for stateful tracking
+    if (resolvedBranchId && resolvedBranchId !== branchId) {
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: { branchId: resolvedBranchId },
+      }).catch(() => {
+        // non-critical; session may already have branchId or be transient
+      });
+    }
+
     const GLOBAL_PORTAL_ROLES = new Set([
       'Super Admin',
       'Marketplace Admin',
@@ -531,7 +544,7 @@ export class AuthService {
 
     // Branch selection is required only when user has multiple eligible branches and no selected branch
     const requiresBranchSelection =
-      !hasGlobalPortalRole && !branchId && availableBranches.length > 1;
+      !hasGlobalPortalRole && !resolvedBranchId && availableBranches.length > 1;
 
     const payload = {
       sub: user.id,
@@ -540,7 +553,7 @@ export class AuthService {
       tokenVersion: user.tokenVersion,
       roles: roles,
       mfaVerified: true, // Only generated for fully verified sessions
-      ...(branchId && { branchId }),
+      ...(resolvedBranchId && { branchId: resolvedBranchId }),
     };
 
     return {
@@ -554,7 +567,7 @@ export class AuthService {
         tenantId: user.tenantId,
         roles,
         defaultPortalPath,
-        ...(branchId && { branchId }),
+        ...(resolvedBranchId && { branchId: resolvedBranchId }),
       },
     };
   }
