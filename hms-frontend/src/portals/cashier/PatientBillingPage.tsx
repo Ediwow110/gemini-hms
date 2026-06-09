@@ -410,13 +410,13 @@ export const PatientBillingPage = () => {
 
       {showConfirmation && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-lg p-5 max-w-sm w-full space-y-3 shadow-md">
+          <div role="dialog" aria-modal="true" aria-labelledby="confirm-payment-title" className="bg-white border border-slate-200 rounded-lg p-5 max-w-sm w-full space-y-3 shadow-md">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
-                <AlertTriangle className="h-4.5 w-4.5" />
+                <AlertTriangle className="h-4.5 w-4.5" aria-hidden="true" />
               </div>
               <div>
-                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider font-sans">Confirm Payment</h4>
+                <h4 id="confirm-payment-title" className="font-bold text-slate-900 text-xs uppercase tracking-wider font-sans">Confirm Payment</h4>
                 <p className="text-[9px] text-slate-400 font-bold uppercase font-mono">Invoice #{invoice.invoiceNumber || invoice.id.substring(0, 8)}</p>
               </div>
             </div>
@@ -427,7 +427,7 @@ export const PatientBillingPage = () => {
               <button
                 type="button"
                 onClick={() => setShowConfirmation(false)}
-                className="border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold py-1.5 rounded-lg flex-1 transition-all"
+                className="border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold py-1.5 rounded-lg flex-1 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               >
                 Cancel
               </button>
@@ -435,9 +435,9 @@ export const PatientBillingPage = () => {
                 type="button"
                 onClick={handleConfirmPayment}
                 disabled={payLoading}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded-lg flex-1 flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 rounded-lg flex-1 flex items-center justify-center gap-1.5 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               >
-                <CheckCircle className="h-4 w-4" /> Confirm
+                <CheckCircle className="h-4 w-4" aria-hidden="true" /> Confirm
               </button>
             </div>
           </div>

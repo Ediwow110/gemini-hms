@@ -367,9 +367,10 @@ export const LoginForm = () => {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors p-1 rounded-lg hover:bg-slate-100"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors p-1 rounded-lg hover:bg-slate-100"
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
             </button>
           </div>
           {errors.password && (
@@ -383,7 +384,7 @@ export const LoginForm = () => {
 
       {/* Remember & Forgot */}
       <div className="flex items-center justify-between animate-fade-in stagger-3">
-        <label className="flex items-center gap-2.5 cursor-pointer group">
+        <label htmlFor="remember-me" className="flex items-center gap-2.5 cursor-pointer group">
           <input
             id="remember-me"
             name="remember-me"

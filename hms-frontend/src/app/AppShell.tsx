@@ -92,16 +92,18 @@ export const AppShell = () => {
             <button 
               onClick={() => setMobileMenuOpen(true)}
               className="lg:hidden p-2 hover:bg-slate-100 rounded-xl transition-colors"
+              aria-label="Open mobile menu"
             >
               <Menu className="h-5 w-5 text-slate-600" />
             </button>
 
             {/* Search */}
             <div className="relative transition-all duration-300 ease-out max-w-sm w-full md:block hidden">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" aria-hidden="true" />
               <input
                 type="text"
                 placeholder="Search patients, orders, or staff... (Ctrl+K)"
+                aria-label="Search patients, orders, or staff"
                 onClick={() => setIsCommandPaletteOpen(true)}
                 onFocus={(e) => {
                   e.target.blur();
@@ -115,6 +117,7 @@ export const AppShell = () => {
             <button 
               onClick={() => setIsCommandPaletteOpen(true)}
               className="md:hidden p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-all"
+              aria-label="Open search"
             >
               <Search className="h-5 w-5" />
             </button>
@@ -126,7 +129,7 @@ export const AppShell = () => {
               onClick={() => setShowQuickCreate(true)} 
               className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200 cursor-pointer"
             >
-              <PlusCircle className="h-4 w-4" />
+              <PlusCircle className="h-4 w-4" aria-hidden="true" />
               <span>Quick Create</span>
             </button>
 
@@ -134,6 +137,7 @@ export const AppShell = () => {
             <button 
               onClick={() => setShowQuickCreate(true)}
               className="md:hidden p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all border border-indigo-100"
+              aria-label="Quick Create"
             >
               <PlusCircle className="h-5 w-5" />
             </button>
@@ -143,12 +147,12 @@ export const AppShell = () => {
               onClick={handleBranchClick}
               className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
-              <Briefcase className="h-4 w-4 text-slate-500" />
+              <Briefcase className="h-4 w-4 text-slate-500" aria-hidden="true" />
               <span className="font-medium text-xs">Branch: {user?.branchId || 'None'}</span>
             </button>
             
             {/* Notifications */}
-            <Link to="/notifications" className="relative p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-all duration-200 hover:text-slate-700">
+            <Link to="/notifications" className="relative p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-all duration-200 hover:text-slate-700" aria-label="Notifications">
               <Bell className="h-5 w-5" />
               <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
                 <span className="animate-notification-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
@@ -159,19 +163,21 @@ export const AppShell = () => {
             <div className="h-7 w-px bg-slate-200 mx-1 hidden sm:block" />
 
             {/* User */}
-            <div 
+            <button 
+              type="button"
               onClick={logout}
-              className="flex items-center gap-3 pl-1 cursor-pointer group"
+              aria-label="Logout"
+              className="flex items-center gap-3 pl-1 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-xl bg-transparent border-0 text-left"
               title="Click to logout"
             >
-              <div className="text-right hidden sm:block">
+              <div className="hidden sm:block">
                 <p className="text-sm font-semibold text-slate-900 leading-none group-hover:text-indigo-700 transition-colors">{user?.email}</p>
                 <p className="text-caption mt-0.5">{user?.roles?.[0]}</p>
               </div>
               <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-indigo-200/50 group-hover:shadow-lg group-hover:shadow-indigo-300/50 transition-all duration-200 uppercase">
                 {user?.email?.[0] || 'U'}
               </div>
-            </div>
+            </button>
           </div>
         </header>
 
@@ -185,16 +191,17 @@ export const AppShell = () => {
         {/* Quick Create Dialog Modal */}
         {showQuickCreate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-slide-up relative">
+            <div role="dialog" aria-modal="true" aria-labelledby="quick-create-title" className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-slide-up relative">
               <button 
                 onClick={() => setShowQuickCreate(false)} 
                 className="absolute top-4 right-4 p-1.5 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="h-5 w-5" />
               </button>
               
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 border-b pb-3 border-slate-100 uppercase tracking-wider">
-                <PlusCircle className="h-4.5 w-4.5 text-indigo-600" />
+              <h3 id="quick-create-title" className="text-sm font-bold text-slate-800 flex items-center gap-2 border-b pb-3 border-slate-100 uppercase tracking-wider">
+                <PlusCircle className="h-4.5 w-4.5 text-indigo-600" aria-hidden="true" />
                 Quick Action Panel
               </h3>
 

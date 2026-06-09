@@ -116,12 +116,13 @@ export const TenantsPage: React.FC = () => {
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" aria-hidden="true" />
           <input 
             type="text"
             placeholder="Search tenant name, ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search tenants"
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
         </div>
@@ -129,14 +130,15 @@ export const TenantsPage: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'HEALTHY' | 'DEGRADED' | 'CRITICAL')}
-            className="appearance-none btn border border-slate-200 bg-white text-slate-650 hover:bg-slate-50 pl-9 pr-8 py-2.5 text-xs font-bold rounded-xl cursor-pointer focus:outline-none"
+            aria-label="Filter tenants by status"
+            className="appearance-none btn border border-slate-200 bg-white text-slate-650 hover:bg-slate-50 pl-9 pr-8 py-2.5 text-xs font-bold rounded-xl cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20"
           >
             <option value="ALL">All Statuses</option>
             <option value="HEALTHY">Healthy</option>
             <option value="DEGRADED">Degraded</option>
             <option value="CRITICAL">Critical</option>
           </select>
-          <Filter className="absolute left-3 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+          <Filter className="absolute left-3 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" aria-hidden="true" />
         </div>
       </div>
 
@@ -152,12 +154,12 @@ export const TenantsPage: React.FC = () => {
             <table className="w-full text-sm text-left min-w-[800px] border-separate border-spacing-0">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
-                  <th className="sticky left-0 z-10 bg-slate-50 px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Tenant Name</th>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Subscription Tier</th>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center border-b border-slate-200">Branches</th>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center border-b border-slate-200">Total Users</th>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Storage Used</th>
-                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">API SLA Status</th>
+                  <th scope="col" className="sticky left-0 z-10 bg-slate-50 px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Tenant Name</th>
+                  <th scope="col" className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Subscription Tier</th>
+                  <th scope="col" className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center border-b border-slate-200">Branches</th>
+                  <th scope="col" className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center border-b border-slate-200">Total Users</th>
+                  <th scope="col" className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Storage Used</th>
+                  <th scope="col" className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">API SLA Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -196,13 +198,13 @@ export const TenantsPage: React.FC = () => {
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-scale-in relative">
+          <div role="dialog" aria-modal="true" aria-labelledby="provision-modal-title" className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-scale-in relative">
             <div className="flex gap-3 mb-4">
               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl h-fit border border-indigo-100">
-                <Building className="h-6 w-6" />
+                <Building className="h-6 w-6" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider select-none">
+                <h3 id="provision-modal-title" className="text-sm font-bold text-slate-800 uppercase tracking-wider select-none">
                   Provision Tenant
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">Mock governance sandbox execution</p>
@@ -216,7 +218,7 @@ export const TenantsPage: React.FC = () => {
             <div className="mt-5 flex gap-2">
               <button 
                 onClick={() => setShowCreateModal(false)}
-                className="w-full btn border border-slate-200 hover:bg-slate-50 font-bold py-2 rounded-xl text-slate-700 transition-colors"
+                className="w-full btn border border-slate-200 hover:bg-slate-50 font-bold py-2 rounded-xl text-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               >
                 Dismiss
               </button>
@@ -224,6 +226,7 @@ export const TenantsPage: React.FC = () => {
           </div>
         </div>
       )}
+
     </HmsDashboardShell>
   );
 };

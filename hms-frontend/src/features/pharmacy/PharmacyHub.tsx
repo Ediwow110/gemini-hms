@@ -355,15 +355,16 @@ export const PharmacyHub = () => {
 
       {showDispenseModal && selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 animate-slide-up">
+          <div role="dialog" aria-modal="true" aria-labelledby="dispense-modal-title" className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 animate-slide-up">
             <div className="flex items-center justify-between border-b pb-3 border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <PackageCheck className="h-5 w-5 text-indigo-600" />
+              <h3 id="dispense-modal-title" className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <PackageCheck className="h-5 w-5 text-indigo-600" aria-hidden="true" />
                 Dispense Medication
               </h3>
               <button
                 onClick={() => setShowDispenseModal(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-lg"
+                aria-label="Close dispense modal"
               >
                 <XCircle className="h-5 w-5" />
               </button>
