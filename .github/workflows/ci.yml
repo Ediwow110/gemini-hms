@@ -28,6 +28,7 @@ jobs:
         working-directory: ./hms-backend
         run: |
           npm ci
+          npx prisma generate
           npm run lint
           npm run typecheck
 
@@ -71,6 +72,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/hms_test?schema=public
         run: |
           npm ci
+          npx prisma generate
           npm run test
           npm run test:e2e
 

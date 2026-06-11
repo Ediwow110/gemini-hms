@@ -70,14 +70,14 @@ describe('dashboard intelligence pages', () => {
 
   it('HRDashboard renders workforce analytics components', () => {
     renderPage(<HRDashboard />);
-    expect(screen.getByText('HR Workforce Command Center')).toBeInTheDocument();
+    expect(screen.getByText('HR Command Center')).toBeInTheDocument();
     expect(screen.getByText('Headcount')).toBeInTheDocument();
     expect(screen.getByText('Workforce insights')).toBeInTheDocument();
   });
 
   it('ProcurementDashboard renders funnel and metrics', () => {
     renderPage(<ProcurementDashboard />);
-    expect(screen.getByText('Procurement Intelligence Center')).toBeInTheDocument();
+    expect(screen.getByText('Procurement Officer')).toBeInTheDocument();
     expect(screen.getByText('Open PRs')).toBeInTheDocument();
     expect(screen.getByText(/PR → RFQ → PO → Receiving funnel/i)).toBeInTheDocument();
   });
