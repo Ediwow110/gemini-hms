@@ -328,7 +328,13 @@ export const ResultEncodingPage = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-mono">
-                        {parameters.length === 0 ? (
+                        {catError ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-6 text-center text-xs text-rose-650 font-bold font-sans">
+                              ⚠️ Error loading test parameters catalog. Please refresh the page or retry.
+                            </td>
+                          </tr>
+                        ) : parameters.length === 0 ? (
                           <tr>
                             <td colSpan={5} className="px-4 py-6 text-center text-xs text-slate-400 font-medium font-sans">
                               No test parameters defined for this panel.
@@ -402,11 +408,14 @@ export const ResultEncodingPage = () => {
                       {fileName ? (
                         <span className="text-blue-600 font-bold block truncate">{fileName}</span>
                       ) : (
-                        <span>Upload analyzer printout</span>
+                        <span>Upload analyzer printout (Simulated)</span>
                       )}
                       <span className="text-[10px] text-slate-400 font-medium block mt-0.5">Supports PDF, PNG, JPG up to 10MB</span>
                     </div>
                   </div>
+                  <p className="text-[9px] text-slate-450 font-semibold uppercase tracking-wider text-center mt-1 select-none">
+                    * File attachments are simulated in draft status and not persisted to backend storage.
+                  </p>
                 </div>
 
                 <div className="bg-white border border-slate-200 p-4 rounded-lg shadow-sm space-y-3">
