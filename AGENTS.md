@@ -2,6 +2,7 @@
 ## Goal
 - Sandbox-UI honesty audit + correctness audit + idempotency key bug fix + single-branch auth branch-context fix.
 - Real-DB frontend validation: PASS WITH FIX APPLIED (LOCAL ONLY).
+- Sidebar IA cleanup: test stability fix + rename `System Settings` → `Organization Settings` + add orphan route to nav.
 ## Constraints & Preferences
 - Stay local only; do not push, open PR, merge, or modify tracked product code unless a real correctness issue is found.
 - Do not suggest fake alerts as default fix; do not call every inert sandbox button a bug.
@@ -18,6 +19,13 @@
 - **Branch-context auth fix**: single-branch users now auto-resolve `branchId` in `generateTokenPair()` at `hms-backend/src/auth/auth.service.ts:522`. Fix covers `login()`, `verifyMfa()`, `verifyMfaWithRecoveryCode()`. 75/75 auth tests pass. Real-DB API smoke confirms pharmacist + cashier branch-scoped APIs return 200 (were 403).
 - **Real-DB frontend rerun**: pharmacist → `/pharmacy` (0 errors), cashier dashboard (0 errors), invoices/billing pages load without `missing_branch_context`. Verdict: **PASS WITH FIX APPLIED (LOCAL ONLY)**.
 
+### Session Update — Sidebar IA + Test Stability
+- **Vitest teardown fix**: Added `vi.runAllTimers()` in `afterEach` before `vi.useRealTimers()` in `hms-frontend/src/components/analytics/dashboard-pages.test.tsx`. Eliminates `EnvironmentTeardownError`; suite now completes cleanly.
+- **Sidebar rename**: Super Admin parent label changed from `System Settings` to `Organization Settings` in `roleNavigation.ts`.
+- **New sidebar child**: Added `Global System Config` → `/admin/settings` under the `Organization Settings` dropdown (Super Admin only). This route was previously orphaned from the sidebar.
+- **Command palette test updated**: `CommandPalette.test.tsx` updated to match the new label.
+- **Verified gates**: `npm run typecheck` PASS, `npm run lint` PASS, `npx vitest run` PASS — 73 test files, 406/406 tests passing, no teardown error.
+
 ### Unresolved (Fixture Gaps / Display Polish)
 - Drug catalog empty in this DB (API 200, no fixtures)
 - Dispense button disabled on DEMO prescription (read-only fixture)
@@ -25,11 +33,13 @@
 - "Paid" shows 0 despite DEMO-INV-001 being fully paid (status `ISSUED` not `PAID`)
 
 ### Blocked
-- (none)
+- Visual QA of sidebar dropdowns (expand/collapse, active states, indentation) — Playwright MCP disconnected in session.
 ## Key Decisions
 - **Idempotency key fix approach**: generate key once per payment attempt using `useRef`, persist across retries, reset on `invoiceId` change. Uses `Math.random()` suffix instead of `Date.now()`.
 - **Branch-context fix approach**: modify `generateTokenPair()` to auto-assign `branchId` when `availableBranches.length === 1`, handling all three callers at once. Session also updated for stateful tracking.
 - **Verdict on polish issues**: no code changes justified for sandbox polish; defer to Phase 15-B standardization.
+- **Sidebar naming strategy**: `System Settings` → `Organization Settings` to accurately reflect the content (branches, departments, services etc.). Orphaned `/admin/settings` page added as `Global System Config` child under the dropdown.
+- **Visual QA remains tooling-blocked**: code/test gates green but Playwright MCP unavailable in-session.
 ## Next Steps
 1. **CI / staging / deployment-path proof** — this is now the next meaningful validation step.
 2. **Get GCP IAM roles granted** (`serviceUsageAdmin`, `compute.admin`, `cloudsql.admin`) on `unified-xylocarp-j524r`.
@@ -77,8 +87,12 @@
 - `hms-frontend/src/hooks/__tests__/use-catalog.test.tsx` — Phase 15-A: 2 tests.
 - `hms-frontend/src/portals/admin/` — remaining 9 Admin pages not yet standardized (Phase 15-B scope).
 - `hms-frontend/src/portals/branch-admin/` — BranchAdminDashboard + 10 WIP stubs (Phase 15-B scope).
+- `hms-frontend/src/config/roleNavigation.ts`: Nav data — 8 workspace families converted to nested children; Organization Settings parent; Global System Config child.
+- `hms-frontend/src/app/__tests__/CommandPalette.test.tsx`: Updated to match new label.
+- `hms-frontend/src/components/analytics/dashboard-pages.test.tsx`: Vitest teardown fix with `vi.runAllTimers()`.
 ## Carryover Risks
 1. **GCP IAM block**: No staging/CI. Account lacks 4 critical roles on `unified-xylocarp-j524r`.
 2. **Pharmacist role not seeded**: Must be added to database `roles` table at deployment.
 3. **Migrations unapplied**: All Phase 14 + Sprint 2A migrations require PostgreSQL.
 4. **Drug catalog fixtures empty**: No drug catalog data in this DB; dispense flow cannot be fully exercised.
+5. **Visual QA tooling-blocked**: sidebar dropdown interaction (expand/collapse, active highlighting, indentation) needs Playwright or manual browser check; not verifiable in-session.
