@@ -23,75 +23,91 @@ export const CashierDashboard = () => {
         description="Invoice management, payment processing, session control, and reconciliation"
       />
 
-      {/* Session Status */}
-      <div className={`p-4 rounded-2xl border ${session ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'} flex items-center justify-between`}>
-        <div className="flex items-center gap-3">
-          <Clock className={`h-5 w-5 ${session ? 'text-emerald-600' : 'text-amber-600'}`} />
-          <div>
-            <p className="text-xs font-bold text-slate-700">
-              {sessLoading ? 'Loading...' : session ? `Session Active (Opened: ${new Date(session.openedAt).toLocaleTimeString()})` : 'No Active Session'}
-            </p>
+      <div className="grid grid-cols-12 gap-6">
+        {/* Session Status Banner (Full-Width) */}
+        <div className={`col-span-12 p-4 rounded-2xl border ${session ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'} flex items-center justify-between`}>
+          <div className="flex items-center gap-3">
+            <Clock className={`h-5 w-5 ${session ? 'text-emerald-600' : 'text-amber-600'}`} />
+            <div>
+              <p className="text-xs font-bold text-slate-700">
+                {sessLoading ? 'Loading...' : session ? `Session Active (Opened: ${new Date(session.openedAt).toLocaleTimeString()})` : 'No Active Session'}
+              </p>
+            </div>
           </div>
+          <button onClick={() => navigate('/cashier/session')}
+            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer">
+            {session ? 'Manage Session' : 'Open Session'}
+          </button>
         </div>
-        <button onClick={() => navigate('/cashier/session')}
-          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer">
-          {session ? 'Manage Session' : 'Open Session'}
-        </button>
-      </div>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Invoices</p>
-              <p className="text-2xl font-extrabold text-slate-800">{invLoading ? '...' : invoices.length}</p>
+        {/* KPI Metrics (4 S-size Cards) */}
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 min-h-[110px] flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Invoices</p>
+                <p className="text-2xl font-extrabold text-slate-800">{invLoading ? '...' : invoices.length}</p>
+              </div>
+              <div className="p-3 bg-indigo-50 rounded-xl"><FileText className="h-5 w-5 text-indigo-600" /></div>
             </div>
-            <div className="p-3 bg-indigo-50 rounded-xl"><FileText className="h-5 w-5 text-indigo-600" /></div>
           </div>
         </div>
-        <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Payment</p>
-              <p className="text-2xl font-extrabold text-amber-600">{invLoading ? '...' : pendingCount}</p>
-            </div>
-            <div className="p-3 bg-amber-50 rounded-xl"><CreditCard className="h-5 w-5 text-amber-600" /></div>
-          </div>
-        </div>
-        <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Paid</p>
-              <p className="text-2xl font-extrabold text-emerald-600">{invLoading ? '...' : paidCount}</p>
-            </div>
-            <div className="p-3 bg-emerald-50 rounded-xl"><DollarSign className="h-5 w-5 text-emerald-600" /></div>
-          </div>
-        </div>
-        <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Outstanding Balance</p>
-              <p className="text-2xl font-extrabold text-rose-600">{invLoading ? '...' : `${totalOutstanding.toLocaleString()} ₱`}</p>
-            </div>
-            <div className="p-3 bg-rose-50 rounded-xl"><TrendingUp className="h-5 w-5 text-rose-600" /></div>
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <ChartCard title="Revenue by day" description="Sandbox trend for collection planning; invoice totals above are live API derived." height={280}>
-          <VolumeAreaChart data={cashierVolumeTrend} title="Revenue by day" valueLabel="Payments" />
-        </ChartCard>
-        <ChartCard title="Payment method breakdown" description="Decision chart for cashier closeout and HMO aging follow-up." height={280}>
-          <StatusDonutChart data={paymentMethodBreakdown} title="Payment method breakdown" />
-        </ChartCard>
-        <InsightPanel insights={cashierInsights} title="Billing and closeout alerts" />
-      </div>
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 min-h-[110px] flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Payment</p>
+                <p className="text-2xl font-extrabold text-amber-600">{invLoading ? '...' : pendingCount}</p>
+              </div>
+              <div className="p-3 bg-amber-50 rounded-xl"><CreditCard className="h-5 w-5 text-amber-600" /></div>
+            </div>
+          </div>
+        </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 min-h-[110px] flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Paid</p>
+                <p className="text-2xl font-extrabold text-emerald-600">{invLoading ? '...' : paidCount}</p>
+              </div>
+              <div className="p-3 bg-emerald-50 rounded-xl"><DollarSign className="h-5 w-5 text-emerald-600" /></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 min-h-[110px] flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Outstanding Balance</p>
+                <p className="text-2xl font-extrabold text-rose-600">{invLoading ? '...' : `${totalOutstanding.toLocaleString()} ₱`}</p>
+              </div>
+              <div className="p-3 bg-rose-50 rounded-xl"><TrendingUp className="h-5 w-5 text-rose-600" /></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Charts & Insights Row (L Cards - 4 cols desktop, 6/12 cols tablet/mobile) */}
+        <div className="col-span-12 md:col-span-6 xl:col-span-4">
+          <ChartCard title="Revenue by day" description="Sandbox trend for collection planning; invoice totals above are live API derived." height={280}>
+            <VolumeAreaChart data={cashierVolumeTrend} title="Revenue by day" valueLabel="Payments" />
+          </ChartCard>
+        </div>
+
+        <div className="col-span-12 md:col-span-6 xl:col-span-4">
+          <ChartCard title="Payment method breakdown" description="Decision chart for cashier closeout and HMO aging follow-up." height={280}>
+            <StatusDonutChart data={paymentMethodBreakdown} title="Payment method breakdown" />
+          </ChartCard>
+        </div>
+
+        <div className="col-span-12 md:col-span-12 xl:col-span-4">
+          <InsightPanel insights={cashierInsights} title="Billing and closeout alerts" />
+        </div>
+
+        {/* Work Area / Bottom Row: Actions (8 cols) & Recent Invoices (4 cols) */}
+        <div className="col-span-12 xl:col-span-8 space-y-4">
           <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider px-1">Billing Actions</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
@@ -111,7 +127,7 @@ export const CashierDashboard = () => {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="col-span-12 xl:col-span-4 space-y-4">
           <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider px-1">Recent Invoices</h3>
           {invLoading ? (
             <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-6 text-center text-xs text-slate-400">Loading...</div>

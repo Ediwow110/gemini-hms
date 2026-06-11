@@ -43,8 +43,9 @@ export const ITSupportDashboard: React.FC = () => {
         </div>
         <ITScopeFilter />
 
-        {/* Health Metrics Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-12 gap-6">
+        {/* Health Metrics Row: 4 S-size Cards */}
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <SystemHealthCard
             title="Open Tickets"
             value={statsLoading ? '...' : String(stats.open)}
@@ -54,6 +55,8 @@ export const ITSupportDashboard: React.FC = () => {
             metricLabel="View Tickets"
             onActionClick={() => navigate('/it/user-support')}
           />
+        </div>
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <SystemHealthCard
             title="In Progress"
             value={statsLoading ? '...' : String(stats.inProgress)}
@@ -63,6 +66,8 @@ export const ITSupportDashboard: React.FC = () => {
             metricLabel="View Active"
             onActionClick={() => navigate('/it/user-support')}
           />
+        </div>
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <SystemHealthCard
             title="Total Tickets"
             value={statsLoading ? '...' : String(stats.total)}
@@ -72,6 +77,8 @@ export const ITSupportDashboard: React.FC = () => {
             metricLabel="View All"
             onActionClick={() => navigate('/it/user-support')}
           />
+        </div>
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
           <SystemHealthCard
             title="System Health"
             value="Online"
@@ -83,81 +90,89 @@ export const ITSupportDashboard: React.FC = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
-          {itMetrics.map((metric) => (
-            <AnalyticsMetricCard key={metric.title} {...metric} value={metric.title === 'Open Tickets' ? (statsLoading ? '...' : stats.open) : metric.title === 'Urgent Incidents' ? (statsLoading ? '...' : stats.urgent) : metric.value} />
-          ))}
-        </div>
+        {/* 6 XS-size telemetry metrics (2 cols each on desktop) */}
+        {itMetrics.map((metric) => (
+          <div key={metric.title} className="col-span-12 sm:col-span-4 xl:col-span-2">
+            <AnalyticsMetricCard {...metric} value={metric.title === 'Open Tickets' ? (statsLoading ? '...' : stats.open) : metric.title === 'Urgent Incidents' ? (statsLoading ? '...' : stats.urgent) : metric.value} />
+          </div>
+        ))}
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Primary Work Row: System Health Metrics (L Card) + User Support Queue (L Card) */}
+        <div className="col-span-12 xl:col-span-6">
           <ChartCard title="API latency and availability" description="Sandbox infrastructure trend for operational review." height={280}>
             <TrendLineChart data={itLatencyTrend} title="API latency and availability" valueLabel="Latency ms" secondaryLabel="Availability %" />
           </ChartCard>
-          <ChartCard title="Background job status" description="Job queue status drives retry and incident decisions." height={280}>
-            <StatusDonutChart data={jobBreakdown} title="Background job status" />
-          </ChartCard>
-          <InsightPanel insights={itInsights} title="IT operations insights" />
         </div>
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column: Support Queue & Jobs */}
-          <div className="lg:col-span-2 space-y-6">
-            {ticketsLoading ? (
-              <HmsLoadingSkeleton />
-            ) : ticketsError ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700">
-                <p className="font-semibold">Error loading support tickets</p>
-                <p className="mt-1">{ticketsError}</p>
-                <button onClick={refetch} className="mt-2 font-semibold text-indigo-600 cursor-pointer hover:underline">Retry</button>
-              </div>
-            ) : tickets.length === 0 ? (
-              <HmsEmptyState title="No recent tickets" description="Support tickets will appear here when reported." />
-            ) : (
-              <UserSupportQueue tickets={tickets.map(t => ({
-                id: t.id,
-                userName: t.reportedBy?.email || 'Unknown',
-                userEmail: t.reportedBy?.email || '',
-                userRole: '',
-                tenantName: '',
-                branchName: t.branch?.name || '',
-                issueType: t.issueType,
-                summary: t.summary,
-                status: t.status,
-                priority: t.priority,
-                createdAt: new Date(t.createdAt).toLocaleString(),
-              }))} />
-            )}
-            <BackgroundJobTable jobs={[]} />
-          </div>
+        <div className="col-span-12 xl:col-span-6">
+          {ticketsLoading ? (
+            <HmsLoadingSkeleton />
+          ) : ticketsError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700">
+              <p className="font-semibold">Error loading support tickets</p>
+              <p className="mt-1">{ticketsError}</p>
+              <button onClick={refetch} className="mt-2 font-semibold text-indigo-600 cursor-pointer hover:underline">Retry</button>
+            </div>
+          ) : tickets.length === 0 ? (
+            <HmsEmptyState title="No recent tickets" description="Support tickets will appear here when reported." />
+          ) : (
+            <UserSupportQueue tickets={tickets.map(t => ({
+              id: t.id,
+              userName: t.reportedBy?.email || 'Unknown',
+              userEmail: t.reportedBy?.email || '',
+              userRole: '',
+              tenantName: '',
+              branchName: t.branch?.name || '',
+              issueType: t.issueType,
+              summary: t.summary,
+              status: t.status,
+              priority: t.priority,
+              createdAt: new Date(t.createdAt).toLocaleString(),
+            }))} />
+          )}
+        </div>
 
-          {/* Right Column: Quick Actions */}
-          <div className="space-y-6">
-            {/* Quick Actions Panel */}
-            <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-4">
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">IT Quick Actions</h4>
-              <div className="space-y-2">
-                {[
-                  { label: 'System Health Monitor', icon: Cpu, path: '/it/system-health' },
-                  { label: 'Active Sessions', icon: Users, path: '/it/sessions' },
-                  { label: 'System Integrations', icon: Link2, path: '/it/integrations' },
-                  { label: 'System Logs', icon: Terminal, path: '/it/logs' },
-                  { label: 'Backup & Recovery', icon: Database, path: '/it/backup-restore' },
-                  { label: 'Ticket Queue', icon: AlertOctagon, path: '/it/user-support' },
-                ].map((item) => (
-                  <button
-                    key={item.path}
-                    onClick={() => navigate(item.path)}
-                    className="w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all text-xs font-bold text-slate-700 flex justify-between items-center cursor-pointer"
-                  >
-                    <span>{item.label}</span>
-                    <item.icon className="h-4 w-4 text-indigo-500" />
-                  </button>
-                ))}
-              </div>
+        {/* Secondary Insight Row: Active Background Jobs Table (XL Card) + Quick Actions (L Card) */}
+        <div className="col-span-12 xl:col-span-8">
+          <BackgroundJobTable jobs={[]} />
+        </div>
+
+        <div className="col-span-12 xl:col-span-4">
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-4">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">IT Quick Actions</h4>
+            <div className="space-y-2">
+              {[
+                { label: 'System Health Monitor', icon: Cpu, path: '/it/system-health' },
+                { label: 'Active Sessions', icon: Users, path: '/it/sessions' },
+                { label: 'System Integrations', icon: Link2, path: '/it/integrations' },
+                { label: 'System Logs', icon: Terminal, path: '/it/logs' },
+                { label: 'Backup & Recovery', icon: Database, path: '/it/backup-restore' },
+                { label: 'Ticket Queue', icon: AlertOctagon, path: '/it/user-support' },
+              ].map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className="w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all text-xs font-bold text-slate-700 flex justify-between items-center cursor-pointer"
+                >
+                  <span>{item.label}</span>
+                  <item.icon className="h-4 w-4 text-indigo-500" />
+                </button>
+              ))}
             </div>
           </div>
         </div>
+
+        {/* Bottom Supporting Row: Job Status (L Card) + IT Insights (L Card) */}
+        <div className="col-span-12 md:col-span-6 xl:col-span-6">
+          <ChartCard title="Background job status" description="Job queue status drives retry and incident decisions." height={280}>
+            <StatusDonutChart data={jobBreakdown} title="Background job status" />
+          </ChartCard>
+        </div>
+
+        <div className="col-span-12 md:col-span-6 xl:col-span-6">
+          <InsightPanel insights={itInsights} title="IT operations insights" />
+        </div>
+      </div>
       </div>
       <HmsAuditFooter />
     </HmsDashboardShell>

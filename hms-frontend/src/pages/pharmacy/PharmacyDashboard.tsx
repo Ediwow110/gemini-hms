@@ -146,20 +146,20 @@ export const PharmacyDashboard: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div className="lg:col-span-2 space-y-3">
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12 xl:col-span-8 space-y-6">
             <HmsLoadingSkeleton variant="table" />
             <HmsLoadingSkeleton variant="table" />
           </div>
-          <div className="space-y-3">
+          <div className="col-span-12 xl:col-span-4 space-y-6">
             <HmsLoadingSkeleton variant="panel" />
             <HmsLoadingSkeleton variant="panel" />
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {/* Main Work Content (2/3) */}
-          <div className="lg:col-span-2 space-y-3">
+        <div className="grid grid-cols-12 gap-6">
+          {/* Main Work Content (8/12 cols desktop, 12 cols tablet/mobile) */}
+          <div className="col-span-12 xl:col-span-8 space-y-6">
             {/* Active Prescriptions Queue */}
             {data?.isUnavailable ? (
               <HmsDataUnavailable
@@ -283,8 +283,8 @@ export const PharmacyDashboard: React.FC = () => {
             />
           </div>
 
-          {/* Operational Metrics and Quick Actions (1/3) */}
-          <div className="space-y-3">
+          {/* Operational Metrics and Quick Actions (4/12 cols desktop, 12 cols tablet/mobile) */}
+          <div className="col-span-12 xl:col-span-4 space-y-6">
             {/* SLA Risk Panel */}
             {data?.isUnavailable ? (
               <HmsDataUnavailable

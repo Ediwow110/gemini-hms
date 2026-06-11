@@ -88,11 +88,12 @@ export const Queue = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-12 gap-6">
+        {/* KPI metrics - 4 S-size Cards (3 cols desktop, 6 tablet, 12 mobile) */}
         {QUEUE_STATS.map((s, i) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className={`card-hover p-5 text-center animate-slide-up stagger-${i + 1}`}>
+            <div key={s.label} className={`col-span-12 sm:col-span-6 xl:col-span-3 card-hover p-5 text-center animate-slide-up stagger-${i + 1}`}>
               <div className={`mx-auto w-10 h-10 rounded-xl bg-gradient-to-br ${s.color} shadow-md flex items-center justify-center mb-3`}>
                 <Icon className="h-5 w-5 text-white" />
               </div>
@@ -101,45 +102,46 @@ export const Queue = () => {
             </div>
           );
         })}
-      </div>
 
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-slate-50/80 border-b border-slate-200">
-            <tr>
-              <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">#</th>
-              <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Patient</th>
-              <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Service</th>
-              <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Status</th>
-              <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Wait Time</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {queue.map(q => {
-              const initials = q.name.split(" ").map(n => n[0]).join("");
-              return (
-                <tr key={q.num} className="hover:bg-indigo-50/30 transition-colors duration-150 cursor-pointer group">
-                  <td className="px-6 py-4 font-bold text-indigo-600">{q.num}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 group-hover:from-indigo-100 group-hover:to-violet-100 group-hover:text-indigo-700 transition-all duration-200">
-                        {initials}
+        {/* Queue Monitor Table (Full-Width Card - 12 cols) */}
+        <div className="col-span-12 card overflow-hidden">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-slate-50/80 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">#</th>
+                <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Patient</th>
+                <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Service</th>
+                <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Wait Time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {queue.map(q => {
+                const initials = q.name.split(" ").map(n => n[0]).join("");
+                return (
+                  <tr key={q.num} className="hover:bg-indigo-50/30 transition-colors duration-150 cursor-pointer group">
+                    <td className="px-6 py-4 font-bold text-indigo-600">{q.num}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 group-hover:from-indigo-100 group-hover:to-violet-100 group-hover:text-indigo-700 transition-all duration-200">
+                          {initials}
+                        </div>
+                        <span className="font-semibold text-slate-900">{q.name}</span>
                       </div>
-                      <span className="font-semibold text-slate-900">{q.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">{q.service}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-center">
-                      <StatusBadge status={q.status} />
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-500 text-xs font-medium">{q.time}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{q.service}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-center">
+                        <StatusBadge status={q.status} />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-500 text-xs font-medium">{q.time}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

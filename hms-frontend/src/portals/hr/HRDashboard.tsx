@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { PageHeader } from '../../components/ui/page-header';
+import { ShieldAlert } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   AnalyticsMetricCard,
   ChartCard,
@@ -17,6 +17,11 @@ import { LicenseMonitorPanel, License } from './components/LicenseMonitorPanel';
 import { defaultDateRange } from '../../data/analytics/adminAnalytics.mock';
 import { attendanceTrend, headcountTrend, hrInsights, hrMetrics, leaveBreakdown, payrollTrend, staffingGapByDepartment } from '../../data/analytics/hrAnalytics.mock';
 import type { DateRange } from '../../types/analytics';
+import {
+  HmsDashboardShell,
+  HmsToolbar,
+  HmsAuditFooter,
+} from '../../components/hms-dashboard';
 
 const mockEmployees: Employee[] = [
   { id: '1', name: 'Dr. Gregory House', email: 'g.house@stjude.org', role: 'Chief Diagnostician', department: 'Clinical', branch: 'St. Jude Metro', status: 'ACTIVE', joinedAt: '2024-01-15' },
@@ -36,29 +41,99 @@ const mockLicenses: License[] = [
 ];
 
 export const HRDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [dateRange, setDateRange] = useState<DateRange>(defaultDateRange);
   const [department, setDepartment] = useState('all');
 
   return (
-    <div className="space-y-6 pb-12">
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800"><strong>Sandbox Notice:</strong> Workforce analytics are mock data moved out of the page component. No real HR or payroll actions are performed.</div>
-      <PageHeader title="HR Workforce Command Center" description="Headcount, attendance, leave, license compliance, payroll readiness, and offboarding risk." actions={<button type="button" onClick={() => window.location.reload()} aria-label="Refresh HR dashboard" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"><RefreshCw className="h-4 w-4" /> Refresh</button>} />
-      <HRScopeFilter />
-      <DashboardFilterBar dateRange={dateRange} onDateRangeChange={setDateRange} department={department} onDepartmentChange={setDepartment} />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">{hrMetrics.map(metric => <AnalyticsMetricCard key={metric.title} {...metric} />)}</div>
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <ChartCard title="Headcount trend" description="Workforce growth by month." height={280}><TrendLineChart data={headcountTrend} title="Headcount trend" /></ChartCard>
-        <ChartCard title="Attendance trend" description="Daily attendance percentage." height={280}><TrendLineChart data={attendanceTrend} title="Attendance trend" valueLabel="Attendance %" /></ChartCard>
-        <ChartCard title="Leave type breakdown" description="Leave pressure by type." height={280}><StatusDonutChart data={leaveBreakdown} title="Leave type breakdown" /></ChartCard>
-        <ChartCard title="Staffing gap by department" description="FTE gap estimate by department." height={280}><ComparisonBarChart data={staffingGapByDepartment} title="Staffing gap" valueLabel="FTE gap" /></ChartCard>
-        <ChartCard title="Payroll trend" description="Payroll amount trend in millions." height={280}><TrendLineChart data={payrollTrend} title="Payroll trend" valueLabel="₱M" /></ChartCard>
-        <InsightPanel insights={hrInsights} title="Workforce insights" />
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar
+          branchName="All Branches"
+          role="HR Command Center"
+          onRefresh={() => window.location.reload()}
+        />
+      }
+      footer={<HmsAuditFooter dataSource="Workforce HR Database (Simulated)" />}
+    >
+      <div className="space-y-6 pb-12">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">
+          <strong>Sandbox Notice:</strong> Workforce analytics are mock data moved out of the page component. No real HR or payroll actions are performed.
+        </div>
+
+        {/* Alert Strip: Expiring License Alerts */}
+        <div className="rounded-xl border border-rose-200 bg-rose-50/50 px-4 py-3 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-rose-600 flex-shrink-0" />
+            <div>
+              <span className="text-[12px] font-bold text-rose-900 block">LICENSE COMPLIANCE NOTICE: 14 EXPIRING CLINICAL LICENSES</span>
+              <span className="text-[10px] text-rose-700 font-semibold block mt-0.5">Fourteen provider credentials expire within 30 days. Action is required to avoid scheduling blocks.</span>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/hr/licenses')}
+            className="text-[11px] font-bold text-rose-700 bg-rose-100 hover:bg-rose-200 border border-rose-300 rounded-md px-2.5 py-1 cursor-pointer transition-colors"
+          >
+            Verify Credentials
+          </button>
+        </div>
+
+        <HRScopeFilter />
+        <DashboardFilterBar dateRange={dateRange} onDateRangeChange={setDateRange} department={department} onDepartmentChange={setDepartment} />
+
+        <div className="grid grid-cols-12 gap-6">
+          {/* KPI metrics - 6 XS-size telemetry metrics (2 cols each on desktop) */}
+          {hrMetrics.map(metric => (
+            <div key={metric.title} className="col-span-12 sm:col-span-4 xl:col-span-2">
+              <AnalyticsMetricCard {...metric} />
+            </div>
+          ))}
+
+          {/* Primary Work Row: Employee List (XL Card) & Leave Approvals Queue (L Card) */}
+          <div className="col-span-12 xl:col-span-8">
+            <EmployeeWorklist employees={mockEmployees} />
+          </div>
+          <div className="col-span-12 xl:col-span-4">
+            <LeaveQueuePanel requests={mockLeaveRequests} />
+          </div>
+
+          {/* Secondary Insight Row: Licensure Verification Panel (L Card) + Workforce insights (L Card) */}
+          <div className="col-span-12 xl:col-span-6">
+            <LicenseMonitorPanel licenses={mockLicenses} />
+          </div>
+          <div className="col-span-12 xl:col-span-6">
+            <InsightPanel insights={hrInsights} title="Workforce insights" />
+          </div>
+
+          {/* Bottom Supporting Row: Trends & Charts */}
+          <div className="col-span-12 md:col-span-6 xl:col-span-4">
+            <ChartCard title="Headcount trend" description="Workforce growth by month." height={280}>
+              <TrendLineChart data={headcountTrend} title="Headcount trend" />
+            </ChartCard>
+          </div>
+          <div className="col-span-12 md:col-span-6 xl:col-span-4">
+            <ChartCard title="Attendance trend" description="Daily attendance percentage." height={280}>
+              <TrendLineChart data={attendanceTrend} title="Attendance trend" valueLabel="Attendance %" />
+            </ChartCard>
+          </div>
+          <div className="col-span-12 md:col-span-6 xl:col-span-4">
+            <ChartCard title="Leave type breakdown" description="Leave pressure by type." height={280}>
+              <StatusDonutChart data={leaveBreakdown} title="Leave type breakdown" />
+            </ChartCard>
+          </div>
+          <div className="col-span-12 md:col-span-6 xl:col-span-6">
+            <ChartCard title="Staffing gap by department" description="FTE gap estimate by department." height={280}>
+              <ComparisonBarChart data={staffingGapByDepartment} title="Staffing gap" valueLabel="FTE gap" />
+            </ChartCard>
+          </div>
+          <div className="col-span-12 md:col-span-12 xl:col-span-6">
+            <ChartCard title="Payroll trend" description="Payroll amount trend in millions." height={280}>
+              <TrendLineChart data={payrollTrend} title="Payroll trend" valueLabel="₱M" />
+            </ChartCard>
+          </div>
+        </div>
       </div>
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-2"><EmployeeWorklist employees={mockEmployees} /></div>
-        <div className="space-y-6"><LeaveQueuePanel requests={mockLeaveRequests} /><LicenseMonitorPanel licenses={mockLicenses} /></div>
-      </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

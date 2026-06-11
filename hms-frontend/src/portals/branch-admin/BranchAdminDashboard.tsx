@@ -58,16 +58,43 @@ export const BranchAdminDashboard: React.FC = () => {
         actions={<button type="button" onClick={() => window.location.reload()} aria-label="Refresh branch dashboard" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"><RefreshCw className="h-4 w-4" /> Refresh</button>}
       />
       <DashboardFilterBar dateRange={dateRange} onDateRangeChange={setDateRange} department={department} onDepartmentChange={setDepartment} />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">{branchMetrics.map(metric => <AnalyticsMetricCard key={metric.title} {...metric} />)}</div>
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ChartCard title="Patient volume by hour" description="Shows surge windows for queue/staffing decisions." height={300}><VolumeAreaChart data={patientVolumeByHour} title="Patient volume by hour" /></ChartCard>
-        <ChartCard title="Queue status by department" description="Department queue split for immediate escalation." height={300}><StatusDonutChart data={queueByDepartment} title="Queue by department" /></ChartCard>
-        <ChartCard title="Room occupancy" description="Utilization across service areas." height={300}><ComparisonBarChart data={roomOccupancy} title="Room occupancy" valueLabel="Occupancy %" /></ChartCard>
-        <ChartCard title="Staff workload heatmap" description="Shift-based staffing load view." height={300}><HeatmapGrid data={staffWorkloadHeatmap} title="Staff workload heatmap" /></ChartCard>
-      </div>
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <InsightPanel insights={branchInsights} title="Branch alerts and decisions" />
-        <div className="xl:col-span-2"><ReportTable columns={delayedPatientColumns} rows={delayedPatientRows} caption="Delayed patients drilldown table" /></div>
+      <div className="grid grid-cols-12 gap-6">
+        {/* KPI Band (4 S Cards: 3 cols desktop, 6 cols tablet, 12 cols mobile) */}
+        {branchMetrics.map(metric => (
+          <div key={metric.title} className="col-span-12 md:col-span-6 xl:col-span-3">
+            <AnalyticsMetricCard {...metric} />
+          </div>
+        ))}
+
+        {/* Primary Work Row: Delayed Patients Drilldown Table (8 cols) & Insights Panel (4 cols) */}
+        <div className="col-span-12 xl:col-span-8">
+          <ReportTable columns={delayedPatientColumns} rows={delayedPatientRows} caption="Delayed patients drilldown table" />
+        </div>
+        <div className="col-span-12 xl:col-span-4">
+          <InsightPanel insights={branchInsights} title="Branch alerts and decisions" />
+        </div>
+
+        {/* Secondary Insight Row (4 L-size Chart Cards - 6 cols desktop, 12 cols tablet/mobile) */}
+        <div className="col-span-12 xl:col-span-6">
+          <ChartCard title="Patient volume by hour" description="Shows surge windows for queue/staffing decisions." height={300}>
+            <VolumeAreaChart data={patientVolumeByHour} title="Patient volume by hour" />
+          </ChartCard>
+        </div>
+        <div className="col-span-12 xl:col-span-6">
+          <ChartCard title="Queue status by department" description="Department queue split for immediate escalation." height={300}>
+            <StatusDonutChart data={queueByDepartment} title="Queue by department" />
+          </ChartCard>
+        </div>
+        <div className="col-span-12 xl:col-span-6">
+          <ChartCard title="Room occupancy" description="Utilization across service areas." height={300}>
+            <ComparisonBarChart data={roomOccupancy} title="Room occupancy" valueLabel="Occupancy %" />
+          </ChartCard>
+        </div>
+        <div className="col-span-12 xl:col-span-6">
+          <ChartCard title="Staff workload heatmap" description="Shift-based staffing load view." height={300}>
+            <HeatmapGrid data={staffWorkloadHeatmap} title="Staff workload heatmap" />
+          </ChartCard>
+        </div>
       </div>
     </HmsDashboardShell>
   );

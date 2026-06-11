@@ -76,31 +76,50 @@ export const SuperAdminDashboard: React.FC = () => {
         branch={branch}
         onBranchChange={setBranch}
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        {superAdminMetrics.map((metric) => <AnalyticsMetricCard key={metric.title} {...metric} />)}
-      </div>
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <ChartCard title="Tenant growth and active users" description="Tracks tenant count against user growth to highlight scaling pressure." height={320}>
-          <TrendLineChart data={tenantGrowthTrend} title="Tenant growth trend" valueLabel="Tenants" secondaryLabel="Active users" />
-        </ChartCard>
-        <ChartCard title="Active users by role" description="Role mix helps identify clinical workload and governance usage." height={320}>
-          <ComparisonBarChart data={roleActivityComparison} title="Active users by role" valueLabel="Users" />
-        </ChartCard>
-      </div>
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <ChartCard title="Security events by severity" description="Prioritize critical/high-risk investigation queues." height={280}>
-          <StatusDonutChart data={securitySeverityBreakdown} title="Security events by severity" />
-        </ChartCard>
-        <ChartCard title="API latency and DB pressure" description="Synthetic latency plus storage pressure trend for operations triage." height={280}>
-          <TrendLineChart data={systemHealthTrend} title="API latency and DB pressure" valueLabel="API ms" secondaryLabel="DB GB delta" />
-        </ChartCard>
-        <ChartCard title="Branch/department load heatmap" description="Highlights where command-center attention is needed." height={280}>
-          <HeatmapGrid data={branchLoadHeatmap} title="Branch department load" />
-        </ChartCard>
-      </div>
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-1"><InsightPanel insights={adminInsights} title="Risk and operations insights" /></div>
-        <div className="xl:col-span-2"><ReportTable columns={tenantHealthColumns} rows={tenantHealthRows} caption="Tenant health drilldown table" /></div>
+      <div className="grid grid-cols-12 gap-6">
+        {/* KPI Band: 6x S Cards (3 cols desktop, 6 cols tablet, 12 cols mobile) */}
+        {superAdminMetrics.map((metric) => (
+          <div key={metric.title} className="col-span-12 md:col-span-6 xl:col-span-2">
+            <AnalyticsMetricCard {...metric} />
+          </div>
+        ))}
+
+        {/* Primary Work Row: Tenant growth & Active users charts (L Cards - 6 cols desktop) */}
+        <div className="col-span-12 xl:col-span-6">
+          <ChartCard title="Tenant growth and active users" description="Tracks tenant count against user growth to highlight scaling pressure." height={320}>
+            <TrendLineChart data={tenantGrowthTrend} title="Tenant growth trend" valueLabel="Tenants" secondaryLabel="Active users" />
+          </ChartCard>
+        </div>
+        <div className="col-span-12 xl:col-span-6">
+          <ChartCard title="Active users by role" description="Role mix helps identify clinical workload and governance usage." height={320}>
+            <ComparisonBarChart data={roleActivityComparison} title="Active users by role" valueLabel="Users" />
+          </ChartCard>
+        </div>
+
+        {/* Secondary Insight Row: Security, Latency, and Heatmap (M/L Cards - 4 cols desktop) */}
+        <div className="col-span-12 md:col-span-6 xl:col-span-4">
+          <ChartCard title="Security events by severity" description="Prioritize critical/high-risk investigation queues." height={280}>
+            <StatusDonutChart data={securitySeverityBreakdown} title="Security events by severity" />
+          </ChartCard>
+        </div>
+        <div className="col-span-12 md:col-span-6 xl:col-span-4">
+          <ChartCard title="API latency and DB pressure" description="Synthetic latency plus storage pressure trend for operations triage." height={280}>
+            <TrendLineChart data={systemHealthTrend} title="API latency and DB pressure" valueLabel="API ms" secondaryLabel="DB GB delta" />
+          </ChartCard>
+        </div>
+        <div className="col-span-12 md:col-span-12 xl:col-span-4">
+          <ChartCard title="Branch/department load heatmap" description="Highlights where command-center attention is needed." height={280}>
+            <HeatmapGrid data={branchLoadHeatmap} title="Branch department load" />
+          </ChartCard>
+        </div>
+
+        {/* Bottom Supporting Row: Risk and Operations Insights (4 cols) & Tenant Health Drilldown Table (8 cols) */}
+        <div className="col-span-12 xl:col-span-4">
+          <InsightPanel insights={adminInsights} title="Risk and operations insights" />
+        </div>
+        <div className="col-span-12 xl:col-span-8">
+          <ReportTable columns={tenantHealthColumns} rows={tenantHealthRows} caption="Tenant health drilldown table" />
+        </div>
       </div>
     </HmsDashboardShell>
   );

@@ -189,21 +189,27 @@ export const AdminExecutiveDashboard: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div className="lg:col-span-2 space-y-3">
-            <HmsLoadingSkeleton variant="table" />
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12">
+            <HmsLoadingSkeleton variant="kpi" />
+          </div>
+          <div className="col-span-12 xl:col-span-6">
             <HmsLoadingSkeleton variant="table" />
           </div>
-          <div className="space-y-3">
+          <div className="col-span-12 xl:col-span-6">
             <HmsLoadingSkeleton variant="panel" />
+          </div>
+          <div className="col-span-12 xl:col-span-8">
+            <HmsLoadingSkeleton variant="table" />
+          </div>
+          <div className="col-span-12 xl:col-span-4">
             <HmsLoadingSkeleton variant="panel" />
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {/* Main Content (2/3) */}
-          <div className="lg:col-span-2 space-y-3">
-            {/* Branch Comparison Table */}
+        <div className="grid grid-cols-12 gap-6">
+          {/* Primary Work Row: Branch Comparison Table (L Card) + SLA Compliance (L Card) */}
+          <div className="col-span-12 xl:col-span-6">
             {isUnavailable ? (
               <HmsDataUnavailable
                 sectionName="Branch Volume Comparison"
@@ -240,8 +246,39 @@ export const AdminExecutiveDashboard: React.FC = () => {
                 maxRows={5}
               />
             )}
+          </div>
 
-            {/* Top Unpaid Invoices */}
+          <div className="col-span-12 xl:col-span-6">
+            {isUnavailable ? (
+              <HmsDataUnavailable
+                sectionName="System Compliance & Risk"
+                expectedApi="/v1/dashboard/admin/summary"
+              />
+            ) : (
+              <HmsSlaPanel
+                title="System Compliance & Risk"
+                items={[
+                  {
+                    id: 'sla-security',
+                    label: 'Security Events',
+                    value: summary?.securityAlerts || 0,
+                    status: (summary?.securityAlerts ?? 0) > 0 ? 'breached' : 'on_track',
+                    drilldownHref: '/admin/audit-logs',
+                  },
+                  {
+                    id: 'sla-labs',
+                    label: 'Pending Lab Load',
+                    value: summary?.pendingLabs || 0,
+                    status: (summary?.pendingLabs ?? 0) > 15 ? 'at_risk' : 'on_track',
+                    drilldownHref: '/admin/reports',
+                  }
+                ]}
+              />
+            )}
+          </div>
+
+          {/* Secondary Insight Row: Top Outstanding Invoices (XL Card) + Staffing & Operations Bottlenecks (L Card) */}
+          <div className="col-span-12 xl:col-span-8">
             {isUnavailable ? (
               <HmsDataUnavailable
                 sectionName="Top Outstanding Invoices"
@@ -284,67 +321,9 @@ export const AdminExecutiveDashboard: React.FC = () => {
                 maxRows={5}
               />
             )}
-
-            {/* Staffing & Operations Bottlenecks — Unavailable */}
-            <HmsDataUnavailable
-              sectionName="Staffing & Operations Bottlenecks"
-              expectedApi="/api/v1/admin/operations/bottlenecks"
-              expectedPhase="Phase 2"
-            />
-
-            {/* Patient Volume Trend — Unavailable */}
-            <HmsDataUnavailable
-              sectionName="Patient Volume Trend"
-              expectedApi="/api/v1/dashboard/admin/trends"
-              expectedPhase="Phase 2"
-            />
-
-            {/* Revenue Trend — Unavailable */}
-            <HmsDataUnavailable
-              sectionName="Revenue Trend"
-              expectedApi="/api/v1/dashboard/admin/trends"
-              expectedPhase="Phase 2"
-            />
           </div>
 
-          {/* Sidebar compliance panel & Quick actions (1/3) */}
-          <div className="space-y-3">
-            {/* SLA Panel */}
-            {isUnavailable ? (
-              <HmsDataUnavailable
-                sectionName="System Compliance & Risk"
-                expectedApi="/v1/dashboard/admin/summary"
-              />
-            ) : (
-              <HmsSlaPanel
-                title="System Compliance & Risk"
-                items={[
-                  {
-                    id: 'sla-security',
-                    label: 'Security Events',
-                    value: summary?.securityAlerts || 0,
-                    status: (summary?.securityAlerts ?? 0) > 0 ? 'breached' : 'on_track',
-                    drilldownHref: '/admin/audit-logs',
-                  },
-                  {
-                    id: 'sla-labs',
-                    label: 'Pending Lab Load',
-                    value: summary?.pendingLabs || 0,
-                    status: (summary?.pendingLabs ?? 0) > 15 ? 'at_risk' : 'on_track',
-                    drilldownHref: '/admin/reports',
-                  }
-                ]}
-              />
-            )}
-
-            {/* Top Branch Risks — Unavailable */}
-            <HmsDataUnavailable
-              sectionName="Top Branch Operational Risks"
-              expectedApi="/api/v1/admin/branches/risks"
-              expectedPhase="Phase 2"
-            />
-
-            {/* Quick Actions */}
+          <div className="col-span-12 xl:col-span-4 space-y-6">
             <HmsQuickActions
               title="Quick Actions"
               actions={[
@@ -353,6 +332,35 @@ export const AdminExecutiveDashboard: React.FC = () => {
                 { id: 'branch-mgr', label: 'Branches Manager', icon: <Building className="h-4 w-4 text-emerald-500" />, href: '/admin/branches' },
                 { id: 'sys-settings', label: 'System Settings', icon: <Settings className="h-4 w-4 text-slate-500" />, href: '/admin/settings' },
               ]}
+            />
+
+            <HmsDataUnavailable
+              sectionName="Staffing & Operations Bottlenecks"
+              expectedApi="/api/v1/admin/operations/bottlenecks"
+              expectedPhase="Phase 2"
+            />
+
+            <HmsDataUnavailable
+              sectionName="Top Branch Operational Risks"
+              expectedApi="/api/v1/admin/branches/risks"
+              expectedPhase="Phase 2"
+            />
+          </div>
+
+          {/* Bottom Supporting Row: Trends (Full-Width / L Cards) */}
+          <div className="col-span-12 xl:col-span-6">
+            <HmsDataUnavailable
+              sectionName="Patient Volume Trend"
+              expectedApi="/api/v1/dashboard/admin/trends"
+              expectedPhase="Phase 2"
+            />
+          </div>
+
+          <div className="col-span-12 xl:col-span-6">
+            <HmsDataUnavailable
+              sectionName="Revenue Trend"
+              expectedApi="/api/v1/dashboard/admin/trends"
+              expectedPhase="Phase 2"
             />
           </div>
         </div>

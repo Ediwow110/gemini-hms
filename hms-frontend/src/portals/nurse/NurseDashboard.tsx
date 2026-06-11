@@ -60,7 +60,7 @@ export const NurseDashboard = () => {
   // ── Loading State ──
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-[1440px] px-4 py-4 space-y-4">
+      <div className="mx-auto max-w-[1440px] px-4 py-4 space-y-6">
         <div className="flex flex-wrap gap-x-6 gap-y-3 animate-pulse">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1 border-l-2 border-l-slate-200 pl-3">
@@ -69,12 +69,12 @@ export const NurseDashboard = () => {
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div className="lg:col-span-2 space-y-3">
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-12 xl:col-span-8 space-y-6">
             <HmsLoadingSkeleton variant="table" />
             <HmsLoadingSkeleton variant="table" />
           </div>
-          <div className="space-y-3">
+          <div className="col-span-12 xl:col-span-4 space-y-6">
             <HmsLoadingSkeleton variant="panel" />
             <HmsLoadingSkeleton variant="panel" />
           </div>
@@ -230,9 +230,9 @@ export const NurseDashboard = () => {
       <HmsKpiStrip metrics={metrics} />
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Left Column — 2/3 */}
-        <div className="lg:col-span-2 space-y-3">
+      <div className="grid grid-cols-12 gap-6">
+        {/* Left Column — 8/12 cols desktop, 12 cols tablet/mobile */}
+        <div className="col-span-12 xl:col-span-8 space-y-6">
           {/* Triage Queue */}
           <HmsWorkQueue
             title="Triage Queue"
@@ -351,8 +351,8 @@ export const NurseDashboard = () => {
           />
         </div>
 
-        {/* Right Column — 1/3 */}
-        <div className="space-y-3">
+        {/* Right Column — 4/12 cols desktop, 12 cols tablet/mobile */}
+        <div className="col-span-12 xl:col-span-4 space-y-6">
           {/* SLA Panel — Vitals Compliance */}
           {slaItems.length > 0 && (
             <HmsSlaPanel title="Vitals &amp; Handoff" items={slaItems} />

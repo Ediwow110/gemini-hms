@@ -84,17 +84,21 @@ export const PatientDashboard: React.FC = () => {
         {isPatientLoading ? (
           <HmsLoadingSkeleton />
         ) : patientActions.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            {patientActions.map(action => <AnalyticsMetricCard key={action.title} {...action} />)}
+          <div className="grid grid-cols-10 gap-6">
+            {patientActions.map(action => (
+              <div key={action.title} className="col-span-10 sm:col-span-5 xl:col-span-2">
+                <AnalyticsMetricCard {...action} />
+              </div>
+            ))}
           </div>
         ) : (
           <HmsEmptyState title="No portal actions available" description="Your care-team actions will appear here when records are available." />
         )}
 
         {/* Quick Actions Section */}
-        <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4">
+        <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5">
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Quick Actions</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
             {[
               { label: 'Book Visit', icon: Calendar, path: '/patient/appointments' },
               { label: 'Get Records', icon: FileText, path: '/patient/medical-records' },
@@ -116,9 +120,9 @@ export const PatientDashboard: React.FC = () => {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left Column (8/12 cols desktop, 12 cols tablet/mobile) */}
+          <div className="col-span-12 xl:col-span-8 space-y-6">
             {/* Appointments */}
             <AppointmentSummaryCard appointments={[]} />
 
@@ -144,8 +148,8 @@ export const PatientDashboard: React.FC = () => {
             )}
           </div>
 
-          {/* Right Column */}
-          <div className="space-y-6">
+          {/* Right Column (4/12 cols desktop, 12 cols tablet/mobile) */}
+          <div className="col-span-12 xl:col-span-4 space-y-6">
             <PatientHomeCard title="Quick Info" icon={Heart} value={profile?.patientNumber || '...'} description={`Status: ${profile?.status || '...'}`} />
           </div>
         </div>
