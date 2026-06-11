@@ -4,7 +4,7 @@ import { loginAsRole, ROLE_ACCOUNTS } from './runtime-helpers';
 const STAGING_URL = process.env.STAGING_URL;
 
 test.describe('RBAC Boundaries Verification', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async () => {
     if (!STAGING_URL) {
       test.skip(true, 'STAGING_URL not provided');
     }
