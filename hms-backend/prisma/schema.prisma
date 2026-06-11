@@ -862,6 +862,10 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([branchId])
+  @@index([createdAt])
+  @@index([eventKey])
+  @@index([recordType, recordId])
+  @@index([userId, createdAt])
   @@map("audit_logs")
 }
 

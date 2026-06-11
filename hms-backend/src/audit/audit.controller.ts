@@ -1,5 +1,6 @@
-import { Controller, Get, Query, Param, UseGuards } from '@nestjs/common';
-import { AuditService, type AuditQueryDto } from './audit.service';
+import { Controller, Get, Query, Param, UseGuards, ValidationPipe } from '@nestjs/common';
+import { AuditService } from './audit.service';
+import { AuditQueryDto } from './dto/audit-query.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -15,7 +16,7 @@ export class AuditController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('branchId') branchId: string | undefined,
     @GetUser('roles') userRoles: string[],
-    @Query() query: AuditQueryDto,
+    @Query(new ValidationPipe({ transform: true })) query: AuditQueryDto,
   ) {
     return this.auditService.findAll(tenantId, branchId, userRoles, query);
   }
