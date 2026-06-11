@@ -49,7 +49,7 @@ const renderPage = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</Memory
 
 describe('dashboard intelligence pages', () => {
   beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
+  afterEach(() => { vi.runAllTimers(); vi.useRealTimers(); });
 
   it('SuperAdminDashboard renders KPIs, charts, insights, and drilldown table', () => {
     renderPage(<SuperAdminDashboard />);

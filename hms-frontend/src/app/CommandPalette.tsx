@@ -3,6 +3,7 @@ import { Search, ShieldAlert, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { roleNavigation } from '../config/roleNavigation';
 import { useUser, usePermissions } from '../hooks/use-user';
+import type { NavItemConfig } from '../config/roleNavigation';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -17,9 +18,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const flattenItems = (items: NavItemConfig[]): NavItemConfig[] =>
+    items.flatMap((item) => [item, ...(item.children ? flattenItems(item.children) : [])]);
+
   // Flatten all navigation items that the user has permission to view
   const allowedItems = roleNavigation
-    .flatMap((group) => group.items)
+    .flatMap((group) => flattenItems(group.items))
     .filter((item) => {
       if (item.isHiddenForDemo) return false;
       if (isSuperAdmin && !user?.branchId && item.isBranchScoped) return false;

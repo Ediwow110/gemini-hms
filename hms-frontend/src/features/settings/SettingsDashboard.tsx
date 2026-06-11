@@ -84,18 +84,6 @@ export const SettingsDashboard = () => {
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
-      <div className="mb-2">
-        <h1
-          className="text-2xl font-extrabold text-slate-900 tracking-tight"
-          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-        >
-          System Settings
-        </h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Configure branches, departments, numbering rules, templates, and security policies.
-        </p>
-      </div>
-
       {/* Critical warning banner */}
       <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl animate-fade-in">
         <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />

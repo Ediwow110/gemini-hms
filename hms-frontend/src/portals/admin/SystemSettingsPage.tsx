@@ -37,7 +37,7 @@ export const SystemSettingsPage: React.FC = () => {
     >
       <AdminShellNotice />
       <HmsPageHeader
-        title="Global System Settings"
+        title="Global System Config"
         description="Configure global multi-tenant controls, security thresholds, and network parameters."
         badge="Sandbox"
       />

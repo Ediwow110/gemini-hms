@@ -113,7 +113,7 @@ describe('CommandPalette — Search and Demo Filtering', () => {
     expect(screen.getByText('Roles & Permissions')).toBeInTheDocument();
     expect(screen.getByText('Admin Dashboard')).toBeInTheDocument(); // Marketplace Admin Dashboard
     expect(screen.getByText('Branch Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('System Settings')).toBeInTheDocument();
+    expect(screen.getByText('Organization Settings')).toBeInTheDocument();
     expect(screen.getByText('Audit Log Review')).toBeInTheDocument();
     expect(screen.getByText('PHI Access Monitor')).toBeInTheDocument();
   });

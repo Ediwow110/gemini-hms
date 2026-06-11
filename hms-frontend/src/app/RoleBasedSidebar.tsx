@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { ChevronDown, LogOut } from 'lucide-react';
 import { useUser, useAuth, usePermissions } from '../hooks/use-user';
 import { roleNavigation, NavItemConfig } from '../config/roleNavigation';
 
@@ -19,18 +19,34 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
     return false;
   };
 
-  // Flatten all allowed nav items to determine the best match
-  const allAllowedItems = roleNavigation.flatMap(group =>
-    group.items.filter(item =>
-      !isDemoHidden(item) &&
-      canAccess({
-        permission: item.permission,
-        allowedRoles: item.allowedRoles,
-        isBranchScoped: item.isBranchScoped,
-        zone: item.zone,
-      })
-    )
-  );
+  const canView = (item: NavItemConfig) =>
+    !isDemoHidden(item) &&
+    canAccess({
+      permission: item.permission,
+      allowedRoles: item.allowedRoles,
+      isBranchScoped: item.isBranchScoped,
+      zone: item.zone,
+    });
+
+  const getAllowedItems = (items: NavItemConfig[]): NavItemConfig[] =>
+    items
+      .filter(canView)
+      .map((item) => ({
+        ...item,
+        children: item.children ? getAllowedItems(item.children) : undefined,
+      }));
+
+  const flattenItems = (items: NavItemConfig[]): NavItemConfig[] =>
+    items.flatMap((item) => [item, ...(item.children ? flattenItems(item.children) : [])]);
+
+  const navGroups = roleNavigation
+    .map((group) => ({
+      ...group,
+      items: getAllowedItems(group.items),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  const allAllowedItems = flattenItems(navGroups.flatMap((group) => group.items));
 
   // Find the single best active item (exact match wins first, then longest prefix match)
   let bestActiveTo: string | null = null;
@@ -59,58 +75,72 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
     bestActiveTo = '/';
   }
 
-  const isActive = (path: string) => {
-    return bestActiveTo === path;
+  const isActive = (path: string): boolean => {
+    if (bestActiveTo === path) return true;
+    if (bestActiveTo && path !== '/' && bestActiveTo.startsWith(path + '/')) return true;
+    return false;
+  };
+
+  const hasActiveDescendant = (item: NavItemConfig): boolean =>
+    item.children?.some((child) => isActive(child.to) || hasActiveDescendant(child)) ?? false;
+
+  const isExpanded = (item: NavItemConfig) =>
+    Boolean(item.children?.length) && (pathname === item.to || pathname.startsWith(`${item.to}/`) || hasActiveDescendant(item));
+
+  const renderNavItem = (item: NavItemConfig, depth = 0) => {
+    const Icon = item.icon;
+    const active = isActive(item.to);
+    const expanded = isExpanded(item);
+
+    return (
+      <div key={item.to} className="space-y-1">
+        <Link
+          to={item.to}
+          onClick={onNavClick}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group relative ${
+            active
+              ? 'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 font-semibold shadow-sm shadow-indigo-100'
+              : expanded
+                ? 'bg-slate-50 text-slate-900'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+          } ${depth > 0 ? 'ml-4 py-2 text-[12px]' : ''}`}
+        >
+          {active && (
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-r-full animate-fade-in" />
+          )}
+          <Icon className={`h-[18px] w-[18px] transition-colors duration-200 ${
+            active
+              ? 'text-indigo-600'
+              : expanded
+                ? 'text-slate-600'
+                : 'text-slate-400 group-hover:text-slate-600'
+          }`} />
+          <span className="flex-1 min-w-0">{item.label}</span>
+          {item.children?.length ? (
+            <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+          ) : null}
+        </Link>
+
+        {item.children?.length && expanded ? (
+          <div className="space-y-1 border-l border-slate-200/80 ml-6 pl-2">
+            {item.children.map((child) => renderNavItem(child, depth + 1))}
+          </div>
+        ) : null}
+      </div>
+    );
   };
 
   return (
     <>
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
-        {roleNavigation.map((group) => {
-          // Filter items based on user permissions and demo settings
-          const allowedItems = group.items.filter((item) =>
-            !isDemoHidden(item) &&
-            canAccess({
-              permission: item.permission,
-              allowedRoles: item.allowedRoles,
-              isBranchScoped: item.isBranchScoped,
-              zone: item.zone,
-            })
-          );
-
-          // If no items are allowed in this group, hide the group entirely
-          if (allowedItems.length === 0) return null;
-
+        {navGroups.map((group) => {
           return (
             <div key={group.label} className="animate-fade-in">
               <h3 className="px-3 text-label mb-2 select-none">
                 {group.label}
               </h3>
               <div className="space-y-0.5">
-                {allowedItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = isActive(item.to);
-                  return (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      onClick={onNavClick}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group relative ${
-                        active
-                          ? 'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 font-semibold shadow-sm shadow-indigo-100'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                      }`}
-                    >
-                      {active && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-r-full animate-fade-in" />
-                      )}
-                      <Icon className={`h-[18px] w-[18px] transition-colors duration-200 ${
-                        active ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'
-                      }`} />
-                      {item.label}
-                    </Link>
-                  );
-                })}
+                {group.items.map((item) => renderNavItem(item))}
               </div>
             </div>
           );
