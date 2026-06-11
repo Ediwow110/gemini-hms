@@ -44,3 +44,25 @@ export class CloseSessionDto {
   @IsOptional()
   remarks?: string;
 }
+
+export class LogReceiptEventDto {
+  @IsUUID()
+  @IsNotEmpty()
+  paymentId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  eventKey: string; // RECEIPT_PRINTED, RECEIPT_REPRINTED, RECEIPT_EXPORTED
+
+  @IsString()
+  @IsOptional()
+  receiptNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  format?: string; // thermal, pdf, email
+
+  @IsString()
+  @IsOptional()
+  reason?: string; // for reprints
+}

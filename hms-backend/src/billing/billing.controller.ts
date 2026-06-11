@@ -14,6 +14,7 @@ import {
   CreatePaymentDto,
   OpenSessionDto,
   CloseSessionDto,
+  LogReceiptEventDto,
 } from './dto/payment.dto';
 import { RefundRequestDto, VoidRequestDto } from './dto/reversal.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -261,5 +262,17 @@ export class BillingController {
     @GetUser('branchId') branchId: string,
   ) {
     return this.billingService.getActiveSession(tenantId, userId, branchId);
+  }
+
+  @Post('receipts/event')
+  @RequirePermissions('billing.payment.create')
+  @RequireBranchContext()
+  logReceiptEvent(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Body() dto: LogReceiptEventDto,
+  ) {
+    return this.billingService.logReceiptEvent(tenantId, userId, branchId, dto);
   }
 }

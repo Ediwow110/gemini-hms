@@ -1533,6 +1533,24 @@ export class BillingService {
         branchId,
       );
 
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'RECONCILIATION_PERFORMED',
+          recordType: 'CashierSession',
+          recordId: sessionId,
+          newValues: {
+            expectedCash,
+            actualCash: dto.actualClosingBalance,
+            variance,
+            sessionId,
+          },
+        },
+        tx,
+        branchId,
+      );
+
       const voids = await tx.paymentVoid.findMany({
         where: {
           payment: { cashierSessionId: sessionId },
@@ -1624,10 +1642,27 @@ export class BillingService {
         branchId,
         tx,
       );
-      return this.prisma.paymentReversal.update({
+      const updated = await this.prisma.paymentReversal.update({
         where: { id: reversalId },
         data: { status: REVERSAL_STATUS.REJECTED },
       });
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'PAYMENT_VOID_REJECTED',
+          recordType: 'PaymentReversal',
+          recordId: reversalId,
+          newValues: {
+            paymentId: reversal.paymentId,
+            reason: reversal.reason,
+            remarks: dto.remarks,
+          },
+        },
+        tx,
+        branchId,
+      );
+      return updated;
     });
   }
 
@@ -1682,10 +1717,65 @@ export class BillingService {
         branchId,
         tx,
       );
-      return this.prisma.paymentReversal.update({
+      const updated = await this.prisma.paymentReversal.update({
         where: { id: reversalId },
         data: { status: REVERSAL_STATUS.REJECTED },
       });
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'REFUND_REJECTED',
+          recordType: 'PaymentReversal',
+          recordId: reversalId,
+          newValues: {
+            paymentId: reversal.paymentId,
+            amount: reversal.amount.toString(),
+            reason: reversal.reason,
+            remarks: dto.remarks,
+          },
+        },
+        tx,
+        branchId,
+      );
+      return updated;
+    });
+  }
+
+  async logReceiptEvent(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    dto: { paymentId: string; eventKey: string; receiptNumber?: string; format?: string; reason?: string },
+  ) {
+    const payment = await this.prisma.payment.findFirst({
+      where: { id: dto.paymentId, tenantId },
+    });
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    const validKeys = ['RECEIPT_PRINTED', 'RECEIPT_REPRINTED', 'RECEIPT_EXPORTED'];
+    if (!validKeys.includes(dto.eventKey)) {
+      throw new BadRequestException(`Invalid receipt event key: ${dto.eventKey}`);
+    }
+
+    await this.audit.log({
+      tenantId,
+      userId,
+      eventKey: dto.eventKey,
+      recordType: 'Receipt',
+      recordId: dto.paymentId,
+      newValues: {
+        paymentId: dto.paymentId,
+        invoiceId: payment.invoiceId,
+        receiptNumber: dto.receiptNumber || payment.receiptNumber,
+        amount: payment.amount.toString(),
+        paymentMethod: payment.paymentMethod,
+        format: dto.format || 'thermal',
+        reason: dto.reason,
+        branchId,
+      },
     });
   }
 }
