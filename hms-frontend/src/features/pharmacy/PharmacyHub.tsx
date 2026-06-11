@@ -29,27 +29,51 @@ export const PharmacyHub = () => {
   const [showDispenseModal, setShowDispenseModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const selectedOrder = safeOrders.find((o) => o.id === selectedOrderId);
   const drugItems = useMemo(() => (stock || []).filter((item) => item.type === "DRUG"), [stock]);
+
+  const stockMap = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof stock>[number]>();
+    if (stock) {
+      for (const item of stock) {
+        map.set(item.id, item);
+      }
+    }
+    return map;
+  }, [stock]);
+
+  const decoratedOrders = useMemo(() => {
+    return safeOrders.map((order) => {
+      const name = order.medicationName.toLowerCase();
+      const matches = drugItems.filter(
+        (item) =>
+          item.name.toLowerCase().includes(name) ||
+          item.sku.toLowerCase().includes(name)
+      );
+      const hasStock = matches.some((m) => {
+        const s = stockMap.get(m.id);
+        return s && s.quantity > 0;
+      });
+      return {
+        ...order,
+        matches,
+        hasStock,
+      };
+    });
+  }, [safeOrders, drugItems, stockMap]);
+
+  const selectedOrder = useMemo(() => {
+    return decoratedOrders.find((o) => o.id === selectedOrderId);
+  }, [decoratedOrders, selectedOrderId]);
 
   const lowStockAlerts = useMemo(() => lowStockItems || [], [lowStockItems]);
   const lowStockCount = lowStockAlerts.length;
 
-  const getMatchingDrugs = useCallback((medicationName: string) => {
-    const name = medicationName.toLowerCase();
-    return drugItems.filter(
-      (item) =>
-        item.name.toLowerCase().includes(name) ||
-        item.sku.toLowerCase().includes(name),
-    );
-  }, [drugItems]);
-
   const handleOpenDispense = useCallback((orderId: string) => {
     setErrorMessage(null);
     setSelectedOrderId(orderId);
-    const order = safeOrders.find((o) => o.id === orderId);
+    const order = decoratedOrders.find((o) => o.id === orderId);
     if (order) {
-      const matches = getMatchingDrugs(order.medicationName);
+      const matches = order.matches;
       if (matches.length > 0) {
         setSelectedItemId(matches[0].id);
         setDispenseQuantity(1);
@@ -59,7 +83,7 @@ export const PharmacyHub = () => {
       }
     }
     setShowDispenseModal(true);
-  }, [safeOrders, getMatchingDrugs]);
+  }, [decoratedOrders]);
 
   const handleConfirmDispense = useCallback(async () => {
     if (!selectedOrderId || !selectedItemId) return;
@@ -89,8 +113,8 @@ export const PharmacyHub = () => {
   }, [selectedOrderId, selectedItemId, safeOrders, dispenseQuantity, dispenseMutation]);
 
   const getStockForItem = useCallback((itemId: string) => {
-    return stock?.find((s) => s.id === itemId);
-  }, [stock]);
+    return stockMap.get(itemId);
+  }, [stockMap]);
 
   if (ordersLoading || stockLoading) {
     return (
@@ -155,12 +179,8 @@ export const PharmacyHub = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {safeOrders.map((order) => {
-                    const matches = getMatchingDrugs(order.medicationName);
-                    const hasStock = matches.some((m) => {
-                      const s = getStockForItem(m.id);
-                      return s && s.quantity > 0;
-                    });
+                  {decoratedOrders.map((order) => {
+                    const hasStock = order.hasStock;
 
                     return (
                       <tr key={order.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -411,7 +431,7 @@ export const PharmacyHub = () => {
                     className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-white"
                   >
                     <option value="">Select drug...</option>
-                    {getMatchingDrugs(selectedOrder.medicationName).map((item) => {
+                    {selectedOrder.matches.map((item) => {
                       const s = getStockForItem(item.id);
                       return (
                         <option key={item.id} value={item.id}>
@@ -454,7 +474,7 @@ export const PharmacyHub = () => {
                   );
                 })()}
 
-                {getMatchingDrugs(selectedOrder.medicationName).length === 0 && (
+                {selectedOrder.matches.length === 0 && (
                   <p className="text-[10px] text-rose-650 font-bold uppercase tracking-wide mt-2">
                     ⚠️ Error: No matching drug found in catalog.
                   </p>
