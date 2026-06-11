@@ -44,7 +44,7 @@ docker compose -f docker-compose.prod.yml exec -T api npx prisma migrate deploy
 
 # 4. Integrated Post-Deployment Flight Probe
 echo "[CD] Launching Ingress Health Prober within the cloud cluster..."
-if docker compose -f docker-compose.prod.yml exec -T api npx tsx prisma/infrastructure-health-probe.ts --single-run; then
+if docker compose -f docker-compose.prod.yml exec -T api node dist/scripts/infrastructure-health-probe.js --single-run; then
   echo "🟢 [FLIGHT_PROBE] Ingress Health check PASSED successfully!"
   echo "================================================================================"
   echo "🎉 CD DEPLOYMENT SWEEP SUCCESSFUL (EXIT 0)"
