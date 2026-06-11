@@ -1,71 +1,162 @@
 import React, { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { AuditChainStatusPanel, AuditBlock } from './components/AuditChainStatusPanel';
-import ComplianceScopeFilter from './components/ComplianceScopeFilter';
+import { ShieldCheck, RefreshCw, AlertTriangle, Lock, CheckCircle2, XCircle, FileWarning } from 'lucide-react';
+import { useChainVerification } from '../../hooks/use-compliance';
+import { StatusBadge } from '../../components/feedback/StatusBadge';
 
 export const AuditChainReviewPage: React.FC = () => {
-  const [scope, setScope] = useState({ tenantId: 'all', branchId: 'all' });
-  const blocks: AuditBlock[] = [
-    {
-      blockIndex: 124,
-      timestamp: "2026-05-21 14:00:00",
-      transactionCount: 15,
-      previousHash: "0x3f5b8c9e1201aa99",
-      blockHash: "0x8f2ae911bcdaef44",
-      verificationStatus: "VERIFIED"
-    },
-    {
-      blockIndex: 123,
-      timestamp: "2026-05-21 13:30:00",
-      transactionCount: 42,
-      previousHash: "0x12a5ff431b99cb55",
-      blockHash: "0x3f5b8c9e1201aa99",
-      verificationStatus: "VERIFIED"
-    },
-    {
-      blockIndex: 122,
-      timestamp: "2026-05-21 13:00:00",
-      transactionCount: 8,
-      previousHash: "0xaa2290f112e445ba",
-      blockHash: "0x12a5ff431b99cb55",
-      verificationStatus: "VERIFIED"
-    },
-    {
-      blockIndex: 121,
-      timestamp: "2026-05-21 12:30:00",
-      transactionCount: 22,
-      previousHash: "0x55aa66dd9922eebb",
-      blockHash: "0xaa2290f112e445ba",
-      verificationStatus: "VERIFIED"
+  const [verificationLog, setVerificationLog] = useState<string[]>([]);
+  const [showSignatures, setShowSignatures] = useState(true);
+  const { result, loading, error, verifyChain, verifyChainWithSignatures } = useChainVerification();
+
+  const handleVerify = async () => {
+    setVerificationLog([
+      '[Chain Audit] Launching cryptographic verification...',
+      '[Chain Audit] Fetching root hash from database...',
+    ]);
+    if (showSignatures) {
+      await verifyChainWithSignatures();
+    } else {
+      await verifyChain();
     }
-  ];
+    setVerificationLog(prev => [
+      ...prev,
+      '[Verification Complete] All block links checked.',
+    ]);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Title Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Audit Chain Verification
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            Verify system event ledger integrity with hash chaining diagnostics and anti-tamper validations (Tenant: {scope.tenantId}, Branch: {scope.branchId})
-          </p>
-        </div>
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2 text-[10px] text-amber-800 leading-normal max-w-md">
-          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-          <p>
-            <strong>Sandbox Safety Rule:</strong> Hashing and chain link verification are simulated processes. No backend databases are scanned, and no live SHA-256 validation is occurring on production server clusters.
+            Verify system event ledger integrity with hash chaining and HMAC signature validation
           </p>
         </div>
       </div>
 
-      {/* Scope Selector */}
-      <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
+      <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-5">
+        <div className="flex justify-between items-start flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-650">
+              <Lock className="h-5 w-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Hash Chain Integrity</h4>
+              <p className="text-[10px] text-slate-400 font-semibold">
+                Checks hash backlinks and HMAC-SHA256 signatures
+              </p>
+            </div>
+          </div>
 
-      {/* Chain Status Panel Component */}
-      <div className="space-y-4">
-        <AuditChainStatusPanel blocks={blocks} onVerifyChain={() => console.log('Audit chain verification simulation triggered')} />
+          <div className="flex gap-2 items-center">
+            {result && (
+              <StatusBadge
+                status={result.isValid ? 'VERIFIED' : 'TAMPERED'}
+                type={result.isValid ? 'success' : 'danger'}
+              />
+            )}
+            <button
+              onClick={handleVerify}
+              disabled={loading}
+              className="py-1.5 px-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-400'}`} />
+              {loading ? 'Verifying...' : 'Verify Chain'}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="includeSignatures"
+            checked={showSignatures}
+            onChange={(e) => setShowSignatures(e.target.checked)}
+            className="rounded border-slate-300"
+          />
+          <label htmlFor="includeSignatures" className="text-xs font-medium text-slate-600">
+            Include HMAC signature verification
+          </label>
+        </div>
+
+        {error && (
+          <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-700">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-3 bg-slate-50 border rounded-xl flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${result.isValid ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                {result.isValid ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+              </div>
+              <div>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Chain Status</p>
+                <p className="text-sm font-extrabold text-slate-800">{result.isValid ? 'INTACT' : 'CORRUPTED'}</p>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 border rounded-xl flex items-center gap-3">
+              <div className="p-2 bg-white border rounded-lg text-slate-400">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Verification Engine</p>
+                <p className="text-sm font-extrabold text-slate-800 font-mono">HMAC-SHA256</p>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 border rounded-xl flex items-center gap-3">
+              <div className="p-2 bg-white border rounded-lg text-slate-400">
+                <FileWarning className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Corrupted Logs</p>
+                <p className="text-sm font-extrabold text-slate-800 font-mono">{result.corruptedLogIds?.length || 0}</p>
+              </div>
+            </div>
+            {result.signatureErrors && (
+              <div className="p-3 bg-slate-50 border rounded-xl flex items-center gap-3">
+                <div className="p-2 bg-white border rounded-lg text-slate-400">
+                  <AlertTriangle className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Signature Errors</p>
+                  <p className="text-sm font-extrabold text-slate-800 font-mono">{result.signatureErrors.length}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {verificationLog.length > 0 && (
+          <div className="bg-slate-900 text-emerald-400 font-mono text-[10px] p-3.5 rounded-xl space-y-1 h-28 overflow-y-auto border border-slate-950">
+            {verificationLog.map((entry, index) => (
+              <p key={index}>{entry}</p>
+            ))}
+          </div>
+        )}
+
+        {result && !result.isValid && result.corruptedLogIds && result.corruptedLogIds.length > 0 && (
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-3">
+            <h5 className="text-xs font-bold text-rose-800 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Tampered Log Entries
+            </h5>
+            <div className="space-y-1.5">
+              {result.corruptedLogIds.map((logId) => (
+                <div key={logId} className="flex items-center justify-between bg-white p-2 rounded-lg border border-rose-100">
+                  <span className="text-xs font-mono font-bold text-rose-800">{logId}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold">
+                    CORRUPTED
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

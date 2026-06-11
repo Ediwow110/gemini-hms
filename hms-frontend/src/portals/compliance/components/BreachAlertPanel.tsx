@@ -18,9 +18,10 @@ export interface BreachIncident {
 interface BreachAlertPanelProps {
   incidents: BreachIncident[];
   onIncidentUpdate?: (id: string, action: 'ESCALATE' | 'CONTAIN') => void;
+  onViewReport?: (id: string) => void;
 }
 
-export const BreachAlertPanel: React.FC<BreachAlertPanelProps> = ({ incidents, onIncidentUpdate }) => {
+export const BreachAlertPanel: React.FC<BreachAlertPanelProps> = ({ incidents, onIncidentUpdate, onViewReport }) => {
   const [selectedIncident, setSelectedIncident] = useState<BreachIncident | null>(null);
 
   const handleIncidentAction = (id: string, action: 'ESCALATE' | 'CONTAIN') => {
@@ -136,20 +137,32 @@ export const BreachAlertPanel: React.FC<BreachAlertPanelProps> = ({ incidents, o
               </div>
             </div>
 
-            {selectedIncident.status === 'INVESTIGATING' && (
+            {(selectedIncident.status === 'INVESTIGATING' || selectedIncident.status === 'CONTAINED') && (
               <div className="pt-2 flex gap-2">
-                <button
-                  onClick={() => handleIncidentAction(selectedIncident.id, 'ESCALATE')}
-                  className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-colors"
-                >
-                  <Zap className="h-3.5 w-3.5" /> Escalate Incident
-                </button>
-                <button
-                  onClick={() => handleIncidentAction(selectedIncident.id, 'CONTAIN')}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-colors"
-                >
-                  <ShieldCheck className="h-3.5 w-3.5" /> Contain Alert
-                </button>
+                {selectedIncident.status === 'INVESTIGATING' && (
+                  <>
+                    <button
+                      onClick={() => handleIncidentAction(selectedIncident.id, 'ESCALATE')}
+                      className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Zap className="h-3.5 w-3.5" /> Escalate
+                    </button>
+                    <button
+                      onClick={() => handleIncidentAction(selectedIncident.id, 'CONTAIN')}
+                      className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5" /> Contain
+                    </button>
+                  </>
+                )}
+                {onViewReport && (
+                  <button
+                    onClick={() => onViewReport(selectedIncident.id)}
+                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    View HIPAA Report
+                  </button>
+                )}
               </div>
             )}
           </div>

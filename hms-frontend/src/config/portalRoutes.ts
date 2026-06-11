@@ -53,6 +53,9 @@ export const portalRoutes: RouteGuardConfig[] = [
   // Reports & Logs (Staff)
   { path: 'reports', requiredPermission: PERMISSIONS.REPORT_EXPORT, zone: 'staff', isBranchScoped: true },
   { path: 'audit-logs', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
+  { path: 'my-audit-log', requiredPermission: PERMISSIONS.AUDIT_SELF, zone: 'staff' },
+  { path: 'audit/events/:id', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
+  { path: 'audit/entity/:recordType/:recordId', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
   { path: 'spatial', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff' },
   { path: 'sales-dashboard', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff' },
   { path: 'logistics-checklist', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff' },

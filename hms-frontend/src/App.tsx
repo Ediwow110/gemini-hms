@@ -84,6 +84,9 @@ const BreachAlertsPage = lazy(() => import('./portals/compliance/BreachAlertsPag
 const RetentionManagementPage = lazy(() => import('./portals/compliance/RetentionManagementPage').then(m => ({ default: m.RetentionManagementPage })));
 const ComplianceReportsPage = lazy(() => import('./portals/compliance/ComplianceReportsPage').then(m => ({ default: m.ComplianceReportsPage })));
 const AuditChainReviewPage = lazy(() => import('./portals/compliance/AuditChainReviewPage').then(m => ({ default: m.AuditChainReviewPage })));
+const MyAuditLogPage = lazy(() => import('./pages/audit/MyAuditLogPage').then(m => ({ default: m.MyAuditLogPage })));
+const AuditEventDetailPage = lazy(() => import('./pages/audit/AuditEventDetailPage').then(m => ({ default: m.AuditEventDetailPage })));
+const EntityAuditTimelinePage = lazy(() => import('./pages/audit/EntityAuditTimelinePage').then(m => ({ default: m.EntityAuditTimelinePage })));
 
 // IT Support Portal
 const ITSupportDashboard = lazy(() => import('./portals/it-support/ITSupportDashboard').then(m => ({ default: m.ITSupportDashboard })));
@@ -278,6 +281,9 @@ const router = createBrowserRouter([
           { path: 'billing/cashier-closing', element: <PermissionRoute allowedRoles={['Cashier']}><LazyPage><CashierClosing /></LazyPage></PermissionRoute> },
           { path: 'approvals', element: <PermissionRoute permission="approval.request.view"><LazyPage><ApprovalCenter /></LazyPage></PermissionRoute> },
           { path: 'audit-logs', element: <PermissionRoute permission="audit.view"><LazyPage><AuditLogViewer /></LazyPage></PermissionRoute> },
+          { path: 'my-audit-log', element: <PermissionRoute permission="audit.self"><LazyPage><MyAuditLogPage /></LazyPage></PermissionRoute> },
+          { path: 'audit/events/:id', element: <PermissionRoute permission="audit.view"><LazyPage><AuditEventDetailPage /></LazyPage></PermissionRoute> },
+          { path: 'audit/entity/:recordType/:recordId', element: <PermissionRoute permission="audit.view"><LazyPage><EntityAuditTimelinePage /></LazyPage></PermissionRoute> },
           { path: 'admin/users/:id', element: <PermissionRoute permission="admin.role.change"><LazyPage><UserDetail /></LazyPage></PermissionRoute> },
           { path: 'admin/roles', element: <PermissionRoute permission="admin.role.change"><LazyPage><RoleList /></LazyPage></PermissionRoute> },
           { path: 'admin/roles/:id', element: <PermissionRoute permission="admin.role.change"><LazyPage><RoleDetail /></LazyPage></PermissionRoute> },

@@ -87,6 +87,7 @@ export const roleNavigation: NavGroupConfig[] = [
     items: [
       { label: 'Security Center', to: '/admin/security', icon: ShieldAlert, allowedRoles: ['Super Admin'], zone: 'staff' },
       { label: 'System Audit Logs', to: '/admin/audit-logs', icon: History, allowedRoles: ['Super Admin'], zone: 'staff' },
+      { label: 'My Audit Log', to: '/my-audit-log', icon: History, permission: PERMISSIONS.AUDIT_SELF, zone: 'staff' },
       { label: 'Access Reviews', to: '/compliance/access-reviews', icon: Users, allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
       { label: 'PHI Access Monitor', to: '/compliance/phi-access', icon: Activity, allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
     ],
@@ -184,6 +185,7 @@ export const roleNavigation: NavGroupConfig[] = [
       { label: 'Approvals', to: '/branch-admin/approvals', icon: CheckSquare, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
       { label: 'Branch Reports', to: '/reports', icon: BarChart3, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
       { label: 'Branch Audit Logs', to: '/audit-logs', icon: History, allowedRoles: ['Branch Admin'], zone: 'staff' },
+      { label: 'My Audit Log', to: '/my-audit-log', icon: History, permission: PERMISSIONS.AUDIT_SELF, allowedRoles: ['Branch Admin'], zone: 'staff' },
       {
         label: 'Branch Settings',
         to: '/settings',
