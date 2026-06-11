@@ -41,7 +41,7 @@ export const NurseDashboard = () => {
   if (errorObj) {
     const isForbidden = axios.isAxiosError(errorObj) && (errorObj.response?.status === 403 || errorObj.response?.status === 401);
     return (
-      <div className="mx-auto max-w-[1440px] px-4 py-16 text-center space-y-4">
+      <div className="mx-auto py-16 text-center space-y-4">
         <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center border border-rose-100">
           <AlertTriangle className="h-7 w-7" />
         </div>
@@ -60,7 +60,7 @@ export const NurseDashboard = () => {
   // ── Loading State ──
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-[1440px] px-4 py-4 space-y-6">
+      <div className="mx-auto py-4 space-y-6">
         <div className="flex flex-wrap gap-x-6 gap-y-3 animate-pulse">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1 border-l-2 border-l-slate-200 pl-3">

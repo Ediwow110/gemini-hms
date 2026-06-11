@@ -6,6 +6,7 @@ import { ChartCard, InsightPanel, StatusDonutChart, VolumeAreaChart } from '../.
 import { cashierInsights, cashierVolumeTrend, paymentMethodBreakdown } from '../../data/analytics/clinicalAnalytics.mock';
 import { useInvoices, useActiveSession } from '../../hooks/use-billing';
 import { safeMoney } from '../../lib/safe-money';
+import { HmsDashboardShell, HmsToolbar, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const CashierDashboard = () => {
   const navigate = useNavigate();
@@ -17,7 +18,10 @@ export const CashierDashboard = () => {
   const paidCount = useMemo(() => invoices.filter(i => i.status === 'PAID' || i.status === 'COMPLETED').length, [invoices]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <HmsDashboardShell
+      toolbar={<HmsToolbar role="Cashier" />}
+      footer={<HmsAuditFooter dataSource="Live API (invoices, session)" />}
+    >
       <PageHeader
         title="Cashier & Billing Workspace"
         description="Invoice management, payment processing, session control, and reconciliation"
@@ -158,7 +162,7 @@ export const CashierDashboard = () => {
           )}
         </div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

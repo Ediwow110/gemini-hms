@@ -3,6 +3,7 @@ import { StatusBadge } from "../../components/ui/status-badge";
 import { PageHeader } from "../../components/ui/page-header";
 import { Clock, UserCheck, CheckCircle2, SkipForward, Plus, Megaphone } from "lucide-react";
 import { RequirePermission } from "../../components/ui/RequirePermission";
+import { HmsDashboardShell, HmsToolbar, HmsAuditFooter } from "../../components/hms-dashboard";
 
 const QUEUE_STATS = [
   { label: "Waiting", val: "12", icon: Clock, color: "from-amber-500 to-orange-500 shadow-amber-200/50" },
@@ -61,7 +62,10 @@ export const Queue = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <HmsDashboardShell
+      toolbar={<HmsToolbar role="Queue Manager" />}
+      footer={<HmsAuditFooter dataSource="Mock queue (sandbox)" />}
+    >
       {/* Toast notification */}
       {toast && (
         <div className="fixed bottom-5 right-5 z-50 bg-indigo-600 text-white px-6 py-3.5 rounded-xl shadow-xl font-semibold text-sm animate-fade-in border border-indigo-500/30 flex items-center gap-2">
@@ -143,6 +147,6 @@ export const Queue = () => {
           </table>
         </div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
