@@ -31,11 +31,11 @@ Currently, doctors using the EMR workspace must manually copy-paste or type an E
     - On `patientId` change, reset the form to `EMPTY_FORM` (existing behavior) which clears the previous encounter ID, allowing the new patient's active encounter to auto-fill.
 
 ## 4. Success Criteria
-- [ ] Loading a patient with an active encounter auto-populates the Prescription encounter ID field.
-- [ ] Doctors can still manually change the encounter ID.
-- [ ] If no active encounter exists, the field remains empty and manual entry is available.
-- [ ] Recovered drafts preserve their own encounter ID and are not overwritten by the auto-fill.
-- [ ] Lint and Typecheck pass cleanly.
+- [x] Loading a patient with an active encounter auto-populates the Prescription encounter ID field.
+- [x] Doctors can still manually change the encounter ID.
+- [x] If no active encounter exists, the field remains empty and manual entry is available.
+- [x] Recovered drafts preserve their own encounter ID and are not overwritten by the auto-fill.
+- [x] Lint and Typecheck pass cleanly.
 
 ## 5. Implementation Plan (High Level)
 1. Update `DoctorPrescriptionPanelProps` and component signature.
