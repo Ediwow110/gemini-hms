@@ -1,13 +1,13 @@
 import React from 'react';
 import ReleasedResultCard from './components/ReleasedResultCard';
 import PatientPortalShellNotice from './components/PatientPortalShellNotice';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, AlertCircle } from 'lucide-react';
 import { usePatientLabResults } from '../../hooks/use-patient-portal';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
 
 export const PatientLabResultsPage: React.FC = () => {
-  const { results, loading } = usePatientLabResults();
+  const { results, loading, error } = usePatientLabResults();
 
   const displayResults = results.map(r => ({
     id: r.id,
@@ -45,6 +45,12 @@ export const PatientLabResultsPage: React.FC = () => {
 
         {loading ? (
           <HmsLoadingSkeleton />
+        ) : error ? (
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center space-y-3">
+            <AlertCircle className="h-8 w-8 text-rose-500 mx-auto" />
+            <p className="text-sm font-semibold text-slate-700">Unable to load lab results</p>
+            <p className="text-xs text-slate-500">{error}</p>
+          </div>
         ) : displayResults.length === 0 ? (
           <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-slate-400 space-y-2">
             <HmsEmptyState 

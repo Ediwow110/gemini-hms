@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import PatientPortalShellNotice from './components/PatientPortalShellNotice';
-import { FileBadge, AlertTriangle, Loader2, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { FileBadge, AlertTriangle, Loader2, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
 import { usePatientMedicalRecordRequests } from '../../hooks/use-patient-portal';
 import { patientPortalService } from '../../services/patient-portal.service';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const PatientMedicalRecordsPage: React.FC = () => {
-  const { requests, loading, refetch } = usePatientMedicalRecordRequests();
+  const { requests, loading, error, refetch } = usePatientMedicalRecordRequests();
   const [submitting, setSubmitting] = useState(false);
 
   const handleRequestRecord = async () => {
@@ -54,6 +54,12 @@ export const PatientMedicalRecordsPage: React.FC = () => {
               
               {loading ? (
                 <div className="py-8 text-center text-xs text-slate-400">Loading requests...</div>
+              ) : error ? (
+                <div className="p-4 bg-white border border-slate-200/85 rounded-xl text-center space-y-2.5">
+                  <AlertCircle className="h-7 w-7 text-rose-500 mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">Unable to load requests</p>
+                  <p className="text-[10px] text-slate-500 font-medium">{error}</p>
+                </div>
               ) : requests.length === 0 ? (
                 <div className="py-8 text-center bg-slate-50 rounded-xl border border-slate-100">
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">No record requests found</p>
