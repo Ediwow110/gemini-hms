@@ -28,9 +28,15 @@ interface DoctorPrescriptionPanelProps {
   patientId: string;
   isLocked: boolean;
   currentUserId: string;
+  encounterId?: string;
 }
 
-export const DoctorPrescriptionPanel = ({ patientId, isLocked, currentUserId }: DoctorPrescriptionPanelProps) => {
+export const DoctorPrescriptionPanel = ({ 
+  patientId, 
+  isLocked, 
+  currentUserId,
+  encounterId 
+}: DoctorPrescriptionPanelProps) => {
   const { data: prescriptions, isLoading, refetch } = usePatientPrescriptions(patientId);
   const createRx = useCreatePrescription();
 
@@ -43,6 +49,13 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked, currentUserId }: 
     setFormData(EMPTY_FORM);
     setIsDirty(false);
   }, [patientId]);
+
+  // Auto-fill encounterId from prop if form field is empty and no draft was just recovered
+  useEffect(() => {
+    if (encounterId && !formData.encounterId) {
+      setFormData((prev) => ({ ...prev, encounterId }));
+    }
+  }, [encounterId, formData.encounterId]);
 
   const route = useMemo(
     () => `/patients/${patientId}/prescriptions/new`,
@@ -157,6 +170,26 @@ export const DoctorPrescriptionPanel = ({ patientId, isLocked, currentUserId }: 
             onChange={(e) => updateField('encounterId', e.target.value)}
             placeholder="Paste encounter UUID..."
             className="mt-2 w-full px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+          />
+        </div>
+      )}
+
+      {!isLocked && formData.encounterId && (
+        <div className="space-y-1 mb-2">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Encounter ID</label>
+            {encounterId === formData.encounterId && (
+              <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 flex items-center gap-1">
+                Linked to active encounter
+              </span>
+            )}
+          </div>
+          <input
+            type="text"
+            value={formData.encounterId}
+            onChange={(e) => updateField('encounterId', e.target.value)}
+            placeholder="Paste encounter UUID..."
+            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all"
           />
         </div>
       )}

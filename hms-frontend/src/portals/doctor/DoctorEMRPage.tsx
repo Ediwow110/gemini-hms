@@ -230,7 +230,12 @@ export const DoctorEMRPage = () => {
 
           {/* Panel 3: Right (Clinical Context - Orders, Results, prescriptions) - spans 4 columns */}
           <div className="xl:col-span-4 space-y-5">
-            <DoctorPrescriptionPanel patientId={activePatient.id} isLocked={false} currentUserId={user?.id ?? ''} />
+            <DoctorPrescriptionPanel 
+              patientId={activePatient.id} 
+              isLocked={false} 
+              currentUserId={user?.id ?? ''} 
+              encounterId={activeEncounter?.id}
+            />
             <DoctorOrdersPanel patientId={activePatient.id} encounterId={activeEncounter?.id} isLocked={false} />
             <DoctorResultsPanel patientId={activePatient.id} />
           </div>
