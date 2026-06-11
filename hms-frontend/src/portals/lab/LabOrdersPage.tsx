@@ -442,10 +442,10 @@ export const LabOrdersPage = () => {
 
     {receiveModal && (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => { if (!receiveLabMutation.isPending) setReceiveModal(null); }}>
-        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 space-y-6 animate-scale-in" onClick={e => e.stopPropagation()}>
+        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 space-y-6 animate-scale-in" role="dialog" aria-modal="true" aria-labelledby="receive-specimen-title" onClick={e => e.stopPropagation()}>
           <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-            <h3 className="text-lg font-black text-slate-800 tracking-tight">Receive Lab Specimen</h3>
-            <button onClick={() => { if (!receiveLabMutation.isPending) setReceiveModal(null); }} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100">
+            <h3 id="receive-specimen-title" className="text-lg font-black text-slate-800 tracking-tight">Receive Lab Specimen</h3>
+            <button onClick={() => { if (!receiveLabMutation.isPending) setReceiveModal(null); }} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100" aria-label="Close receive specimen modal">
               <X className="h-5 w-5" />
             </button>
           </div>

@@ -387,8 +387,8 @@ export const NurseVitalsPage = () => {
       {/* Error Modal */}
       {errorModalVitalsId && (
         <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-lg p-5 w-full max-w-sm shadow-sm border border-slate-200 space-y-3">
-            <h3 className="font-bold text-slate-900 text-[13px] flex items-center gap-2">
+          <div className="bg-white rounded-lg p-5 w-full max-w-sm shadow-sm border border-slate-200 space-y-3" role="dialog" aria-modal="true" aria-labelledby="mark-error-title">
+            <h3 id="mark-error-title" className="font-bold text-slate-900 text-[13px] flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-rose-500" />
               Mark Vitals as Error
             </h3>

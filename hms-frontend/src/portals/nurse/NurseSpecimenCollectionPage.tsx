@@ -243,12 +243,13 @@ export const NurseSpecimenCollectionPage = () => {
 
                   {/* Step 2: Confirm Label Attached */}
                   <div className="flex items-center justify-between gap-4 bg-white p-3 rounded-xl border border-slate-100">
-                    <div className="space-y-0.5">
+                    <label htmlFor="confirm-label-attached" className="space-y-0.5 cursor-pointer block select-none">
                       <span className="text-[11px] font-bold text-slate-700 block">2. Affix and Verify Label</span>
                       <p className="text-[10px] text-slate-400 font-medium">Confirm barcodes are scanned and securely attached to the container.</p>
-                    </div>
+                    </label>
                     <input
                       type="checkbox"
+                      id="confirm-label-attached"
                       disabled={!barcodePrinted}
                       checked={labelConfirmed}
                       onChange={(e) => setLabelConfirmed(e.target.checked)}
