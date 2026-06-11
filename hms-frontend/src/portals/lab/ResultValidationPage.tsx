@@ -75,7 +75,7 @@ export const ResultValidationPage = () => {
   const patientId = searchParams.get('patientId');
   const orderId = searchParams.get('orderId');
 
-  const { data: context, isLoading: contextLoading, error: contextError } =
+  const { data: context, isLoading: contextLoading, error: contextError, refetch } =
     useLabDraftEncodingContext(patientId || '', orderId || '');
 
   const validateMutation = useValidateLabResult();
@@ -363,15 +363,31 @@ export const ResultValidationPage = () => {
                     </h3>
 
                     {isConflict && (
-                      <div className="p-3 bg-amber-50 border border-amber-150 rounded-lg text-xs text-amber-800 font-semibold flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                        This result was modified by another user. Please refresh and try again.
+                      <div className="p-3 bg-amber-50 border border-amber-150 rounded-lg text-xs text-amber-800 font-semibold flex justify-between items-center gap-2">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                          <span>This result was modified by another user. Please refresh and try again.</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => refetch()}
+                          className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold rounded transition-colors whitespace-nowrap"
+                        >
+                          Refresh Data
+                        </button>
                       </div>
                     )}
 
                     {validateMutation.isError && !isConflict && (
-                      <div className="p-3 bg-rose-50 border border-rose-100 rounded-lg text-xs text-rose-750 font-semibold">
-                        Validation failed. Please try again.
+                      <div className="p-3 bg-rose-50 border border-rose-100 rounded-lg text-xs text-rose-750 font-semibold flex justify-between items-center gap-2">
+                        <span>Validation failed. Please try again.</span>
+                        <button
+                          type="button"
+                          onClick={() => refetch()}
+                          className="px-2 py-1 bg-rose-650 hover:bg-rose-755 text-white text-[10px] font-bold rounded transition-colors whitespace-nowrap"
+                        >
+                          Retry
+                        </button>
                       </div>
                     )}
 

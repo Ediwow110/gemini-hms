@@ -212,14 +212,23 @@ export const PatientBillingPage = () => {
       footer={<HmsAuditFooter lastRefreshed={lastUpdated} dataSource="Billing POS Service" version="v2.1" />}
     >
       {!session && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2 text-xs text-amber-800 font-bold font-sans">
-          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Active Shift Drawer Session Required</h5>
-            <p className="font-medium mt-0.5 text-slate-700">
-              Please open a cashier shift drawer session to enable invoice checkout and payment processing.
-            </p>
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2 text-xs text-amber-800 font-bold font-sans justify-between items-center">
+          <div className="flex gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Active Shift Drawer Session Required</h5>
+              <p className="font-medium mt-0.5 text-slate-700">
+                Please open a cashier shift drawer session to enable invoice checkout and payment processing.
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => navigate('/cashier/session')}
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors whitespace-nowrap"
+          >
+            Open Session
+          </button>
         </div>
       )}
 

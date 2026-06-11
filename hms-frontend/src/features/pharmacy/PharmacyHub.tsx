@@ -15,9 +15,9 @@ import {
 
 export const PharmacyHub = () => {
   const user = useUser();
-  const { data: orders, isLoading: ordersLoading, refetch: refetchOrders } = usePrescriptionQueue("ACTIVE");
+  const { data: orders, isLoading: ordersLoading, error: ordersError, refetch: refetchOrders } = usePrescriptionQueue("ACTIVE");
   const safeOrders = useMemo(() => Array.isArray(orders) ? orders : [], [orders]);
-  const { data: stock, isLoading: stockLoading, refetch: refetchStock } = useDrugCatalog();
+  const { data: stock, isLoading: stockLoading, error: stockError, refetch: refetchStock } = useDrugCatalog();
   const dispenseMutation = useDispenseMedication();
   const { data: lowStockItems } = useLowStockAlerts();
   const [selectedStockItemId, setSelectedStockItemId] = useState<string | null>(null);
@@ -115,6 +115,18 @@ export const PharmacyHub = () => {
         </button>
       </div>
 
+      {(ordersError || stockError) && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2.5 text-xs text-rose-700 font-semibold">
+          <AlertTriangle className="h-4.5 w-4.5 text-rose-600 shrink-0" />
+          <div>
+            <h5 className="font-bold text-rose-800 uppercase tracking-wide">Data Load Error</h5>
+            <p className="text-[11px] text-rose-600 font-medium mt-0.5">
+              {(ordersError as Error)?.message || (stockError as Error)?.message || "Failed to load pharmacy data from server."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -159,7 +171,14 @@ export const PharmacyHub = () => {
                           </p>
                         </td>
                         <td className="px-4 py-3 border-b border-slate-100">
-                          <p className="font-semibold text-slate-700">{order.medicationName}</p>
+                          <p className="font-semibold text-slate-700 flex items-center gap-1.5">
+                            {order.medicationName}
+                            {!hasStock && (
+                              <span className="text-[9px] text-rose-700 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded font-black tracking-wide uppercase select-none">
+                                Out of Stock
+                              </span>
+                            )}
+                          </p>
                           <p className="text-[10px] text-slate-500">
                             {order.dosage} &middot; {order.frequency} &middot; {order.duration}
                           </p>
@@ -172,12 +191,7 @@ export const PharmacyHub = () => {
                         <td className="px-4 py-3 text-right border-b border-slate-100">
                           <button
                             onClick={() => handleOpenDispense(order.id)}
-                            disabled={!hasStock}
-                            className={`btn text-[10px] font-bold px-3 py-1.5 ${
-                              hasStock
-                                ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                                : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                            }`}
+                            className="btn text-[10px] font-bold px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
                           >
                             Dispense
                           </button>
@@ -422,15 +436,29 @@ export const PharmacyHub = () => {
                 {selectedItemId && (() => {
                   const s = getStockForItem(selectedItemId);
                   if (!s) return null;
+                  const remaining = s.quantity - dispenseQuantity;
                   return (
-                    <div className="flex justify-between text-xs font-bold">
-                      <span className="text-slate-500">New Remaining:</span>
-                      <span className={s.quantity - dispenseQuantity < 0 ? "text-rose-600" : "text-indigo-600"}>
-                        {s.quantity - dispenseQuantity} {s.unit}
-                      </span>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold">
+                        <span className="text-slate-550">New Remaining:</span>
+                        <span className={remaining < 0 ? "text-rose-600 font-extrabold" : "text-indigo-600"}>
+                          {remaining} {s.unit}
+                        </span>
+                      </div>
+                      {remaining < 0 && (
+                        <p className="text-[10px] text-rose-600 font-bold uppercase tracking-wide">
+                          ⚠️ Warning: Requested quantity exceeds available branch stock.
+                        </p>
+                      )}
                     </div>
                   );
                 })()}
+
+                {getMatchingDrugs(selectedOrder.medicationName).length === 0 && (
+                  <p className="text-[10px] text-rose-650 font-bold uppercase tracking-wide mt-2">
+                    ⚠️ Error: No matching drug found in catalog.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -454,9 +482,12 @@ export const PharmacyHub = () => {
                 Cancel
               </button>
               <button
-                disabled={dispenseMutation.isPending || !selectedItemId}
+                disabled={dispenseMutation.isPending || !selectedItemId || (() => {
+                  const s = getStockForItem(selectedItemId);
+                  return !s || s.quantity - dispenseQuantity < 0;
+                })()}
                 onClick={handleConfirmDispense}
-                className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 flex items-center gap-1"
+                className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {dispenseMutation.isPending ? "Processing..." : "Confirm & Dispense"}
               </button>
