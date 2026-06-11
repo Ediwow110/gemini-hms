@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:staging-smoke": "playwright test e2e/staging-smoke.spec.ts",
     "verify:clinical": "npx tsx scripts/verify-clinical-readonly-wiring.ts",
     "verify:security": "npx tsx scripts/verify-security-config.ts",
     "verify:runtime": "npx tsx scripts/verify-runtime.ts"
