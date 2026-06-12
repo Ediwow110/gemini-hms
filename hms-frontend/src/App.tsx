@@ -9,6 +9,8 @@ import { GuardMode } from './app/types';
 import { RouteErrorBoundary } from './app/RouteErrorBoundary';
 import { AuthDiagnosticsPanel } from './components/debug/AuthDiagnosticsPanel';
 import { AuthProvider } from './hooks/use-user';
+import { UnauthorizedState } from './components/feedback/UnauthorizedState';
+import { ProviderErrorBoundary } from './app/ProviderErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -269,6 +271,7 @@ const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <RoleRedirect /> },
+          { path: 'unauthorized', element: <LazyPage><UnauthorizedState /></LazyPage> },
           { path: 'patients', element: <PermissionRoute permission="patient.view"><LazyPage><PatientList /></LazyPage></PermissionRoute> },
           { path: 'patients/new', element: <PermissionRoute permission="patient.create"><LazyPage><RegisterPatient /></LazyPage></PermissionRoute> },
           { path: 'patients/:id', element: <PermissionRoute permission="patient.view"><LazyPage><PatientProfile /></LazyPage></PermissionRoute> },
@@ -415,7 +418,7 @@ const router = createBrowserRouter([
           { path: 'supplier/performance', element: <PermissionRoute allowedRoles={['Supplier']}><LazyPage><SupplierPerformancePage /></LazyPage></PermissionRoute> },
 
           // Marketplace (Admin)
-          { path: 'marketplace-admin', element: <PermissionRoute allowedRoles={['Marketplace Admin']}><LazyPage><MarketplaceAdminDashboard /></LazyPage></PermissionRoute> },
+          { path: 'marketplace-admin', element: <PermissionRoute allowedRoles={['Super Admin', 'Marketplace Admin']}><LazyPage><MarketplaceAdminDashboard /></LazyPage></PermissionRoute> },
           { path: 'marketplace-admin/suppliers', element: <PermissionRoute permission="marketplace.admin.manage"><LazyPage><SupplierManagementPage /></LazyPage></PermissionRoute> },
           { path: 'marketplace-admin/buyers', element: <PermissionRoute permission="marketplace.admin.manage"><LazyPage><BuyerManagementPage /></LazyPage></PermissionRoute> },
           { path: 'marketplace-admin/listing-approval', element: <PermissionRoute permission="marketplace.admin.manage"><LazyPage><ListingApprovalPage /></LazyPage></PermissionRoute> },
@@ -515,11 +518,13 @@ const router = createBrowserRouter([
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RouterProvider router={router} />
-        <AuthDiagnosticsPanel />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ProviderErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RouterProvider router={router} />
+          <AuthDiagnosticsPanel />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ProviderErrorBoundary>
   );
 }

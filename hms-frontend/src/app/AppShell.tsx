@@ -42,10 +42,6 @@ export const AppShell = () => {
 
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
 
-  const handleBranchClick = () => {
-    alert("Branch switching is currently restricted to your assigned home branch.");
-  };
-
   return (
     <div className="min-h-screen flex bg-[#f0f2f7]">
       {/* Desktop Sidebar */}
@@ -143,13 +139,13 @@ export const AppShell = () => {
             </button>
 
             {/* Branch selector */}
-            <button 
-              onClick={handleBranchClick}
-              className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            <div 
+              className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600"
+              title="Branch switching is managed by your administrator"
             >
               <Briefcase className="h-4 w-4 text-slate-500" aria-hidden="true" />
               <span className="font-medium text-xs">Branch: {user?.branchId || 'None'}</span>
-            </button>
+            </div>
             
             {/* Notifications */}
             <Link to="/notifications" className="relative p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-all duration-200 hover:text-slate-700" aria-label="Notifications">
