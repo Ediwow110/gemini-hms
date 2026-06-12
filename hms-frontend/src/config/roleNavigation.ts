@@ -63,6 +63,7 @@ export interface NavItemConfig {
   isBranchScoped?: boolean;
   zone?: 'staff' | 'patient' | 'marketplace' | 'public';
   isHiddenForDemo?: boolean;
+  isComingSoon?: boolean;
   children?: NavItemConfig[];
 }
 
@@ -156,10 +157,10 @@ export const roleNavigation: NavGroupConfig[] = [
         allowedRoles: ['Branch Admin'],
         zone: 'staff',
         children: [
-          { label: 'Branch Staff', to: '/branch-admin/staff', icon: Users, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
-          { label: 'Department Manager', to: '/branch-admin/departments', icon: Building, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
-          { label: 'Rooms / Facilities', to: '/branch-admin/rooms', icon: Map, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
-          { label: 'Schedules', to: '/branch-admin/schedules', icon: Calendar, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
+          { label: 'Branch Staff', to: '/branch-admin/staff', icon: Users, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Department Manager', to: '/branch-admin/departments', icon: Building, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Rooms / Facilities', to: '/branch-admin/rooms', icon: Map, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Schedules', to: '/branch-admin/schedules', icon: Calendar, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
         ],
       },
       {
@@ -169,12 +170,13 @@ export const roleNavigation: NavGroupConfig[] = [
         allowedRoles: ['Branch Admin'],
         zone: 'staff',
         isHiddenForDemo: true,
+        isComingSoon: true,
         children: [
-          { label: 'Branch Services', to: '/branch-admin/services', icon: PlusCircle, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
-          { label: 'Branch Equipment', to: '/branch-admin/equipment', icon: Wrench, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
-          { label: 'Inventory Rules', to: '/branch-admin/inventory-rules', icon: Package, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
-          { label: 'Billing Rules', to: '/branch-admin/billing-rules', icon: CreditCard, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
-          { label: 'Queue Settings', to: '/branch-admin/queue-settings', icon: ListOrdered, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
+          { label: 'Branch Services', to: '/branch-admin/services', icon: PlusCircle, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Branch Equipment', to: '/branch-admin/equipment', icon: Wrench, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Inventory Rules', to: '/branch-admin/inventory-rules', icon: Package, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Billing Rules', to: '/branch-admin/billing-rules', icon: CreditCard, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Queue Settings', to: '/branch-admin/queue-settings', icon: ListOrdered, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
         ],
       },
     ],
@@ -182,7 +184,7 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Governance',
     items: [
-      { label: 'Approvals', to: '/branch-admin/approvals', icon: CheckSquare, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
+      { label: 'Approvals', to: '/branch-admin/approvals', icon: CheckSquare, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
       { label: 'Branch Reports', to: '/reports', icon: BarChart3, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
       { label: 'Branch Audit Logs', to: '/audit-logs', icon: History, allowedRoles: ['Branch Admin'], zone: 'staff' },
       { label: 'My Audit Log', to: '/my-audit-log', icon: History, permission: PERMISSIONS.AUDIT_SELF, allowedRoles: ['Branch Admin'], zone: 'staff' },

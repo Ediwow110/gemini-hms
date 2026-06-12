@@ -26,6 +26,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     .flatMap((group) => flattenItems(group.items))
     .filter((item) => {
       if (item.isHiddenForDemo) return false;
+      if (item.isComingSoon) return false;
       if (isSuperAdmin && !user?.branchId && item.isBranchScoped) return false;
 
       return canAccess({

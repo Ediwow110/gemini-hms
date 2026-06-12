@@ -2,6 +2,8 @@ import React from 'react';
 import ProcurementScopeFilter from './components/ProcurementScopeFilter';
 import { ReceivingMonitorPanel, ReceivingItem } from './components/ReceivingMonitorPanel';
 import { ClipboardList } from 'lucide-react';
+import { HmsDashboardShell } from '../../components/hms-dashboard';
+import { HmsPageHeader } from '../../components/hms-page';
 
 export const ProcurementReceivingPage: React.FC = () => {
   const mockShipments: ReceivingItem[] = [
@@ -11,18 +13,11 @@ export const ProcurementReceivingPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Warehouse Receiving Dock
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Record incoming shipments, inspect quality, and update logical stock availability</p>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          <strong>Sandbox Status (Backend Integration Pending):</strong> This is the Warehouse Receiving Dock module. All data is simulated; no real financial or stock mutation is performed.
-        </div>
-      </div>
+    <HmsDashboardShell widthTier="full">
+      <HmsPageHeader
+        title="Warehouse Receiving Dock"
+        description="Record incoming shipments, inspect quality, and update logical stock availability"
+      />
 
       <ProcurementScopeFilter />
 
@@ -64,7 +59,7 @@ export const ProcurementReceivingPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

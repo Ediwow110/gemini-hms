@@ -3,6 +3,8 @@ import { RefreshCw, AlertCircle } from 'lucide-react';
 import { BreachAlertPanel, BreachIncident } from './components/BreachAlertPanel';
 import { useBreachIncidents } from '../../hooks/use-compliance';
 import { complianceService } from '../../services/compliance.service';
+import { HmsDashboardShell } from '../../components/hms-dashboard';
+import { HmsPageHeader } from '../../components/hms-page';
 
 function severityToStatus(severity: string): BreachIncident['status'] {
   switch (severity) {
@@ -73,17 +75,11 @@ export const BreachAlertsPage: React.FC = () => {
   const totalContained = incidents.filter(i => i.status === 'CONTAINED').length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Breach & Incident Management
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">
-            Security events detected by real-time audit analysis and HIPAA breach reporting
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <HmsDashboardShell widthTier="full">
+      <HmsPageHeader
+        title="Breach & Incident Management"
+        description="Security events detected by real-time audit analysis and HIPAA breach reporting"
+        actions={(
           <button
             onClick={refetch}
             className="py-1.5 px-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5"
@@ -91,8 +87,8 @@ export const BreachAlertsPage: React.FC = () => {
             <RefreshCw className="h-3.5 w-3.5" />
             Refresh
           </button>
-        </div>
-      </div>
+        )}
+      />
 
       {error && (
         <div
@@ -168,7 +164,7 @@ export const BreachAlertsPage: React.FC = () => {
           </pre>
         </div>
       )}
-    </div>
+    </HmsDashboardShell>
   );
 };
 

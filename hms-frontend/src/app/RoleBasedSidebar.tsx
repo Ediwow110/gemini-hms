@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, LogOut } from 'lucide-react';
 import { useUser, useAuth, usePermissions } from '../hooks/use-user';
@@ -12,9 +13,11 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
   const user = useUser();
   const { logout } = useAuth();
   const { canAccess, isSuperAdmin } = usePermissions();
+  const [manuallyExpanded, setManuallyExpanded] = useState<Set<string>>(new Set());
 
   const isDemoHidden = (item: NavItemConfig) => {
     if (item.isHiddenForDemo) return true;
+    if (item.isComingSoon) return true;
     if (isSuperAdmin && !user?.branchId && item.isBranchScoped) return true;
     return false;
   };
@@ -48,7 +51,6 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
 
   const allAllowedItems = flattenItems(navGroups.flatMap((group) => group.items));
 
-  // Find the single best active item (exact match wins first, then longest prefix match)
   let bestActiveTo: string | null = null;
   let longestMatchLength = -1;
 
@@ -84,19 +86,37 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
   const hasActiveDescendant = (item: NavItemConfig): boolean =>
     item.children?.some((child) => isActive(child.to) || hasActiveDescendant(child)) ?? false;
 
-  const isExpanded = (item: NavItemConfig) =>
-    Boolean(item.children?.length) && (pathname === item.to || pathname.startsWith(`${item.to}/`) || hasActiveDescendant(item));
+  const isExpanded = (item: NavItemConfig) => {
+    const auto = Boolean(item.children?.length) && (pathname === item.to || pathname.startsWith(`${item.to}/`) || hasActiveDescendant(item));
+    if (manuallyExpanded.has(item.to)) return !auto;
+    return auto;
+  };
+
+  const handleNavClick = (item: NavItemConfig) => {
+    if (item.children?.length) {
+      setManuallyExpanded(prev => {
+        const next = new Set(prev);
+        if (next.has(item.to)) next.delete(item.to);
+        else next.add(item.to);
+        return next;
+      });
+    }
+    onNavClick?.();
+  };
 
   const renderNavItem = (item: NavItemConfig, depth = 0) => {
     const Icon = item.icon;
     const active = isActive(item.to);
     const expanded = isExpanded(item);
+    const hasChildren = Boolean(item.children?.length);
 
     return (
       <div key={item.to} className="space-y-1">
         <Link
           to={item.to}
-          onClick={onNavClick}
+          onClick={() => handleNavClick(item)}
+          role={hasChildren ? 'button' : undefined}
+          aria-expanded={hasChildren ? expanded : undefined}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group relative ${
             active
               ? 'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 font-semibold shadow-sm shadow-indigo-100'
@@ -116,14 +136,19 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
                 : 'text-slate-400 group-hover:text-slate-600'
           }`} />
           <span className="flex-1 min-w-0">{item.label}</span>
-          {item.children?.length ? (
+          {hasChildren ? (
             <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
           ) : null}
         </Link>
 
-        {item.children?.length && expanded ? (
-          <div className="space-y-1 border-l border-slate-200/80 ml-6 pl-2">
-            {item.children.map((child) => renderNavItem(child, depth + 1))}
+        {hasChildren ? (
+          <div
+            className="overflow-hidden transition-all duration-300 ease-in-out"
+            style={{ maxHeight: expanded ? '600px' : '0' }}
+          >
+            <div className="space-y-1 border-l border-slate-200/80 ml-6 pl-2 pt-1">
+              {item.children!.map((child) => renderNavItem(child, depth + 1))}
+            </div>
           </div>
         ) : null}
       </div>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ShieldCheck, RefreshCw, AlertTriangle, Lock, CheckCircle2, XCircle, FileWarning } from 'lucide-react';
 import { useChainVerification } from '../../hooks/use-compliance';
 import { StatusBadge } from '../../components/feedback/StatusBadge';
+import { HmsDashboardShell } from '../../components/hms-dashboard';
+import { HmsPageHeader } from '../../components/hms-page';
 
 export const AuditChainReviewPage: React.FC = () => {
   const [verificationLog, setVerificationLog] = useState<string[]>([]);
@@ -25,17 +27,11 @@ export const AuditChainReviewPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Audit Chain Verification
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">
-            Verify system event ledger integrity with hash chaining and HMAC signature validation
-          </p>
-        </div>
-      </div>
+    <HmsDashboardShell widthTier="full">
+      <HmsPageHeader
+        title="Audit Chain Verification"
+        description="Verify system event ledger integrity with hash chaining and HMAC signature validation"
+      />
 
       <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-5">
         <div className="flex justify-between items-start flex-wrap gap-3">
@@ -158,7 +154,7 @@ export const AuditChainReviewPage: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

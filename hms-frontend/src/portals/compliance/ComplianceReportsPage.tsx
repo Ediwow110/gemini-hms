@@ -3,6 +3,8 @@ import { FileText, RefreshCw } from 'lucide-react';
 import ComplianceScopeFilter from './components/ComplianceScopeFilter';
 import { ReportExportButton } from '../../components/analytics';
 import { complianceService } from '../../services/compliance.service';
+import { HmsDashboardShell } from '../../components/hms-dashboard';
+import { HmsPageHeader } from '../../components/hms-page';
 
 interface ReportRecord {
   timestamp: string;
@@ -121,17 +123,11 @@ export const ComplianceReportsPage: React.FC = () => {
   }, [reportType, scope]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Compliance Reports
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">
-            Generate compliance reports from live audit and access data
-          </p>
-        </div>
-      </div>
+    <HmsDashboardShell widthTier="full">
+      <HmsPageHeader
+        title="Compliance Reports"
+        description="Generate compliance reports from live audit and access data"
+      />
 
       <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
 
@@ -226,7 +222,7 @@ export const ComplianceReportsPage: React.FC = () => {
           )}
         </div>
       )}
-    </div>
+    </HmsDashboardShell>
   );
 };
 

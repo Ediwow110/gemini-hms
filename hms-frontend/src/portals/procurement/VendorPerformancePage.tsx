@@ -2,6 +2,8 @@ import React from 'react';
 import ProcurementScopeFilter from './components/ProcurementScopeFilter';
 import { VendorPerformanceScorecard, VendorPerformance } from './components/VendorPerformanceScorecard';
 import { TrendingUp } from 'lucide-react';
+import { HmsDashboardShell } from '../../components/hms-dashboard';
+import { HmsPageHeader } from '../../components/hms-page';
 
 export const VendorPerformancePage: React.FC = () => {
   const mockVendors: VendorPerformance[] = [
@@ -12,18 +14,11 @@ export const VendorPerformancePage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Vendor Performance Matrix
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Monitoring supplier reliability, quality standards, and response times</p>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          <strong>Sandbox Status (Backend Integration Pending):</strong> This is the Vendor Performance Matrix module. All data is simulated; no real financial or stock mutation is performed.
-        </div>
-      </div>
+    <HmsDashboardShell widthTier="full">
+      <HmsPageHeader
+        title="Vendor Performance Matrix"
+        description="Monitoring supplier reliability, quality standards, and response times"
+      />
 
       <ProcurementScopeFilter />
 
@@ -62,7 +57,7 @@ export const VendorPerformancePage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 
