@@ -143,7 +143,7 @@ export const AuditLogsPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 relative">
             <label className="font-bold text-slate-700">Search</label>
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
@@ -155,6 +155,11 @@ export const AuditLogsPage: React.FC = () => {
                 className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-250 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
+            {searchText && (
+              <div className="absolute left-0 top-full mt-1 text-[10px] text-amber-600 font-semibold bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 whitespace-nowrap z-10 shadow-sm">
+                Searches current page only — totals reflect page-local results
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">

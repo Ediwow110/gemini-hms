@@ -101,3 +101,93 @@ export function useCreatePayment() {
   return { postPayment, loading, error };
 }
 
+export function usePaymentHistory() {
+  const [payments, setPayments] = useState<unknown[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async (page?: number, pageSize?: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await billingFrontendService.getPaymentHistory(page, pageSize) as { payments?: unknown[] };
+      setPayments(res.payments ?? []);
+      return res;
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } } | null;
+      setError(axiosErr?.response?.data?.message || 'Failed to load payment history');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { payments, loading, error, fetch };
+}
+
+export function useConfirmPayment() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const confirm = async (paymentId: string, dto: { gatewayReference: string; gatewayProvider?: string }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await billingFrontendService.confirmPayment(paymentId, dto);
+      return res;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to confirm payment';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { confirm, loading, error };
+}
+
+export function useFailPayment() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fail = async (paymentId: string, dto: { reason: string; gatewayReference?: string }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await billingFrontendService.failPayment(paymentId, dto);
+      return res;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to fail payment';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { fail, loading, error };
+}
+
+export function useExpirePayment() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const expire = async (paymentId: string, dto: { reason: string }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await billingFrontendService.expirePayment(paymentId, dto);
+      return res;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to expire payment';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { expire, loading, error };
+}
+

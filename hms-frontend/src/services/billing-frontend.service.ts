@@ -92,6 +92,29 @@ export class BillingFrontendService {
     });
     return res.data;
   }
+
+  async getPaymentHistory(page?: number, pageSize?: number): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (page !== undefined) params.set('page', String(page));
+    if (pageSize !== undefined) params.set('pageSize', String(pageSize));
+    const res = await apiClient.get(`${this.baseUrl}/payments?${params}`);
+    return res.data;
+  }
+
+  async confirmPayment(paymentId: string, dto: { gatewayReference: string; gatewayProvider?: string }): Promise<unknown> {
+    const res = await apiClient.post(`${this.baseUrl}/payments/${paymentId}/confirm`, dto);
+    return res.data;
+  }
+
+  async failPayment(paymentId: string, dto: { reason: string; gatewayReference?: string }): Promise<unknown> {
+    const res = await apiClient.post(`${this.baseUrl}/payments/${paymentId}/fail`, dto);
+    return res.data;
+  }
+
+  async expirePayment(paymentId: string, dto: { reason: string }): Promise<unknown> {
+    const res = await apiClient.post(`${this.baseUrl}/payments/${paymentId}/expire`, dto);
+    return res.data;
+  }
 }
 
 export const billingFrontendService = new BillingFrontendService();

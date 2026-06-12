@@ -3,9 +3,10 @@ import { Filter, Building2, GitMerge, Globe } from 'lucide-react';
 
 interface ITScopeFilterProps {
   onScopeChange?: (scope: { tenantId: string; branchId: string; environment: string }) => void;
+  displayOnly?: boolean;
 }
 
-export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange }) => {
+export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange, displayOnly }) => {
   const [selectedTenant, setSelectedTenant] = useState('all');
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [selectedEnv, setSelectedEnv] = useState('production');
@@ -65,18 +66,24 @@ export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange }) =
   const activeBranchOptions = mockBranches[selectedTenant as keyof typeof mockBranches] || [{ id: 'all', name: 'All Branches' }];
 
   return (
-    <div className="flex flex-col md:flex-row gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm items-center">
+    <div className="flex flex-col md:flex-row gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm items-center relative">
       <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">
         <Filter className="h-4 w-4 text-indigo-500" />
         <span>Infrastructure Scope</span>
       </div>
+      {displayOnly && (
+        <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 -ml-2">
+          Display only
+        </span>
+      )}
 
       <div className="relative flex-1 w-full">
         <Building2 className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
         <select
           value={selectedTenant}
           onChange={(e) => handleTenantChange(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer appearance-none"
+          disabled={displayOnly}
+          className="w-full pl-9 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {mockTenants.map((t) => (
             <option key={t.id} value={t.id}>
@@ -91,7 +98,8 @@ export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange }) =
         <select
           value={selectedBranch}
           onChange={(e) => handleBranchChange(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer appearance-none"
+          disabled={displayOnly}
+          className="w-full pl-9 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {activeBranchOptions.map((b) => (
             <option key={b.id} value={b.id}>
@@ -106,7 +114,8 @@ export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange }) =
         <select
           value={selectedEnv}
           onChange={(e) => handleEnvChange(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer appearance-none"
+          disabled={displayOnly}
+          className="w-full pl-9 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {environments.map((e) => (
             <option key={e.id} value={e.id}>

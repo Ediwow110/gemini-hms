@@ -16,7 +16,7 @@ export const UserSupportPage: React.FC = () => {
           description="Login failures, MFA resets, account lockouts, and permission requests"
         />
 
-        <ITScopeFilter />
+        <ITScopeFilter displayOnly />
 
         {loading ? (
           <HmsLoadingSkeleton variant="table" rows={8} />

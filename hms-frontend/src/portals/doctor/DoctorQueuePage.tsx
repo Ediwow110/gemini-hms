@@ -138,7 +138,7 @@ export const DoctorQueuePage = () => {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button
-                      onClick={() => navigate(`/doctor/emr/${item.patientId}`)}
+                      onClick={() => navigate(`/doctor/emr?patientId=${item.patientId}`)}
                       className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-3 py-1.5 rounded-xl transition-all shadow-sm shadow-indigo-100 text-[11px]"
                     >
                       Open EMR

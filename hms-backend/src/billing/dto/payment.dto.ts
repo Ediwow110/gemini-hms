@@ -66,3 +66,29 @@ export class LogReceiptEventDto {
   @IsOptional()
   reason?: string; // for reprints
 }
+
+export class ConfirmPaymentDto {
+  @IsString()
+  @IsNotEmpty()
+  gatewayReference: string;
+
+  @IsString()
+  @IsOptional()
+  gatewayProvider?: string; // defaults to 'QRPH' if not set
+}
+
+export class FailPaymentDto {
+  @IsString()
+  @IsNotEmpty()
+  reason: string;
+
+  @IsString()
+  @IsOptional()
+  gatewayReference?: string;
+}
+
+export class ExpirePaymentDto {
+  @IsString()
+  @IsNotEmpty()
+  reason: string;
+}

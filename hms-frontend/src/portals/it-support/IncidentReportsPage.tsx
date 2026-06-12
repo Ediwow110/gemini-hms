@@ -38,7 +38,7 @@ export const IncidentReportsPage: React.FC = () => {
           description="System outages, security alerts, degradation events, and resolution tracking"
         />
 
-        <ITScopeFilter />
+        <ITScopeFilter displayOnly />
 
         {loading ? (
           <HmsLoadingSkeleton variant="alert-rail" />

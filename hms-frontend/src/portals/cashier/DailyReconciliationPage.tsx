@@ -70,9 +70,9 @@ export const DailyReconciliationPage = () => {
       <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2.5 text-[12px] text-amber-800 animate-fade-in">
         <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
         <div>
-          <h5 className="font-bold uppercase text-[10px] tracking-wider font-sans">Daily Reconciliation (WIP)</h5>
+          <h5 className="font-bold uppercase text-[10px] tracking-wider font-sans">Daily Reconciliation (WIP — Simulated Data)</h5>
           <p className="font-medium font-sans">
-            End-of-day reconciliation is simulated. Actual cashier session closing, variance logging, and shift audit posting are not yet wired to the backend.
+            Collections, drawer balance, and gateway payment data (QRPH) are hardcoded mock values. End-of-day reconciliation, variance logging, and shift audit posting are not wired to the backend. This page requires a real data source integration.
           </p>
         </div>
       </div>

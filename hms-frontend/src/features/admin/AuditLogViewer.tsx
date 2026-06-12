@@ -39,6 +39,9 @@ export const AuditLogViewer = () => {
   };
 
   const displayTotal = searchText ? filteredEvents.length : total;
+  const totalLabel = searchText
+    ? `${filteredEvents.length} shown (page-local filter)`
+    : `${total} total`;
   const totalPages = Math.ceil(displayTotal / pageSize);
 
   return (
@@ -47,7 +50,7 @@ export const AuditLogViewer = () => {
 
       <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+          <div className="relative group">
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
               <input
@@ -58,6 +61,11 @@ export const AuditLogViewer = () => {
                 className="w-64 pl-9 pr-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
+            {searchText && (
+              <div className="absolute left-0 top-full mt-1 text-[10px] text-amber-600 font-semibold bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 whitespace-nowrap z-10 shadow-sm">
+                Searches current page only — totals reflect page-local results
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <select
@@ -135,7 +143,7 @@ export const AuditLogViewer = () => {
             </div>
 
             <div className="p-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span>{displayTotal} event{displayTotal !== 1 ? 's' : ''}</span>
+              <span>{totalLabel}</span>
               <div className="flex items-center gap-2">
                 <button
                   className="px-3 py-1 rounded border border-slate-200 disabled:opacity-40 font-medium hover:bg-white"

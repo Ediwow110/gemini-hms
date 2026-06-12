@@ -116,9 +116,9 @@ export const RefundVoidQueuePage = () => {
       <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2.5 text-[12px] text-amber-800 animate-fade-in">
         <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
         <div>
-          <h5 className="font-bold uppercase text-[10px] tracking-wider">UI Demonstration Sandbox Shell</h5>
+          <h5 className="font-bold uppercase text-[10px] tracking-wider">Sandbox — No Backend Effect</h5>
           <p className="font-medium">
-            This refund desk executes in mock simulation only. Voids and reversals do not modify backend accounting systems.
+            Approve/Reject actions update local state only. Voids, reversals, and gateway payments (QRPH) are not processed against the real backend. This page will be rewired when the full refund/void/gateway lifecycle is enabled.
           </p>
         </div>
       </div>

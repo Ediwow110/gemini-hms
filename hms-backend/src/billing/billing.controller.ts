@@ -8,6 +8,7 @@ import {
   UseGuards,
   Param,
   Patch,
+  Query,
 } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import {
@@ -15,6 +16,9 @@ import {
   OpenSessionDto,
   CloseSessionDto,
   LogReceiptEventDto,
+  ConfirmPaymentDto,
+  FailPaymentDto,
+  ExpirePaymentDto,
 } from './dto/payment.dto';
 import { RefundRequestDto, VoidRequestDto } from './dto/reversal.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -190,6 +194,80 @@ export class BillingController {
       branchId,
       createPaymentDto,
       idempotencyKey,
+    );
+  }
+
+  @Get('payments')
+  @RequirePermissions('billing.payment.create')
+  @RequireBranchContext()
+  getPaymentHistory(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('page') page?: string,
+  ) {
+    return this.billingService.getPaymentHistory(
+      tenantId,
+      branchId,
+      pageSize ? parseInt(pageSize, 10) : undefined,
+      page ? parseInt(page, 10) : undefined,
+    );
+  }
+
+  @Post('payments/:id/confirm')
+  @RequirePermissions('billing.payment.create')
+  @RequireBranchContext()
+  confirmPayment(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') paymentId: string,
+    @Body() dto: ConfirmPaymentDto,
+  ) {
+    return this.billingService.confirmPayment(
+      tenantId,
+      userId,
+      branchId,
+      paymentId,
+      dto,
+    );
+  }
+
+  @Post('payments/:id/fail')
+  @RequirePermissions('billing.payment.create')
+  @RequireBranchContext()
+  failPayment(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') paymentId: string,
+    @Body() dto: FailPaymentDto,
+  ) {
+    return this.billingService.failPayment(
+      tenantId,
+      userId,
+      branchId,
+      paymentId,
+      dto,
+    );
+  }
+
+  @Post('payments/:id/expire')
+  @RequirePermissions('billing.payment.create')
+  @RequireBranchContext()
+  expirePayment(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') paymentId: string,
+    @Body() dto: ExpirePaymentDto,
+  ) {
+    return this.billingService.expirePayment(
+      tenantId,
+      userId,
+      branchId,
+      paymentId,
+      dto,
     );
   }
 
