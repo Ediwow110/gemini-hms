@@ -38,7 +38,7 @@ export const PatientBillingPage = () => {
   const [showRecovery, setShowRecovery] = useState(true);
   const [showReceipt, setShowReceipt] = useState<boolean>(false);
   const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
-  const [receiptData, setReceiptData] = useState<{ id?: string } | null>(null);
+  const [receiptData, setReceiptData] = useState<{ receiptId?: string } | null>(null);
   const [submitError, setSubmitError] = useState<string>('');
   const [lastUpdated, setLastUpdated] = useState<Date | undefined>(undefined);
   const idempotencyKeyRef = useRef<string>('');
@@ -164,7 +164,8 @@ export const PatientBillingPage = () => {
       }, idempotencyKey);
       setIsDirty(false);
       await safeDeleteAutoDraft(draftId, "billing-payment-success");
-      setReceiptData(res as { id?: string });
+      const paymentResult = res as { payment?: { receiptNumber?: string } };
+      setReceiptData({ receiptId: paymentResult.payment?.receiptNumber });
       setShowReceipt(true);
     } catch (err) {
       setSubmitError((err as Error).message || 'Payment failed to process');
@@ -355,7 +356,7 @@ export const PatientBillingPage = () => {
           <div className="border-t border-b border-slate-100 py-3 space-y-1.5 text-xs">
             <div className="flex justify-between">
               <span className="text-slate-400 font-bold font-sans">Receipt ID:</span>
-              <span className="font-mono font-bold text-slate-800">{receiptData?.id?.substring(0, 8) || 'N/A'}</span>
+              <span className="font-mono font-bold text-slate-800">{receiptData?.receiptId?.substring(0, 8) || invoice.invoiceNumber || 'N/A'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400 font-bold font-sans">Invoice Cleared:</span>
@@ -398,7 +399,7 @@ export const PatientBillingPage = () => {
 
           <div className="p-2.5 bg-emerald-50 border border-emerald-150 rounded-lg flex gap-1.5 text-xs text-emerald-800 font-bold justify-center items-center font-sans">
             <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
-            Billing cleared. POS Terminal receipt registered in audit logs.
+            Billing cleared. Payment posted successfully.
           </div>
 
           <button

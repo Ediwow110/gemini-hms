@@ -26,7 +26,7 @@ export const PaymentsPage: React.FC = () => {
     return list.filter(rcp => {
       const patientName = `${rcp.invoice?.order?.patient?.firstName || ''} ${rcp.invoice?.order?.patient?.lastName || ''}`.toLowerCase();
       const invoiceNo = rcp.invoice?.invoiceNumber?.toLowerCase() || '';
-      const receiptNo = rcp.id.toLowerCase();
+      const receiptNo = (rcp.receiptNumber || rcp.id).toLowerCase();
       const query = search.toLowerCase();
 
       const matchesSearch = patientName.includes(query) || 
@@ -41,12 +41,14 @@ export const PaymentsPage: React.FC = () => {
 
   const columns = [
     {
-      key: 'id',
-      header: 'Receipt ID',
+      key: 'receiptNumber',
+      header: 'Receipt No.',
       render: (rcp: PaymentRecord) => (
         <div className="flex items-center gap-1.5">
           <Receipt className="h-3.5 w-3.5 text-slate-400" />
-          <span className="font-mono font-bold text-emerald-700">{rcp.id.substring(0, 8)}</span>
+          <span className="font-mono font-bold text-emerald-700" title={rcp.receiptNumber || rcp.id}>
+            {rcp.receiptNumber || rcp.id.substring(0, 8)}
+          </span>
         </div>
       )
     },
@@ -121,7 +123,7 @@ export const PaymentsPage: React.FC = () => {
     >
       <HmsPageHeader 
         title="POS Receipts Registry" 
-        description="Examine transaction history logs, check reference codes, and reprint customer sales receipts."
+        description="View payment records and transaction history for the active cashier session."
         badge="Settlement Desk"
       />
 
