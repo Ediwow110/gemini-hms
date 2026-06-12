@@ -226,9 +226,11 @@ export interface BreachIncident {
 export function useBreachIncidents() {
   const [incidents, setIncidents] = useState<BreachIncident[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [ephiEvents, anomalies] = await Promise.all([
         complianceService.getEphiAudit(),
@@ -237,8 +239,12 @@ export function useBreachIncidents() {
       const mapped: BreachIncident[] = [];
       if (Array.isArray(anomalies)) {
         for (const a of anomalies) {
+          const stableId =
+            a.logId ||
+            a.id ||
+            `anomaly-${a.timestamp || 'unknown'}-${a.description?.slice(0, 20) || 'no-desc'}`;
           mapped.push({
-            id: a.logId || `BR-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            id: stableId.replace(/[^a-zA-Z0-9-_]/g, '-'),
             timestamp: a.timestamp || new Date().toISOString(),
             severity: a.severity || 'MEDIUM',
             source: a.source || a.description?.substring(0, 40) || 'Anomaly Detection',
@@ -260,8 +266,8 @@ export function useBreachIncidents() {
         }
       }
       setIncidents(mapped);
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -271,7 +277,7 @@ export function useBreachIncidents() {
     fetch();
   }, [fetch]);
 
-  return { incidents, loading, refetch: fetch };
+  return { incidents, loading, error, refetch: fetch };
 }
 
 export function useRetentionStatus() {

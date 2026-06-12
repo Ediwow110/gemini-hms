@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 import { BreachAlertPanel, BreachIncident } from './components/BreachAlertPanel';
 import { useBreachIncidents } from '../../hooks/use-compliance';
 import { complianceService } from '../../services/compliance.service';
@@ -13,25 +13,28 @@ function severityToStatus(severity: string): BreachIncident['status'] {
 }
 
 export const BreachAlertsPage: React.FC = () => {
-  const { incidents: hookIncidents, loading, refetch } = useBreachIncidents();
+  const { incidents: hookIncidents, loading, error, refetch } = useBreachIncidents();
   const [incidents, setIncidents] = useState<BreachIncident[]>([]);
   const [breachReport, setBreachReport] = useState<Record<string, unknown> | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (hookIncidents.length > 0) {
-      const mapped: BreachIncident[] = hookIncidents.map((h, i) => ({
-        id: h.id || `INC-${String(i + 1).padStart(3, '0')}`,
-        timestamp: h.timestamp,
-        severity: (h.severity as BreachIncident['severity']) || 'MEDIUM',
-        source: h.source || 'Audit System',
-        tenantName: 'Current Tenant',
-        branchName: '—',
-        dataCategory: 'Audit Event',
-        status: severityToStatus(h.severity),
-        description: h.description,
-        timeline: [{ time: h.timestamp, event: h.description }],
-      }));
+      const mapped: BreachIncident[] = hookIncidents.map((h, i) => {
+        const stableId = h.id || `ephi-${i}-${h.timestamp || 'unknown'}`;
+        return {
+          id: stableId,
+          timestamp: h.timestamp,
+          severity: (h.severity as BreachIncident['severity']) || 'MEDIUM',
+          source: h.source || 'Audit System',
+          tenantName: 'Current Tenant',
+          branchName: '—',
+          dataCategory: 'Audit Event',
+          status: severityToStatus(h.severity),
+          description: h.description,
+          timeline: [{ time: h.timestamp, event: h.description }],
+        };
+      });
       setIncidents(mapped);
     }
   }, [hookIncidents]);
@@ -90,6 +93,31 @@ export const BreachAlertsPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="card p-4 bg-rose-50 border border-rose-200 shadow-sm rounded-2xl flex items-start gap-3"
+          data-testid="breach-error-banner"
+        >
+          <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-rose-800">
+              Failed to load breach incidents
+            </p>
+            <p className="text-xs text-rose-700 mt-0.5 break-words">
+              {error}
+            </p>
+            <button
+              onClick={refetch}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900 px-2.5 py-1 rounded-lg border border-rose-200 hover:bg-rose-100 transition-colors"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="card p-4 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center">

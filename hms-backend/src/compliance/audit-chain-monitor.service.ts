@@ -23,15 +23,23 @@ export class AuditChainMonitorService {
 
       for (const tenant of tenants) {
         try {
-          const result = await this.auditService.verifyChain(tenant.id);
+          const result = await this.auditService.verifyChainWithSignatures(
+            tenant.id,
+          );
 
           if (!result.isValid) {
-            this.logger.warn(`Chain corruption detected for tenant ${tenant.id}: ${result.corruptedLogIds?.length || 0} corrupted logs`);
+            this.logger.warn(
+              `Chain corruption detected for tenant ${tenant.id}: ${result.corruptedLogIds?.length || 0} corrupted logs`,
+            );
           } else {
-            this.logger.log(`Chain verification passed for tenant ${tenant.id}`);
+            this.logger.log(
+              `Chain verification passed for tenant ${tenant.id}`,
+            );
           }
         } catch (err) {
-          this.logger.error(`Chain verification failed for tenant ${tenant.id}: ${err}`);
+          this.logger.error(
+            `Chain verification failed for tenant ${tenant.id}: ${err}`,
+          );
         }
       }
     } catch (err) {

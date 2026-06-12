@@ -1746,7 +1746,13 @@ export class BillingService {
     tenantId: string,
     userId: string,
     branchId: string,
-    dto: { paymentId: string; eventKey: string; receiptNumber?: string; format?: string; reason?: string },
+    dto: {
+      paymentId: string;
+      eventKey: string;
+      receiptNumber?: string;
+      format?: string;
+      reason?: string;
+    },
   ) {
     const payment = await this.prisma.payment.findFirst({
       where: { id: dto.paymentId, tenantId },
@@ -1755,9 +1761,15 @@ export class BillingService {
       throw new NotFoundException('Payment not found');
     }
 
-    const validKeys = ['RECEIPT_PRINTED', 'RECEIPT_REPRINTED', 'RECEIPT_EXPORTED'];
+    const validKeys = [
+      'RECEIPT_PRINTED',
+      'RECEIPT_REPRINTED',
+      'RECEIPT_EXPORTED',
+    ];
     if (!validKeys.includes(dto.eventKey)) {
-      throw new BadRequestException(`Invalid receipt event key: ${dto.eventKey}`);
+      throw new BadRequestException(
+        `Invalid receipt event key: ${dto.eventKey}`,
+      );
     }
 
     await this.audit.log({

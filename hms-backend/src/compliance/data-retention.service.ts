@@ -6,12 +6,51 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 
 const RETENTION_CLASSES = {
-  FINANCIAL: { durationYears: 10, eventPrefixes: ['PAYMENT_', 'REFUND_', 'VOID_', 'RECEIPT_', 'SESSION_', 'INVOICE_'] },
-  CLINICAL: { durationYears: 10, eventPrefixes: ['VITALS_', 'SOAP_', 'LAB_', 'TRIAGE_', 'ORDER_', 'PRESCRIPTION_', 'DIAGNOSIS_'] },
-  ADMINISTRATIVE: { durationYears: 3, eventPrefixes: ['ADMIN_', 'ROLE_', 'USER_', 'CATALOG_', 'MERGE_'] },
-  SECURITY: { durationYears: 5, eventPrefixes: ['BREAK_GLASS_', 'SENSITIVE_', 'SECURITY_', 'LOGIN_', 'MFA_'] },
-  EXPORT: { durationYears: 1, eventPrefixes: ['EXPORTED', 'DOWNLOADED', 'REPORT_EXPORTED'] },
-  TRANSIENT: { durationDays: 90, eventPrefixes: ['READ_ACCESS_'] },
+  FINANCIAL: {
+    durationYears: 10,
+    eventPrefixes: [
+      'PAYMENT_',
+      'REFUND_',
+      'VOID_',
+      'RECEIPT_',
+      'SESSION_',
+      'INVOICE_',
+    ],
+  },
+  CLINICAL: {
+    durationYears: 10,
+    eventPrefixes: [
+      'VITALS_',
+      'SOAP_',
+      'LAB_',
+      'TRIAGE_',
+      'ORDER_',
+      'PRESCRIPTION_',
+      'DIAGNOSIS_',
+    ],
+  },
+  ADMINISTRATIVE: {
+    durationYears: 3,
+    eventPrefixes: ['ADMIN_', 'ROLE_', 'USER_', 'CATALOG_', 'MERGE_'],
+  },
+  SECURITY: {
+    durationYears: 5,
+    eventPrefixes: [
+      'BREAK_GLASS_',
+      'SENSITIVE_',
+      'SECURITY_',
+      'LOGIN_',
+      'MFA_',
+    ],
+  },
+  EXPORT: {
+    durationYears: 1,
+    eventPrefixes: ['EXPORTED', 'DOWNLOADED', 'REPORT_EXPORTED'],
+  },
+  TRANSIENT: {
+    durationDays: 90,
+    eventPrefixes: ['READ_ACCESS_'],
+  },
 };
 
 @Injectable()
@@ -60,26 +99,40 @@ export class DataRetentionService {
   }
 
   async getAuditRetentionStatus() {
-    const results: Record<string, { active: number; retentionYears: number }> = {};
+    const results: Record<string, { active: number; retentionYears: number }> =
+      {};
     for (const [className, config] of Object.entries(RETENTION_CLASSES)) {
-      const durationYears = 'durationYears' in config ? config.durationYears : (config as any).durationDays / 365;
+      const durationYears =
+        'durationYears' in config
+          ? config.durationYears
+          : (config as any).durationDays / 365;
       const total = await this.prisma.auditLog.count({
         where: {
-          OR: config.eventPrefixes.map(prefix => ({ eventKey: { startsWith: prefix } })),
+          OR: config.eventPrefixes.map((prefix) => ({
+            eventKey: { startsWith: prefix },
+          })),
         },
       });
-      results[className.toLowerCase()] = { active: total, retentionYears: Math.ceil(durationYears) };
+      results[className.toLowerCase()] = {
+        active: total,
+        retentionYears: Math.ceil(durationYears),
+      };
     }
     return results;
   }
 
   async getRetentionStatus() {
     const [
-      activePatients, archivedPatients,
-      activeEncounters, archivedEncounters,
-      activeLabResults, archivedLabResults,
-      activeInvoices, archivedInvoices,
-      activePayments, archivedPayments,
+      activePatients,
+      archivedPatients,
+      activeEncounters,
+      archivedEncounters,
+      activeLabResults,
+      archivedLabResults,
+      activeInvoices,
+      archivedInvoices,
+      activePayments,
+      archivedPayments,
       auditStatus,
     ] = await Promise.all([
       this.prisma.patient.count({ where: { archivedAt: null } }),
