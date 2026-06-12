@@ -283,12 +283,16 @@ export class AuditService {
     return { data: sanitizedData, total, page, pageSize: limit };
   }
 
-  async findMyEvents(
-    tenantId: string,
-    userId: string,
-    query: AuditQueryDto,
-  ) {
-    const { eventKey, recordType, recordId, startDate, endDate, page = 1, pageSize = 20 } = query;
+  async findMyEvents(tenantId: string, userId: string, query: AuditQueryDto) {
+    const {
+      eventKey,
+      recordType,
+      recordId,
+      startDate,
+      endDate,
+      page = 1,
+      pageSize = 20,
+    } = query;
     const limit = Math.min(pageSize, 100);
     const where: any = { tenantId, userId };
 
@@ -338,7 +342,14 @@ export class AuditService {
     recordId: string,
     query: AuditQueryDto,
   ) {
-    const { eventKey, userId, startDate, endDate, page = 1, pageSize = 20 } = query;
+    const {
+      eventKey,
+      userId,
+      startDate,
+      endDate,
+      page = 1,
+      pageSize = 20,
+    } = query;
     const limit = Math.min(pageSize, 100);
     const isSuperAdmin = userRoles.includes('Super Admin');
     const where: any = { tenantId, recordType, recordId };
@@ -408,7 +419,10 @@ export class AuditService {
     const signatureErrors: string[] = [];
 
     if (!process.env.JWT_SECRET) {
-      return { ...chainResult, signatureErrors: ['JWT_SECRET is not configured'] };
+      return {
+        ...chainResult,
+        signatureErrors: ['JWT_SECRET is not configured'],
+      };
     }
 
     const logs = await this.prisma.auditLog.findMany({
@@ -444,7 +458,22 @@ export class AuditService {
   ) {
     const result = await this.findAll(tenantId, branchId, userRoles, query);
     const isSuperAdmin = userRoles.includes('Super Admin');
-    const fields = ['id', 'tenantId', 'branchId', 'userId', 'eventKey', 'recordType', 'recordId', 'createdAt', 'ipAddress', 'userAgent', 'activeRole', 'sessionId', 'hash', 'previousHash'];
+    const fields = [
+      'id',
+      'tenantId',
+      'branchId',
+      'userId',
+      'eventKey',
+      'recordType',
+      'recordId',
+      'createdAt',
+      'ipAddress',
+      'userAgent',
+      'activeRole',
+      'sessionId',
+      'hash',
+      'previousHash',
+    ];
 
     if (format === 'csv') {
       const rows = result.data.map((item: any) => {

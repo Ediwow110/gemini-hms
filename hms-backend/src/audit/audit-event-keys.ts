@@ -82,4 +82,5 @@ export const AUDIT_EVENT_KEYS = {
   CHAIN_CORRUPTION_DETECTED: 'CHAIN_CORRUPTION_DETECTED',
 } as const;
 
-export type AuditEventKey = typeof AUDIT_EVENT_KEYS[keyof typeof AUDIT_EVENT_KEYS];
+export type AuditEventKey =
+  (typeof AUDIT_EVENT_KEYS)[keyof typeof AUDIT_EVENT_KEYS];
