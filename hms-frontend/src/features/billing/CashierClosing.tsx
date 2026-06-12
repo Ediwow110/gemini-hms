@@ -5,6 +5,7 @@ import { StatusBadge } from "../../components/ui/status-badge";
 import { useNavigate } from "react-router-dom";
 import { RequirePermission } from "../../components/ui/RequirePermission";
 import { logger } from "../../lib/logger";
+import { AlertTriangle } from "lucide-react";
 
 export const CashierClosing = () => {
   const navigate = useNavigate();
@@ -36,6 +37,17 @@ export const CashierClosing = () => {
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
+      {/* WIP Banner — no backend wiring */}
+      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2.5 text-[12px] text-amber-800 animate-fade-in">
+        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+        <div>
+          <h5 className="font-bold uppercase text-[10px] tracking-wider font-sans">Legacy Page — Not Wired to Backend</h5>
+          <p className="font-medium font-sans">
+            This page uses hardcoded mock data and does not submit to the live API. Use the <strong>Shift Closure</strong> panel on the <strong>POS Teller Drawer Console</strong> (/cashier/session) for real reconciliation.
+          </p>
+        </div>
+      </div>
+
       <PageHeader title="Cashier Closing" description="Reconcile cashier collections before closing the session." />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
