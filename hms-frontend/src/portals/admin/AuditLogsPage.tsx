@@ -25,7 +25,7 @@ export const AuditLogsPage: React.FC = () => {
   };
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="full"
       footer={<HmsAuditFooter dataSource="Real audit data" />}
     >
       <AdminShellNotice />

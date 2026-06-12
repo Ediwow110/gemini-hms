@@ -26,7 +26,7 @@ export const ITSupportDashboard: React.FC = () => {
   const { stats, loading: statsLoading } = useTicketStats();
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="IT & Infrastructure Support Workspace"

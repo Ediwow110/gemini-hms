@@ -6,7 +6,7 @@ import { HmsDashboardShell, HmsAuditFooter, HmsEmptyState } from '../../componen
 
 export const PatientAppointmentsPage: React.FC = () => {
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="standard">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="My Appointments"

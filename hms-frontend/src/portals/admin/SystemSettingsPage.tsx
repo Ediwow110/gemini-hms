@@ -32,7 +32,7 @@ export const SystemSettingsPage: React.FC = () => {
   }
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="compact"
       footer={<HmsAuditFooter dataSource="Mock settings (sandbox)" />}
     >
       <AdminShellNotice />

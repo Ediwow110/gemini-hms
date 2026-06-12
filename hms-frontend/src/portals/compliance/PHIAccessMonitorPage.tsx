@@ -40,7 +40,7 @@ export const PHIAccessMonitorPage: React.FC = () => {
   });
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="PHI Access Monitor"

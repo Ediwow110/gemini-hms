@@ -58,7 +58,7 @@ export const PatientDashboard: React.FC = () => {
   const isPatientLoading = profileLoading || resultsLoading || rxLoading;
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="standard">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title={profileLoading ? 'Loading...' : `Hello, ${profile?.firstName || 'Welcome Back'}`}

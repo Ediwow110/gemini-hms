@@ -51,7 +51,7 @@ export const ComplianceDashboard: React.FC = () => {
   const staleAccountsCount = accessReview?.staleAccountsCount || 0;
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Compliance & Governance Workspace"

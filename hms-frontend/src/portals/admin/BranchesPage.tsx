@@ -90,7 +90,7 @@ export const BranchesPage: React.FC = () => {
   }
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="full"
       footer={<HmsAuditFooter dataSource="Mock branch data (sandbox)" />}
     >
       <AdminShellNotice />

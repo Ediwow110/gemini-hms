@@ -103,7 +103,7 @@ export const UsersPage: React.FC = () => {
   }
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="full"
       footer={<HmsAuditFooter dataSource="Mock user data (sandbox)" />}
     >
       <AdminShellNotice />
