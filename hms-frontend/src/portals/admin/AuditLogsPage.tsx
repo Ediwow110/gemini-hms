@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 import { AdminShellNotice } from './components/AdminShellNotice';
 import { AuditEventTable } from '../../features/audit/components/AuditEventTable';
 import { useAuditEvents } from '../../hooks/use-compliance';
 import { useNavigate } from 'react-router-dom';
-import { AuditLogEntry } from '../../services/compliance.service';
-import { Search, Filter, RefreshCw } from 'lucide-react';
+import { complianceService, AuditLogEntry } from '../../services/compliance.service';
+import { Search, Filter, RefreshCw, Download } from 'lucide-react';
+import { downloadFile, objectsToCsv } from '../../lib/download';
 
 export const AuditLogsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [searchText, setSearchText] = useState('');
   const [eventKeyFilter, setEventKeyFilter] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportSuccess, setExportSuccess] = useState(false);
   const navigate = useNavigate();
 
   const { events, total, loading, error, refetch } = useAuditEvents({
@@ -23,6 +27,37 @@ export const AuditLogsPage: React.FC = () => {
   const handleRowClick = (event: AuditLogEntry) => {
     navigate(`/audit/events/${event.id}`);
   };
+
+  const handleExport = useCallback(async (format: 'csv' | 'json') => {
+    setExporting(true);
+    setExportError(null);
+    setExportSuccess(false);
+    try {
+      const result = await complianceService.exportAuditEvents({
+        eventKey: eventKeyFilter || undefined,
+        format,
+      });
+      const timestamp = new Date().toISOString().slice(0, 10);
+      if (format === 'csv') {
+        const csv = objectsToCsv(result.data as Record<string, unknown>[]);
+        downloadFile(csv, `audit-export-${timestamp}.csv`, 'text/csv;charset=utf-8');
+      } else {
+        const json = JSON.stringify(result.data, null, 2);
+        downloadFile(json, `audit-export-${timestamp}.json`, 'application/json;charset=utf-8');
+      }
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 3000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Export failed';
+      if (msg.includes('403') || msg.includes('Forbidden')) {
+        setExportError('Export requires audit.export permission. Contact your administrator.');
+      } else {
+        setExportError(msg);
+      }
+    } finally {
+      setExporting(false);
+    }
+  }, [eventKeyFilter]);
 
   return (
     <HmsDashboardShell widthTier="full"
@@ -46,13 +81,46 @@ export const AuditLogsPage: React.FC = () => {
             <Filter className="h-3.5 w-3.5" />
             Audit Filters
           </h4>
-          <button
-            onClick={refetch}
-            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-          >
-            <RefreshCw className="h-3 w-3" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            {exportError && (
+              <span className="text-[10px] text-rose-600 font-semibold">{exportError}</span>
+            )}
+            {exportSuccess && (
+              <span className="text-[10px] text-emerald-600 font-semibold">Exported</span>
+            )}
+            <div className="relative group">
+              <button
+                disabled={exporting}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="h-3 w-3" />
+                {exporting ? 'Exporting...' : 'Export'}
+              </button>
+              {!exporting && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg py-1 min-w-[140px] hidden group-hover:block z-10">
+                  <button
+                    onClick={() => handleExport('csv')}
+                    className="w-full text-left px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Download CSV
+                  </button>
+                  <button
+                    onClick={() => handleExport('json')}
+                    className="w-full text-left px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Download JSON
+                  </button>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={refetch}
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Refresh
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">

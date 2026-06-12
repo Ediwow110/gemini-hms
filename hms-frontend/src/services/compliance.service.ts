@@ -18,6 +18,7 @@ export interface AuditLogEntry {
 
 export interface AuditSearchParams {
   eventKey?: string;
+  userId?: string;
   recordType?: string;
   startDate?: string;
   endDate?: string;
