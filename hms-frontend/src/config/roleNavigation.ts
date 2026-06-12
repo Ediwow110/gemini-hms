@@ -406,7 +406,7 @@ export const roleNavigation: NavGroupConfig[] = [
       { label: 'Cashier Dashboard', to: '/cashier', icon: LayoutDashboard, allowedRoles: ['Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
       { label: 'Patient Billing', to: '/cashier/billing', icon: CreditCard, allowedRoles: ['Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
       { label: 'POS Invoices', to: '/cashier/invoices', icon: FileText, allowedRoles: ['Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
-      { label: 'Receipts Ledger', to: '/cashier/payments', icon: History, allowedRoles: ['Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
+      { label: 'Session Receipts', to: '/cashier/payments', icon: History, allowedRoles: ['Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
       { label: 'Drawer Session', to: '/cashier/session', icon: Coins, allowedRoles: ['Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
       { label: 'Voids & Refunds', to: '/cashier/refunds-voids', icon: ShieldAlert, allowedRoles: ['Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
       { label: 'HMO Claims', to: '/cashier/hmo-claims', icon: ShieldCheck, allowedRoles: ['Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },

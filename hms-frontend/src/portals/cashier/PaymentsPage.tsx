@@ -122,7 +122,7 @@ export const PaymentsPage: React.FC = () => {
       footer={<HmsAuditFooter dataSource="POS Billing Engine" />}
     >
       <HmsPageHeader 
-        title="POS Receipts Registry" 
+        title="Active Session Receipts" 
         description="View payment records and transaction history for the active cashier session."
         badge="Settlement Desk"
       />
