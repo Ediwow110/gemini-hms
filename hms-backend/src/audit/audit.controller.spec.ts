@@ -59,7 +59,7 @@ describe('AuditController', () => {
     });
 
     it('should default format to csv when not provided', async () => {
-      const query = {};
+      const query: any = { format: 'csv' };
       service.exportMyEvents.mockResolvedValue({
         data: [],
         exportedCount: 0,
@@ -133,7 +133,7 @@ describe('AuditController', () => {
         recordType: 'test',
         recordId: 'r1',
         createdAt: new Date().toISOString(),
-      });
+      } as any);
 
       const result = await controller.findMyEvent(
         mockTenantId,
@@ -151,7 +151,7 @@ describe('AuditController', () => {
 
     it('should return event data when found', async () => {
       const logId = 'log-uuid';
-      const mockEvent = {
+      const mockEvent: any = {
         id: logId,
         tenantId: mockTenantId,
         userId: mockUserId,
@@ -180,7 +180,7 @@ describe('AuditController', () => {
 
   describe('server-enforced self-scope behavior', () => {
     it('GET /events/self should pass JWT userId as self-scope filter', async () => {
-      const query = {};
+      const query: any = { format: 'csv' };
       service.findMyEvents.mockResolvedValue({
         data: [],
         total: 0,
@@ -198,7 +198,7 @@ describe('AuditController', () => {
     });
 
     it('GET /export/self should NOT accept client-supplied userId filter', async () => {
-      const query = { userId: 'malicious-user' };
+      const query: any = { userId: 'malicious-user', format: 'csv' };
       service.exportMyEvents.mockResolvedValue({
         data: [],
         exportedCount: 0,
