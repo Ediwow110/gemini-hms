@@ -1,98 +1,73 @@
+# Standing Instructions
+- **Always activate relevant skills and plugins** before any task — audit, read, edit, write, review, debug, test, or any other operation. Invoke the skill tool first, then proceed. This is not optional.
+
 # Session State
 ## Goal
-- Sandbox-UI honesty audit + correctness audit + idempotency key bug fix + single-branch auth branch-context fix.
-- Real-DB frontend validation: PASS WITH FIX APPLIED (LOCAL ONLY).
-- Sidebar IA cleanup: test stability fix + rename `System Settings` → `Organization Settings` + add orphan route to nav.
+- The audit-log hardening lane (5 phases) is locally complete and frozen. All 5 phases committed, 3 critical blockers fixed and validated locally. Lane is LOCAL GREEN / EXTERNAL PROOF PENDING — not pushed, not CI-proven, not staging-proven.
+
 ## Constraints & Preferences
-- Stay local only; do not push, open PR, merge, or modify tracked product code unless a real correctness issue is found.
-- Do not suggest fake alerts as default fix; do not call every inert sandbox button a bug.
-- Do not trust prior totals unless re-verified; do not recommend fixes based on stale claims.
-- Keep scope limited to the cashier payment idempotency fix; do not broaden into other cashier changes.
-- No modifications to backend APIs; frontend-only fix.
+- Stay local; do not push or open PR from this lane unless explicitly requested
+- Do not claim staging readiness without remote CI proof
+- Separate local proof from external proof clearly
+- Workspace root: `D:\Vscode\hms-login-OFFICIAL`
+
 ## Progress
-### Done
-- **Sandbox-UI honesty audit** (48 pages across HR, Procurement, Marketplace Admin, Supplier, Cashier): identified 19 misleading inert controls, 14 acceptable inert controls, 0 real bugs.
-- **Strict verification pass**: 1 stale claim corrected, 18 controls re-verified, 0 genuinely misleading.
-- **Correctness audit**: found 1 real financial integrity bug — idempotency key uses `Date.now()` defeating backend dedup.
-- **Idempotency fix**: replaced `Date.now()`-based key with stable `useRef`-based key in `PatientBillingPage.tsx`; retry test added; TS/lint/tests clean.
-- **Final verdict**: ACCEPT WITH NITS — fix is correct.
-- **Branch-context auth fix**: single-branch users now auto-resolve `branchId` in `generateTokenPair()` at `hms-backend/src/auth/auth.service.ts:522`. Fix covers `login()`, `verifyMfa()`, `verifyMfaWithRecoveryCode()`. 75/75 auth tests pass. Real-DB API smoke confirms pharmacist + cashier branch-scoped APIs return 200 (were 403).
-- **Real-DB frontend rerun**: pharmacist → `/pharmacy` (0 errors), cashier dashboard (0 errors), invoices/billing pages load without `missing_branch_context`. Verdict: **PASS WITH FIX APPLIED (LOCAL ONLY)**.
+### Done (Committed Baseline)
+- **Phase 1 (`8f4ce6c`):** 4 Prisma indexes, event key registry (70+ keys), DTO validation (audit-query, audit-export with class-validator), `ValidationPipe` in findAll. 21/21 audit tests.
+- **Phase 2 (`4c5e0a7`):** `findMyEvents`, `findEntityTimeline`, `verifyChainWithSignatures`, `exportEvents`; 4 new controller endpoints. 21/21 audit tests.
+- **Phase 3 (`94bff48`):** `PAYMENT_VOID_REJECTED`/`REFUND_REJECTED`/`RECONCILIATION_PERFORMED`; `POST /receipts/event` endpoint. 21/21 audit tests.
+- **Phase 4+5 (`7b27178`):** Frontend audit UX (MyAuditLog, AuditEventDetail, EntityTimeline, admin rewrites, permissions, routes, hooks) + operational hardening (chain review UI, breach/compliance pages, 6-class retention, daily chain verification cron). 23 audit tests total.
 
-### Session Update — Sidebar IA + Test Stability
-- **Vitest teardown fix**: Added `vi.runAllTimers()` in `afterEach` before `vi.useRealTimers()` in `hms-frontend/src/components/analytics/dashboard-pages.test.tsx`. Eliminates `EnvironmentTeardownError`; suite now completes cleanly.
-- **Sidebar rename**: Super Admin parent label changed from `System Settings` to `Organization Settings` in `roleNavigation.ts`.
-- **New sidebar child**: Added `Global System Config` → `/admin/settings` under the `Organization Settings` dropdown (Super Admin only). This route was previously orphaned from the sidebar.
-- **Command palette test updated**: `CommandPalette.test.tsx` updated to match the new label.
-- **Verified gates**: `npm run typecheck` PASS, `npm run lint` PASS, `npx vitest run` PASS — 73 test files, 406/406 tests passing, no teardown error.
+### Done (Blocker Fixes — Uncommitted, Working Tree)
+Three verified critical blockers were fixed locally but **not yet committed**:
+1. **Backend permission enforcement**: `audit.controller.ts` — `events/self` now requires `audit.self`, `export` now requires `audit.export`
+2. **Pagination refetch**: `use-compliance.ts` — removed stale `paramsRef`+`useCallback([],[])` pattern; hooks now re-trigger on param change via serialized `paramsKey` dependency
+3. **Admin audit source**: `AuditLogsPage.tsx`, `AuditLogViewer.tsx` — switched from `useMyAuditEvents` to `useAuditEvents` for full tenant/branch-scoped data
 
-### Unresolved (Fixture Gaps / Display Polish)
-- Drug catalog empty in this DB (API 200, no fixtures)
-- Dispense button disabled on DEMO prescription (read-only fixture)
-- Outstanding balance shows `NaN ₱` due to Prisma Decimal serialization display gap
-- "Paid" shows 0 despite DEMO-INV-001 being fully paid (status `ISSUED` not `PAID`)
+### Validation (Frozen State)
+- Backend: 77 suites / 1537 tests passing, typecheck clean (pre-existing spec errors only), audit lint 0 errors/3 warnings
+- Frontend: 73 files / 406 tests passing, typecheck 0 errors, lint 0 errors, build clean
 
-### Blocked
-- Visual QA of sidebar dropdowns (expand/collapse, active states, indentation) — Playwright MCP disconnected in session.
+### Unresolved (Carryover Risks — Unchanged)
+- No remote CI proof — never pushed
+- No staging environment exists
+- Pre-existing spec type errors in `auth/`, `billing/`, `admin/` spec files
+- AuditLog archive: retention is count-only (immutability trigger blocks physical delete)
+- Export UI (`exportAuditEvents()`) not wired to any button
+- Health-probe build exclusion breaks CD deployment path
+
 ## Key Decisions
-- **Idempotency key fix approach**: generate key once per payment attempt using `useRef`, persist across retries, reset on `invoiceId` change. Uses `Math.random()` suffix instead of `Date.now()`.
-- **Branch-context fix approach**: modify `generateTokenPair()` to auto-assign `branchId` when `availableBranches.length === 1`, handling all three callers at once. Session also updated for stateful tracking.
-- **Verdict on polish issues**: no code changes justified for sandbox polish; defer to Phase 15-B standardization.
-- **Sidebar naming strategy**: `System Settings` → `Organization Settings` to accurately reflect the content (branches, departments, services etc.). Orphaned `/admin/settings` page added as `Global System Config` child under the dropdown.
-- **Visual QA remains tooling-blocked**: code/test gates green but Playwright MCP unavailable in-session.
-## Next Steps
-1. **CI / staging / deployment-path proof** — this is now the next meaningful validation step.
-2. **Get GCP IAM roles granted** (`serviceUsageAdmin`, `compute.admin`, `cloudsql.admin`) on `unified-xylocarp-j524r`.
-3. Re-run Phase 18-J to enable APIs, provision staging VM + Cloud SQL.
-4. Execute Phase 18-K (staging deploy + smoke tests + apply migrations).
-5. Execute Phase 18-L (GitHub Actions CI proof).
-6. Revisit Sprint 2B (pharmacy enhancements) after CI/staging clean.
+- Reuse existing `AuditLog` model and `AuditService.log()` throughout
+- Print/reprint/export events emitted via `POST /receipts/event` (frontend-triggered)
+- Rejection events added in `BillingService` rather than `ApprovalsService`
+- HMAC uses `JWT_SECRET` env var for compatibility
+- Retention is count-only (schema change deferred)
+- `audit.branch`/`audit.global`/`audit.admin` not added — backend role-based filtering is the authority
+- Blocker fixes kept uncommitted for intentional curation before future push
+
+## Next Steps (When Authorized)
+1. Commit blocker fixes: `git add hms-backend/src/audit/audit.controller.ts hms-frontend/src/hooks/use-compliance.ts hms-frontend/src/portals/admin/AuditLogsPage.tsx hms-frontend/src/features/admin/AuditLogViewer.tsx && git commit -m "fix(audit): ..."`
+2. Create feature branch + push + open PR to `main` → triggers CI
+3. After CI green → provision staging environment
+4. Fix health-probe build issue before staging deploy
+
 ## Critical Context
-- **Backend idempotency** is robust (fingerprint + composite unique key `tenantId_operation_key` + COMPLETED/IN_PROGRESS/FAILED state machine + retry support for FAILED keys) — but only works when same key is reused.
-- **Current stack**: `ca64d7e`, `9928fd1`, `6ecff3a`, `a20ff61`, `493583b`, `55d351a` — all local, no pushes.
-- **Frontend service** correctly passes key as `idempotency-key` header; backend controller (`billing.controller.ts:182-184`) requires this header and rejects missing values.
-- **Mutation allowlist**: **15** total — 12 clinical (saveVitals, markVitalsEnteredInError, saveTriage, markTriageEnteredInError, saveDraftSOAP, signSOAP, createClinicalOrder, cancelClinicalOrder, receiveLabOrder, saveDraftLabResult, validateLabResult, releaseLabResult) + 2 pharmacy (dispenseMedication, adjustStock) + 1 doctor (createPrescription).
-- **Pharmacy endpoints**: `GET /api/v1/pharmacy/prescriptions?status=` (Pharmacist/Branch Admin/Super Admin, read-only queue); `POST /api/v1/pharmacy/prescriptions/:id/dispense` (Pharmacist/Branch Admin/Super Admin, ACTIVE→DISPENSED).
-- **Pharmacy dispense**: Optimistic locking via `updateMany` with `where: { id, version, status: 'ACTIVE' }`. Calls `InventoryService.dispenseItem()` for stock deduction. Transactional audit `PRESCRIPTION_DISPENSED`.
-- **Frontend PharmacyHub**: Refactored from mock-only to real API (prescription queue from `usePrescriptionQueue`, drug catalog from `useDrugCatalog`, dispense via `useDispenseMedication` with cache invalidation).
-- **Test count**: 1537/1537 backend all pass. Frontend typecheck clean, lint clean, verifier all pass.
-- **Prisma schema**: Prescription model now has `dispensedById`, `dispensedAt` fields + `DispensedBy` User relation + `(tenantId, branchId, status)` index.
-- **10 of 11 Admin + Branch Admin pages are mock-only**; only CatalogManagementPage uses real API (now refactored with hooks + service layer).
+- **4 committed + 1 uncommitted fix**: All local, no pushes.
+- **8 backend endpoints**: 3 original + 4 Phase 2 + 1 Phase 3 (receipt/event)
+- **Audit event keys**: 70+ across CLINICAL, FINANCIAL, ADMIN, SECURITY, PHARMACY, PRESCRIPTION, LAB, INVENTORY
+- **Permissions**: `audit.view` (existing), `audit.self` (new, backend-enforced), `audit.export` (new, backend-enforced)
+- **Roles added**: `Compliance Officer` (all 3 audit permissions), `IT Support` (audit.view + audit.self)
+- **Daily cron**: `AuditChainMonitorService` at midnight per tenant
+- **Retention**: 6-class (FINANCIAL 10y, CLINICAL 10y, ADMIN 3y, SECURITY 5y, EXPORT 1y, TRANSIENT 90d)
+- **31 files changed**: 13 new, 18 modified across all phases + blocker fixes
+
 ## Relevant Files
-- `hms-frontend/src/portals/cashier/PatientBillingPage.tsx`: fixed idempotency key generation (line 154-156); added `useRef` import (line 1); added `idempotencyKeyRef` state (line 43); reset key on invoice change (line 57).
-- `hms-frontend/src/services/billing-frontend.service.ts`: sends idempotency key in header (lines 88-92) — unchanged.
-- `hms-backend/src/billing/billing.controller.ts`: validates idempotency-key header (lines 163-193) — unchanged.
-- `hms-backend/src/billing/billing.service.ts`: idempotency guard logic (lines 55-200) — unchanged.
-- `hms-backend/src/auth/auth.service.ts`: branch-context fix in `generateTokenPair()` at lines 522-571; auto-assigns `branchId` when exactly one active branch exists.
-- `hms-frontend/src/services/billing-frontend.service.ts`: sends idempotency key in header (lines 88-92) — unchanged.
-- `hms-backend/src/billing/billing.controller.ts`: validates idempotency-key header (lines 163-193) — unchanged.
-- `hms-backend/src/billing/billing.service.ts`: idempotency guard logic (lines 55-200) — unchanged.
-- `hms-backend/src/pharmacy/pharmacy.module.ts`: Module definition.
-- `hms-backend/src/pharmacy/pharmacy.controller.ts`: GET/POST endpoints.
-- `hms-backend/src/pharmacy/pharmacy.service.ts`: `getPrescriptionQueue()`, `dispenseMedication()`.
-- `hms-backend/src/pharmacy/pharmacy.service.spec.ts`: 14 tests.
-- `hms-backend/src/pharmacy/dto/dispense-prescription.dto.ts`: `DispensePrescriptionDto`.
-- `hms-backend/src/pharmacy/dto/pharmacy-queue.dto.ts`: `PharmacyPrescriptionQueueDto`, `DispenseResultDto`.
-- `hms-backend/src/inventory/inventory.module.ts`: Added `exports: [InventoryService]`.
-- `hms-backend/prisma/migrations/20260523130000_add_prescription_dispense_fields/`: Manual migration.
-- `hms-frontend/src/services/pharmacy.service.ts`: API client with DTOs.
-- `hms-frontend/src/hooks/use-pharmacy.ts`: `usePrescriptionQueue`, `useDrugCatalog`, `useDispenseMedication`.
-- `hms-frontend/src/features/pharmacy/PharmacyHub.tsx`: Refactored to real API.
-- `hms-frontend/scripts/verify-clinical-readonly-wiring.ts`: Target 8 updated to 15 mutations (12 clinical + 2 pharmacy + 1 doctor).
-- `hms-frontend/src/portals/field-service/` — all 10 FS pages (3 real Phase 14-B, 7 mock Phase 14-C).
-- `hms-frontend/src/services/catalog.service.ts` — Phase 15-A: typed DTOs + 6 service methods.
-- `hms-frontend/src/hooks/use-catalog.ts` — Phase 15-A: 3 React Query hooks.
-- `hms-frontend/src/portals/admin/CatalogManagementPage.tsx` — Phase 15-A refactored (inline apiClient → hooks + service, HmsDashboardShell/HmsPageHeader/HmsAuditFooter, error state with retry).
-- `hms-frontend/src/portals/admin/__tests__/CatalogManagementPage.test.tsx` — Phase 15-A: 4 tests.
-- `hms-frontend/src/hooks/__tests__/use-catalog.test.tsx` — Phase 15-A: 2 tests.
-- `hms-frontend/src/portals/admin/` — remaining 9 Admin pages not yet standardized (Phase 15-B scope).
-- `hms-frontend/src/portals/branch-admin/` — BranchAdminDashboard + 10 WIP stubs (Phase 15-B scope).
-- `hms-frontend/src/config/roleNavigation.ts`: Nav data — 8 workspace families converted to nested children; Organization Settings parent; Global System Config child.
-- `hms-frontend/src/app/__tests__/CommandPalette.test.tsx`: Updated to match new label.
-- `hms-frontend/src/components/analytics/dashboard-pages.test.tsx`: Vitest teardown fix with `vi.runAllTimers()`.
+(unchanged from prior session — see committed baseline and working-tree diffs)
+
 ## Carryover Risks
-1. **GCP IAM block**: No staging/CI. Account lacks 4 critical roles on `unified-xylocarp-j524r`.
-2. **Pharmacist role not seeded**: Must be added to database `roles` table at deployment.
-3. **Migrations unapplied**: All Phase 14 + Sprint 2A migrations require PostgreSQL.
-4. **Drug catalog fixtures empty**: No drug catalog data in this DB; dispense flow cannot be fully exercised.
-5. **Visual QA tooling-blocked**: sidebar dropdown interaction (expand/collapse, active highlighting, indentation) needs Playwright or manual browser check; not verifiable in-session.
+1. **No remote CI proof** — never pushed, CI has never run on these commits
+2. **No staging environment** — only production SSH target exists in deploy.yml
+3. **Health-probe build exclusion** — `infrastructure-health-probe.ts` outside `src/` breaks CD
+4. **Pre-existing spec type errors** — `auth/`, `billing/`, `admin/` spec files
+5. **AuditLog archive** — count-only retention, no schema change for archival
+6. **Export UI unwired** — `exportAuditEvents()` service method exists but no UI trigger
