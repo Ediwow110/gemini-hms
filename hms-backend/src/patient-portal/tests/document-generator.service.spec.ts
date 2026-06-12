@@ -28,8 +28,8 @@ jest.mock(
     });
 
     // Support both `import * as PDFDocument` and `import PDFDocument` patterns
-    MockPDFDocument.default = MockPDFDocument;
-    MockPDFDocument.__esModule = true;
+    (MockPDFDocument as any).default = MockPDFDocument;
+    (MockPDFDocument as any).__esModule = true;
     return MockPDFDocument;
   },
   { virtual: true },
@@ -39,7 +39,6 @@ describe('DocumentGeneratorService', () => {
   let service: DocumentGeneratorService;
 
   const mockPatient = {
-    id: 'patient-1',
     firstName: 'John',
     lastName: 'Doe',
     patientNumber: 'PT-001',
@@ -61,8 +60,6 @@ describe('DocumentGeneratorService', () => {
     it('should return a Buffer', async () => {
       const result = await service.generateLabResultPdf({
         labResult: {
-          id: 'result-1',
-          status: 'RELEASED',
           results: JSON.stringify([
             {
               parameter: 'Hemoglobin',
@@ -85,8 +82,6 @@ describe('DocumentGeneratorService', () => {
     it('should start with PDF header (%PDF)', async () => {
       const result = await service.generateLabResultPdf({
         labResult: {
-          id: 'result-1',
-          status: 'RELEASED',
           results: null,
           remarks: null,
           releasedAt: null,
@@ -103,7 +98,6 @@ describe('DocumentGeneratorService', () => {
     it('should return a Buffer', async () => {
       const result = await service.generateInvoicePdf({
         invoice: {
-          id: 'inv-1',
           invoiceNumber: 'INV-001',
           totalAmount: 1000,
           paidAmount: 500,
@@ -128,7 +122,6 @@ describe('DocumentGeneratorService', () => {
     it('should start with PDF header (%PDF)', async () => {
       const result = await service.generateInvoicePdf({
         invoice: {
-          id: 'inv-1',
           invoiceNumber: null,
           totalAmount: 0,
           paidAmount: 0,
@@ -147,13 +140,12 @@ describe('DocumentGeneratorService', () => {
     it('should return a Buffer', async () => {
       const result = await service.generatePrescriptionPdf({
         prescription: {
-          id: 'rx-1',
           medicationName: 'Amoxicillin 500mg',
           dosage: '500mg',
           frequency: 'TID',
           duration: '7 days',
           notes: 'Take with food',
-          prescribedBy: { id: 'doc-1', email: 'doctor@example.com' },
+          prescribedBy: { email: 'doctor@example.com' },
         },
         patient: mockPatient,
         tenantName: 'Test Hospital',
@@ -165,7 +157,6 @@ describe('DocumentGeneratorService', () => {
     it('should start with PDF header (%PDF)', async () => {
       const result = await service.generatePrescriptionPdf({
         prescription: {
-          id: 'rx-1',
           medicationName: 'Ibuprofen 200mg',
           dosage: '200mg',
           frequency: 'BID',
@@ -185,7 +176,6 @@ describe('DocumentGeneratorService', () => {
     it('should return a Buffer', async () => {
       const result = await service.generateReceiptPdf({
         payment: {
-          id: 'pay-1',
           receiptNumber: 'REC-001',
           amount: 500,
           paymentMethod: 'CASH',
@@ -203,7 +193,6 @@ describe('DocumentGeneratorService', () => {
     it('should start with PDF header (%PDF)', async () => {
       const result = await service.generateReceiptPdf({
         payment: {
-          id: 'pay-1',
           receiptNumber: null,
           amount: 0,
           paymentMethod: 'CASH',
