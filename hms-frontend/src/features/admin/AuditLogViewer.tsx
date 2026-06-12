@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { PageHeader } from '../../components/ui/page-header';
-import { useMyAuditEvents } from '../../hooks/use-compliance';
+import { useAuditEvents } from '../../hooks/use-compliance';
 import { useNavigate } from 'react-router-dom';
 import { AuditLogEntry } from '../../services/compliance.service';
 import { History, Search, RefreshCw } from 'lucide-react';
@@ -10,7 +10,7 @@ export const AuditLogViewer = () => {
   const [pageSize, setPageSize] = useState(20);
   const navigate = useNavigate();
 
-  const { events, total, loading, error, refetch } = useMyAuditEvents({ page, pageSize });
+  const { events, total, loading, error, refetch } = useAuditEvents({ page, pageSize });
 
   const getEventLabel = (key: string): string =>
     key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());

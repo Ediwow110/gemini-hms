@@ -3,7 +3,7 @@ import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 import { AdminShellNotice } from './components/AdminShellNotice';
 import { AuditEventTable } from '../../features/audit/components/AuditEventTable';
-import { useMyAuditEvents } from '../../hooks/use-compliance';
+import { useAuditEvents } from '../../hooks/use-compliance';
 import { useNavigate } from 'react-router-dom';
 import { AuditLogEntry } from '../../services/compliance.service';
 import { Search, Filter, RefreshCw } from 'lucide-react';
@@ -15,7 +15,7 @@ export const AuditLogsPage: React.FC = () => {
   const [eventKeyFilter, setEventKeyFilter] = useState('');
   const navigate = useNavigate();
 
-  const { events, total, loading, error, refetch } = useMyAuditEvents({
+  const { events, total, loading, error, refetch } = useAuditEvents({
     page, pageSize,
     eventKey: eventKeyFilter || undefined,
   });
