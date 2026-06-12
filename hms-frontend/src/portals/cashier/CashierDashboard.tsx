@@ -122,7 +122,7 @@ export const CashierDashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
               { label: 'Invoices', desc: 'View all invoices', icon: FileText, path: '/cashier/invoices', color: 'text-indigo-600 bg-indigo-50' },
-              { label: 'Payments', desc: 'Process payments', icon: CreditCard, path: '/cashier/payments', color: 'text-emerald-600 bg-emerald-50' },
+              { label: 'Session Receipts', desc: 'View active session receipts', icon: CreditCard, path: '/cashier/payments', color: 'text-emerald-600 bg-emerald-50' },
               { label: 'Patient Billing', desc: 'Search patient bills', icon: Users, path: '/cashier/billing', color: 'text-blue-600 bg-blue-50' },
               { label: 'Refunds & Voids', desc: 'Manage reversals (sandbox)', icon: TrendingUp, path: '/cashier/refunds-voids', color: 'text-rose-600 bg-rose-50' },
             ].map(item => (

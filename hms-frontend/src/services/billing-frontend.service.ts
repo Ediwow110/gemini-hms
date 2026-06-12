@@ -40,6 +40,7 @@ export interface ActiveSessionDto {
   openingBalance: number; // matched backend field
   payments: Array<{
     id: string;
+    receiptNumber?: string;
     amount: number;
     paymentMethod: string;
     status: string;
@@ -167,4 +168,3 @@ export class BillingFrontendService {
 }
 
 export const billingFrontendService = new BillingFrontendService();
-
