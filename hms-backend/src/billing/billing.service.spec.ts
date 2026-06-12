@@ -853,7 +853,7 @@ describe('BillingService Reversals', () => {
 
       const spy = jest
         .spyOn(service, 'applyRefund')
-        .mockResolvedValue(mockResult);
+        .mockResolvedValue(mockResult as any);
       prisma.paymentReversal.findFirst.mockResolvedValue({
         type: 'REFUND',
       });
@@ -898,7 +898,7 @@ describe('BillingService Reversals', () => {
 
       const spy = jest
         .spyOn(service, 'applyVoid')
-        .mockResolvedValue(mockResult);
+        .mockResolvedValue(mockResult as any);
       prisma.paymentReversal.findFirst.mockResolvedValue({
         type: 'PAYMENT_VOID',
       });
@@ -1455,6 +1455,7 @@ describe('BillingService Reversals', () => {
 
       await service.openSession(mockTenantId, mockUserId, mockBranchId, {
         openingBalance: 100,
+        branchId: mockBranchId,
       });
 
       expect(audit.log).toHaveBeenCalledWith(
@@ -1641,7 +1642,7 @@ describe('BillingService Reversals', () => {
     const validDto = {
       invoiceId,
       cashierSessionId: sessionId,
-      amount: new Prisma.Decimal(50),
+      amount: 50,
       paymentMethod: 'CASH',
     };
 
@@ -1794,7 +1795,7 @@ describe('BillingService Reversals', () => {
         idempotencyKey,
       );
 
-      expect(result._replayed).toBe(true);
+      expect((result as any)._replayed).toBe(true);
       expect(result.payment).toEqual({ id: 'pay-idem-1' });
       expect(prisma.payment.create).not.toHaveBeenCalled();
       expect(audit.log).not.toHaveBeenCalled(); // No duplicate audit
@@ -1817,7 +1818,7 @@ describe('BillingService Reversals', () => {
         paymentId: 'pay-idem-1',
       });
 
-      const dtoModified = { ...validDto, amount: new Prisma.Decimal(100) }; // Different amount
+      const dtoModified = { ...validDto, amount: 100 }; // Different amount
 
       await expect(
         service.postPayment(
@@ -2041,7 +2042,7 @@ describe('BillingService Reversals', () => {
         idempotencyKey,
       );
 
-      expect(result._replayed).toBe(true);
+      expect((result as any)._replayed).toBe(true);
       expect(result.payment).toEqual({ id: 'pay-race-1' });
     });
 
@@ -2213,7 +2214,7 @@ describe('BillingService Reversals', () => {
         error: 'Previous attempt failed',
       });
 
-      const dtoModified = { ...validDto, amount: new Prisma.Decimal(100) };
+      const dtoModified = { ...validDto, amount: 100 };
 
       await expect(
         service.postPayment(
@@ -2416,7 +2417,7 @@ describe('BillingService Reversals', () => {
     const validDto = {
       invoiceId: mockInvoiceId,
       cashierSessionId: 'sess-123',
-      amount: new Prisma.Decimal(50),
+      amount: 50,
       paymentMethod: 'CASH',
     };
     const idempotencyKey = 'idem-123';
@@ -2595,6 +2596,7 @@ describe('BillingService Reversals', () => {
       gatewayReference: null,
       gatewayStatus: null,
       gatewayProvider: null,
+      invoice: undefined as any,
       ...overrides,
     });
 
