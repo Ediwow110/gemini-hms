@@ -191,3 +191,141 @@ export function useExpirePayment() {
   return { expire, loading, error };
 }
 
+export function useRequestRefund() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<unknown>(null);
+
+  const requestRefund = async (dto: { paymentId: string; amount: number; reason: string }) => {
+    setLoading(true);
+    setError(null);
+    setData(null);
+    try {
+      const res = await billingFrontendService.requestRefund(dto);
+      setData(res);
+      return res;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to request refund';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { requestRefund, loading, error, data };
+}
+
+export function useRequestVoid() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<unknown>(null);
+
+  const requestVoid = async (dto: { paymentId: string; reason: string }) => {
+    setLoading(true);
+    setError(null);
+    setData(null);
+    try {
+      const res = await billingFrontendService.requestVoid(dto);
+      setData(res);
+      return res;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to request void';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { requestVoid, loading, error, data };
+}
+
+export function useApproveVoid() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const approveVoid = async (reversalId: string, remarks?: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await billingFrontendService.approveVoid(reversalId, remarks);
+      return res;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to approve void';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { approveVoid, loading, error };
+}
+
+export function useRejectVoid() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const rejectVoid = async (reversalId: string, remarks?: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await billingFrontendService.rejectVoid(reversalId, remarks);
+      return res;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to reject void';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { rejectVoid, loading, error };
+}
+
+export function useApproveRefund() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const approveRefund = async (reversalId: string, remarks?: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await billingFrontendService.approveRefund(reversalId, remarks);
+      return res;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to approve refund';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { approveRefund, loading, error };
+}
+
+export function useRejectRefund() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const rejectRefund = async (reversalId: string, remarks?: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await billingFrontendService.rejectRefund(reversalId, remarks);
+      return res;
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to reject refund';
+      setError(message);
+      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(message, { cause: err });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { rejectRefund, loading, error };
+}
+
