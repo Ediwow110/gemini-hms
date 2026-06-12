@@ -80,6 +80,7 @@ describe('Auth Routing Stability', () => {
     service = module.get<AuthService>(AuthService);
     prisma = module.get(PrismaService);
     jwtService = module.get(JwtService);
+    let sessionService: any;
     sessionService = module.get(SessionService);
   });
 
@@ -91,6 +92,9 @@ describe('Auth Routing Stability', () => {
     isMfaEnabled: false,
     mfaEnabled: false,
     mfaSecret: null,
+    supplierId: null,
+    failedLoginAttempts: 0,
+    lockedUntil: null,
     status: 'ACTIVE',
     deactivatedAt: null,
     deactivatedReason: null,
@@ -196,10 +200,10 @@ describe('Auth Routing Stability', () => {
         mockBranches(3);
         prisma.user.update.mockResolvedValue(user);
 
-        const result = await service.login(user);
+        const result = await service.login(user as any);
 
-        expect(result.requiresBranchSelection).toBe(false);
-        expect(result.user.defaultPortalPath).toBe(path);
+        expect((result as any).requiresBranchSelection).toBe(false);
+        expect((result as any).user.defaultPortalPath).toBe(path);
       });
     });
   });
@@ -210,12 +214,12 @@ describe('Auth Routing Stability', () => {
       mockBranches(2);
       prisma.user.update.mockResolvedValue(user);
 
-      const result = await service.login(user);
+      const result = await service.login(user as any);
 
-      expect(result.requiresBranchSelection).toBe(true);
-      expect(result.availableBranches).toBeDefined();
-      expect(result.availableBranches?.length).toBe(2);
-      expect(result.user.defaultPortalPath).toBe('/branch-admin');
+      expect((result as any).requiresBranchSelection).toBe(true);
+      expect((result as any).availableBranches).toBeDefined();
+      expect((result as any).availableBranches?.length).toBe(2);
+      expect((result as any).user.defaultPortalPath).toBe('/branch-admin');
     });
 
     it('Branch Admin after selectBranch: requiresBranchSelection === false', async () => {
@@ -248,10 +252,10 @@ describe('Auth Routing Stability', () => {
       mockBranches(3);
       prisma.user.update.mockResolvedValue(user);
 
-      const result = await service.login(user);
+      const result = await service.login(user as any);
 
-      expect(result.requiresBranchSelection).toBe(true);
-      expect(result.user.defaultPortalPath).toBe('/doctor');
+      expect((result as any).requiresBranchSelection).toBe(true);
+      expect((result as any).user.defaultPortalPath).toBe('/doctor');
     });
 
     it('Cashier with multiple branches and no branchId: requiresBranchSelection === true', async () => {
@@ -259,10 +263,10 @@ describe('Auth Routing Stability', () => {
       mockBranches(2);
       prisma.user.update.mockResolvedValue(user);
 
-      const result = await service.login(user);
+      const result = await service.login(user as any);
 
-      expect(result.requiresBranchSelection).toBe(true);
-      expect(result.user.defaultPortalPath).toBe('/cashier');
+      expect((result as any).requiresBranchSelection).toBe(true);
+      expect((result as any).user.defaultPortalPath).toBe('/cashier');
     });
   });
 
@@ -272,9 +276,9 @@ describe('Auth Routing Stability', () => {
       prisma.user.findUnique.mockResolvedValue(user);
       prisma.user.update.mockResolvedValue(user);
 
-      const loginResult = await service.login(user);
-      expect(loginResult.user.defaultPortalPath).toBe('/unauthorized');
-      expect(loginResult.user.defaultPortalPath).not.toBe('/');
+      const loginResult = await service.login(user as any);
+      expect((loginResult as any).user.defaultPortalPath).toBe('/unauthorized');
+      expect((loginResult as any).user.defaultPortalPath).not.toBe('/');
 
       const meResult = await service.getMe('user-123', 'tenant-456');
       expect(meResult!.defaultPortalPath).toBe('/unauthorized');
@@ -286,9 +290,9 @@ describe('Auth Routing Stability', () => {
       prisma.user.findUnique.mockResolvedValue(user);
       prisma.user.update.mockResolvedValue(user);
 
-      const loginResult = await service.login(user);
-      expect(loginResult.user.defaultPortalPath).toBe('/unauthorized');
-      expect(loginResult.user.defaultPortalPath).not.toBe('/');
+      const loginResult = await service.login(user as any);
+      expect((loginResult as any).user.defaultPortalPath).toBe('/unauthorized');
+      expect((loginResult as any).user.defaultPortalPath).not.toBe('/');
 
       const meResult = await service.getMe('user-123', 'tenant-456');
       expect(meResult!.defaultPortalPath).toBe('/unauthorized');
