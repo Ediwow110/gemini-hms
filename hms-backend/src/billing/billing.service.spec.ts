@@ -72,7 +72,7 @@ describe('BillingService Reversals', () => {
         update: jest.fn(),
       },
       paymentReversal: {
-        create: jest.fn(),
+        create: jest.fn().mockResolvedValue({ id: 'rev-uuid' }),
         findFirst: jest.fn().mockResolvedValue(null),
         findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(),

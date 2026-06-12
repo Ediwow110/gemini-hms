@@ -656,7 +656,7 @@ export class BillingService {
         tx,
       );
 
-      await tx.paymentReversal.create({
+      const reversal = await tx.paymentReversal.create({
         data: {
           tenantId,
           branchId,
@@ -668,6 +668,17 @@ export class BillingService {
           status: REVERSAL_STATUS.PENDING,
           reason: dto.reason,
           requestedBy: userId,
+        },
+      });
+
+      // Store reversalId in approval request details for frontend routing
+      await tx.approvalRequest.update({
+        where: { id: approvalReq.id },
+        data: {
+          details: {
+            ...(approvalReq.details as Record<string, unknown>),
+            reversalId: reversal.id,
+          },
         },
       });
 
@@ -775,7 +786,7 @@ export class BillingService {
         tx,
       );
 
-      await tx.paymentReversal.create({
+      const reversal = await tx.paymentReversal.create({
         data: {
           tenantId,
           branchId,
@@ -787,6 +798,17 @@ export class BillingService {
           status: REVERSAL_STATUS.PENDING,
           reason: dto.reason,
           requestedBy: userId,
+        },
+      });
+
+      // Store reversalId in approval request details for frontend routing
+      await tx.approvalRequest.update({
+        where: { id: approvalReq.id },
+        data: {
+          details: {
+            ...(approvalReq.details as Record<string, unknown>),
+            reversalId: reversal.id,
+          },
         },
       });
 
