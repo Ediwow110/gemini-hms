@@ -141,10 +141,12 @@ describe('HIPAA Compliance Automation (e2e)', () => {
         expect(Array.isArray(res.body)).toBe(true);
         // Verify cross-tenant containment
         const hasOtherTenant = res.body.some(
-          (log) => log.tenantId === otherTenantId,
+          (log: { tenantId: string }) => log.tenantId === otherTenantId,
         );
         expect(hasOtherTenant).toBe(false);
-        const hasOurTenant = res.body.some((log) => log.tenantId === tenantId);
+        const hasOurTenant = res.body.some(
+          (log: { tenantId: string }) => log.tenantId === tenantId,
+        );
         expect(hasOurTenant).toBe(true);
       });
   });
