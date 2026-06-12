@@ -18,8 +18,8 @@
 - **Phase 3 (`94bff48`):** `PAYMENT_VOID_REJECTED`/`REFUND_REJECTED`/`RECONCILIATION_PERFORMED`; `POST /receipts/event` endpoint. 21/21 audit tests.
 - **Phase 4+5 (`7b27178`):** Frontend audit UX (MyAuditLog, AuditEventDetail, EntityTimeline, admin rewrites, permissions, routes, hooks) + operational hardening (chain review UI, breach/compliance pages, 6-class retention, daily chain verification cron). 23 audit tests total.
 
-### Done (Blocker Fixes — Uncommitted, Working Tree)
-Three verified critical blockers were fixed locally but **not yet committed**:
+### Done (Blocker Fixes — Committed)
+Three verified critical blockers were fixed and committed in `715b50f`:
 1. **Backend permission enforcement**: `audit.controller.ts` — `events/self` now requires `audit.self`, `export` now requires `audit.export`
 2. **Pagination refetch**: `use-compliance.ts` — removed stale `paramsRef`+`useCallback([],[])` pattern; hooks now re-trigger on param change via serialized `paramsKey` dependency
 3. **Admin audit source**: `AuditLogsPage.tsx`, `AuditLogViewer.tsx` — switched from `useMyAuditEvents` to `useAuditEvents` for full tenant/branch-scoped data
@@ -28,13 +28,20 @@ Three verified critical blockers were fixed locally but **not yet committed**:
 - Backend: 77 suites / 1537 tests passing, typecheck clean (pre-existing spec errors only), audit lint 0 errors/3 warnings
 - Frontend: 73 files / 406 tests passing, typecheck 0 errors, lint 0 errors, build clean
 
-### Unresolved (Carryover Risks — Unchanged)
-- No remote CI proof — never pushed
-- No staging environment exists
-- Pre-existing spec type errors in `auth/`, `billing/`, `admin/` spec files
-- AuditLog archive: retention is count-only (immutability trigger blocks physical delete)
-- Export UI (`exportAuditEvents()`) not wired to any button
-- Health-probe build exclusion breaks CD deployment path
+### Unresolved (Carryover Risks — Current)
+Risks ranked by severity:
+
+**HIGH:**
+- No remote CI proof — never pushed, CI has never run on these commits
+- No staging environment — only production SSH target exists in deploy.yml
+
+**MEDIUM:**
+- Pre-existing spec/e2e type errors (173 in `hms-backend/`) — `auth/`, `billing/`, `admin/` spec files
+- AuditLog archive: retention is count-only (schema change deferred; immutability trigger blocks physical delete)
+
+**LOW:**
+- Two chaos scripts (`chaos-slayer.ts`, `multi-cloud-federated-failover.ts`) still reference stale `prisma/infrastructure-health-probe.ts` path
+- Two clean working-tree changes exist: `CashierDashboard.tsx` and `billing-frontend.service.ts`
 
 ## Key Decisions
 - Reuse existing `AuditLog` model and `AuditService.log()` throughout
@@ -43,16 +50,14 @@ Three verified critical blockers were fixed locally but **not yet committed**:
 - HMAC uses `JWT_SECRET` env var for compatibility
 - Retention is count-only (schema change deferred)
 - `audit.branch`/`audit.global`/`audit.admin` not added — backend role-based filtering is the authority
-- Blocker fixes kept uncommitted for intentional curation before future push
+- Blocker fixes committed in `715b50f` under descriptive fix commit
 
 ## Next Steps (When Authorized)
-1. Commit blocker fixes: `git add hms-backend/src/audit/audit.controller.ts hms-frontend/src/hooks/use-compliance.ts hms-frontend/src/portals/admin/AuditLogsPage.tsx hms-frontend/src/features/admin/AuditLogViewer.tsx && git commit -m "fix(audit): ..."`
-2. Create feature branch + push + open PR to `main` → triggers CI
-3. After CI green → provision staging environment
-4. Fix health-probe build issue before staging deploy
+1. Create feature branch + push + open PR to `main` → triggers CI
+2. After CI green → provision staging environment
 
 ## Critical Context
-- **4 committed + 1 uncommitted fix**: All local, no pushes.
+- **5 committed fixes** (`8f4ce6c`–`715b50f`): All local, no pushes.
 - **8 backend endpoints**: 3 original + 4 Phase 2 + 1 Phase 3 (receipt/event)
 - **Audit event keys**: 70+ across CLINICAL, FINANCIAL, ADMIN, SECURITY, PHARMACY, PRESCRIPTION, LAB, INVENTORY
 - **Permissions**: `audit.view` (existing), `audit.self` (new, backend-enforced), `audit.export` (new, backend-enforced)
@@ -65,9 +70,16 @@ Three verified critical blockers were fixed locally but **not yet committed**:
 (unchanged from prior session — see committed baseline and working-tree diffs)
 
 ## Carryover Risks
+Ranked by severity:
+
+**HIGH:**
 1. **No remote CI proof** — never pushed, CI has never run on these commits
 2. **No staging environment** — only production SSH target exists in deploy.yml
-3. **Health-probe build exclusion** — `infrastructure-health-probe.ts` outside `src/` breaks CD
-4. **Pre-existing spec type errors** — `auth/`, `billing/`, `admin/` spec files
-5. **AuditLog archive** — count-only retention, no schema change for archival
-6. **Export UI unwired** — `exportAuditEvents()` service method exists but no UI trigger
+
+**MEDIUM:**
+3. **Pre-existing spec/e2e type errors (173)** — all in `hms-backend/test/` spec/e2e files across auth, billing, admin
+4. **AuditLog retention** — count-only enforcement; no schema change for archival by class
+
+**LOW:**
+5. **Stale health-probe path in chaos scripts** — `chaos-slayer.ts` and `multi-cloud-federated-failover.ts` still reference `prisma/infrastructure-health-probe.ts`
+6. **Two clean working-tree changes** — `CashierDashboard.tsx` and `billing-frontend.service.ts` modified but not committed
