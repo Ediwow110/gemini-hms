@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { billingFrontendService, InvoiceDto, ActiveSessionDto, OpenSessionDto, CloseSessionDto, CreatePaymentDto } from '../services/billing-frontend.service';
+import { billingFrontendService, InvoiceDto, ActiveSessionDto, OpenSessionDto, CloseSessionDto, CreatePaymentDto, MyReversalDto } from '../services/billing-frontend.service';
 
 export function useInvoices() {
   const [invoices, setInvoices] = useState<InvoiceDto[]>([]);
@@ -22,6 +22,29 @@ export function useInvoices() {
 
   useEffect(() => { fetch(); }, [fetch]);
   return { invoices, loading, error, refetch: fetch };
+}
+
+export function useMyReversals() {
+  const [reversals, setReversals] = useState<MyReversalDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await billingFrontendService.getMyReversals();
+      setReversals(res);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } } | null;
+      setError(axiosErr?.response?.data?.message || 'Failed to load reversals');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetch(); }, [fetch]);
+  return { reversals, loading, error, refetch: fetch };
 }
 
 export function useActiveSession() {

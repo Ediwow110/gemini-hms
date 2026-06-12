@@ -6,48 +6,35 @@ import {
   HmsStatusChip 
 } from '../../components/hms-dashboard';
 import { HmsPageHeader, HmsFormContainer } from '../../components/hms-page';
-import { ShieldAlert, PlusCircle, AlertTriangle, CheckCircle, ArrowRightCircle, Info } from 'lucide-react';
+import { ShieldAlert, PlusCircle, CheckCircle, ArrowRightCircle, Info, RefreshCw, Loader2 } from 'lucide-react';
 import { useUser } from '../../hooks/use-user';
-import { useRequestRefund, useRequestVoid } from '../../hooks/use-billing';
+import { useRequestRefund, useRequestVoid, useMyReversals } from '../../hooks/use-billing';
+import type { MyReversalDto } from '../../services/billing-frontend.service';
 
-export interface SimulatedRefundRequest {
-  id: string;
-  receiptNo: string;
-  patientName: string;
-  reason: string;
-  amount: number;
-  requestDate: string;
-  status: 'Pending Review' | 'Approved' | 'Rejected';
-  cashier: string;
-}
+const formatDate = (iso: string) => {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
 
-const simulatedRows: SimulatedRefundRequest[] = [
-  {
-    id: 'REF-081',
-    receiptNo: 'RCP-2026-5120',
-    patientName: 'Jonathan Harker',
-    reason: 'Duplicate lab test charge ordered in error',
-    amount: 850.00,
-    requestDate: 'Today, 10:14 AM',
-    status: 'Pending Review',
-    cashier: 'Mark Santos',
-  },
-  {
-    id: 'REF-080',
-    receiptNo: 'RCP-2026-5110',
-    patientName: 'Wilhelmina Murray',
-    reason: 'Physician canceled consultation request',
-    amount: 500.00,
-    requestDate: 'Yesterday, 03:00 PM',
-    status: 'Approved',
-    cashier: 'Mark Santos',
-  }
-];
+const statusLabel: Record<string, string> = {
+  PENDING: 'Pending',
+  APPLIED: 'Applied',
+  REJECTED: 'Rejected',
+  CANCELLED: 'Cancelled',
+};
+
+const statusVariant: Record<string, 'warning' | 'success' | 'critical' | 'default'> = {
+  PENDING: 'warning',
+  APPLIED: 'success',
+  REJECTED: 'critical',
+  CANCELLED: 'default',
+};
 
 export const RefundVoidQueuePage = () => {
   const user = useUser();
   const { requestRefund, loading: refundLoading, error: refundError } = useRequestRefund();
   const { requestVoid, loading: voidLoading, error: voidError } = useRequestVoid();
+  const { reversals, loading: queueLoading, error: queueError, refetch } = useMyReversals();
 
   const [requestType, setRequestType] = useState<'REFUND' | 'VOID'>('REFUND');
   const [paymentId, setPaymentId] = useState('');
@@ -55,7 +42,7 @@ export const RefundVoidQueuePage = () => {
   const [amount, setAmount] = useState('');
   const [submitResult, setSubmitResult] = useState<string | null>(null);
 
-  const loading = refundLoading || voidLoading;
+  const submitting = refundLoading || voidLoading;
   const submitError = refundError || voidError;
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
@@ -83,15 +70,10 @@ export const RefundVoidQueuePage = () => {
       setPaymentId('');
       setReason('');
       setAmount('');
+      refetch();
     } catch {
       // error is surfaced via submitError from the hook
     }
-  };
-
-  const getStatusVariant = (status: string) => {
-    if (status === 'Approved') return 'success';
-    if (status === 'Rejected') return 'critical';
-    return 'warning';
   };
 
   return (
@@ -102,93 +84,98 @@ export const RefundVoidQueuePage = () => {
           role={user?.roles?.join(', ')}
         />
       }
-      footer={<HmsAuditFooter dataSource="Refund/Void submission: live API | Queue display: simulated" />}
+      footer={<HmsAuditFooter dataSource="Reversal data: live API" />}
     >
       <HmsPageHeader 
         title="Reversals & Refunds Desk" 
-        description="Submit refund/void requests to the backend and view a simulated queue of pending reversals."
+        description="Submit and track refund/void requests. Approvals require supervisor action via the Approval Center."
         badge="Exception Workflow"
       />
 
-      {/* Partial Wiring Banner */}
-      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2.5 text-[12px] text-amber-800 animate-fade-in">
-        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-        <div>
-          <h5 className="font-bold uppercase text-[10px] tracking-wider">Partially Wired — Queue Display Is Simulated</h5>
-          <p className="font-medium">
-            Refund and void request submission is wired to the live API. The queue below shows simulated rows — pending reversal requests from the backend are not automatically listed here. Approve or reject real reversal requests via the <strong>Approval Center</strong>.
-          </p>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         
-        {/* Left: Simulated Queue */}
+        {/* Left: Live Queue */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
-            <div className="border-b border-slate-100 px-3 py-2.5 flex items-center justify-between bg-amber-50/40">
+            <div className="border-b border-slate-100 px-3 py-2.5 flex items-center justify-between">
               <h3 className="text-[13px] font-bold text-slate-800 uppercase tracking-tight flex items-center gap-1.5 font-sans">
                 <ShieldAlert className="h-4 w-4 text-indigo-500" />
-                Active Reversal Queue
-                <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider bg-amber-100 border border-amber-200 px-1 py-0.5 rounded ml-1">SIMULATED</span>
+                My Reversal Requests
               </h3>
-              <span className="text-[10px] bg-slate-50 border border-slate-200 text-slate-500 font-bold px-2 py-0.5 rounded-md font-sans">
-                {simulatedRows.length} Rows (Example Data)
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={refetch}
+                  disabled={queueLoading}
+                  className="text-[10px] font-bold text-slate-500 hover:text-slate-700 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md flex items-center gap-1 transition-colors"
+                >
+                  <RefreshCw className={`h-3 w-3 ${queueLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+                <span className="text-[10px] bg-slate-50 border border-slate-200 text-slate-500 font-bold px-2 py-0.5 rounded-md font-sans">
+                  {reversals.length} {reversals.length === 1 ? 'Request' : 'Requests'}
+                </span>
+              </div>
             </div>
 
-            <div className="px-3 py-2 bg-amber-50/30 border-b border-amber-100 text-[10px] text-amber-700 flex items-center gap-1.5 font-medium">
-              <Info className="h-3 w-3 shrink-0" />
-              These are example rows. After submitting a real request, use the <strong>Approval Center</strong> to approve or reject it.
-            </div>
+            {queueError && (
+              <div className="px-3 py-2 bg-rose-50 border-b border-rose-100 text-[10px] text-rose-700 flex items-center gap-1.5 font-medium">
+                <Info className="h-3 w-3 shrink-0" />
+                {queueError}
+              </div>
+            )}
 
             <div className="divide-y divide-slate-100 font-sans">
-              {simulatedRows.length === 0 ? (
+              {queueLoading && reversals.length === 0 ? (
+                <div className="py-12 flex items-center justify-center gap-2 text-slate-400 font-bold text-[12px] uppercase tracking-wider">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading...
+                </div>
+              ) : reversals.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 font-bold text-[12px] uppercase tracking-wider">
-                  No active requests in queue
+                  No reversal requests yet
                 </div>
               ) : (
-                simulatedRows.map((req) => (
-                  <div key={req.id} className="p-4 hover:bg-slate-50/50 transition-colors flex flex-col md:flex-row justify-between gap-4 opacity-70">
+                reversals.map((req: MyReversalDto) => (
+                  <div key={req.id} className="p-4 hover:bg-slate-50/50 transition-colors flex flex-col md:flex-row justify-between gap-4">
                     <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-black text-slate-900 text-[14px] leading-none">{req.patientName}</span>
-                        <span className="font-mono text-[11px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                          {req.receiptNo}
+                        <span className="font-black text-slate-900 text-[14px] leading-none">
+                          {req.patientName ?? 'Unknown Patient'}
                         </span>
-                        <HmsStatusChip status={req.status} variant={getStatusVariant(req.status)} />
+                        {req.receiptNumber && (
+                          <span className="font-mono text-[11px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                            {req.receiptNumber}
+                          </span>
+                        )}
+                        <HmsStatusChip status={statusLabel[req.status] ?? req.status} variant={statusVariant[req.status] ?? 'default'} />
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-y-1 text-[11px] font-semibold text-slate-500">
                         <div className="flex items-center gap-1.5">
+                          <span className="text-slate-400 uppercase text-[9px] font-black">Type:</span>
+                          <span className={req.type === 'REFUND' ? 'text-blue-600' : 'text-rose-600'}>
+                            {req.type === 'REFUND' ? 'Refund' : 'Void'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
                           <span className="text-slate-400 uppercase text-[9px] font-black">Amount:</span>
                           <span className="font-mono font-bold text-rose-600">₱{req.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 md:col-span-2">
+                        <div className="flex items-center gap-1.5 md:col-span-3">
                           <span className="text-slate-400 uppercase text-[9px] font-black">Reason:</span>
                           <span className="text-slate-700 italic">"{req.reason}"</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-slate-400 uppercase text-[9px] font-black">ID:</span>
-                          <span className="font-mono">{req.id}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
                           <span className="text-slate-400 uppercase text-[9px] font-black">Date:</span>
-                          <span className="font-mono">{req.requestDate}</span>
+                          <span className="font-mono">{formatDate(req.requestedAt)}</span>
                         </div>
+                        {req.invoiceNumber && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-400 uppercase text-[9px] font-black">Invoice:</span>
+                            <span className="font-mono">{req.invoiceNumber}</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      {req.status === 'Pending Review' ? (
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider bg-slate-100 border border-slate-200 px-2 py-1 rounded">
-                          Example Only
-                        </span>
-                      ) : (
-                        <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest border border-slate-100 px-2 py-1 rounded bg-slate-50/50">
-                          Processed
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))
@@ -199,7 +186,7 @@ export const RefundVoidQueuePage = () => {
           <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg flex gap-2.5 text-[11px] text-indigo-700">
             <ArrowRightCircle className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
             <p className="font-medium">
-              To approve or reject a real reversal request, go to <strong>Approval Center</strong> in the main navigation. The queue above shows example data only.
+              To approve or reject a reversal request, go to <strong>Approval Center</strong> in the main navigation.
             </p>
           </div>
         </div>
@@ -215,10 +202,10 @@ export const RefundVoidQueuePage = () => {
             actions={
               <button
                 type="submit"
-                disabled={loading}
+                disabled={submitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-[12px] font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-sm transition-all"
               >
-                <PlusCircle className="h-4 w-4" /> {loading ? 'Submitting...' : 'Submit Request'}
+                <PlusCircle className="h-4 w-4" /> {submitting ? 'Submitting...' : 'Submit Request'}
               </button>
             }
           >

@@ -32,6 +32,17 @@ import { RequireBranchContext } from '../auth/decorators/branch-context.decorato
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
 
+  @Get('reversals/my')
+  @RequirePermissions('billing.refund.request')
+  @RequireBranchContext()
+  getMyReversals(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+  ) {
+    return this.billingService.getMyReversals(tenantId, userId, branchId);
+  }
+
   @Post('refunds/request')
   @RequirePermissions('billing.refund.request')
   @RequireBranchContext()

@@ -135,6 +135,113 @@ describe('BillingService Reversals', () => {
     service = module.get<BillingService>(BillingService);
   });
 
+  describe('getMyReversals', () => {
+    it('returns reversals scoped to the requesting user', async () => {
+      const mockRows = [
+        {
+          id: 'rev-1',
+          type: 'REFUND',
+          amount: new Prisma.Decimal(500),
+          status: 'PENDING',
+          reason: 'Duplicate charge',
+          requestedAt: new Date('2026-06-13T10:14:00Z'),
+          approvedAt: null,
+          paymentId: mockPaymentId,
+          payment: { receiptNumber: 'RCP-2026-5120' },
+          invoice: {
+            invoiceNumber: 'INV-2026-001',
+            order: {
+              patient: { firstName: 'Jonathan', lastName: 'Harker' },
+            },
+          },
+        },
+      ];
+
+      prisma.paymentReversal.findMany.mockResolvedValue(mockRows);
+
+      const result = await service.getMyReversals(mockTenantId, mockUserId, mockBranchId);
+
+      expect(prisma.paymentReversal.findMany).toHaveBeenCalledWith({
+        where: { tenantId: mockTenantId, branchId: mockBranchId, requestedBy: mockUserId },
+        include: {
+          payment: { select: { receiptNumber: true } },
+          invoice: {
+            select: {
+              invoiceNumber: true,
+              order: {
+                select: {
+                  patient: { select: { firstName: true, lastName: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { requestedAt: 'desc' },
+      });
+
+      expect(result).toEqual([
+        {
+          id: 'rev-1',
+          type: 'REFUND',
+          amount: 500,
+          status: 'PENDING',
+          reason: 'Duplicate charge',
+          requestedAt: new Date('2026-06-13T10:14:00Z'),
+          approvedAt: null,
+          paymentId: mockPaymentId,
+          receiptNumber: 'RCP-2026-5120',
+          invoiceNumber: 'INV-2026-001',
+          patientName: 'Jonathan Harker',
+        },
+      ]);
+    });
+
+    it('returns empty array when user has no reversals', async () => {
+      prisma.paymentReversal.findMany.mockResolvedValue([]);
+
+      const result = await service.getMyReversals(mockTenantId, mockUserId, mockBranchId);
+
+      expect(result).toEqual([]);
+    });
+
+    it('maps null patients gracefully', async () => {
+      const mockRows = [
+        {
+          id: 'rev-2',
+          type: 'PAYMENT_VOID',
+          amount: new Prisma.Decimal(1000),
+          status: 'APPLIED',
+          reason: 'Wrong amount',
+          requestedAt: new Date(),
+          approvedAt: new Date(),
+          paymentId: 'other-pay',
+          payment: { receiptNumber: null },
+          invoice: { invoiceNumber: null, order: null },
+        },
+      ];
+
+      prisma.paymentReversal.findMany.mockResolvedValue(mockRows);
+
+      const result = await service.getMyReversals(mockTenantId, mockUserId, mockBranchId);
+
+      expect(result).toEqual([
+        {
+          id: 'rev-2',
+          type: 'PAYMENT_VOID',
+          amount: 1000,
+          status: 'APPLIED',
+          reason: 'Wrong amount',
+          requestedAt: expect.any(Date),
+          approvedAt: expect.any(Date),
+          paymentId: 'other-pay',
+          receiptNumber: null,
+          invoiceNumber: null,
+          patientName: null,
+        },
+      ]);
+    });
+  });
+
   describe('requestRefund', () => {
     const validRefundDto = {
       paymentId: mockPaymentId,

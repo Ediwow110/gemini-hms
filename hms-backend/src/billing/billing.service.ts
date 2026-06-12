@@ -501,6 +501,55 @@ export class BillingService {
     );
   }
 
+  async getMyReversals(tenantId: string, userId: string, branchId: string) {
+    const reversals = await this.prisma.paymentReversal.findMany({
+      where: {
+        tenantId,
+        branchId,
+        requestedBy: userId,
+      },
+      include: {
+        payment: {
+          select: {
+            receiptNumber: true,
+          },
+        },
+        invoice: {
+          select: {
+            invoiceNumber: true,
+            order: {
+              select: {
+                patient: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { requestedAt: 'desc' },
+    });
+
+    return reversals.map((r) => ({
+      id: r.id,
+      type: r.type,
+      amount: Number(r.amount),
+      status: r.status,
+      reason: r.reason,
+      requestedAt: r.requestedAt,
+      approvedAt: r.approvedAt,
+      paymentId: r.paymentId,
+      receiptNumber: r.payment?.receiptNumber ?? null,
+      invoiceNumber: r.invoice?.invoiceNumber ?? null,
+      patientName: r.invoice?.order?.patient
+        ? `${r.invoice.order.patient.firstName} ${r.invoice.order.patient.lastName}`
+        : null,
+    }));
+  }
+
   async requestRefund(
     tenantId: string,
     userId: string,

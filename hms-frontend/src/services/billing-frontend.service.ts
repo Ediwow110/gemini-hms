@@ -19,6 +19,20 @@ export interface InvoiceDto {
   };
 }
 
+export interface MyReversalDto {
+  id: string;
+  type: 'REFUND' | 'PAYMENT_VOID';
+  amount: number;
+  status: 'PENDING' | 'APPLIED' | 'REJECTED' | 'CANCELLED';
+  reason: string;
+  requestedAt: string;
+  approvedAt: string | null;
+  paymentId: string;
+  receiptNumber: string | null;
+  invoiceNumber: string | null;
+  patientName: string | null;
+}
+
 export interface ActiveSessionDto {
   id: string;
   status: string;
@@ -113,6 +127,11 @@ export class BillingFrontendService {
 
   async expirePayment(paymentId: string, dto: { reason: string }): Promise<unknown> {
     const res = await apiClient.post(`${this.baseUrl}/payments/${paymentId}/expire`, dto);
+    return res.data;
+  }
+
+  async getMyReversals(): Promise<MyReversalDto[]> {
+    const res = await apiClient.get(`${this.baseUrl}/reversals/my`);
     return res.data;
   }
 
