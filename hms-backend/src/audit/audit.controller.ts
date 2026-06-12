@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Query, Param, UseGuards, ValidationPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Query,
+  Param,
+  UseGuards,
+  ValidationPipe,
+} from '@nestjs/common';
 import { AuditService } from './audit.service';
 import { AuditQueryDto } from './dto/audit-query.dto';
 import { AuditExportDto } from './dto/audit-export.dto';
@@ -23,7 +31,7 @@ export class AuditController {
   }
 
   @Get('events/self')
-  @RequirePermissions('audit.view')
+  @RequirePermissions('audit.self')
   async findMyEvents(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -43,7 +51,12 @@ export class AuditController {
     @Query(new ValidationPipe({ transform: true })) query: AuditQueryDto,
   ) {
     return this.auditService.findEntityTimeline(
-      tenantId, branchId, userRoles, recordType, recordId, query,
+      tenantId,
+      branchId,
+      userRoles,
+      recordType,
+      recordId,
+      query,
     );
   }
 
@@ -60,7 +73,7 @@ export class AuditController {
   }
 
   @Get('export')
-  @RequirePermissions('audit.view')
+  @RequirePermissions('audit.export')
   async exportEvents(
     @GetUser('tenantId') tenantId: string,
     @GetUser('branchId') branchId: string | undefined,
@@ -68,7 +81,11 @@ export class AuditController {
     @Query(new ValidationPipe({ transform: true })) query: AuditExportDto,
   ) {
     return this.auditService.exportEvents(
-      tenantId, branchId, userRoles, query, query.format || 'csv',
+      tenantId,
+      branchId,
+      userRoles,
+      query,
+      query.format || 'csv',
     );
   }
 
