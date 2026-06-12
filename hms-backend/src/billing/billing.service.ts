@@ -22,7 +22,11 @@ import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
 import { computePaymentFingerprint } from './utils/idempotency';
 import { LedgerService } from '../ledger/ledger.service';
-import { MAX_PAGE_SIZE, clampTake } from '../common/utils/pagination';
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  clampTake,
+} from '../common/utils/pagination';
 
 export const REVERSAL_TYPE = {
   REFUND: 'REFUND',
@@ -1945,7 +1949,7 @@ export class BillingService {
     pageSize?: number,
     page?: number,
   ) {
-    const take = clampTake(pageSize, MAX_PAGE_SIZE, 50);
+    const take = clampTake(pageSize, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
     const skip = page && page > 0 ? (page - 1) * take : 0;
 
     const [payments, total] = await Promise.all([
