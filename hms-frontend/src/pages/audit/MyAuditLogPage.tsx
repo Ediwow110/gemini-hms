@@ -4,7 +4,6 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 import { AuditEventTable } from '../../features/audit/components/AuditEventTable';
 import { useMyAuditEvents } from '../../hooks/use-compliance';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../../hooks/use-user';
 import { complianceService, AuditLogEntry } from '../../services/compliance.service';
 import { Search, Download } from 'lucide-react';
 import { downloadFile, objectsToCsv } from '../../lib/download';
@@ -15,22 +14,24 @@ export const MyAuditLogPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState(false);
+  const [exportTruncated, setExportTruncated] = useState(false);
+  const [exportInfo, setExportInfo] = useState<{ exportedCount: number; totalAvailable: number } | null>(null);
   const navigate = useNavigate();
-  const user = useUser();
 
   const { events, total, loading, error, refetch } = useMyAuditEvents({ page, pageSize });
 
   const handleRowClick = (event: AuditLogEntry) => {
-    navigate(`/audit/events/${event.id}`);
+    navigate(`/audit/my-events/${event.id}`);
   };
 
   const handleExport = useCallback(async (format: 'csv' | 'json') => {
     setExporting(true);
     setExportError(null);
     setExportSuccess(false);
+    setExportTruncated(false);
+    setExportInfo(null);
     try {
-      const result = await complianceService.exportAuditEvents({
-        userId: user?.id,
+      const result = await complianceService.exportMyAuditEvents({
         format,
       });
       const timestamp = new Date().toISOString().slice(0, 10);
@@ -42,18 +43,22 @@ export const MyAuditLogPage: React.FC = () => {
         downloadFile(json, `audit-export-self-${timestamp}.json`, 'application/json;charset=utf-8');
       }
       setExportSuccess(true);
-      setTimeout(() => setExportSuccess(false), 3000);
+      setExportTruncated(result.truncated);
+      setExportInfo({ exportedCount: result.exportedCount, totalAvailable: result.totalAvailable });
+      if (!result.truncated) {
+        setTimeout(() => setExportSuccess(false), 3000);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Export failed';
       if (msg.includes('403') || msg.includes('Forbidden')) {
-        setExportError('Export requires audit.export permission. Contact your administrator.');
+        setExportError('Self-export requires audit.self permission. Contact your administrator.');
       } else {
         setExportError(msg);
       }
     } finally {
       setExporting(false);
     }
-  }, [user]);
+  }, []);
 
   return (
     <HmsDashboardShell
@@ -83,7 +88,10 @@ export const MyAuditLogPage: React.FC = () => {
           {exportError && (
             <span className="text-[10px] text-rose-600 font-semibold">{exportError}</span>
           )}
-          {exportSuccess && (
+          {exportTruncated && exportInfo && (
+            <span className="text-[10px] text-amber-600 font-semibold">Exported first {exportInfo.exportedCount} of {exportInfo.totalAvailable} records</span>
+          )}
+          {exportSuccess && !exportTruncated && (
             <span className="text-[10px] text-emerald-600 font-semibold">Exported</span>
           )}
           <div className="relative group">

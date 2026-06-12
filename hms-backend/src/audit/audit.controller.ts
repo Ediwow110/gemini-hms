@@ -72,21 +72,48 @@ export class AuditController {
     return this.auditService.verifyChainWithSignatures(tenantId);
   }
 
+  @Get('export/self')
+  @RequirePermissions('audit.self')
+  async exportMyEvents(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @Query(new ValidationPipe({ transform: true })) query: AuditExportDto,
+  ) {
+    return this.auditService.exportMyEvents(
+      tenantId,
+      userId,
+      query,
+      query.format || 'csv',
+    );
+  }
+
   @Get('export')
   @RequirePermissions('audit.export')
   async exportEvents(
     @GetUser('tenantId') tenantId: string,
     @GetUser('branchId') branchId: string | undefined,
     @GetUser('roles') userRoles: string[],
+    @GetUser('userId') userId: string,
     @Query(new ValidationPipe({ transform: true })) query: AuditExportDto,
   ) {
     return this.auditService.exportEvents(
       tenantId,
       branchId,
       userRoles,
+      userId,
       query,
       query.format || 'csv',
     );
+  }
+
+  @Get('events/self/:id')
+  @RequirePermissions('audit.self')
+  async findMyEvent(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.auditService.findMyEvent(tenantId, userId, id);
   }
 
   @Get('events/:id')

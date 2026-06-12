@@ -1,8 +1,9 @@
 function escapeCsv(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const sanitized = value.replace(/^[=+\-@\t\r]/g, '');
+  if (sanitized.includes(',') || sanitized.includes('"') || sanitized.includes('\n') || sanitized.includes('\r')) {
+    return `"${sanitized.replace(/"/g, '""')}"`;
   }
-  return value;
+  return sanitized;
 }
 
 export function objectsToCsv(rows: Record<string, unknown>[]): string {

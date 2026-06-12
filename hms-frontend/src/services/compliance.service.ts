@@ -40,6 +40,11 @@ export class ComplianceService {
     return res.data;
   }
 
+  async getMyAuditEvent(id: string): Promise<AuditLogEntry> {
+    const res = await apiClient.get(`${this.auditBase}/events/self/${id}`);
+    return res.data;
+  }
+
   async getEntityAuditEvents(recordType: string, recordId: string, params?: AuditSearchParams): Promise<{ data: AuditLogEntry[]; total: number; page: number; pageSize: number }> {
     const res = await apiClient.get(`${this.auditBase}/events/entity/${recordType}/${recordId}`, { params });
     return res.data;
@@ -60,8 +65,13 @@ export class ComplianceService {
     return res.data;
   }
 
-  async exportAuditEvents(params?: AuditSearchParams & { format?: 'csv' | 'json' }): Promise<{ data: Record<string, unknown>[]; total: number; format: string }> {
+  async exportAuditEvents(params?: AuditSearchParams & { format?: 'csv' | 'json' }): Promise<{ data: Record<string, unknown>[]; exportedCount: number; totalAvailable: number; truncated: boolean; format: string }> {
     const res = await apiClient.get(`${this.auditBase}/export`, { params });
+    return res.data;
+  }
+
+  async exportMyAuditEvents(params?: AuditSearchParams & { format?: 'csv' | 'json' }): Promise<{ data: Record<string, unknown>[]; exportedCount: number; totalAvailable: number; truncated: boolean; format: string }> {
+    const res = await apiClient.get(`${this.auditBase}/export/self`, { params });
     return res.data;
   }
 

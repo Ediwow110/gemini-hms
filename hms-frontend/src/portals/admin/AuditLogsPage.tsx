@@ -17,12 +17,22 @@ export const AuditLogsPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState(false);
+  const [exportTruncated, setExportTruncated] = useState(false);
+  const [exportInfo, setExportInfo] = useState<{ exportedCount: number; totalAvailable: number } | null>(null);
   const navigate = useNavigate();
 
   const { events, total, loading, error, refetch } = useAuditEvents({
     page, pageSize,
     eventKey: eventKeyFilter || undefined,
   });
+
+  const filteredEvents = searchText
+    ? events.filter(e =>
+        e.eventKey.toLowerCase().includes(searchText.toLowerCase()) ||
+        e.recordType.toLowerCase().includes(searchText.toLowerCase()) ||
+        e.userId.toLowerCase().includes(searchText.toLowerCase())
+      )
+    : events;
 
   const handleRowClick = (event: AuditLogEntry) => {
     navigate(`/audit/events/${event.id}`);
@@ -32,6 +42,8 @@ export const AuditLogsPage: React.FC = () => {
     setExporting(true);
     setExportError(null);
     setExportSuccess(false);
+    setExportTruncated(false);
+    setExportInfo(null);
     try {
       const result = await complianceService.exportAuditEvents({
         eventKey: eventKeyFilter || undefined,
@@ -46,7 +58,11 @@ export const AuditLogsPage: React.FC = () => {
         downloadFile(json, `audit-export-${timestamp}.json`, 'application/json;charset=utf-8');
       }
       setExportSuccess(true);
-      setTimeout(() => setExportSuccess(false), 3000);
+      setExportTruncated(result.truncated);
+      setExportInfo({ exportedCount: result.exportedCount, totalAvailable: result.totalAvailable });
+      if (!result.truncated) {
+        setTimeout(() => setExportSuccess(false), 3000);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Export failed';
       if (msg.includes('403') || msg.includes('Forbidden')) {
@@ -85,7 +101,10 @@ export const AuditLogsPage: React.FC = () => {
             {exportError && (
               <span className="text-[10px] text-rose-600 font-semibold">{exportError}</span>
             )}
-            {exportSuccess && (
+            {exportTruncated && exportInfo && (
+              <span className="text-[10px] text-amber-600 font-semibold">Exported first {exportInfo.exportedCount} of {exportInfo.totalAvailable} records</span>
+            )}
+            {exportSuccess && !exportTruncated && (
               <span className="text-[10px] text-emerald-600 font-semibold">Exported</span>
             )}
             <div className="relative group">
@@ -173,8 +192,8 @@ export const AuditLogsPage: React.FC = () => {
       </div>
 
       <AuditEventTable
-        events={events}
-        total={total}
+        events={filteredEvents}
+        total={searchText ? filteredEvents.length : total}
         page={page}
         pageSize={pageSize}
         loading={loading}

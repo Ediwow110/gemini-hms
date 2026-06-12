@@ -8,9 +8,18 @@ import { History, Search, RefreshCw } from 'lucide-react';
 export const AuditLogViewer = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [searchText, setSearchText] = useState('');
   const navigate = useNavigate();
 
   const { events, total, loading, error, refetch } = useAuditEvents({ page, pageSize });
+
+  const filteredEvents = searchText
+    ? events.filter(e =>
+        e.eventKey.toLowerCase().includes(searchText.toLowerCase()) ||
+        e.recordType.toLowerCase().includes(searchText.toLowerCase()) ||
+        e.userId.toLowerCase().includes(searchText.toLowerCase())
+      )
+    : events;
 
   const getEventLabel = (key: string): string =>
     key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -29,7 +38,8 @@ export const AuditLogViewer = () => {
     navigate(`/audit/events/${event.id}`);
   };
 
-  const totalPages = Math.ceil(total / pageSize);
+  const displayTotal = searchText ? filteredEvents.length : total;
+  const totalPages = Math.ceil(displayTotal / pageSize);
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
@@ -43,6 +53,8 @@ export const AuditLogViewer = () => {
               <input
                 type="text"
                 placeholder="Search events..."
+                value={searchText}
+                onChange={(e) => { setSearchText(e.target.value); setPage(1); }}
                 className="w-64 pl-9 pr-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
@@ -77,7 +89,7 @@ export const AuditLogViewer = () => {
           <div className="animate-pulse space-y-3">
             {[1,2,3,4,5].map(i => <div key={i} className="h-10 bg-slate-100 rounded-xl" />)}
           </div>
-        ) : events.length === 0 ? (
+        ) : filteredEvents.length === 0 ? (
           <div className="py-16 text-center">
             <History className="h-10 w-10 text-slate-300 mx-auto mb-3" />
             <p className="text-sm font-medium text-slate-500">No audit events found</p>
@@ -95,7 +107,7 @@ export const AuditLogViewer = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {events.map((e) => (
+                  {filteredEvents.map((e) => (
                     <tr
                       key={e.id}
                       className="cursor-pointer hover:bg-indigo-50/30 transition-colors group"
@@ -123,7 +135,7 @@ export const AuditLogViewer = () => {
             </div>
 
             <div className="p-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span>{total} event{total !== 1 ? 's' : ''}</span>
+              <span>{displayTotal} event{displayTotal !== 1 ? 's' : ''}</span>
               <div className="flex items-center gap-2">
                 <button
                   className="px-3 py-1 rounded border border-slate-200 disabled:opacity-40 font-medium hover:bg-white"

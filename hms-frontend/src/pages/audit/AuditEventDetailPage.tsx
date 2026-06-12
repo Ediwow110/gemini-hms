@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsLoadingSkeleton } from '../../components/hms-dashboard';
 import { complianceService, AuditLogEntry } from '../../services/compliance.service';
@@ -8,6 +8,8 @@ import { ArrowLeft, CheckCircle2, ShieldCheck, Globe, Monitor } from 'lucide-rea
 export const AuditEventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSelf = location.pathname.includes('/my-events/');
   const [event, setEvent] = useState<AuditLogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,11 +17,14 @@ export const AuditEventDetailPage: React.FC = () => {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    complianceService.getAuditEvent(id)
+    const fetch = isSelf
+      ? complianceService.getMyAuditEvent(id)
+      : complianceService.getAuditEvent(id);
+    fetch
       .then(setEvent)
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load event'))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, isSelf]);
 
   const getEventLabel = (key: string): string =>
     key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());

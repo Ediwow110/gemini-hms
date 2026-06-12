@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { complianceService, AuditLogEntry } from '../services/compliance.service';
 
 function getErrorMessage(err: unknown): string {
@@ -22,14 +22,13 @@ export function useMyAuditEvents(params?: {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const paramsRef = useRef(params);
-  useEffect(() => { paramsRef.current = params; });
+  const paramsKey = JSON.stringify(params);
 
   const fetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await complianceService.getMyAuditEvents(paramsRef.current);
+      const res = await complianceService.getMyAuditEvents(params);
       setEvents(res.data);
       setTotal(res.total);
     } catch (err: unknown) {
@@ -37,7 +36,8 @@ export function useMyAuditEvents(params?: {
     } finally {
       setLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey]);
 
   useEffect(() => {
     fetch();
@@ -57,14 +57,13 @@ export function useEntityAuditTimeline(recordType: string, recordId: string, par
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const paramsRef = useRef(params);
-  useEffect(() => { paramsRef.current = params; });
+  const paramsKey = JSON.stringify(params);
 
   const fetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await complianceService.getEntityAuditEvents(recordType, recordId, paramsRef.current);
+      const res = await complianceService.getEntityAuditEvents(recordType, recordId, params);
       setEvents(res.data);
       setTotal(res.total);
     } catch (err: unknown) {
@@ -72,7 +71,8 @@ export function useEntityAuditTimeline(recordType: string, recordId: string, par
     } finally {
       setLoading(false);
     }
-  }, [recordType, recordId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recordType, recordId, paramsKey]);
 
   useEffect(() => {
     fetch();
@@ -93,14 +93,13 @@ export function useAuditEvents(params?: {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const paramsRef = useRef(params);
-  useEffect(() => { paramsRef.current = params; });
+  const paramsKey = JSON.stringify(params);
 
   const fetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await complianceService.getAuditEvents(paramsRef.current);
+      const res = await complianceService.getAuditEvents(params);
       setEvents(res.data);
       setTotal(res.total);
     } catch (err: unknown) {
@@ -108,7 +107,8 @@ export function useAuditEvents(params?: {
     } finally {
       setLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey]);
 
   useEffect(() => {
     fetch();

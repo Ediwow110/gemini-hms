@@ -31,7 +31,15 @@ const RETENTION_CLASSES = {
   },
   ADMINISTRATIVE: {
     durationYears: 3,
-    eventPrefixes: ['ADMIN_', 'ROLE_', 'USER_', 'CATALOG_', 'MERGE_'],
+    eventPrefixes: [
+      'ADMIN_',
+      'ROLE_',
+      'USER_',
+      'CATALOG_',
+      'MERGE_',
+      'AUDIT_LOG_RETENTION_',
+      'AUDIT_LOG_ARCHIVED',
+    ],
   },
   SECURITY: {
     durationYears: 5,
@@ -41,11 +49,17 @@ const RETENTION_CLASSES = {
       'SECURITY_',
       'LOGIN_',
       'MFA_',
+      'CHAIN_',
     ],
   },
   EXPORT: {
     durationYears: 1,
-    eventPrefixes: ['EXPORTED', 'DOWNLOADED', 'REPORT_EXPORTED'],
+    eventPrefixes: [
+      'EXPORTED',
+      'DOWNLOADED',
+      'REPORT_EXPORTED',
+      'AUDIT_LOG_EXPORTED',
+    ],
   },
   TRANSIENT: {
     durationDays: 90,
