@@ -64,6 +64,6 @@ describe('RefundVoidQueuePage', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/UI Demonstration Sandbox Shell/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sandbox — No Backend Effect/i)).toBeInTheDocument();
   });
 });
