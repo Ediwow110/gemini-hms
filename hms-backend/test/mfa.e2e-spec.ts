@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe, APP_GUARD } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { Reflector } from '@nestjs/core';
 import request from 'supertest';
 import { App } from 'supertest/types';
