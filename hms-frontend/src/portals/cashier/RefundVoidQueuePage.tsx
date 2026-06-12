@@ -52,12 +52,12 @@ export const RefundVoidQueuePage = () => {
 
   const handleApprove = (id: string) => {
     setRequests(requests.map(r => r.id === id ? { ...r, status: 'Approved' } : r));
-    alert(`Reversal ticket ${id} has been authorized and cleared in sandbox memory.`);
+    alert(`[SANDBOX ONLY] Reversal ticket ${id} would be approved in production — no backend effect occurred.`);
   };
 
   const handleReject = (id: string) => {
     setRequests(requests.map(r => r.id === id ? { ...r, status: 'Rejected' } : r));
-    alert(`Reversal ticket ${id} has been rejected.`);
+    alert(`[SANDBOX ONLY] Reversal ticket ${id} would be rejected in production — no backend effect occurred.`);
   };
 
   const handleSubmitRequest = (e: React.FormEvent) => {
@@ -83,7 +83,7 @@ export const RefundVoidQueuePage = () => {
     setReason('');
     setAmount('');
     setPatientName('');
-    alert('Void/reversal request submitted to supervisor review queue.');
+    alert('[SANDBOX ONLY] Void/reversal request would be submitted to supervisor review queue in production — no backend effect occurred.');
   };
 
   const getStatusVariant = (status: string) => {
@@ -178,15 +178,20 @@ export const RefundVoidQueuePage = () => {
                     <div className="flex items-center gap-2 shrink-0">
                       {req.status === 'Pending Review' ? (
                         <>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] font-black text-amber-600 uppercase tracking-wider bg-amber-50 border border-amber-200 px-1 py-0.5 rounded">SANDBOX</span>
+                          </div>
                           <button
                             onClick={() => handleApprove(req.id)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-1 transition-all"
+                            className="bg-emerald-600/60 hover:bg-emerald-700/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-1 transition-all cursor-not-allowed"
+                            title="Sandbox — no backend effect"
                           >
                             <CheckCircle className="h-3.5 w-3.5" /> Approve
                           </button>
                           <button
                             onClick={() => handleReject(req.id)}
                             className="border border-slate-200 text-slate-650 hover:bg-slate-50 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all"
+                            title="Sandbox — no backend effect"
                           >
                             <XCircle className="h-3.5 w-3.5 text-slate-400" /> Reject
                           </button>
