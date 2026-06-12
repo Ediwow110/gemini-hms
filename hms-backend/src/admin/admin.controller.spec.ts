@@ -20,28 +20,7 @@ import {
 
 describe('AdminController', () => {
   let controller: AdminController;
-  let adminService: {
-    createUser: jest.Mock;
-    updateUser: jest.Mock;
-    createCustomRole: jest.Mock;
-    updateCustomRole: jest.Mock;
-    archiveCustomRole: jest.Mock;
-    deactivateUser: jest.Mock;
-    activateUser: jest.Mock;
-    assignUserRole: jest.Mock;
-    revokeUserRole: jest.Mock;
-    grantRolePermission: jest.Mock;
-    revokeRolePermission: jest.Mock;
-    requestPrivilegedRoleAssignment: jest.Mock;
-    requestPrivilegedRoleRevocation: jest.Mock;
-    approvePrivilegedRoleChange: jest.Mock;
-    rejectPrivilegedRoleChange: jest.Mock;
-    requestPrivilegedUserDeactivation: jest.Mock;
-    requestPrivilegedUserActivation: jest.Mock;
-    requestPrivilegedUserProfileUpdate: jest.Mock;
-    approvePrivilegedUserChange: jest.Mock;
-    rejectPrivilegedUserChange: jest.Mock;
-  };
+  let adminService: any;
 
   const actor: RequestUser = {
     userId: 'actor-id',
