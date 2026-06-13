@@ -55,16 +55,15 @@ export class DashboardService {
           status: 'PENDING',
         },
       }),
-      // Low Stock (BranchStock < reorderLevel)
-      this.prisma.branchStock.count({
-        where: {
-          tenantId,
-          branchId,
-          // We need to join with InventoryItem to check reorderLevel if not in BranchStock
-          // But BranchStock has reorderLevel in our schema (see schema.prisma line 1265)
-          // Wait, I'll check schema.prisma again.
-        },
-      }),
+      // Low Stock (BranchStock quantity < reorderLevel)
+      this.prisma.branchStock
+        .findMany({
+          where: { tenantId, branchId },
+          select: { quantity: true, reorderLevel: true },
+        })
+        .then(
+          (stocks) => stocks.filter((s) => s.quantity < s.reorderLevel).length,
+        ),
       // Revenue Today
       this.prisma.payment.aggregate({
         _sum: { amount: true },
@@ -82,29 +81,32 @@ export class DashboardService {
         },
       }),
     ]);
-    void lowStock;
-
     return {
       activePatients,
       todaysAppointments: todaysAppts,
       pendingLabs,
-      lowStock: 0, // Will fix once I verify BranchStock schema
+      lowStock,
       revenue: revenue._sum.amount || 0,
       securityAlerts: alerts,
     };
   }
 
   async getAdminTrends(_query: DashboardQueryDto, tenantId: string) {
-    // Simplified trend: daily count of encounters for the last 7 days
-    const encounters = await this.prisma.encounter.groupBy({
-      by: ['encounteredAt'],
-      where: { tenantId },
-      _count: { id: true },
-    });
+    // Daily encounter count using DB-native date truncation
+    const rows = await this.prisma.$queryRaw<
+      Array<{ day: Date; count: bigint }>
+    >`
+      SELECT DATE_TRUNC('day', encountered_at) AS day, COUNT(*) AS count
+      FROM encounters
+      WHERE tenant_id = ${tenantId}::uuid
+      GROUP BY day
+      ORDER BY day DESC
+      LIMIT 90
+    `;
 
-    return encounters.map((e: any) => ({
-      label: e.encounteredAt.toISOString().split('T')[0],
-      value: e._count.id,
+    return rows.map((row) => ({
+      label: row.day.toISOString().split('T')[0],
+      value: Number(row.count),
     }));
   }
 

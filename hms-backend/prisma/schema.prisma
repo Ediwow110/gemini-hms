@@ -538,6 +538,8 @@ model Order {
   @@index([encounterId])
   @@index([requestedById])
   @@index([cancelledById])
+  @@index([tenantId, branchId, createdAt])
+  @@index([tenantId, branchId, patientId])
   @@map("orders")
 }
 
@@ -699,6 +701,8 @@ model Invoice {
   insuranceClaims InsuranceClaim[]
 
   @@unique([tenantId, invoiceNumber])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
   @@map("invoices")
 }
 
@@ -732,6 +736,8 @@ model Payment {
   refunds        Refund[]
 
   @@unique([tenantId, receiptNumber])
+  @@index([tenantId, cashierSessionId, status])
+  @@index([tenantId, createdAt])
   @@map("payments")
 }
 
@@ -799,6 +805,7 @@ model LabResult {
   signature LabResultSignature?
 
   @@index([tenantId, isCritical, criticalStatus])
+  @@index([tenantId, status, archivedAt])
   @@map("lab_results")
 }
 
@@ -869,6 +876,7 @@ model AuditLog {
   @@index([eventKey])
   @@index([recordType, recordId])
   @@index([userId, createdAt])
+  @@index([tenantId, eventKey, createdAt])
   @@map("audit_logs")
 }
 
@@ -1057,6 +1065,8 @@ model QueueEntry {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId, branchId, status, createdAt])
+  @@index([tenantId, status, createdAt])
   @@map("queue_entries")
 }
 
@@ -1207,6 +1217,8 @@ model Notification {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId, status])
+  @@index([userId, status])
   @@map("notifications")
 }
 
@@ -1242,6 +1254,7 @@ model CashierSession {
   payments      Payment[]
   ledgerEntries CashierLedgerEntry[]
 
+  @@index([tenantId, userId, branchId, status])
   @@map("cashier_sessions")
 }
 

@@ -1,63 +1,59 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { ANALYTICS_SAFETY_CAP } from '../common/utils/pagination';
 
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getRevenue(tenantId: string) {
-    const payments = await this.prisma.payment.findMany({
-      where: { tenantId },
-      select: {
-        amount: true,
-        createdAt: true,
-      },
-      take: ANALYTICS_SAFETY_CAP,
-    });
+    const rows = await this.prisma.$queryRaw<
+      Array<{ day: Date; total: Prisma.Decimal }>
+    >`
+      SELECT DATE_TRUNC('day', created_at) AS day, SUM(amount) AS total
+      FROM payments
+      WHERE tenant_id = ${tenantId}::uuid AND status = 'POSTED'
+      GROUP BY day
+      ORDER BY day
+    `;
 
-    const revenueByDay: Record<string, number> = {};
-    for (const p of payments) {
-      const day = p.createdAt.toISOString().substring(0, 10);
-      revenueByDay[day] = (revenueByDay[day] || 0) + Number(p.amount);
-    }
-
-    return Object.entries(revenueByDay).map(([date, total]) => ({
-      date,
-      total: Number(total.toFixed(2)),
+    return rows.map((row) => ({
+      date: row.day.toISOString().substring(0, 10),
+      total: Number(Number(row.total).toFixed(2)),
     }));
   }
 
   async getTopDiagnoses(tenantId: string) {
-    const diagnoses = await this.prisma.encounterDiagnosis.findMany({
+    // Use groupBy to get diagnosis counts by icd10CodeId
+    const grouped = await this.prisma.encounterDiagnosis.groupBy({
+      by: ['icd10CodeId'],
       where: {
-        encounter: {
-          tenantId,
-        },
+        encounter: { tenantId },
         deletedAt: null,
       },
-      include: {
-        icd10Code: true,
-      },
-      take: ANALYTICS_SAFETY_CAP,
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 10,
     });
 
-    const counts: Record<
-      string,
-      { code: string; name: string; count: number }
-    > = {};
-    for (const d of diagnoses) {
-      if (!d.icd10Code) continue;
-      const code = d.icd10Code.code;
-      if (!counts[code]) {
-        counts[code] = { code, name: d.icd10Code.description, count: 0 };
-      }
-      counts[code].count++;
-    }
+    // Fetch the top 10 codes' details
+    const codeIds = grouped.map((g) => g.icd10CodeId);
+    if (codeIds.length === 0) return [];
 
-    return Object.values(counts)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+    const codes = await this.prisma.icd10Code.findMany({
+      where: { id: { in: codeIds } },
+      select: { id: true, code: true, description: true },
+    });
+    const codeMap = new Map(codes.map((c) => [c.id, c]));
+
+    return grouped.map((g) => {
+      const code = codeMap.get(g.icd10CodeId);
+      return {
+        code: code?.code ?? 'UNKNOWN',
+        name: code?.description ?? 'Unknown',
+        count: g._count.id,
+      };
+    });
   }
 
   async getBedOccupancy(tenantId: string) {
@@ -71,43 +67,47 @@ export class AnalyticsService {
   }
 
   async getWaitTime(tenantId: string) {
-    const completedEntries = await this.prisma.queueEntry.findMany({
-      where: {
-        tenantId,
-        status: { in: ['COMPLETED', 'SERVING'] },
-      },
-      select: {
-        createdAt: true,
-        updatedAt: true,
-      },
-      take: ANALYTICS_SAFETY_CAP,
-    });
+    const result = await this.prisma.$queryRaw<
+      Array<{ avg_minutes: number | null }>
+    >`
+      SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60) AS avg_minutes
+      FROM queue_entries
+      WHERE tenant_id = ${tenantId}::uuid AND status IN ('COMPLETED', 'SERVING')
+    `;
 
-    if (completedEntries.length === 0) {
-      return { averageWaitTimeMinutes: 12.5 };
+    const avgMinutes = result[0]?.avg_minutes;
+    if (avgMinutes == null) {
+      return { averageWaitTimeMinutes: 0 };
     }
-
-    let totalDiffMs = 0;
-    for (const entry of completedEntries) {
-      totalDiffMs += entry.updatedAt.getTime() - entry.createdAt.getTime();
-    }
-    const averageMinutes = totalDiffMs / completedEntries.length / 60000;
-    return { averageWaitTimeMinutes: Number(averageMinutes.toFixed(2)) };
+    return { averageWaitTimeMinutes: Number(Number(avgMinutes).toFixed(2)) };
   }
 
   async getClaimRate(tenantId: string) {
-    const claims = await this.prisma.insuranceClaim.findMany({
+    const grouped = await this.prisma.insuranceClaim.groupBy({
+      by: ['status'],
       where: {
         tenantId,
         status: { in: ['ACCEPTED', 'PAID', 'REJECTED'] },
       },
-      select: {
-        status: true,
-      },
-      take: ANALYTICS_SAFETY_CAP,
+      _count: { id: true },
     });
 
-    if (claims.length === 0) {
+    const counts = {
+      accepted: 0,
+      paid: 0,
+      rejected: 0,
+    };
+
+    for (const g of grouped) {
+      if (g.status === 'ACCEPTED') counts.accepted = g._count.id;
+      else if (g.status === 'PAID') counts.paid = g._count.id;
+      else if (g.status === 'REJECTED') counts.rejected = g._count.id;
+    }
+
+    const totalAccepted = counts.accepted + counts.paid;
+    const total = totalAccepted + counts.rejected;
+
+    if (total === 0) {
       return {
         totalClaims: 0,
         approvedClaims: 0,
@@ -117,23 +117,12 @@ export class AnalyticsService {
       };
     }
 
-    let approved = 0;
-    let rejected = 0;
-
-    for (const c of claims) {
-      if (c.status === 'ACCEPTED' || c.status === 'PAID') {
-        approved++;
-      } else if (c.status === 'REJECTED') {
-        rejected++;
-      }
-    }
-
     return {
-      totalClaims: claims.length,
-      approvedClaims: approved,
-      rejectedClaims: rejected,
-      approvalRate: Number((approved / claims.length).toFixed(4)),
-      rejectionRate: Number((rejected / claims.length).toFixed(4)),
+      totalClaims: total,
+      approvedClaims: totalAccepted,
+      rejectedClaims: counts.rejected,
+      approvalRate: Number((totalAccepted / total).toFixed(4)),
+      rejectionRate: Number((counts.rejected / total).toFixed(4)),
     };
   }
 }

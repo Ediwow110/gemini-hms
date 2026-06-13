@@ -76,7 +76,7 @@ describe('Branch Isolation — DashboardService', () => {
         }),
       }),
     );
-    expect(prisma.branchStock.count).toHaveBeenCalledWith(
+    expect(prisma.branchStock.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           branchId: BRANCH_A,
