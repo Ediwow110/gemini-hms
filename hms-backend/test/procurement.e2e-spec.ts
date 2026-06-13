@@ -268,7 +268,10 @@ describe('Procurement E2E', () => {
       email: `manager-${randomUUID()}@hms.local`,
     };
 
-    const results = await Promise.allSettled([
+    // NOTE: Supertest promises ALWAYS resolve (never reject on 4xx/5xx)
+    // unless .expect() is chained. We check status codes from the response
+    // bodies rather than using fulfilled/rejected counts.
+    const responses = await Promise.all([
       request(app.getHttpServer())
         .post('/api/v1/procurement/purchase-orders')
         .send({ branchId, supplierId, purchaseRequestId }),
@@ -277,11 +280,9 @@ describe('Procurement E2E', () => {
         .send({ branchId, supplierId, purchaseRequestId }),
     ]);
 
-    const fulfilled = results.filter((r) => r.status === 'fulfilled');
-    const rejected = results.filter((r) => r.status === 'rejected');
-
-    expect(fulfilled.length).toBe(1);
-    expect(rejected.length).toBe(1);
+    const statusCodes = responses.map((r) => r.status);
+    expect(statusCodes.filter((s) => s === 201).length).toBe(1);
+    expect(statusCodes.filter((s) => s === 400).length).toBe(1);
 
     // Verify only one PO exists in DB
     const pos = await prisma.purchaseOrder.findMany({
@@ -330,7 +331,10 @@ describe('Procurement E2E', () => {
       email: `staff-${randomUUID()}@hms.local`,
     };
 
-    const results = await Promise.allSettled([
+    // NOTE: Supertest promises ALWAYS resolve (never reject on 4xx/5xx)
+    // unless .expect() is chained. We check status codes from the response
+    // bodies rather than using fulfilled/rejected counts.
+    const responses = await Promise.all([
       request(app.getHttpServer())
         .post(`/api/v1/procurement/purchase-orders/${purchaseOrderId}/receive`)
         .send({ notes: 'Concurrent receive test' }),
@@ -339,11 +343,9 @@ describe('Procurement E2E', () => {
         .send({ notes: 'Concurrent receive test' }),
     ]);
 
-    const fulfilled = results.filter((r) => r.status === 'fulfilled');
-    const rejected = results.filter((r) => r.status === 'rejected');
-
-    expect(fulfilled.length).toBe(1);
-    expect(rejected.length).toBe(1);
+    const statusCodes = responses.map((r) => r.status);
+    expect(statusCodes.filter((s) => s === 201).length).toBe(1);
+    expect(statusCodes.filter((s) => s === 400).length).toBe(1);
 
     // Verify only one receiving record exists in DB
     const records = await prisma.receivingRecord.findMany({
