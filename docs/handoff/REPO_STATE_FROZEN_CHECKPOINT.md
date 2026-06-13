@@ -63,6 +63,10 @@ The repository is in a **verified local-green state**. All targeted backend and 
 - **Backend Logic**: All unit tests in `billing.service.spec.ts` pass locally.
 - **Frontend Build**: `cd hms-frontend && npx tsc --noEmit` exits with `0` (Success).
 - **Frontend Sync**: Absolute synchronization verified between `App.tsx`, `portalRoutes.ts`, and `roleNavigation.ts`. Super Admin default landing is `/admin/executive`.
+- **Manual Release Rehearsal**: 
+    - `docker-compose.prod.yml` manifest is syntactically valid (verified via `config` with dummy envs).
+    - Release path in `remote-deploy.sh` is mechanically coherent (verified alignment of service names and health prober paths).
+    - `infrastructure-health-probe.js` is verified as present in the production build output (`dist/scripts/`).
 ---
 
 ## 4. Unproven / Externally Blocked
