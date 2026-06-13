@@ -8,6 +8,7 @@ export class MetricsService {
   private loginCount = 0;
   private mfaFailureCount = 0;
   private endpointHits: Record<string, number> = {};
+  private endpointDurations: Record<string, number[]> = {};
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -15,6 +16,18 @@ export class MetricsService {
     this.requestCount++;
     const key = `${method} ${path}`;
     this.endpointHits[key] = (this.endpointHits[key] || 0) + 1;
+  }
+
+  recordEndpointDuration(method: string, path: string, durationMs: number) {
+    const key = `${method} ${path}`;
+    if (!this.endpointDurations[key]) {
+      this.endpointDurations[key] = [];
+    }
+    this.endpointDurations[key].push(durationMs);
+    // Keep only the last 100 timings per endpoint to bound memory
+    if (this.endpointDurations[key].length > 100) {
+      this.endpointDurations[key] = this.endpointDurations[key].slice(-100);
+    }
   }
 
   incrementErrorCount() {
@@ -46,12 +59,29 @@ export class MetricsService {
       // Fallback if table not initialized in migrations/unit tests
     }
 
+    // Compute percentile durations for each endpoint
+    const endpointTimings: Record<
+      string,
+      { p50: number; p95: number; p99: number; samples: number }
+    > = {};
+    for (const [key, durations] of Object.entries(this.endpointDurations)) {
+      const sorted = [...durations].sort((a, b) => a - b);
+      const len = sorted.length;
+      endpointTimings[key] = {
+        p50: sorted[Math.floor(len * 0.5)] ?? 0,
+        p95: sorted[Math.floor(len * 0.95)] ?? 0,
+        p99: sorted[Math.floor(len * 0.99)] ?? 0,
+        samples: len,
+      };
+    }
+
     return {
       totalRequests: this.requestCount,
       totalErrors: this.errorCount,
       totalLogins: this.loginCount,
       mfaFailures: this.mfaFailureCount,
       endpointHits: this.endpointHits,
+      endpointTimings,
       uptime: process.uptime(),
       memoryUsage: process.memoryUsage(),
       cpuUsage: process.cpuUsage(),
