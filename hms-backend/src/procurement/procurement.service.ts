@@ -147,6 +147,7 @@ export class ProcurementService {
       );
     }
 
+    // Validate PR existence and branch scope outside transaction (fast-fail)
     const pr = await this.prisma.purchaseRequest.findFirst({
       where: {
         id: dto.purchaseRequestId,
@@ -159,12 +160,6 @@ export class ProcurementService {
       throw new NotFoundException('Purchase request not found in this branch');
     }
 
-    if (pr.status !== 'APPROVED') {
-      throw new BadRequestException(
-        'Purchase request must be APPROVED to create a Purchase Order',
-      );
-    }
-
     const supplier = await this.prisma.supplier.findFirst({
       where: { id: dto.supplierId, tenantId: user.tenantId },
     });
@@ -174,6 +169,18 @@ export class ProcurementService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
+      // Atomically claim the PR: only succeeds if still APPROVED (prevents duplicate POs)
+      const claimedPr = await tx.purchaseRequest.updateMany({
+        where: { id: dto.purchaseRequestId, status: 'APPROVED' },
+        data: { status: 'ORDERED' },
+      });
+
+      if (claimedPr.count === 0) {
+        throw new BadRequestException(
+          'Purchase request is no longer APPROVED — may already have a Purchase Order',
+        );
+      }
+
       const orderNumber = await this.numbering.generateNumber(
         user.tenantId,
         'PURCHASE_ORDER',
@@ -190,11 +197,6 @@ export class ProcurementService {
           orderNumber,
           status: 'SENT',
         },
-      });
-
-      await tx.purchaseRequest.update({
-        where: { id: dto.purchaseRequestId },
-        data: { status: 'ORDERED' },
       });
 
       await this.audit.log(
@@ -244,12 +246,13 @@ export class ProcurementService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
-      // Re-fetch with row lock to prevent double receive
-      const lockedPo = await tx.purchaseOrder.findFirst({
-        where: { id: purchaseOrderId },
+      // Atomically claim the PO: only succeeds if still SENT (prevents duplicate receives)
+      const claimedPo = await tx.purchaseOrder.updateMany({
+        where: { id: purchaseOrderId, status: 'SENT' },
+        data: { status: 'RECEIVED' },
       });
 
-      if (!lockedPo || lockedPo.status === 'RECEIVED') {
+      if (claimedPo.count === 0) {
         throw new BadRequestException('Purchase order is already received');
       }
 
@@ -263,11 +266,6 @@ export class ProcurementService {
         },
       });
 
-      const updatedPo = await tx.purchaseOrder.update({
-        where: { id: purchaseOrderId },
-        data: { status: 'RECEIVED' },
-      });
-
       await this.audit.log(
         {
           tenantId: user.tenantId,
@@ -275,7 +273,7 @@ export class ProcurementService {
           eventKey: 'PURCHASE_ORDER_RECEIVED',
           recordType: 'PurchaseOrder',
           recordId: purchaseOrderId,
-          newValues: updatedPo,
+          newValues: { status: 'RECEIVED' },
         },
         tx,
         po.branchId,
