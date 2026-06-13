@@ -87,7 +87,7 @@ describe("Dashboard route access control", () => {
     },
     {
       path: "hr",
-      expectedRoles: ["Super Admin", "Branch Admin", "HR Manager"],
+      expectedRoles: ["Super Admin", "Branch Admin", "HR Manager", "HR Staff"],
       description: "HR dashboard accessible to HR roles",
     },
     {

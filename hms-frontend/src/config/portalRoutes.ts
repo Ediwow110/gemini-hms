@@ -209,13 +209,13 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'it/incidents', allowedRoles: ['Super Admin', 'IT Support'], zone: 'staff' },
 
   // HR Portal Workspace Routes (Staff Zone, HR Scope, Tenant Scoped)
-  { path: 'hr', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
+  { path: 'hr', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
   { path: 'hr/employees', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
-  { path: 'hr/departments', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
-  { path: 'hr/attendance', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
-  { path: 'hr/leave', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
-  { path: 'hr/payroll', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
-  { path: 'hr/licenses', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
+  { path: 'hr/departments', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
+  { path: 'hr/attendance', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
+  { path: 'hr/leave', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
+  { path: 'hr/payroll', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
+  { path: 'hr/licenses', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
   { path: 'hr/branch-assignments', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
   { path: 'hr/termination', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
 
