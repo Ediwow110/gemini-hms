@@ -28,24 +28,36 @@ import { MfaService } from './mfa.service';
 import { SkipMfa } from './decorators/skip-mfa.decorator';
 import type { Request, Response } from 'express';
 
+// Default sameSite is 'strict' for production security.
+// Override via COOKIE_SAME_SITE env var (e.g. 'none' for split-origin staging).
+// NOTE: 'lax' only sends cookies for top-level GET navigations — it does NOT
+// enable cross-origin fetch/XHR cookie sending. Use 'none' for cross-origin auth
+// (requires secure:true). CSRF token mechanism remains active as defense-in-depth.
+// WARNING: 'none' broadens CSRF exposure; use only in controlled staging environments.
+const configuredSameSite = (): 'strict' | 'lax' | 'none' => {
+  const val = process.env.COOKIE_SAME_SITE;
+  if (val === 'lax' || val === 'none') return val;
+  return 'strict';
+};
+
 const COOKIE_OPTIONS = (isProd: boolean) => ({
   httpOnly: true,
-  secure: isProd,
-  sameSite: 'strict' as const,
+  secure: isProd || configuredSameSite() === 'none',
+  sameSite: configuredSameSite(),
   path: '/',
 });
 
 const REFRESH_COOKIE_OPTIONS = (isProd: boolean) => ({
   httpOnly: true,
-  secure: isProd,
-  sameSite: 'strict' as const,
+  secure: isProd || configuredSameSite() === 'none',
+  sameSite: configuredSameSite(),
   path: '/api/v1/auth/refresh',
 });
 
 const CSRF_COOKIE_OPTIONS = (isProd: boolean) => ({
   httpOnly: true,
-  secure: isProd,
-  sameSite: 'strict' as const,
+  secure: isProd || configuredSameSite() === 'none',
+  sameSite: configuredSameSite(),
   path: '/',
 });
 
