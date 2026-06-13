@@ -49,7 +49,12 @@ The repository is in a **verified local-green state**. All targeted backend and 
     - `6a07dc8`: fix(frontend): further refinement of branch-admin metadata and bypass policy
     - `81ddb05`: fix(frontend): test synchronization and initial handoff documentation
     - `17acbaf`: fix(frontend): final alignment of portal resolver paths and App routing
-    - `terminal`: docs(handoff): terminal truth-correction and synchronization pass
+    - `f9d3f8d`: docs(handoff): terminal truth-correction and synchronization pass
+
+### 2.6 Deployment Path & Flight-Probe Hardening
+*   **Purpose**: Hardened the manual deployment flow by correcting service name mismatches and script pathing for health probers.
+*   **Commits**:
+    - `[NEW_HASH]`: fix(deploy): correct backend service name and health-probe pathing in release scripts
 
 ---
 

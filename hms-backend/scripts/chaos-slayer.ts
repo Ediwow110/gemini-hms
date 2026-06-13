@@ -90,7 +90,7 @@ async function main() {
   let probeSuccess = false;
   try {
     // Run the health prober script in the NestJS container
-    const probeRes = runCmd(`docker exec ${apiContainer} npx tsx prisma/infrastructure-health-probe.ts --single-run`);
+    const probeRes = runCmd(`docker exec ${apiContainer} npx tsx scripts/infrastructure-health-probe.ts --single-run`);
     console.log(probeRes);
     if (probeRes.includes('VERDICT: HEALTH PROBER DEPLOYED')) {
       probeSuccess = true;

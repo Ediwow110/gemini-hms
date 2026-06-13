@@ -27,7 +27,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 # Wait for database and backend services to become healthy
 echo "[CD] Waiting for NestJS backend container to report healthy..."
 for i in {1..30}; do
-  if [ "$(docker compose -f docker-compose.prod.yml ps -q api | xargs -I {} docker inspect --format='{{json .State.Health.Status}}' {})" == "\"healthy\"" ]; then
+  if [ "$(docker compose -f docker-compose.prod.yml ps -q backend | xargs -I {} docker inspect --format='{{json .State.Health.Status}}' {})" == "\"healthy\"" ]; then
     echo "🟢 NestJS backend is healthy!"
     break
   fi
@@ -40,11 +40,11 @@ done
 
 # 3. Relational Sync (Prisma Migrations Deployment)
 echo "[CD] Synchronizing database schema with Prisma migrations..."
-docker compose -f docker-compose.prod.yml exec -T api npx prisma migrate deploy
+docker compose -f docker-compose.prod.yml exec -T backend npx prisma migrate deploy
 
 # 4. Integrated Post-Deployment Flight Probe
 echo "[CD] Launching Ingress Health Prober within the cloud cluster..."
-if docker compose -f docker-compose.prod.yml exec -T api node dist/scripts/infrastructure-health-probe.js --single-run; then
+if docker compose -f docker-compose.prod.yml exec -T backend node dist/scripts/infrastructure-health-probe.js --single-run; then
   echo "🟢 [FLIGHT_PROBE] Ingress Health check PASSED successfully!"
   echo "================================================================================"
   echo "🎉 CD DEPLOYMENT SWEEP SUCCESSFUL (EXIT 0)"
