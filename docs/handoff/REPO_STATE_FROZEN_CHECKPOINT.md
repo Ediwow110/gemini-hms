@@ -42,18 +42,22 @@ The repository is in a **verified local-green state**. All targeted backend and 
     - `a608882`: fix(cashier): align dashboard labels and billing types with session-scoped reality
 
 ### 2.5 Frontend Access Control & UX Integrity Lane
-*   **Purpose**: Harmonized role-access truth, synchronized routing guards, and refined Super Admin oversight logic.
+*   **Purpose**: Synchronized role-access metadata, router guards, and oversight policies across the platform.
 *   **Commits**:
-    - `26bf78e`: feat(frontend): harmonize role-access truth, synchronize routing guards, and normalize dashboard layouts
-    - `6a07dc8`: fix(frontend): synchronize branch-admin metadata and refine the authorization bypass policy
+    - `26bf78e`: feat(frontend): base harmonization of role-access truth and dashboard layouts
+    - `4b6fcba`: fix(frontend): synchronized branch-admin metadata and narrowed Super Admin bypass
+    - `6a07dc8`: fix(frontend): further refinement of branch-admin metadata and bypass policy
+    - `81ddb05`: fix(frontend): test synchronization and initial handoff documentation
+    - `17acbaf`: fix(frontend): final alignment of portal resolver paths and App routing
+    - `terminal`: docs(handoff): terminal truth-correction and synchronization pass
 
 ---
 
 ## 3. Verification Evidence (Local Only)
 - **Backend Build**: `cd hms-backend && npx tsc --noEmit` exits with `0` (Success).
-- **Backend Logic**: All 87 unit tests in `billing.service.spec.ts` pass locally.
+- **Backend Logic**: All unit tests in `billing.service.spec.ts` pass locally.
 - **Frontend Build**: `cd hms-frontend && npx tsc --noEmit` exits with `0` (Success).
-
+- **Frontend Sync**: Absolute synchronization verified between `App.tsx`, `portalRoutes.ts`, and `roleNavigation.ts`. Super Admin default landing is `/admin/executive`.
 ---
 
 ## 4. Unproven / Externally Blocked
