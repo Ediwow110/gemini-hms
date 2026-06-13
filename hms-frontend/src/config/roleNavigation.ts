@@ -116,7 +116,7 @@ export const roleNavigation: NavGroupConfig[] = [
           { label: 'Global System Config', to: '/admin/settings', icon: Sliders, allowedRoles: ['Super Admin'], zone: 'staff' },
         ],
       },
-      { label: 'Integrations', to: '/integration', icon: Link2, allowedRoles: ['Super Admin'], zone: 'staff', isHiddenForDemo: true },
+      { label: 'Integrations', to: '/integration', icon: Link2, allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true },
       { label: 'Background Jobs', to: '/it/background-jobs', icon: Play, allowedRoles: ['Super Admin'], zone: 'staff' },
     ],
   },
