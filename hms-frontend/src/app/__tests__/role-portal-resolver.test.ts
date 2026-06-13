@@ -22,7 +22,7 @@ describe('Role Portal Resolver', () => {
   });
 
   it('should return correct path for all known roles', () => {
-    expect(getDefaultPortalPath(['Super Admin'])).toBe('/admin');
+    expect(getDefaultPortalPath(['Super Admin'])).toBe('/admin/executive');
     expect(getDefaultPortalPath(['Branch Admin'])).toBe('/branch-admin');
     expect(getDefaultPortalPath(['Marketplace Admin'])).toBe('/marketplace-admin');
     expect(getDefaultPortalPath(['Compliance Officer'])).toBe('/compliance');
@@ -55,13 +55,13 @@ describe('Role Portal Resolver', () => {
   });
 
   it('should check if a path is known', () => {
-    expect(isKnownPortalPath('/admin')).toBe(true);
+    expect(isKnownPortalPath('/admin/executive')).toBe(true);
     expect(isKnownPortalPath('/doctor')).toBe(true);
     expect(isKnownPortalPath('/fake-path')).toBe(false);
   });
 
   it('should return safe portal path', () => {
-    expect(getSafePortalPath('/admin', ['Super Admin'])).toBe('/admin');
+    expect(getSafePortalPath('/admin/executive', ['Super Admin'])).toBe('/admin/executive');
     expect(getSafePortalPath('/invalid-path', ['Doctor'])).toBe('/doctor');
     expect(getSafePortalPath(undefined, ['Nurse'])).toBe('/nurse');
     expect(getSafePortalPath('/invalid-path', [])).toBe('/unauthorized');

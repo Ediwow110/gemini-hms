@@ -340,7 +340,7 @@ const router = createBrowserRouter([
 
           // SuperAdmin Portal
           { path: 'admin', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><SuperAdminDashboard /></LazyPage></PermissionRoute> },
-           { path: 'admin/executive', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']}><LazyPage><AdminExecutiveDashboard /></LazyPage></PermissionRoute> },
+           { path: 'admin/executive', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><AdminExecutiveDashboard /></LazyPage></PermissionRoute> },
            { path: 'clinical/ops', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Doctor', 'Nurse']} isBranchScoped><LazyPage><ClinicalOperationsDashboard /></LazyPage></PermissionRoute> },
            { path: 'admin/tenants', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><TenantsPage /></LazyPage></PermissionRoute> },
 
