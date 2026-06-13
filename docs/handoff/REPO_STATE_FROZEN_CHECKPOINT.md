@@ -54,7 +54,7 @@ The repository is in a **verified local-green state**. All targeted backend and 
 ### 2.6 Deployment Path & Flight-Probe Hardening
 *   **Purpose**: Hardened the manual deployment flow by correcting service name mismatches and script pathing for health probers.
 *   **Commits**:
-    - `[NEW_HASH]`: fix(deploy): correct backend service name and health-probe pathing in release scripts
+    - `30ebdd4`: fix(deploy): correct backend service name and health-probe pathing in release scripts
 
 ---
 
