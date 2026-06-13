@@ -1,0 +1,14 @@
+[      77ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=860033c9:14337
+[     117ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://localhost:5173/api/v1/auth/me:0
+[     120ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://localhost:5173/api/v1/auth/me:0
+[     120ms] [ERROR] [Auth Diagnostics] {phase: bootstrap, endpoint: /v1/auth/me, status: 502, message: Request failed with status code 502, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[   12983ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=860033c9:14337
+[   13030ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://localhost:5173/api/v1/auth/me:0
+[   13032ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://localhost:5173/api/v1/auth/me:0
+[   13033ms] [ERROR] [Auth Diagnostics] {phase: bootstrap, endpoint: /v1/auth/me, status: 502, message: Request failed with status code 502, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[   15067ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=860033c9:14337
+[   15102ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://localhost:5173/api/v1/auth/me:0
+[   15103ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://localhost:5173/api/v1/auth/me:0
+[   15104ms] [ERROR] [Auth Diagnostics] {phase: bootstrap, endpoint: /v1/auth/me, status: 502, message: Request failed with status code 502, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[   36911ms] [ERROR] Failed to load resource: the server responded with a status of 502 (Bad Gateway) @ http://localhost:5173/api/v1/auth/login:0
+[   36911ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 502, message: Request failed with status code 502, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509

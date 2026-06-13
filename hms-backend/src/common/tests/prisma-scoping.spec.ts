@@ -238,7 +238,9 @@ describe('PrismaQueryScoping', () => {
         { id: 'enc-2', branchId: 'branch-b', tenantId: mockTenantA },
       ];
 
-      (mockDb.patient as any).findMany = jest.fn().mockResolvedValue(mockEncounters);
+      (mockDb.patient as any).findMany = jest
+        .fn()
+        .mockResolvedValue(mockEncounters);
 
       // Simulate a list query that has tenantId but no branchId
       const result = await prisma.patient.findMany({

@@ -73,6 +73,9 @@ describe('AdminService', () => {
         findMany: jest.fn(),
         updateMany: jest.fn(),
       },
+      session: {
+        count: jest.fn().mockResolvedValue(0),
+      },
       permission: {
         findFirst: jest.fn(),
         findMany: jest.fn(),

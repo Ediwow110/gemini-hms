@@ -1,0 +1,4 @@
+[     443ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=860033c9:14337
+[     534ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/v1/auth/me:0
+[     537ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/v1/auth/me:0
+[     538ms] [WARNING] [Auth Diagnostics] {phase: bootstrap, endpoint: /v1/auth/me, status: 401, message: Unauthorized, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509

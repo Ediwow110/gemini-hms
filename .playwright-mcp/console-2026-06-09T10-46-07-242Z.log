@@ -1,0 +1,6 @@
+[     399ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=860033c9:14337
+[   11841ms] [ERROR] Failed to load resource: the server responded with a status of 429 (Too Many Requests) @ http://localhost:5173/api/v1/auth/login:0
+[  103395ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/invoices:0
+[  103396ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/sessions/active:0
+[  103430ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/invoices:0
+[  103431ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/sessions/active:0

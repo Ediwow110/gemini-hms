@@ -1,0 +1,10 @@
+[    1205ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=860033c9:14337
+[    1311ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/v1/auth/me:0
+[    1316ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/v1/auth/me:0
+[    1317ms] [ERROR] [Auth Diagnostics] {phase: bootstrap, endpoint: /v1/auth/me, status: 401, message: Unauthorized, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[   18572ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/pharmacy/prescriptions?status=ACTIVE:0
+[   18573ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: access_denied: missing_branch_context, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[   18577ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/pharmacy/drugs:0
+[   18577ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: access_denied: missing_branch_context, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[   18888ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/inventory/alerts/low-stock:0
+[   18889ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509

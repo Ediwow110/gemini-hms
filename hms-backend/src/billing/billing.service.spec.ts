@@ -159,10 +159,18 @@ describe('BillingService Reversals', () => {
 
       prisma.paymentReversal.findMany.mockResolvedValue(mockRows);
 
-      const result = await service.getMyReversals(mockTenantId, mockUserId, mockBranchId);
+      const result = await service.getMyReversals(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+      );
 
       expect(prisma.paymentReversal.findMany).toHaveBeenCalledWith({
-        where: { tenantId: mockTenantId, branchId: mockBranchId, requestedBy: mockUserId },
+        where: {
+          tenantId: mockTenantId,
+          branchId: mockBranchId,
+          requestedBy: mockUserId,
+        },
         include: {
           payment: { select: { receiptNumber: true } },
           invoice: {
@@ -199,7 +207,11 @@ describe('BillingService Reversals', () => {
     it('returns empty array when user has no reversals', async () => {
       prisma.paymentReversal.findMany.mockResolvedValue([]);
 
-      const result = await service.getMyReversals(mockTenantId, mockUserId, mockBranchId);
+      const result = await service.getMyReversals(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+      );
 
       expect(result).toEqual([]);
     });
@@ -222,7 +234,11 @@ describe('BillingService Reversals', () => {
 
       prisma.paymentReversal.findMany.mockResolvedValue(mockRows);
 
-      const result = await service.getMyReversals(mockTenantId, mockUserId, mockBranchId);
+      const result = await service.getMyReversals(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+      );
 
       expect(result).toEqual([
         {

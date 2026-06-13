@@ -1,0 +1,35 @@
+- generic [ref=e6]:
+  - generic [ref=e7]:
+    - generic [ref=e9]:
+      - img [ref=e11]
+      - heading "HMS Core" [level=2] [ref=e15]
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - generic [ref=e19]: Organization / Tenant Code
+          - textbox "e.g. Central Hospital" [ref=e20]: Central Hospital (Main Branch)
+        - generic [ref=e21]:
+          - generic [ref=e22]: Email Address
+          - textbox "name@hospital.com" [ref=e23]: admin@hospital.com
+        - generic [ref=e24]:
+          - generic [ref=e25]: Password
+          - generic [ref=e26]:
+            - textbox "••••••••" [ref=e27]: Admin@123
+            - button [ref=e28]:
+              - img [ref=e29]
+      - generic [ref=e32]:
+        - generic [ref=e33] [cursor=pointer]:
+          - checkbox "Remember device" [ref=e34]
+          - generic [ref=e35]: Remember device
+        - generic [ref=e36]: Forgot password?
+      - generic [ref=e37]:
+        - button "Sign in to Dashboard" [ref=e38] [cursor=pointer]:
+          - img [ref=e39]
+          - text: Sign in to Dashboard
+        - button "Use Demo Account" [ref=e42]:
+          - img [ref=e43]
+          - text: Use Demo Account
+    - paragraph [ref=e48]:
+      - img [ref=e49]
+      - text: Authorized Personnel Only
+  - paragraph [ref=e52]: HMS Core v2.0 · Pre-Production Release Candidate

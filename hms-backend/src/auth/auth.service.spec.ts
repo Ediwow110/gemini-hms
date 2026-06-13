@@ -131,7 +131,7 @@ describe('AuthService', () => {
     };
 
     it('should create session and return tokens for non-sensitive role', async () => {
-      const result = await service.login(mockUser as any);
+      const result = await service.login(mockUser);
 
       expect((result as any).accessToken).toBe('mocked-token');
       expect((result as any).refreshToken).toBeDefined();
@@ -154,7 +154,7 @@ describe('AuthService', () => {
         permissionId: 'perm-123',
       });
 
-      const result = await service.login(sensitiveUser as any);
+      const result = await service.login(sensitiveUser);
 
       expect((result as any).statusCode).toBe(202);
       expect((result as any).message).toBe('MFA_REQUIRED');
@@ -162,7 +162,7 @@ describe('AuthService', () => {
     });
 
     it('should include tokenVersion in the JWT payload', async () => {
-      await service.login({ ...mockUser, tokenVersion: 7 } as any);
+      await service.login({ ...mockUser, tokenVersion: 7 });
 
       expect(jwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({ tokenVersion: 7 }),
@@ -1071,7 +1071,7 @@ describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
       permissionId: 'perm-123',
     });
 
-    const result = await service.login(mockUser as any);
+    const result = await service.login(mockUser);
 
     expect((result as any).message).toBe('MFA_REQUIRED');
     expect((result as any).mfaToken).toBeDefined();
@@ -1084,7 +1084,7 @@ describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
       permissionId: 'perm-123',
     });
 
-    const result = await service.login(mockUser as any);
+    const result = await service.login(mockUser);
 
     expect((result as any).accessToken).toBeDefined();
     expect((result as any).message).not.toBe('MFA_REQUIRED');

@@ -1,0 +1,14 @@
+[   13300ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/@fontsource/ibm-plex-sans/500.css:0
+[   13427ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/@fontsource/ibm-plex-sans/600.css:0
+[   13427ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/@fontsource/ibm-plex-sans/700.css:0
+[   13442ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/@fontsource/ibm-plex-mono/400.css:0
+[   13536ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/@fontsource/ibm-plex-mono/500.css:0
+[   13536ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/@fontsource/ibm-plex-mono/600.css:0
+[   15622ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/App.tsx:0
+[   15761ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/index.css:0
+[   15761ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=4494b295:0
+[   15777ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/.vite/deps/chunk-CYJPkc-J.js?v=8ca8f925:0
+[   15870ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/vite/dist/client/env.mjs:0
+[   15872ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/@fontsource/ibm-plex-sans/400.css:0
+[   17955ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=c0fe4e29:0
+[   18207ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/favicon.svg:0

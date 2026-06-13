@@ -1,0 +1,69 @@
+- generic [ref=e54]:
+  - banner [ref=e55]:
+    - generic [ref=e56]:
+      - button [ref=e57]:
+        - img [ref=e58]
+      - generic [ref=e59]:
+        - img [ref=e60]
+        - textbox "Search patients, orders, or staff... (Ctrl+K)" [ref=e63] [cursor=pointer]
+    - generic [ref=e64]:
+      - button "Quick Create" [ref=e65] [cursor=pointer]:
+        - img [ref=e66]
+        - generic [ref=e68]: Quick Create
+      - 'button "Branch: 00000000-0000-0000-0000-000000000010" [ref=e69] [cursor=pointer]':
+        - img [ref=e70]
+        - generic [ref=e73]: "Branch: 00000000-0000-0000-0000-000000000010"
+      - link [ref=e74] [cursor=pointer]:
+        - /url: /notifications
+        - img [ref=e75]
+      - generic "Click to logout" [ref=e82] [cursor=pointer]:
+        - generic [ref=e83]:
+          - paragraph [ref=e84]: CONFIDENTIAL - RESTRICTED ACCESS
+          - paragraph [ref=e85]: Pharmacist
+        - generic [ref=e86]: C
+  - main [ref=e87]:
+    - generic [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e92]:
+          - heading "Pharmacy Dispensing Hub" [level=1] [ref=e94]
+          - paragraph [ref=e95]: View active prescriptions and dispense medications to patients.
+        - button "Reload" [ref=e96] [cursor=pointer]:
+          - img [ref=e97]
+          - text: Reload
+      - generic [ref=e100]:
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - heading "Active Prescriptions" [level=3] [ref=e103]:
+              - img [ref=e104]
+              - text: Active Prescriptions
+            - generic [ref=e107]:
+              - img [ref=e108]
+              - text: "Branch: 00000000-0000-0000-0000-000000000010"
+          - table [ref=e112]:
+            - rowgroup [ref=e113]:
+              - row "Patient Medication Status Action" [ref=e114]:
+                - columnheader "Patient" [ref=e115]
+                - columnheader "Medication" [ref=e116]
+                - columnheader "Status" [ref=e117]
+                - columnheader "Action" [ref=e118]
+            - rowgroup [ref=e119]:
+              - 'row "CONFIDENTIAL - RESTRICTED ACCESS DEMO-PATIENT-001 · Rx: 00000000 [DEMO] Amoxicillin 500mg · Every 8 hours · 7 days PENDING Dispense" [ref=e120]':
+                - 'cell "CONFIDENTIAL - RESTRICTED ACCESS DEMO-PATIENT-001 · Rx: 00000000" [ref=e121]':
+                  - paragraph [ref=e122]: CONFIDENTIAL - RESTRICTED ACCESS
+                  - paragraph [ref=e123]: "DEMO-PATIENT-001 · Rx: 00000000"
+                - cell "[DEMO] Amoxicillin 500mg · Every 8 hours · 7 days" [ref=e124]:
+                  - paragraph [ref=e125]: "[DEMO] Amoxicillin"
+                  - paragraph [ref=e126]: 500mg · Every 8 hours · 7 days
+                - cell "PENDING" [ref=e127]:
+                  - generic [ref=e128]: PENDING
+                - cell "Dispense" [ref=e129]:
+                  - button "Dispense" [disabled]
+        - generic [ref=e130]:
+          - generic [ref=e131]:
+            - heading "Drug Stock Ledger" [level=3] [ref=e132]:
+              - img [ref=e133]
+              - text: Drug Stock Ledger
+            - generic [ref=e138]:
+              - img [ref=e139]
+              - text: Live Stock Levels
+          - generic [ref=e141]: No drug catalog data available.

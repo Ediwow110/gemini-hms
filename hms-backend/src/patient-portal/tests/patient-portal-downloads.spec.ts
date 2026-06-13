@@ -322,11 +322,11 @@ describe('PatientPortalService Downloads and Requests', () => {
     it('should create medical record request and log audit', async () => {
       prisma.medicalRecordRequest.findFirst.mockResolvedValue(null);
       prisma.medicalRecordRequest.create.mockResolvedValue({ id: 'mr-1' });
-await service.createMedicalRecordRequest(
-  'tenant-1',
-  'patient-1',
-  'user-1',
-  {
+      await service.createMedicalRecordRequest(
+        'tenant-1',
+        'patient-1',
+        'user-1',
+        {
           requestType: 'FULL_RECORD',
           reason: 'moving',
         },
@@ -342,14 +342,9 @@ await service.createMedicalRecordRequest(
       prisma.medicalRecordRequest.findFirst.mockResolvedValue({ id: 'mr-old' });
 
       await expect(
-        await service.createMedicalRecordRequest(
-          'tenant-1',
-          'patient-1',
-          'user-1',
-          {
-            requestType: 'FULL_RECORD',
-          },
-        ),
+        service.createMedicalRecordRequest('tenant-1', 'patient-1', 'user-1', {
+          requestType: 'FULL_RECORD',
+        }),
       ).rejects.toThrow(ConflictException);
     });
 

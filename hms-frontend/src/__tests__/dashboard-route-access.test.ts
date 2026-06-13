@@ -52,8 +52,8 @@ describe("Dashboard route access control", () => {
     },
     {
       path: "branch-admin",
-      expectedRoles: ["Branch Admin"],
-      description: "Branch Admin dashboard scoped to Branch Admin only",
+      expectedRoles: ["Super Admin", "Branch Admin"],
+      description: "Branch Admin dashboard accessible to branch governance roles",
     },
     {
       path: "compliance",
@@ -67,7 +67,12 @@ describe("Dashboard route access control", () => {
     },
     {
       path: "integration",
-      expectedRoles: ["Super Admin", "Marketplace Admin", "Branch Admin"],
+      expectedRoles: [
+        "Super Admin",
+        "IT Support",
+        "Marketplace Admin",
+        "Branch Admin",
+      ],
       description: "Integration dashboard accessible to admin roles",
     },
     {
