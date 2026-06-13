@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
-import { CreditCard, FileText, Clock, Users, TrendingUp, ArrowRight, HelpCircle, DollarSign } from 'lucide-react';
+import { CreditCard, FileText, Clock, Users, TrendingUp, ArrowRight, HelpCircle, DollarSign, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
 import { ChartCard, InsightPanel, StatusDonutChart, VolumeAreaChart } from '../../components/analytics';
 import { cashierInsights, cashierVolumeTrend, paymentMethodBreakdown } from '../../data/analytics/clinicalAnalytics.mock';
 import { useInvoices, useActiveSession } from '../../hooks/use-billing';
 import { safeMoney } from '../../lib/safe-money';
+import { HmsDashboardShell, HmsToolbar, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const CashierDashboard = () => {
   const navigate = useNavigate();
@@ -17,7 +18,10 @@ export const CashierDashboard = () => {
   const paidCount = useMemo(() => invoices.filter(i => i.status === 'PAID' || i.status === 'COMPLETED').length, [invoices]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <HmsDashboardShell
+      toolbar={<HmsToolbar role="Cashier" />}
+      footer={<HmsAuditFooter dataSource="Live API (invoices, session)" />}
+    >
       <PageHeader
         title="Cashier & Billing Workspace"
         description="Invoice management, payment processing, session control, and reconciliation"
@@ -90,6 +94,12 @@ export const CashierDashboard = () => {
         </div>
 
         {/* Charts & Insights Row (L Cards - 4 cols desktop, 6/12 cols tablet/mobile) */}
+        <div className="col-span-12">
+          <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[10px] text-amber-700 flex items-center gap-1.5 font-bold mb-3">
+            <AlertTriangle className="h-3 w-3 shrink-0" />
+            Simulated Trend Data — Charts below show fabricated values and are not backed by the API.
+          </div>
+        </div>
         <div className="col-span-12 md:col-span-6 xl:col-span-4">
           <ChartCard title="Revenue by day" description="Sandbox trend for collection planning; invoice totals above are live API derived." height={280}>
             <VolumeAreaChart data={cashierVolumeTrend} title="Revenue by day" valueLabel="Payments" />
@@ -112,9 +122,9 @@ export const CashierDashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
               { label: 'Invoices', desc: 'View all invoices', icon: FileText, path: '/cashier/invoices', color: 'text-indigo-600 bg-indigo-50' },
-              { label: 'Payments', desc: 'Process payments', icon: CreditCard, path: '/cashier/payments', color: 'text-emerald-600 bg-emerald-50' },
+              { label: 'Session Receipts', desc: 'View active session receipts', icon: CreditCard, path: '/cashier/payments', color: 'text-emerald-600 bg-emerald-50' },
               { label: 'Patient Billing', desc: 'Search patient bills', icon: Users, path: '/cashier/billing', color: 'text-blue-600 bg-blue-50' },
-              { label: 'Refunds & Voids', desc: 'Manage reversals', icon: TrendingUp, path: '/cashier/refunds-voids', color: 'text-rose-600 bg-rose-50' },
+              { label: 'Refunds & Voids', desc: 'Manage reversals (sandbox)', icon: TrendingUp, path: '/cashier/refunds-voids', color: 'text-rose-600 bg-rose-50' },
             ].map(item => (
               <button key={item.path} onClick={() => navigate(item.path)}
                 className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 text-left hover:border-indigo-300 transition-all cursor-pointer group"
@@ -158,7 +168,7 @@ export const CashierDashboard = () => {
           )}
         </div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

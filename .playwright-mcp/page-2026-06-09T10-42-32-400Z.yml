@@ -1,0 +1,51 @@
+- generic [ref=e55]:
+  - banner [ref=e56]:
+    - generic [ref=e57]:
+      - button [ref=e58]:
+        - img [ref=e59]
+      - generic [ref=e60]:
+        - img [ref=e61]
+        - textbox "Search patients, orders, or staff... (Ctrl+K)" [ref=e64] [cursor=pointer]
+    - generic [ref=e65]:
+      - button "Quick Create" [ref=e66] [cursor=pointer]:
+        - img [ref=e67]
+        - generic [ref=e69]: Quick Create
+      - 'button "Branch: None" [ref=e70] [cursor=pointer]':
+        - img [ref=e71]
+        - generic [ref=e74]: "Branch: None"
+      - link [ref=e75] [cursor=pointer]:
+        - /url: /notifications
+        - img [ref=e76]
+      - generic "Click to logout" [ref=e83] [cursor=pointer]:
+        - generic [ref=e84]:
+          - paragraph [ref=e85]: CONFIDENTIAL - RESTRICTED ACCESS
+          - paragraph [ref=e86]: Pharmacist
+        - generic [ref=e87]: C
+  - main [ref=e88]:
+    - generic [ref=e90]:
+      - generic [ref=e91]:
+        - generic [ref=e93]:
+          - heading "Pharmacy Dispensing Hub" [level=1] [ref=e95]
+          - paragraph [ref=e96]: View active prescriptions and dispense medications to patients.
+        - button "Reload" [ref=e97] [cursor=pointer]:
+          - img [ref=e98]
+          - text: Reload
+      - generic [ref=e101]:
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - heading "Active Prescriptions" [level=3] [ref=e104]:
+              - img [ref=e105]
+              - text: Active Prescriptions
+            - generic [ref=e108]:
+              - img [ref=e109]
+              - text: "Branch: N/A"
+          - generic [ref=e112]: No active prescriptions awaiting dispensing.
+        - generic [ref=e113]:
+          - generic [ref=e114]:
+            - heading "Drug Stock Ledger" [level=3] [ref=e115]:
+              - img [ref=e116]
+              - text: Drug Stock Ledger
+            - generic [ref=e121]:
+              - img [ref=e122]
+              - text: Live Stock Levels
+          - generic [ref=e124]: No drug catalog data available.

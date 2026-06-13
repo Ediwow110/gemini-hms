@@ -61,6 +61,6 @@ describe('DailyReconciliationPage', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Daily Reconciliation \(WIP\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Daily Reconciliation \(WIP — Simulated Data\)/i)).toBeInTheDocument();
   });
 });

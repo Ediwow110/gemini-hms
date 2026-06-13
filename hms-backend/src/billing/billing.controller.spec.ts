@@ -10,11 +10,21 @@ import { BillingService } from './billing.service';
 
 describe('BillingController', () => {
   let controller: BillingController;
-  let billingService: { postPayment: jest.Mock };
+  let billingService: {
+    postPayment: jest.Mock;
+    getPaymentHistory: jest.Mock;
+    confirmPayment: jest.Mock;
+    failPayment: jest.Mock;
+    expirePayment: jest.Mock;
+  };
 
   beforeEach(async () => {
     billingService = {
       postPayment: jest.fn(),
+      getPaymentHistory: jest.fn(),
+      confirmPayment: jest.fn(),
+      failPayment: jest.fn(),
+      expirePayment: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -122,5 +132,104 @@ describe('BillingController', () => {
       },
       'header-key-1',
     );
+  });
+
+  describe('GET /payments (payment history)', () => {
+    it('should delegate to getPaymentHistory with parsed page/pageSize', async () => {
+      billingService.getPaymentHistory.mockResolvedValue({
+        payments: [],
+        total: 0,
+      });
+
+      await controller.getPaymentHistory('t1', 'b1', '2', '1');
+
+      expect(billingService.getPaymentHistory).toHaveBeenCalledWith(
+        't1',
+        'b1',
+        2,
+        1,
+      );
+    });
+
+    it('should pass undefined when query params are missing', async () => {
+      billingService.getPaymentHistory.mockResolvedValue({
+        payments: [],
+        total: 0,
+      });
+
+      await controller.getPaymentHistory('t1', 'b1', undefined, undefined);
+
+      expect(billingService.getPaymentHistory).toHaveBeenCalledWith(
+        't1',
+        'b1',
+        undefined,
+        undefined,
+      );
+    });
+
+    it('requires billing.payment.create permission', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        BillingController.prototype,
+        'getPaymentHistory',
+      );
+      expect(
+        Reflect.getMetadata(PERMISSIONS_KEY, descriptor?.value as object),
+      ).toEqual({ mode: 'any', permissions: ['billing.payment.create'] });
+    });
+  });
+
+  describe('POST /payments/:id/confirm', () => {
+    it('should delegate to confirmPayment with DTO', async () => {
+      const dto = { gatewayReference: 'GW-001', gatewayProvider: 'QRPH' };
+      await controller.confirmPayment('t1', 'u1', 'b1', 'pay-1', dto);
+
+      expect(billingService.confirmPayment).toHaveBeenCalledWith(
+        't1',
+        'u1',
+        'b1',
+        'pay-1',
+        dto,
+      );
+    });
+
+    it('requires billing.payment.create permission', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        BillingController.prototype,
+        'confirmPayment',
+      );
+      expect(
+        Reflect.getMetadata(PERMISSIONS_KEY, descriptor?.value as object),
+      ).toEqual({ mode: 'any', permissions: ['billing.payment.create'] });
+    });
+  });
+
+  describe('POST /payments/:id/fail', () => {
+    it('should delegate to failPayment with DTO', async () => {
+      const dto = { reason: 'Declined' };
+      await controller.failPayment('t1', 'u1', 'b1', 'pay-1', dto);
+
+      expect(billingService.failPayment).toHaveBeenCalledWith(
+        't1',
+        'u1',
+        'b1',
+        'pay-1',
+        dto,
+      );
+    });
+  });
+
+  describe('POST /payments/:id/expire', () => {
+    it('should delegate to expirePayment with DTO', async () => {
+      const dto = { reason: 'Expired' };
+      await controller.expirePayment('t1', 'u1', 'b1', 'pay-1', dto);
+
+      expect(billingService.expirePayment).toHaveBeenCalledWith(
+        't1',
+        'u1',
+        'b1',
+        'pay-1',
+        dto,
+      );
+    });
   });
 });

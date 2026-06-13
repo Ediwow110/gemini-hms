@@ -121,7 +121,7 @@ describe('ClinicalWorkflowService.createClinicalOrder', () => {
   });
 
   function createMockPrisma() {
-    const mockTx = {
+    const mockTx: any = {
       encounter: {
         findUnique: jest.fn(),
       },
@@ -474,7 +474,7 @@ describe('ClinicalWorkflowService.createClinicalOrder', () => {
     const { mockTx } = createMockPrisma();
     prisma.$transaction = jest.fn((cb: any) => cb(mockTx));
     mockTx.encounter.findUnique.mockResolvedValue(mockEncounter());
-    mockTx.order.create.mockImplementation((args) =>
+    mockTx.order.create.mockImplementation((args: any) =>
       mockOrder({
         clinicalItems: args.data.clinicalItems.create.map((item: any) => ({
           id: 'item-generated',
@@ -809,7 +809,7 @@ describe('ClinicalWorkflowService.createClinicalOrder', () => {
 
     const generatedNumber = 'CLN-000042';
     numberingService.generateNumber.mockResolvedValue(generatedNumber);
-    mockTx.order.create.mockImplementation((args) =>
+    mockTx.order.create.mockImplementation((args: any) =>
       mockOrder({ orderNumber: args.data.orderNumber }),
     );
 
@@ -836,7 +836,7 @@ describe('ClinicalWorkflowService.createClinicalOrder', () => {
     prisma.$transaction = jest.fn((cb: any) => cb(mockTx));
     mockTx.encounter.findUnique.mockResolvedValue(mockEncounter());
     numberingService.generateNumber.mockResolvedValue('CLN-000050');
-    mockTx.order.create.mockImplementation((args) =>
+    mockTx.order.create.mockImplementation((args: any) =>
       mockOrder({ orderNumber: args.data.orderNumber }),
     );
 

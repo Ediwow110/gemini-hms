@@ -1,0 +1,29 @@
+- generic [ref=e5]:
+  - banner [ref=e6]:
+    - generic [ref=e7]:
+      - button [ref=e8]:
+        - img [ref=e9]
+      - generic [ref=e10]:
+        - img [ref=e11]
+        - textbox "Search patients, orders, or staff... (Ctrl+K)" [ref=e14] [cursor=pointer]
+    - generic [ref=e15]:
+      - button "Quick Create" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e19]: Quick Create
+      - 'button "Branch: 00000000-0000-0000-0000-000000000010" [ref=e20] [cursor=pointer]':
+        - img [ref=e21]
+        - generic [ref=e24]: "Branch: 00000000-0000-0000-0000-000000000010"
+      - link [ref=e25] [cursor=pointer]:
+        - /url: /notifications
+        - img [ref=e26]
+      - generic "Click to logout" [ref=e33] [cursor=pointer]:
+        - generic [ref=e34]:
+          - paragraph [ref=e35]: CONFIDENTIAL - RESTRICTED ACCESS
+          - paragraph [ref=e36]: Cashier
+        - generic [ref=e37]: C
+  - main [ref=e38]:
+    - generic [ref=e40]:
+      - img [ref=e42]
+      - heading "Invoice Not Found" [level=2] [ref=e44]
+      - paragraph [ref=e45]: The requested invoice could not be located in this branch. Please verify the invoice ID or browse the directory list.
+      - button "Return to Directory" [ref=e46]

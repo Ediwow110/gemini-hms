@@ -71,7 +71,7 @@ describe('IDOR / Object-Level Authorization', () => {
 
       // This would return tenant A's data even to tenant B users
       expect(result).toBeDefined();
-      expect(result.tenantId).toBe(tenantA);
+      expect(result!.tenantId).toBe(tenantA);
     });
 
     it('updateMany with tenantId prevents cross-tenant patient update', async () => {
@@ -115,7 +115,7 @@ describe('IDOR / Object-Level Authorization', () => {
       });
 
       expect(result).toBeDefined();
-      expect(result.tenantId).toBe(tenantA);
+      expect(result!.tenantId).toBe(tenantA);
     });
   });
 

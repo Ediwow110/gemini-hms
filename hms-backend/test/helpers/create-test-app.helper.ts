@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import * as request from 'supertest';
+import request from 'supertest';
 import { App } from 'supertest/types';
 import { INestApplication } from '@nestjs/common';
 

@@ -13,7 +13,7 @@ export const ProofOfDeliveryPage: React.FC = () => {
   const { data: delivery } = useFieldServiceProofOfDelivery();
 
   return (
-    <HmsDashboardShell maxWidth="full">
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 max-w-2xl mx-auto pb-20">
         <HmsPageHeader
           title="Proof of Delivery"

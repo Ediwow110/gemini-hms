@@ -43,7 +43,7 @@ export const ExportLogsPage: React.FC = () => {
   });
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Patient Data Export Logs"

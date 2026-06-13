@@ -100,7 +100,7 @@ export const CashierSessionCard = ({ session, className = '' }: CashierSessionCa
         </button>
         {isActive && (
           <button
-            onClick={() => navigate('/cashier/reconciliation')}
+            onClick={() => navigate('/cashier/session')}
             className="btn bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/50 font-extrabold text-xs flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1"
           >
             <Award className="h-3.5 w-3.5" /> Reconcile

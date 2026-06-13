@@ -114,7 +114,7 @@ async function main() {
     console.log(`🟢 [FAILOVER] DNS routing records rewritten. Live streams directed to DigitalOcean droplet mesh.`);
     
     console.log(`[FAILOVER] Invoking post-deployment flight checks on secondary datacenter...`);
-    const checkRes = runCmd(`docker exec hms-login-design-backend-1 npx tsx prisma/infrastructure-health-probe.ts --single-run`);
+    const checkRes = runCmd(`docker exec hms-login-design-backend-1 npx tsx scripts/infrastructure-health-probe.ts --single-run`);
     console.log(checkRes);
 
     console.log(`\n================================================================================`);

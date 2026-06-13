@@ -43,7 +43,7 @@ export const AuditReviewPage: React.FC = () => {
   };
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Audit Log Review"

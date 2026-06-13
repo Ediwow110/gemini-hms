@@ -12,7 +12,7 @@ export const OfflineSyncQueuePage: React.FC = () => {
   const { data: syncData, isLoading } = useFieldServiceOfflineSync();
 
   return (
-    <HmsDashboardShell maxWidth="full">
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 max-w-2xl mx-auto">
         <HmsPageHeader
           title="Offline Sync Queue"

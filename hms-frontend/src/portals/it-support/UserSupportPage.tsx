@@ -9,14 +9,14 @@ export const UserSupportPage: React.FC = () => {
   const { tickets, loading, error, refetch } = useSupportTickets({ pageSize: 50 });
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="User Support Center"
           description="Login failures, MFA resets, account lockouts, and permission requests"
         />
 
-        <ITScopeFilter />
+        <ITScopeFilter displayOnly />
 
         {loading ? (
           <HmsLoadingSkeleton variant="table" rows={8} />

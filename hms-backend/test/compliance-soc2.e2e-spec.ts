@@ -148,7 +148,9 @@ describe('SOC2 Type II Readiness (e2e)', () => {
       .expect(200)
       .expect((res) => {
         expect(Array.isArray(res.body)).toBe(true);
-        const hasStaleUser = res.body.some((u) => u.userId === staleUserId);
+        const hasStaleUser = res.body.some(
+          (u: { userId: string }) => u.userId === staleUserId,
+        );
         expect(hasStaleUser).toBe(true);
       });
   });

@@ -242,6 +242,7 @@ describe('Tenant Isolation — BillingService', () => {
     });
     await service.openSession(TENANT_A, USER_A, BRANCH_A, {
       openingBalance: 0,
+      branchId: BRANCH_A,
     });
     expect(prisma.cashierSession.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -482,6 +483,7 @@ describe('Tenant Isolation — PharmacyService', () => {
       service.dispenseMedication('rx-b', TENANT_A, mockUser, {
         quantity: 1,
         inventoryItemId: 'item-1',
+        version: 1,
       }),
     ).rejects.toThrow(NotFoundException);
   });
@@ -623,7 +625,7 @@ describe('Tenant Isolation — AdminService', () => {
       reason: 'Creating tenant isolation test user',
       roleNames: ['Doctor'],
       branchIds: ['b1'],
-    });
+    } as any);
     expect(prisma.branch.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: { in: ['b1'] }, tenantId: TENANT_A },

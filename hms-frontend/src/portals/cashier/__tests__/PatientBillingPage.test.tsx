@@ -88,7 +88,7 @@ describe('PatientBillingPage Runtime Tests', () => {
   });
 
   it('shows confirmation modal when submitting and processes payment on confirmation', async () => {
-    mockPostPayment.mockResolvedValueOnce({ id: 'payment-rcpt-123' });
+    mockPostPayment.mockResolvedValueOnce({ payment: { receiptNumber: 'RCP-2026-001' }, invoice: {} });
 
     render(
       <MemoryRouter initialEntries={['/cashier/billing?invoice=INV-2026-001']}>
@@ -118,14 +118,14 @@ describe('PatientBillingPage Runtime Tests', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Billing cleared. POS Terminal receipt registered in audit logs./i)).toBeInTheDocument();
+      expect(screen.getByText(/Billing cleared. Payment posted successfully./i)).toBeInTheDocument();
     });
   });
 
   it('reuses the same idempotency key when retrying after payment failure', async () => {
     mockPostPayment
       .mockRejectedValueOnce(new Error('Network error'))
-      .mockResolvedValueOnce({ id: 'payment-rcpt-123' });
+      .mockResolvedValueOnce({ payment: { receiptNumber: 'RCP-2026-001' }, invoice: {} });
 
     render(
       <MemoryRouter initialEntries={['/cashier/billing?invoice=INV-2026-001']}>
@@ -150,7 +150,7 @@ describe('PatientBillingPage Runtime Tests', () => {
     fireEvent.click(screen.getByRole('button', { name: /Confirm/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Billing cleared. POS Terminal receipt registered in audit logs./i)).toBeInTheDocument();
+      expect(screen.getByText(/Billing cleared. Payment posted successfully./i)).toBeInTheDocument();
     });
 
     const secondKey = mockPostPayment.mock.calls[1][1];

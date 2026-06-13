@@ -32,7 +32,7 @@ export const RolesPermissionsPage: React.FC = () => {
   }
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="full"
       footer={<HmsAuditFooter dataSource="Mock RBAC data (sandbox)" />}
     >
       <AdminShellNotice />

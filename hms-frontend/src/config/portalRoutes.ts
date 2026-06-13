@@ -53,6 +53,9 @@ export const portalRoutes: RouteGuardConfig[] = [
   // Reports & Logs (Staff)
   { path: 'reports', requiredPermission: PERMISSIONS.REPORT_EXPORT, zone: 'staff', isBranchScoped: true },
   { path: 'audit-logs', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
+  { path: 'my-audit-log', requiredPermission: PERMISSIONS.AUDIT_SELF, zone: 'staff' },
+  { path: 'audit/events/:id', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
+  { path: 'audit/entity/:recordType/:recordId', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
   { path: 'spatial', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff' },
   { path: 'sales-dashboard', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff' },
   { path: 'logistics-checklist', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff' },
@@ -159,6 +162,7 @@ export const portalRoutes: RouteGuardConfig[] = [
 
   // SuperAdmin Portal Workspace Routes (Staff Zone, Governance Scope, Tenant Scoped)
   { path: 'admin', allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/executive', allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/tenants', allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/branches', allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/users', allowedRoles: ['Super Admin'], zone: 'staff' },
@@ -170,17 +174,17 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'admin/catalog', allowedRoles: ['Super Admin'], zone: 'staff' },
 
   // Branch Admin Workspace Routes (Staff Zone, Governance Scope, Branch Scoped)
-  { path: 'branch-admin', allowedRoles: ['Branch Admin'], zone: 'staff' },
-  { path: 'branch-admin/staff', allowedRoles: ['Branch Admin'], zone: 'staff' },
-  { path: 'branch-admin/departments', allowedRoles: ['Branch Admin'], zone: 'staff' },
-  { path: 'branch-admin/rooms', allowedRoles: ['Branch Admin'], zone: 'staff' },
-  { path: 'branch-admin/schedules', allowedRoles: ['Branch Admin'], zone: 'staff' },
-  { path: 'branch-admin/services', allowedRoles: ['Branch Admin'], zone: 'staff' },
-  { path: 'branch-admin/equipment', allowedRoles: ['Branch Admin'], zone: 'staff' },
-  { path: 'branch-admin/inventory-rules', allowedRoles: ['Branch Admin'], zone: 'staff' },
-  { path: 'branch-admin/billing-rules', allowedRoles: ['Branch Admin'], zone: 'staff' },
-  { path: 'branch-admin/queue-settings', allowedRoles: ['Branch Admin'], zone: 'staff' },
-  { path: 'branch-admin/approvals', allowedRoles: ['Branch Admin'], zone: 'staff' },
+  { path: 'branch-admin', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/staff', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/departments', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/rooms', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/schedules', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/services', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/equipment', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/inventory-rules', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/billing-rules', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/queue-settings', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/approvals', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
 
   // Compliance Officer Portal Workspace Routes (Staff Zone, Compliance Scope, Tenant Scoped)
   { path: 'compliance', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
@@ -237,12 +241,12 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'patient/profile', allowedRoles: ['Patient'], zone: 'patient' },
 
   // Integration Bridges Workspace Routes (Staff Zone, Cross-Domain Scope, Tenant Scoped)
-  { path: 'integration', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/notifications', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/approvals', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/global-search', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/patient-timeline', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/asset-timeline', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/reconciliation', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/activity-audit', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/notifications', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/approvals', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/global-search', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/patient-timeline', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/asset-timeline', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/reconciliation', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/activity-audit', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
 ];

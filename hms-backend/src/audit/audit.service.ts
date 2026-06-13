@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
@@ -8,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import { auditStorage } from './audit-context.middleware';
 import { createHash, createHmac } from 'crypto';
 import { AUDIT_CHAIN_SAFETY_CAP } from '../common/utils/pagination';
+import { AUDIT_EVENT_KEYS } from './audit-event-keys';
 
 export interface AuditLogData {
   tenantId: string;
@@ -40,6 +42,8 @@ export interface AuditQueryDto {
 
 @Injectable()
 export class AuditService {
+  private readonly logger = new Logger(AuditService.name);
+
   constructor(private prisma: PrismaService) {}
 
   private canonicalize(obj: any): any {
@@ -281,6 +285,426 @@ export class AuditService {
     });
 
     return { data: sanitizedData, total, page, pageSize: limit };
+  }
+
+  async findMyEvents(tenantId: string, userId: string, query: AuditQueryDto) {
+    const {
+      eventKey,
+      recordType,
+      recordId,
+      startDate,
+      endDate,
+      page = 1,
+      pageSize = 20,
+    } = query;
+    const limit = Math.min(pageSize, 100);
+    const where: any = { tenantId, userId };
+
+    if (eventKey) where.eventKey = eventKey;
+    if (recordType) where.recordType = recordType;
+    if (recordId) where.recordId = recordId;
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    const total = await this.prisma.auditLog.count({ where });
+    const data = await this.prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        tenantId: true,
+        branchId: true,
+        userId: true,
+        eventKey: true,
+        recordType: true,
+        recordId: true,
+        createdAt: true,
+        ipAddress: true,
+        userAgent: true,
+        activeRole: true,
+        sessionId: true,
+        hash: true,
+        previousHash: true,
+        signature: true,
+      },
+    });
+
+    return { data, total, page, pageSize: limit };
+  }
+
+  async findEntityTimeline(
+    tenantId: string,
+    branchId: string | undefined,
+    userRoles: string[],
+    recordType: string,
+    recordId: string,
+    query: AuditQueryDto,
+  ) {
+    const {
+      eventKey,
+      userId,
+      startDate,
+      endDate,
+      page = 1,
+      pageSize = 20,
+    } = query;
+    const limit = Math.min(pageSize, 100);
+    const isSuperAdmin = userRoles.includes('Super Admin');
+    const where: any = { tenantId, recordType, recordId };
+
+    if (!isSuperAdmin) {
+      if (branchId) {
+        where.branchId = branchId;
+      } else {
+        where.branchId = null;
+      }
+    } else if (query.branchId) {
+      where.branchId = query.branchId;
+    }
+
+    if (eventKey) where.eventKey = eventKey;
+    if (userId) where.userId = userId;
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    const total = await this.prisma.auditLog.count({ where });
+    const data = await this.prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        tenantId: true,
+        branchId: true,
+        userId: true,
+        eventKey: true,
+        recordType: true,
+        recordId: true,
+        createdAt: true,
+        ipAddress: true,
+        userAgent: true,
+        activeRole: true,
+        sessionId: true,
+        hash: true,
+        previousHash: true,
+        signature: true,
+        oldValues: isSuperAdmin,
+        newValues: isSuperAdmin,
+      },
+    });
+
+    const sanitizedData = data.map((item) => {
+      const sanitized = { ...item };
+      if (!isSuperAdmin) {
+        const { oldValues, newValues, ...rest } = sanitized;
+        void oldValues;
+        void newValues;
+        return rest;
+      }
+      return sanitized;
+    });
+
+    return { data: sanitizedData, total, page, pageSize: limit };
+  }
+
+  async verifyChainWithSignatures(tenantId: string) {
+    const chainResult = await this.verifyChain(tenantId);
+    const signatureErrors: string[] = [];
+
+    if (!process.env.JWT_SECRET) {
+      return {
+        ...chainResult,
+        signatureErrors: ['JWT_SECRET is not configured'],
+      };
+    }
+
+    const logs = await this.prisma.auditLog.findMany({
+      where: { tenantId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      take: AUDIT_CHAIN_SAFETY_CAP,
+    });
+
+    for (const log of logs) {
+      if (log.signature && log.hash) {
+        const expectedSignature = createHmac('sha256', process.env.JWT_SECRET)
+          .update(log.hash)
+          .digest('hex');
+        if (log.signature !== expectedSignature) {
+          signatureErrors.push(log.id);
+        }
+      }
+    }
+
+    return {
+      ...chainResult,
+      signatureErrors,
+      isValid: chainResult.isValid && signatureErrors.length === 0,
+    };
+  }
+
+  async exportMyEvents(
+    tenantId: string,
+    userId: string,
+    query: AuditQueryDto,
+    format: 'csv' | 'json' = 'csv',
+  ) {
+    const { eventKey, recordType, recordId, startDate, endDate } = query;
+    const take = AUDIT_CHAIN_SAFETY_CAP;
+    const where: any = { tenantId, userId };
+
+    if (eventKey) where.eventKey = eventKey;
+    if (recordType) where.recordType = recordType;
+    if (recordId) where.recordId = recordId;
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    const totalAvailable = await this.prisma.auditLog.count({ where });
+    const rows = await this.prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take,
+      select: {
+        id: true,
+        tenantId: true,
+        branchId: true,
+        userId: true,
+        eventKey: true,
+        recordType: true,
+        recordId: true,
+        createdAt: true,
+        ipAddress: true,
+        userAgent: true,
+        activeRole: true,
+        sessionId: true,
+        hash: true,
+        previousHash: true,
+      },
+    });
+
+    const exportedCount = rows.length;
+    const truncated = exportedCount < totalAvailable;
+
+    try {
+      await this.log({
+        tenantId,
+        userId,
+        eventKey: AUDIT_EVENT_KEYS.AUDIT_LOG_EXPORTED,
+        recordType: 'AuditLog',
+        recordId: 'self',
+        newValues: {
+          format,
+          count: exportedCount,
+          totalAvailable,
+          filters: query,
+        },
+      });
+    } catch (err) {
+      const msg = (err as Error).message;
+      const logMsg = `Failed to log AUDIT_LOG_EXPORTED for self-export: ${msg}`;
+      this.logger.warn(logMsg);
+    }
+
+    const fields = [
+      'id',
+      'tenantId',
+      'branchId',
+      'userId',
+      'eventKey',
+      'recordType',
+      'recordId',
+      'createdAt',
+      'ipAddress',
+      'userAgent',
+      'activeRole',
+      'sessionId',
+      'hash',
+      'previousHash',
+    ];
+
+    if (format === 'csv') {
+      const data = rows.map((item: any) => {
+        const row: Record<string, any> = {};
+        for (const field of fields) {
+          row[field] = item[field] ?? '';
+        }
+        return row;
+      });
+      return { data, exportedCount, totalAvailable, truncated, format: 'csv' };
+    }
+
+    const data = rows.map((item: any) => {
+      const row: Record<string, any> = {};
+      for (const field of fields) {
+        row[field] = item[field] ?? null;
+      }
+      return row;
+    });
+
+    return { data, exportedCount, totalAvailable, truncated, format: 'json' };
+  }
+
+  async exportEvents(
+    tenantId: string,
+    branchId: string | undefined,
+    userRoles: string[],
+    userId: string,
+    query: AuditQueryDto,
+    format: 'csv' | 'json' = 'csv',
+  ) {
+    const { eventKey, recordType, recordId, startDate, endDate } = query;
+    const take = AUDIT_CHAIN_SAFETY_CAP;
+    const isSuperAdmin = userRoles.includes('Super Admin');
+    const where: any = { tenantId };
+
+    if (!isSuperAdmin) {
+      if (branchId) {
+        where.branchId = branchId;
+      } else {
+        where.branchId = null;
+      }
+    }
+
+    if (eventKey) where.eventKey = eventKey;
+    if (query.userId) where.userId = query.userId;
+    if (recordType) where.recordType = recordType;
+    if (recordId) where.recordId = recordId;
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    const totalAvailable = await this.prisma.auditLog.count({ where });
+    const rows = await this.prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take,
+      select: {
+        id: true,
+        tenantId: true,
+        branchId: true,
+        userId: true,
+        eventKey: true,
+        recordType: true,
+        recordId: true,
+        createdAt: true,
+        ipAddress: true,
+        userAgent: true,
+        activeRole: true,
+        sessionId: true,
+        hash: true,
+        previousHash: true,
+      },
+    });
+
+    const exportedCount = rows.length;
+    const truncated = exportedCount < totalAvailable;
+
+    try {
+      await this.log({
+        tenantId,
+        userId,
+        eventKey: AUDIT_EVENT_KEYS.AUDIT_LOG_EXPORTED,
+        recordType: 'AuditLog',
+        recordId: 'bulk',
+        newValues: {
+          format,
+          count: exportedCount,
+          totalAvailable,
+          filters: query,
+        },
+      });
+    } catch (err) {
+      const msg = (err as Error).message;
+      this.logger.warn(`Failed to log AUDIT_LOG_EXPORTED: ${msg}`);
+    }
+
+    const fields = [
+      'id',
+      'tenantId',
+      'branchId',
+      'userId',
+      'eventKey',
+      'recordType',
+      'recordId',
+      'createdAt',
+      'ipAddress',
+      'userAgent',
+      'activeRole',
+      'sessionId',
+      'hash',
+      'previousHash',
+    ];
+
+    if (format === 'csv') {
+      const data = rows.map((item: any) => {
+        const row: Record<string, any> = {};
+        for (const field of fields) {
+          row[field] = item[field] ?? '';
+        }
+        return row;
+      });
+      return { data, exportedCount, totalAvailable, truncated, format: 'csv' };
+    }
+
+    const data = rows.map((item: any) => {
+      const row: Record<string, any> = {};
+      for (const field of fields) {
+        row[field] = item[field] ?? null;
+      }
+      return row;
+    });
+
+    return { data, exportedCount, totalAvailable, truncated, format: 'json' };
+  }
+
+  async findMyEvent(tenantId: string, userId: string, id: string) {
+    const auditLog = await this.prisma.auditLog.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        tenantId: true,
+        branchId: true,
+        userId: true,
+        eventKey: true,
+        recordType: true,
+        recordId: true,
+        createdAt: true,
+        ipAddress: true,
+        userAgent: true,
+        activeRole: true,
+        sessionId: true,
+        hash: true,
+        previousHash: true,
+        signature: true,
+      },
+    });
+
+    if (!auditLog || auditLog.tenantId !== tenantId) {
+      throw new NotFoundException('Audit log not found');
+    }
+
+    if (auditLog.userId !== userId) {
+      throw new ForbiddenException('Access denied to this audit log');
+    }
+
+    return auditLog;
   }
 
   async findOne(

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { Request, Response, NextFunction } from 'express';
 import { ClinicalModule } from '../src/clinical/clinical.module';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { AuditModule } from '../src/audit/audit.module';
@@ -45,7 +46,7 @@ describe('Audit Log Forensic Context (e2e)', () => {
     app.useGlobalGuards(new MockJwtAuthGuard());
 
     // Bind AuditContextMiddleware manually to global express routes for E2E
-    app.use((req, res, next) =>
+    app.use((req: Request, res: Response, next: NextFunction) =>
       new AuditContextMiddleware().use(req, res, next),
     );
 

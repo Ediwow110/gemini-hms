@@ -9,7 +9,7 @@ import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } 
 export const ReconciliationMonitorPage: React.FC = () => {
   const { data: issues, isLoading, error } = useIntegrationReconciliation();
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Reconciliation Monitor"

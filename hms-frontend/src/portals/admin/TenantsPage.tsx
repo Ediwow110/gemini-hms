@@ -90,7 +90,7 @@ export const TenantsPage: React.FC = () => {
   }
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="full"
       footer={<HmsAuditFooter dataSource="Mock tenant data (sandbox)" />}
     >
       <AdminShellNotice />

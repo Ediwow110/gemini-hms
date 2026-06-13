@@ -1,0 +1,73 @@
+- generic [ref=e2]:
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e10]:
+        - img [ref=e12]
+        - heading "HMS Core" [level=2] [ref=e16]
+      - generic [ref=e17]:
+        - generic [ref=e91]: Login failed. Please check your credentials.
+        - generic [ref=e18]:
+          - generic [ref=e19]:
+            - generic [ref=e20]: Organization / Tenant Code
+            - textbox "e.g. Central Hospital" [ref=e21]: Central Hospital (Main Branch)
+          - generic [ref=e22]:
+            - generic [ref=e23]: Email Address
+            - textbox "name@hospital.com" [ref=e24]: pharmacist@hospital.com
+          - generic [ref=e25]:
+            - generic [ref=e26]: Password
+            - generic [ref=e27]:
+              - textbox "••••••••" [ref=e28]: Admin@123
+              - button [ref=e29]:
+                - img [ref=e30]
+        - generic [ref=e33]:
+          - generic [ref=e34] [cursor=pointer]:
+            - checkbox "Remember device" [ref=e35]
+            - generic [ref=e36]: Remember device
+          - generic [ref=e37]: Forgot password?
+        - generic [ref=e38]:
+          - button "Sign in to Dashboard" [ref=e39] [cursor=pointer]:
+            - img [ref=e92]
+            - text: Sign in to Dashboard
+          - button "Use Demo Account" [ref=e43]:
+            - img [ref=e44]
+            - text: Use Demo Account
+      - paragraph [ref=e49]:
+        - img [ref=e50]
+        - text: Authorized Personnel Only
+    - paragraph [ref=e53]: HMS Core v2.0 · Pre-Production Release Candidate
+  - generic [ref=e55]:
+    - generic [ref=e57]:
+      - img [ref=e58]
+      - heading "Local Auth Diagnostics" [level=3] [ref=e60]
+    - generic [ref=e61]:
+      - generic [ref=e62]:
+        - generic [ref=e63]:
+          - img [ref=e64]
+          - generic [ref=e67]: "Frontend: http://localhost:5173"
+        - generic [ref=e68]:
+          - img [ref=e69]
+          - generic [ref=e72]: "Backend: http://localhost:5173"
+        - generic [ref=e73]:
+          - img [ref=e74]
+          - generic [ref=e76]: "Cookie 'access_token': Missing"
+      - generic [ref=e77]:
+        - heading "Suggested Checks" [level=4] [ref=e78]:
+          - img [ref=e79]
+          - text: Suggested Checks
+        - list [ref=e81]:
+          - listitem [ref=e82]:
+            - text: Is the backend running on
+            - code [ref=e83]: http://localhost:5173
+            - text: "?"
+          - listitem [ref=e84]:
+            - text: Does backend
+            - code [ref=e85]: CORS_ALLOWED_ORIGINS
+            - text: include
+            - code [ref=e86]: http://localhost:5173
+            - text: "?"
+          - listitem [ref=e87]: Clear cookies if switching between frontend origins.
+          - listitem [ref=e88]:
+            - text: Ensure the seeded user matches your
+            - code [ref=e89]: tenantCode
+            - text: .
+      - generic [ref=e90]: Network Error

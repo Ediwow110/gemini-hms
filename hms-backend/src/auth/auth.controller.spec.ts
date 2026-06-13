@@ -185,12 +185,14 @@ describe('AuthController', () => {
         roles: ['Admin'],
       };
       const mockProfile = {
+        id: 'user-123',
         userId: 'user-123',
         email: 'admin@test.com',
         tenantId: 'tenant-456',
         branchId: undefined,
         roles: ['Admin'],
         permissions: [],
+        defaultPortalPath: '/admin',
       };
       authService.getMe.mockResolvedValue(mockProfile);
 

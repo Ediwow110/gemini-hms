@@ -25,7 +25,7 @@ export const IntegrationDashboard: React.FC = () => {
   const isLoading = notifLoading || apprLoading || auditLoading || recLoading;
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Integration Bridges Command Center"

@@ -126,7 +126,7 @@ export const CatalogManagementPage: React.FC = () => {
   ) ?? [];
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6">
         <HmsPageHeader
           title="Catalog Management"

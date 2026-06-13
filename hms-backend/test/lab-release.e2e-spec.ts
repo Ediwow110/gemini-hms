@@ -131,13 +131,14 @@ describe('Lab Result Release Transaction (e2e)', () => {
     const dbOrder = await prisma.order.findUnique({
       where: { id: order.id },
     });
+    if (!dbOrder) throw new Error('Expected order to exist');
     expect(dbOrder.status).toBe('RELEASED');
 
     // 6. Assert that LabResultSignature record was transactionally created
     const signature = await prisma.labResultSignature.findUnique({
       where: { labResultId: labResult.id },
     });
-    expect(signature).not.toBeNull();
+    if (!signature) throw new Error('Expected labResultSignature to exist');
     expect(signature.signedById).toBe(doctorId);
     expect(signature.signatureHash).toBeDefined();
 
@@ -145,7 +146,7 @@ describe('Lab Result Release Transaction (e2e)', () => {
     const outbox = await prisma.notificationOutbox.findFirst({
       where: { recipientId: patientId, type: 'LAB_RESULT_READY' },
     });
-    expect(outbox).not.toBeNull();
+    if (!outbox) throw new Error('Expected notificationOutbox to exist');
     expect(outbox.status).toBe('PENDING');
     const payload = JSON.parse(outbox.payload);
     expect(payload.resultId).toBe(labResult.id);

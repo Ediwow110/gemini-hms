@@ -7,7 +7,7 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 
 export const ApprovalCenterPage: React.FC = () => {
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Approval Center"

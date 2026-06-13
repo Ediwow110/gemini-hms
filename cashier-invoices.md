@@ -1,0 +1,53 @@
+- generic [ref=e5]:
+  - banner [ref=e6]:
+    - generic [ref=e7]:
+      - button [ref=e8]:
+        - img [ref=e9]
+      - generic [ref=e10]:
+        - img [ref=e11]
+        - textbox "Search patients, orders, or staff... (Ctrl+K)" [ref=e14] [cursor=pointer]
+    - generic [ref=e15]:
+      - button "Quick Create" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e19]: Quick Create
+      - 'button "Branch: 00000000-0000-0000-0000-000000000010" [ref=e20] [cursor=pointer]':
+        - img [ref=e21]
+        - generic [ref=e24]: "Branch: 00000000-0000-0000-0000-000000000010"
+      - link [ref=e25] [cursor=pointer]:
+        - /url: /notifications
+        - img [ref=e26]
+      - generic "Click to logout" [ref=e33] [cursor=pointer]:
+        - generic [ref=e34]:
+          - paragraph [ref=e35]: CONFIDENTIAL - RESTRICTED ACCESS
+          - paragraph [ref=e36]: Cashier
+        - generic [ref=e37]: C
+  - main [ref=e38]:
+    - generic [ref=e40]:
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - heading "Invoice Directory" [level=1] [ref=e45]
+          - generic [ref=e46]: Billing Desk
+        - paragraph [ref=e47]: View and trace all invoices issued in this branch.
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]: "Branch:"
+            - generic [ref=e52]: "Branch ID: 00000000-0000-0000-0000-000000000010"
+          - generic [ref=e53]: Cashier
+        - generic [ref=e54]:
+          - generic [ref=e55]: "Total: 1"
+          - button "Refresh dashboard data" [ref=e56]:
+            - img [ref=e57]
+            - text: Refresh
+      - generic [ref=e63]:
+        - img [ref=e64]
+        - textbox "Search by invoice number..." [ref=e67]
+      - generic [ref=e68]:
+        - paragraph [ref=e69]: Error loading invoices
+        - paragraph [ref=e70]: "ThrottlerException: Too Many Requests"
+        - button "Retry" [ref=e71] [cursor=pointer]:
+          - img [ref=e72]
+          - text: Retry
+      - generic [ref=e78]:
+        - generic [ref=e79]: "Last refreshed: 7:05:59 PM"
+        - generic [ref=e80]: "Source: Billing Financial Service"

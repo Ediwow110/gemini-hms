@@ -11,7 +11,7 @@ export const MobileHandoverChecklistPage: React.FC = () => {
   const { data: checklist, isLoading } = useFieldServiceHandoverChecklist();
 
   return (
-    <HmsDashboardShell maxWidth="full">
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 max-w-2xl mx-auto pb-20">
         <HmsPageHeader
           title="Handover Checklist"

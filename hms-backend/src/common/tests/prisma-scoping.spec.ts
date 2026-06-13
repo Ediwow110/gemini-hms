@@ -74,7 +74,7 @@ describe('PrismaQueryScoping', () => {
 
       // This returns Tenant A's data to Tenant B — the bug
       expect(result).toEqual(crossTenantPatient);
-      expect(result.tenantId).toBe(mockTenantA);
+      expect(result!.tenantId).toBe(mockTenantA);
     });
 
     it('findFirst({ where: { id, tenantId } }) correctly scopes to tenant', async () => {
@@ -166,7 +166,7 @@ describe('PrismaQueryScoping', () => {
       });
 
       expect(result).toEqual(crossTenantInvoice);
-      expect(result.tenantId).toBe(mockTenantA);
+      expect(result!.tenantId).toBe(mockTenantA);
     });
 
     it('invoice findFirst with tenantId correctly scopes', async () => {
@@ -238,7 +238,9 @@ describe('PrismaQueryScoping', () => {
         { id: 'enc-2', branchId: 'branch-b', tenantId: mockTenantA },
       ];
 
-      mockDb.patient.findMany = jest.fn().mockResolvedValue(mockEncounters);
+      (mockDb.patient as any).findMany = jest
+        .fn()
+        .mockResolvedValue(mockEncounters);
 
       // Simulate a list query that has tenantId but no branchId
       const result = await prisma.patient.findMany({

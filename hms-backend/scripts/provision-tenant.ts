@@ -92,6 +92,8 @@ async function main() {
         { name: 'inventory.adjust.approve', scope: 'tenant/branch', riskLevel: 'HIGH' },
         { name: 'report.export', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
         { name: 'audit.view', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
+        { name: 'audit.self', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
+        { name: 'audit.export', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
         { name: 'admin.role.change', scope: 'tenant/system', riskLevel: 'PRIVILEGED' },
         { name: 'approval.request.create', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
         { name: 'approval.request.view', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
@@ -149,7 +151,7 @@ async function main() {
           'inventory.item.view', 'inventory.item.create', 'inventory.stock.receive', 'inventory.stock.dispense',
           'queue.view', 'queue.manage', 
           'approval.request.view', 'approval.request.process',
-          'report.export', 'audit.view',
+          'report.export', 'audit.view', 'audit.self',
           'encounter.create', 'encounter.view', 'encounter.update'
         ],
         'Doctor': [

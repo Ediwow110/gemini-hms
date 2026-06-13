@@ -47,7 +47,7 @@ export const AccessReviewsPage: React.FC = () => {
   void certifiedCount;
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Access Certification Reviews"

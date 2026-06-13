@@ -68,7 +68,7 @@ export const RetentionManagementPage: React.FC = () => {
   });
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Data Retention & Archive Management"

@@ -113,7 +113,7 @@ export const AdminExecutiveDashboard: React.FC = () => {
   ] : [];
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="full"
       toolbar={
         <HmsToolbar
           branchName={selectedBranch === 'all' ? 'All Branches' : selectedBranch}
@@ -330,7 +330,7 @@ export const AdminExecutiveDashboard: React.FC = () => {
                 { id: 'user-ctrl', label: 'User & Accounts Control', icon: <Users className="h-4 w-4 text-blue-500" />, href: '/admin/users' },
                 { id: 'audit-logs', label: 'System Audit Logs', icon: <History className="h-4 w-4 text-amber-500" />, href: '/admin/audit-logs' },
                 { id: 'branch-mgr', label: 'Branches Manager', icon: <Building className="h-4 w-4 text-emerald-500" />, href: '/admin/branches' },
-                { id: 'sys-settings', label: 'System Settings', icon: <Settings className="h-4 w-4 text-slate-500" />, href: '/admin/settings' },
+                { id: 'sys-settings', label: 'Global System Config', icon: <Settings className="h-4 w-4 text-slate-500" />, href: '/admin/settings' },
               ]}
             />
 

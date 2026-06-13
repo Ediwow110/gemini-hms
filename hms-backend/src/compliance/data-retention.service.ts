@@ -5,6 +5,68 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+const RETENTION_CLASSES = {
+  FINANCIAL: {
+    durationYears: 10,
+    eventPrefixes: [
+      'PAYMENT_',
+      'REFUND_',
+      'VOID_',
+      'RECEIPT_',
+      'SESSION_',
+      'INVOICE_',
+    ],
+  },
+  CLINICAL: {
+    durationYears: 10,
+    eventPrefixes: [
+      'VITALS_',
+      'SOAP_',
+      'LAB_',
+      'TRIAGE_',
+      'ORDER_',
+      'PRESCRIPTION_',
+      'DIAGNOSIS_',
+    ],
+  },
+  ADMINISTRATIVE: {
+    durationYears: 3,
+    eventPrefixes: [
+      'ADMIN_',
+      'ROLE_',
+      'USER_',
+      'CATALOG_',
+      'MERGE_',
+      'AUDIT_LOG_RETENTION_',
+      'AUDIT_LOG_ARCHIVED',
+    ],
+  },
+  SECURITY: {
+    durationYears: 5,
+    eventPrefixes: [
+      'BREAK_GLASS_',
+      'SENSITIVE_',
+      'SECURITY_',
+      'LOGIN_',
+      'MFA_',
+      'CHAIN_',
+    ],
+  },
+  EXPORT: {
+    durationYears: 1,
+    eventPrefixes: [
+      'EXPORTED',
+      'DOWNLOADED',
+      'REPORT_EXPORTED',
+      'AUDIT_LOG_EXPORTED',
+    ],
+  },
+  TRANSIENT: {
+    durationDays: 90,
+    eventPrefixes: ['READ_ACCESS_'],
+  },
+};
+
 @Injectable()
 export class DataRetentionService {
   constructor(private readonly prisma: PrismaService) {}
@@ -16,64 +78,29 @@ export class DataRetentionService {
     const archiveReason = 'HIPAA 6-Year Retention Archival Policy';
     const now = new Date();
 
-    // 1. Patient Archival
     const patients = await this.prisma.patient.updateMany({
-      where: {
-        createdAt: { lt: sixYearsAgo },
-        archivedAt: null,
-      },
-      data: {
-        archivedAt: now,
-        archiveReason,
-      },
+      where: { createdAt: { lt: sixYearsAgo }, archivedAt: null },
+      data: { archivedAt: now, archiveReason },
     });
 
-    // 2. Encounter Archival
     const encounters = await this.prisma.encounter.updateMany({
-      where: {
-        createdAt: { lt: sixYearsAgo },
-        archivedAt: null,
-      },
-      data: {
-        archivedAt: now,
-        archiveReason,
-      },
+      where: { createdAt: { lt: sixYearsAgo }, archivedAt: null },
+      data: { archivedAt: now, archiveReason },
     });
 
-    // 3. LabResult Archival
     const labResults = await this.prisma.labResult.updateMany({
-      where: {
-        createdAt: { lt: sixYearsAgo },
-        archivedAt: null,
-      },
-      data: {
-        archivedAt: now,
-        archiveReason,
-      },
+      where: { createdAt: { lt: sixYearsAgo }, archivedAt: null },
+      data: { archivedAt: now, archiveReason },
     });
 
-    // 4. Invoice Archival
     const invoices = await this.prisma.invoice.updateMany({
-      where: {
-        createdAt: { lt: sixYearsAgo },
-        archivedAt: null,
-      },
-      data: {
-        archivedAt: now,
-        archiveReason,
-      },
+      where: { createdAt: { lt: sixYearsAgo }, archivedAt: null },
+      data: { archivedAt: now, archiveReason },
     });
 
-    // 5. Payment Archival
     const payments = await this.prisma.payment.updateMany({
-      where: {
-        createdAt: { lt: sixYearsAgo },
-        archivedAt: null,
-      },
-      data: {
-        archivedAt: now,
-        archiveReason,
-      },
+      where: { createdAt: { lt: sixYearsAgo }, archivedAt: null },
+      data: { archivedAt: now, archiveReason },
     });
 
     return {
@@ -83,6 +110,29 @@ export class DataRetentionService {
       archivedInvoicesCount: invoices.count,
       archivedPaymentsCount: payments.count,
     };
+  }
+
+  async getAuditRetentionStatus() {
+    const results: Record<string, { active: number; retentionYears: number }> =
+      {};
+    for (const [className, config] of Object.entries(RETENTION_CLASSES)) {
+      const durationYears =
+        'durationYears' in config
+          ? config.durationYears
+          : (config as any).durationDays / 365;
+      const total = await this.prisma.auditLog.count({
+        where: {
+          OR: config.eventPrefixes.map((prefix) => ({
+            eventKey: { startsWith: prefix },
+          })),
+        },
+      });
+      results[className.toLowerCase()] = {
+        active: total,
+        retentionYears: Math.ceil(durationYears),
+      };
+    }
+    return results;
   }
 
   async getRetentionStatus() {
@@ -97,6 +147,7 @@ export class DataRetentionService {
       archivedInvoices,
       activePayments,
       archivedPayments,
+      auditStatus,
     ] = await Promise.all([
       this.prisma.patient.count({ where: { archivedAt: null } }),
       this.prisma.patient.count({ where: { NOT: { archivedAt: null } } }),
@@ -108,6 +159,7 @@ export class DataRetentionService {
       this.prisma.invoice.count({ where: { NOT: { archivedAt: null } } }),
       this.prisma.payment.count({ where: { archivedAt: null } }),
       this.prisma.payment.count({ where: { NOT: { archivedAt: null } } }),
+      this.getAuditRetentionStatus(),
     ]);
 
     return {
@@ -116,6 +168,7 @@ export class DataRetentionService {
       labResults: { active: activeLabResults, archived: archivedLabResults },
       invoices: { active: activeInvoices, archived: archivedInvoices },
       payments: { active: activePayments, archived: archivedPayments },
+      auditLogs: auditStatus,
     };
   }
 

@@ -31,14 +31,14 @@ export const IncidentReportsPage: React.FC = () => {
     }));
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Incident Reports & Postmortems"
           description="System outages, security alerts, degradation events, and resolution tracking"
         />
 
-        <ITScopeFilter />
+        <ITScopeFilter displayOnly />
 
         {loading ? (
           <HmsLoadingSkeleton variant="alert-rail" />

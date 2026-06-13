@@ -56,7 +56,11 @@ export class MetricsService {
       memoryUsage: process.memoryUsage(),
       cpuUsage: process.cpuUsage(),
       databaseStatus: dbStatus,
-      activeUserSessions: 42,
+      activeUserSessions: await this.prisma.session
+        .count({
+          where: { expiresAt: { gt: new Date() } },
+        })
+        .catch(() => -1),
       triggeredSlaAlerts: triggeredSlaAlertsCount,
     };
   }

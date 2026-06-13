@@ -1,0 +1,63 @@
+- generic [ref=e2]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e9]:
+        - img [ref=e11]
+        - heading "HMS Core" [level=2] [ref=e15]
+      - generic [ref=e16]:
+        - generic [ref=e85]: Login failed. Please check your credentials.
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - generic [ref=e19]: Organization / Tenant Code
+            - textbox "e.g. Central Hospital" [ref=e20]: Central Hospital (Main Branch)
+          - generic [ref=e21]:
+            - generic [ref=e22]: Email Address
+            - textbox "name@hospital.com" [ref=e23]: pharmacist@hospital.com
+          - generic [ref=e24]:
+            - generic [ref=e25]: Password
+            - generic [ref=e26]:
+              - textbox "••••••••" [ref=e27]: Admin@123
+              - button [ref=e28]:
+                - img [ref=e29]
+        - generic [ref=e32]:
+          - generic [ref=e33] [cursor=pointer]:
+            - checkbox "Remember device" [ref=e34]
+            - generic [ref=e35]: Remember device
+          - generic [ref=e36]: Forgot password?
+        - generic [ref=e37]:
+          - button "Sign in to Dashboard" [ref=e38] [cursor=pointer]:
+            - img [ref=e86]
+            - text: Sign in to Dashboard
+          - button "Use Demo Account" [ref=e42]:
+            - img [ref=e43]
+            - text: Use Demo Account
+      - paragraph [ref=e48]:
+        - img [ref=e49]
+        - text: Authorized Personnel Only
+    - paragraph [ref=e52]: HMS Core v2.0 · Pre-Production Release Candidate
+  - generic [ref=e54]:
+    - generic [ref=e56]:
+      - img [ref=e57]
+      - heading "Local Auth Diagnostics" [level=3] [ref=e59]
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - img [ref=e63]
+          - generic [ref=e66]: "Frontend: http://localhost:5173"
+        - generic [ref=e67]:
+          - img [ref=e68]
+          - generic [ref=e71]: "Backend: http://localhost:5173"
+        - generic [ref=e72]:
+          - img [ref=e73]
+          - generic [ref=e75]: "Cookie 'access_token': Missing"
+      - generic [ref=e76]:
+        - heading "Suggested Checks" [level=4] [ref=e77]:
+          - img [ref=e78]
+          - text: Suggested Checks
+        - list [ref=e80]:
+          - listitem [ref=e81]: Clear cookies if switching between frontend origins.
+          - listitem [ref=e82]:
+            - text: Ensure the seeded user matches your
+            - code [ref=e83]: tenantCode
+            - text: .
+      - generic [ref=e84]: Request failed with status code 502 (502)

@@ -19,12 +19,25 @@ export const PERMISSIONS = {
   MARKETPLACE_ADMIN: 'marketplace.admin',
   FIELD_SERVICE_MANAGE: 'field_service.manage',
   INTEGRATION_VIEW: 'integration.view',
+  AUDIT_SELF: 'audit.self',
+  AUDIT_EXPORT: 'audit.export',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
 
 export const ROLE_DEFAULT_PERMISSIONS: Record<string, Permission[]> = {
   'Super Admin': Object.values(PERMISSIONS),
+  'Compliance Officer': [
+    PERMISSIONS.AUDIT_VIEW,
+    PERMISSIONS.AUDIT_SELF,
+    PERMISSIONS.AUDIT_EXPORT,
+    PERMISSIONS.REPORT_EXPORT,
+    PERMISSIONS.INTEGRATION_VIEW,
+  ],
+  'IT Support': [
+    PERMISSIONS.AUDIT_VIEW,
+    PERMISSIONS.AUDIT_SELF,
+  ],
   'Patient': [
     PERMISSIONS.PATIENT_SELF_SERVICE,
   ],
@@ -75,9 +88,16 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.MARKETPLACE_SUPPLIER,
     PERMISSIONS.FIELD_SERVICE_MANAGE,
     PERMISSIONS.INTEGRATION_VIEW,
+    PERMISSIONS.AUDIT_VIEW,
+    PERMISSIONS.AUDIT_SELF,
   ],
   'HR Manager': [
     PERMISSIONS.HR_MANAGE,
+    PERMISSIONS.REPORT_EXPORT,
+  ],
+  'Procurement Officer': [
+    PERMISSIONS.PROCUREMENT_VIEW,
+    PERMISSIONS.PROCUREMENT_MANAGE,
     PERMISSIONS.REPORT_EXPORT,
   ],
   'Procurement Manager': [

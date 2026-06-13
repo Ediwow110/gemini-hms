@@ -20,7 +20,7 @@ export const PatientLabResultsPage: React.FC = () => {
   }));
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="standard">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="My Test Results"

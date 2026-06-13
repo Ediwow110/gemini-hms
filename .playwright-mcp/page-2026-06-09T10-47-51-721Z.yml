@@ -1,0 +1,143 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e58]:
+    - banner [ref=e59]:
+      - generic [ref=e60]:
+        - button [ref=e61]:
+          - img [ref=e62]
+        - generic [ref=e63]:
+          - img [ref=e64]
+          - textbox "Search patients, orders, or staff... (Ctrl+K)" [ref=e67] [cursor=pointer]
+      - generic [ref=e68]:
+        - button "Quick Create" [ref=e69] [cursor=pointer]:
+          - img [ref=e70]
+          - generic [ref=e72]: Quick Create
+        - 'button "Branch: None" [ref=e73] [cursor=pointer]':
+          - img [ref=e74]
+          - generic [ref=e77]: "Branch: None"
+        - link [ref=e78] [cursor=pointer]:
+          - /url: /notifications
+          - img [ref=e79]
+        - generic "Click to logout" [ref=e86] [cursor=pointer]:
+          - generic [ref=e87]:
+            - paragraph [ref=e88]: CONFIDENTIAL - RESTRICTED ACCESS
+            - paragraph [ref=e89]: Cashier
+          - generic [ref=e90]: C
+    - main [ref=e91]:
+      - generic [ref=e93]:
+        - generic [ref=e95]:
+          - heading "Cashier & Billing Workspace" [level=1] [ref=e97]
+          - paragraph [ref=e98]: Invoice management, payment processing, session control, and reconciliation
+        - generic [ref=e99]:
+          - generic [ref=e100]:
+            - img [ref=e101]
+            - paragraph [ref=e105]: No Active Session
+          - button "Open Session" [ref=e106] [cursor=pointer]
+        - generic [ref=e107]:
+          - generic [ref=e109]:
+            - generic [ref=e110]:
+              - paragraph [ref=e111]: Total Invoices
+              - paragraph [ref=e112]: "0"
+            - img [ref=e114]
+          - generic [ref=e118]:
+            - generic [ref=e119]:
+              - paragraph [ref=e120]: Pending Payment
+              - paragraph [ref=e121]: "0"
+            - img [ref=e123]
+          - generic [ref=e126]:
+            - generic [ref=e127]:
+              - paragraph [ref=e128]: Paid
+              - paragraph [ref=e129]: "0"
+            - img [ref=e131]
+          - generic [ref=e134]:
+            - generic [ref=e135]:
+              - paragraph [ref=e136]: Outstanding Balance
+              - paragraph [ref=e137]: 0 ₱
+            - img [ref=e139]
+        - generic [ref=e142]:
+          - region "Revenue by day" [ref=e143]:
+            - generic [ref=e145]:
+              - heading "Revenue by day" [level=3] [ref=e146]
+              - paragraph [ref=e147]: Sandbox trend for collection planning; invoice totals above are live API derived.
+            - img "Revenue by day" [ref=e150]:
+              - generic [ref=e152]:
+                - generic:
+                  - status:
+                    - paragraph: Wed
+                    - list:
+                      - listitem: "Payments : 198"
+                - application [ref=e153]:
+                  - generic [ref=e168]:
+                    - generic [ref=e169]:
+                      - generic [ref=e171]: Mon
+                      - generic [ref=e173]: Tue
+                      - generic [ref=e175]: Wed
+                      - generic [ref=e177]: Thu
+                      - generic [ref=e179]: Fri
+                    - generic [ref=e180]:
+                      - generic [ref=e182]: "0"
+                      - generic [ref=e184]: "60"
+                      - generic [ref=e186]: "120"
+                      - generic [ref=e188]: "180"
+                      - generic [ref=e190]: "240"
+          - region "Payment method breakdown" [ref=e191]:
+            - generic [ref=e193]:
+              - heading "Payment method breakdown" [level=3] [ref=e194]
+              - paragraph [ref=e195]: Decision chart for cashier closeout and HMO aging follow-up.
+            - img "Payment method breakdown" [ref=e198]:
+              - application [ref=e201]
+              - generic [ref=e217]:
+                - generic [ref=e218]:
+                  - generic [ref=e219]: Cash
+                  - generic [ref=e221]: 48 (40%)
+                - generic [ref=e222]:
+                  - generic [ref=e223]: Card
+                  - generic [ref=e225]: 36 (30%)
+                - generic [ref=e226]:
+                  - generic [ref=e227]: HMO
+                  - generic [ref=e229]: 22 (18%)
+                - generic [ref=e230]:
+                  - generic [ref=e231]: Bank
+                  - generic [ref=e233]: 14 (12%)
+          - region "Billing and closeout alerts" [ref=e234]:
+            - heading "Billing and closeout alerts" [level=3] [ref=e235]
+            - generic [ref=e236]:
+              - generic [ref=e238]:
+                - img [ref=e239]
+                - generic [ref=e241]:
+                  - paragraph [ref=e242]: High-value unpaid invoices need review
+                  - paragraph [ref=e243]: Outstanding balance is concentrated in a small group of invoices. Prioritize branch finance review.
+                  - link "Open Invoices" [ref=e244] [cursor=pointer]:
+                    - /url: /cashier/invoices
+              - generic [ref=e246]:
+                - img [ref=e247]
+                - generic [ref=e249]:
+                  - paragraph [ref=e250]: Session closure is a safety gate
+                  - paragraph [ref=e251]: Cashier closeout should remain explicit; no automated void/refund actions were added.
+                  - link "Session" [ref=e252] [cursor=pointer]:
+                    - /url: /cashier/session
+        - generic [ref=e253]:
+          - generic [ref=e254]:
+            - heading "Billing Actions" [level=3] [ref=e255]
+            - generic [ref=e256]:
+              - button "Invoices View all invoices" [ref=e257] [cursor=pointer]:
+                - img [ref=e259]
+                - paragraph [ref=e262]: Invoices
+                - paragraph [ref=e263]: View all invoices
+              - button "Payments Process payments" [ref=e264] [cursor=pointer]:
+                - img [ref=e266]
+                - paragraph [ref=e268]: Payments
+                - paragraph [ref=e269]: Process payments
+              - button "Patient Billing Search patient bills" [ref=e270] [cursor=pointer]:
+                - img [ref=e272]
+                - paragraph [ref=e277]: Patient Billing
+                - paragraph [ref=e278]: Search patient bills
+              - button "Refunds & Voids Manage reversals" [ref=e279] [cursor=pointer]:
+                - img [ref=e281]
+                - paragraph [ref=e284]: Refunds & Voids
+                - paragraph [ref=e285]: Manage reversals
+          - generic [ref=e286]:
+            - heading "Recent Invoices" [level=3] [ref=e287]
+            - generic [ref=e288]:
+              - img [ref=e289]
+              - paragraph [ref=e292]: No invoices found
+  - generic [ref=e293]: "0"

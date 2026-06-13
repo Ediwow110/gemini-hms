@@ -118,7 +118,7 @@ export const DoctorPatientsPage = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
-                        onClick={() => navigate(`/doctor/emr/${p.id}`)}
+                        onClick={() => navigate(`/doctor/emr?patientId=${p.id}`)}
                         className="inline-flex items-center gap-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-extrabold px-3 py-1.5 rounded-xl transition-all shadow-sm text-[11px]"
                       >
                         <FileText className="h-3.5 w-3.5 text-slate-400" />

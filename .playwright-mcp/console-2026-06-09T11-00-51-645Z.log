@@ -1,0 +1,18 @@
+[      85ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=860033c9:14337
+[     845ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/invoices:0
+[     846ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[     847ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/invoices:0
+[     847ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[     848ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/sessions/active:0
+[     849ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[     849ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/sessions/active:0
+[     850ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[   28024ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=860033c9:14337
+[   28716ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/invoices:0
+[   28717ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[   28718ms] [ERROR] Failed to load resource: the server responded with a status of 429 (Too Many Requests) @ http://localhost:5173/api/v1/billing/invoices:0
+[   28719ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 429, message: ThrottlerException: Too Many Requests, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[   28719ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/sessions/active:0
+[   28720ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[   28720ms] [ERROR] Failed to load resource: the server responded with a status of 429 (Too Many Requests) @ http://localhost:5173/api/v1/billing/sessions/active:0
+[   28720ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 429, message: ThrottlerException: Too Many Requests, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509

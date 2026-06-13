@@ -508,7 +508,7 @@ describe('InventoryService', () => {
 
     it('should apply MAX_PAGE_SIZE cap (100) for catalog', async () => {
       prisma.inventoryItem.findMany.mockResolvedValue([]);
-      await service.getCatalog('tenant1', 'branch1');
+      await (service as any).getCatalog('tenant1', 'branch1');
       expect(prisma.inventoryItem.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ take: 100 }),
       );
@@ -516,7 +516,7 @@ describe('InventoryService', () => {
 
     it('should filter by tenantId and status', async () => {
       prisma.inventoryItem.findMany.mockResolvedValue([]);
-      await service.getCatalog('tenant1', 'branch1', 'ACTIVE');
+      await (service as any).getCatalog('tenant1', 'branch1', 'ACTIVE');
       expect(prisma.inventoryItem.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { tenantId: 'tenant1', status: 'ACTIVE' },
@@ -526,7 +526,7 @@ describe('InventoryService', () => {
 
     it('should order by name asc', async () => {
       prisma.inventoryItem.findMany.mockResolvedValue([]);
-      await service.getCatalog('tenant1', 'branch1');
+      await (service as any).getCatalog('tenant1', 'branch1');
       expect(prisma.inventoryItem.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ orderBy: { name: 'asc' } }),
       );
@@ -534,7 +534,7 @@ describe('InventoryService', () => {
 
     it('should include branchStocks scoped to branchId', async () => {
       prisma.inventoryItem.findMany.mockResolvedValue([]);
-      await service.getCatalog('tenant1', 'branch1');
+      await (service as any).getCatalog('tenant1', 'branch1');
       expect(prisma.inventoryItem.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           include: { branchStocks: { where: { branchId: 'branch1' } } },

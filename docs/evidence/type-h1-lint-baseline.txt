@@ -1,0 +1,618 @@
+
+> hms-backend@0.0.1 lint
+> eslint "{src,apps,libs,test}/**/*.ts"
+
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\admin\admin.service.spec.ts
+  1688:7  warning  Unsafe argument of type `any` assigned to a parameter of type `ConfigService<Record<string | symbol, unknown>, false>`  @typescript-eslint/no-unsafe-argument
+  1720:7  warning  Unsafe argument of type `any` assigned to a parameter of type `ConfigService<Record<string | symbol, unknown>, false>`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\audit\audit.service.ts
+  53:38  warning  Unsafe argument of type `any` assigned to a parameter of type `{}`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\auth\auth.controller.spec.ts
+   81:50  warning  Unsafe argument of type `any` assigned to a parameter of type `AuthenticatedUser | Promise<AuthenticatedUser | null> | null`                                                                                                                                                                                                                                                                      @typescript-eslint/no-unsafe-argument
+   82:43  warning  Unsafe argument of type `any` assigned to a parameter of type `{ user: { branchId?: string | undefined; id: string; tenantId: string; roles: string[]; defaultPortalPath: string; }; availableBranches?: { name: string; id: string; code: string; }[] | undefined; accessToken: string; refreshToken: string; sessionId: string; requiresBranchSelection: boolean; } | { ...; } | Promise<....`  @typescript-eslint/no-unsafe-argument
+  100:50  warning  Unsafe argument of type `any` assigned to a parameter of type `AuthenticatedUser | Promise<AuthenticatedUser | null> | null`                                                                                                                                                                                                                                                                      @typescript-eslint/no-unsafe-argument
+  101:43  warning  Unsafe argument of type `any` assigned to a parameter of type `{ user: { branchId?: string | undefined; id: string; tenantId: string; roles: string[]; defaultPortalPath: string; }; availableBranches?: { name: string; id: string; code: string; }[] | undefined; accessToken: string; refreshToken: string; sessionId: string; requiresBranchSelection: boolean; } | { ...; } | Promise<....`  @typescript-eslint/no-unsafe-argument
+  131:50  warning  Unsafe argument of type `any` assigned to a parameter of type `{ user: { branchId?: string | undefined; id: string; tenantId: string; roles: string[]; defaultPortalPath: string; }; availableBranches?: { name: string; id: string; code: string; }[] | undefined; accessToken: string; refreshToken: string; sessionId: string; requiresBranchSelection: boolean; } | Promise<...> | null`      @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\auth\auth.controller.ts
+   56:32  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+   61:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+   66:30  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  117:38  warning  Unsafe argument of type `any` assigned to a parameter of type `Response<any, Record<string, any>>`  @typescript-eslint/no-unsafe-argument
+  146:38  warning  Unsafe argument of type `any` assigned to a parameter of type `Response<any, Record<string, any>>`  @typescript-eslint/no-unsafe-argument
+  194:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  195:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  199:38  warning  Unsafe argument of type `any` assigned to a parameter of type `Response<any, Record<string, any>>`  @typescript-eslint/no-unsafe-argument
+  211:22  warning  Unsafe argument of type `any` assigned to a parameter of type `Response<any, Record<string, any>>`  @typescript-eslint/no-unsafe-argument
+  221:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  222:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  240:39  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  242:53  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  242:63  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  245:38  warning  Unsafe argument of type `any` assigned to a parameter of type `Response<any, Record<string, any>>`  @typescript-eslint/no-unsafe-argument
+  245:59  warning  Unsafe argument of type `any` assigned to a parameter of type `string | undefined`                  @typescript-eslint/no-unsafe-argument
+  279:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  280:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  282:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`                              @typescript-eslint/no-unsafe-argument
+  286:38  warning  Unsafe argument of type `any` assigned to a parameter of type `Response<any, Record<string, any>>`  @typescript-eslint/no-unsafe-argument
+  286:59  warning  Unsafe argument of type `any` assigned to a parameter of type `string | undefined`                  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\auth\auth.service.ts
+  264:7  warning  Unsafe argument of type `any` assigned to a parameter of type `AuthenticatedUser`  @typescript-eslint/no-unsafe-argument
+  305:7  warning  Unsafe argument of type `any` assigned to a parameter of type `AuthenticatedUser`  @typescript-eslint/no-unsafe-argument
+  392:7  warning  Unsafe argument of type `any` assigned to a parameter of type `AuthenticatedUser`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\auth\guards\csrf.guard.ts
+  25:45  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\auth\guards\mfa-challenge.guard.ts
+  22:46  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\catalog\catalog.controller.ts
+   34:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   35:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   46:50  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   52:48  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   63:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   64:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   73:43  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   73:62  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   79:45  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   85:44  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   96:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+   97:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  111:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  112:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\clinical\tests\advanced-clinical.controller.spec.ts
+   95:34  warning  Unsafe argument of type `any` assigned to a parameter of type `RequestUser`  @typescript-eslint/no-unsafe-argument
+  112:41  warning  Unsafe argument of type `any` assigned to a parameter of type `RequestUser`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\clinical\tests\clinical-branch-isolation.service.spec.ts
+   38:45  warning  Unsafe argument of type `any` assigned to a parameter of type `PrismaService`  @typescript-eslint/no-unsafe-argument
+   38:53  warning  Unsafe argument of type `any` assigned to a parameter of type `AuditService`   @typescript-eslint/no-unsafe-argument
+   62:45  warning  Unsafe argument of type `any` assigned to a parameter of type `PrismaService`  @typescript-eslint/no-unsafe-argument
+   62:53  warning  Unsafe argument of type `any` assigned to a parameter of type `AuditService`   @typescript-eslint/no-unsafe-argument
+   82:45  warning  Unsafe argument of type `any` assigned to a parameter of type `PrismaService`  @typescript-eslint/no-unsafe-argument
+   82:53  warning  Unsafe argument of type `any` assigned to a parameter of type `AuditService`   @typescript-eslint/no-unsafe-argument
+   96:41  warning  Unsafe argument of type `any` assigned to a parameter of type `PrismaService`  @typescript-eslint/no-unsafe-argument
+   96:49  warning  Unsafe argument of type `any` assigned to a parameter of type `AuditService`   @typescript-eslint/no-unsafe-argument
+  116:41  warning  Unsafe argument of type `any` assigned to a parameter of type `PrismaService`  @typescript-eslint/no-unsafe-argument
+  116:49  warning  Unsafe argument of type `any` assigned to a parameter of type `AuditService`   @typescript-eslint/no-unsafe-argument
+  139:42  warning  Unsafe argument of type `any` assigned to a parameter of type `PrismaService`  @typescript-eslint/no-unsafe-argument
+  139:50  warning  Unsafe argument of type `any` assigned to a parameter of type `AuditService`   @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\clinical\tests\clinical-lab-parameter-definitions.service.spec.ts
+  142:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  143:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string | undefined`  @typescript-eslint/no-unsafe-argument
+  144:7   warning  Unsafe argument of type `any` assigned to a parameter of type `RequestUser`         @typescript-eslint/no-unsafe-argument
+  377:19  warning  Unsafe argument of type `any` assigned to a parameter of type `{}`                  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\clinical\tests\clinical-lab-result-release.service.spec.ts
+  659:7  warning  Unsafe argument of type `any` assigned to a parameter of type `ReleaseLabResultDto`  @typescript-eslint/no-unsafe-argument
+  681:7  warning  Unsafe argument of type `any` assigned to a parameter of type `ReleaseLabResultDto`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\clinical\tests\lab-test-definitions.service.spec.ts
+  151:19  warning  Unsafe argument of type `any` assigned to a parameter of type `{}`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\clinical\tests\triage-correction.service.spec.ts
+  469:24  warning  Unsafe argument of type `any` assigned to a parameter of type `{}`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\common\guards\self-approval.guard.ts
+  31:38  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  49:36  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\common\interceptors\metrics.interceptor.ts
+  19:47  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  19:55  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\common\interceptors\phi-masking.interceptor.ts
+   51:37  warning  Unsafe argument of type `any` assigned to a parameter of type `{}`                      @typescript-eslint/no-unsafe-argument
+  105:30  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\common\tests\branch-isolation.spec.ts
+  219:61  warning  Unsafe argument of type `any` assigned to a parameter of type `RequestUser`  @typescript-eslint/no-unsafe-argument
+  233:52  warning  Unsafe argument of type `any` assigned to a parameter of type `RequestUser`  @typescript-eslint/no-unsafe-argument
+  273:7   warning  Unsafe argument of type `any` assigned to a parameter of type `RequestUser`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\common\tests\tenant-isolation.spec.ts
+  471:60  warning  Unsafe argument of type `any` assigned to a parameter of type `RequestUser`  @typescript-eslint/no-unsafe-argument
+  482:52  warning  Unsafe argument of type `any` assigned to a parameter of type `RequestUser`  @typescript-eslint/no-unsafe-argument
+  522:53  warning  Unsafe argument of type `any` assigned to a parameter of type `RequestUser`  @typescript-eslint/no-unsafe-argument
+  618:45  warning  Unsafe argument of type `any` assigned to a parameter of type `RequestUser`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\compliance\access-review.service.ts
+  4:3  warning  'DEFAULT_PAGE_SIZE' is defined but never used  @typescript-eslint/no-unused-vars
+  6:3  warning  'clampTake' is defined but never used          @typescript-eslint/no-unused-vars
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\compliance\change-management.service.ts
+  79:45  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\compliance\hipaa-compliance.service.ts
+  5:3  warning  'DEFAULT_AUDIT_PAGE_SIZE' is defined but never used  @typescript-eslint/no-unused-vars
+  6:3  warning  'MAX_AUDIT_PAGE_SIZE' is defined but never used      @typescript-eslint/no-unused-vars
+  7:3  warning  'clampTake' is defined but never used                @typescript-eslint/no-unused-vars
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\hr\hr.service.spec.ts
+  61:73  warning  Unsafe argument of type `any` assigned to a parameter of type `Subset<EmployeeCountArgs<DefaultArgs>, EmployeeCountArgs<DefaultArgs>> | undefined`                                                                                                                                                                                                                        @typescript-eslint/no-unsafe-argument
+  64:74  warning  Unsafe argument of type `any` assigned to a parameter of type `{ select?: EmployeeSelect<DefaultArgs> | null | undefined; omit?: EmployeeOmit<DefaultArgs> | null | undefined; include?: EmployeeInclude<...> | ... 1 more ... | undefined; data: (Without<...> & EmployeeUncheckedCreateInput) | (Without<...> & EmployeeCreateInput); }`                                @typescript-eslint/no-unsafe-argument
+  68:49  warning  Unsafe argument of type `any` assigned to a parameter of type `{ select?: EmployeeSelect<DefaultArgs> | null | undefined; omit?: EmployeeOmit<DefaultArgs> | null | undefined; include?: EmployeeInclude<...> | ... 1 more ... | undefined; ... 5 more ...; distinct?: EmployeeScalarFieldEnum | ... 1 more ... | undefined; } | undefined`                               @typescript-eslint/no-unsafe-argument
+  73:48  warning  Unsafe argument of type `any` assigned to a parameter of type `{ select?: EmployeeSelect<DefaultArgs> | null | undefined; omit?: EmployeeOmit<DefaultArgs> | null | undefined; include?: EmployeeInclude<...> | ... 1 more ... | undefined; ... 5 more ...; distinct?: EmployeeScalarFieldEnum | ... 1 more ... | undefined; } | undefined`                               @typescript-eslint/no-unsafe-argument
+  80:52  warning  Unsafe argument of type `any` assigned to a parameter of type `{ select?: EmployeeBranchSelect<DefaultArgs> | null | undefined; omit?: EmployeeBranchOmit<DefaultArgs> | null | undefined; include?: EmployeeBranchInclude<...> | ... 1 more ... | undefined; data: (Without<...> & EmployeeBranchUncheckedCreateInput) | (Without<...> & EmployeeBranchCreateInput); }`  @typescript-eslint/no-unsafe-argument
+  86:73  warning  Unsafe argument of type `any` assigned to a parameter of type `{ select?: PayslipSelect<DefaultArgs> | null | undefined; omit?: PayslipOmit<DefaultArgs> | null | undefined; include?: PayslipInclude<...> | ... 1 more ... | undefined; data: (Without<...> & PayslipUncheckedCreateInput) | (Without<...> & PayslipCreateInput); }`                                     @typescript-eslint/no-unsafe-argument
+  92:48  warning  Unsafe argument of type `any` assigned to a parameter of type `{ select?: DepartmentSelect<DefaultArgs> | null | undefined; omit?: DepartmentOmit<DefaultArgs> | null | undefined; include?: DepartmentInclude<...> | ... 1 more ... | undefined; data: (Without<...> & DepartmentUncheckedCreateInput) | (Without<...> & DepartmentCreateInput); }`                      @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\inventory\inventory.service.ts
+  18:3  warning  'DEFAULT_PAGE_SIZE' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\lab\lab.service.ts
+  18:3  warning  'DEFAULT_PAGE_SIZE' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\logistics\installation.controller.ts
+  28:45  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  34:56  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  49:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  50:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\logistics\logistics.controller.ts
+  31:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  32:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  40:51  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  46:47  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  57:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  58:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  68:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  69:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  82:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  83:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  93:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  94:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\marketplace\marketplace.controller.ts
+   38:52  warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+   48:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+   63:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+   64:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+   75:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+   76:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+   95:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+   96:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+   99:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string | undefined`  @typescript-eslint/no-unsafe-argument
+  110:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  111:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  113:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string | undefined`  @typescript-eslint/no-unsafe-argument
+  120:62  warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  126:48  warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  132:47  warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  142:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  143:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  154:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  155:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  156:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  168:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  169:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  178:52  warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  185:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  186:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  199:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  200:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  214:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+  215:7   warning  Unsafe argument of type `any` assigned to a parameter of type `string`              @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\numbering\numbering.service.ts
+  60:9  warning  Unsafe argument of type `any` assigned to a parameter of type `number`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\patient-portal\guards\patient-csrf.guard.ts
+  15:45  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\patient-portal\services\document-generator.service.ts
+   45:26  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                  @typescript-eslint/no-unsafe-argument
+   68:29  warning  Unsafe argument of type `any[]` assigned to a parameter of type `string[]`              @typescript-eslint/no-unsafe-argument
+   86:31  warning  Unsafe argument of type `any` assigned to a parameter of type `string`                  @typescript-eslint/no-unsafe-argument
+   94:39  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+  172:29  warning  Unsafe argument of type `any[]` assigned to a parameter of type `string[]`              @typescript-eslint/no-unsafe-argument
+  178:28  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+  307:34  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\pharmacy\pharmacy.service.ts
+  20:3  warning  'DEFAULT_PAGE_SIZE' is defined but never used  @typescript-eslint/no-unused-vars
+  22:3  warning  'clampTake' is defined but never used          @typescript-eslint/no-unused-vars
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\replication\conflict-resolver.service.spec.ts
+  53:11  warning  Unsafe argument of type `any` assigned to a parameter of type `RegionalReplicaState`  @typescript-eslint/no-unsafe-argument
+  54:11  warning  Unsafe argument of type `any` assigned to a parameter of type `RegionalReplicaState`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\src\security\dashboard-access.spec.ts
+   70:64  warning  Unsafe argument of type `any` assigned to a parameter of type `Object`            @typescript-eslint/no-unsafe-argument
+   78:64  warning  Unsafe argument of type `any` assigned to a parameter of type `Object`            @typescript-eslint/no-unsafe-argument
+  123:38  warning  Unsafe argument of type `any` assigned to a parameter of type `ExecutionContext`  @typescript-eslint/no-unsafe-argument
+  133:38  warning  Unsafe argument of type `any` assigned to a parameter of type `ExecutionContext`  @typescript-eslint/no-unsafe-argument
+  157:32  warning  Unsafe argument of type `any` assigned to a parameter of type `ExecutionContext`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\advanced-clinical.e2e-spec.ts
+   76:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  116:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  136:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  240:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  248:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  271:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  282:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  291:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\analytics.e2e-spec.ts
+   11:10  warning  'randomUUID' is defined but never used                               @typescript-eslint/no-unused-vars
+   80:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+   95:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  113:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  131:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  152:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  170:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\audit-chain.e2e-spec.ts
+  142:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  168:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\audit-forensic-context.e2e-spec.ts
+   48:40  warning  Unsafe argument of type `any` assigned to a parameter of type `Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>`  @typescript-eslint/no-unsafe-argument
+   48:45  warning  Unsafe argument of type `any` assigned to a parameter of type `Response<any, Record<string, any>>`                                  @typescript-eslint/no-unsafe-argument
+   48:50  warning  Unsafe argument of type `any` assigned to a parameter of type `NextFunction`                                                        @typescript-eslint/no-unsafe-argument
+  108:40  warning  Unsafe argument of type `any` assigned to a parameter of type `App`                                                                 @typescript-eslint/no-unsafe-argument
+  118:11  warning  'encounterId' is assigned a value but never used                                                                                    @typescript-eslint/no-unused-vars
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\audit-immutability.e2e-spec.ts
+  1:16  warning  'TestingModule' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\auth-branches.e2e-spec.ts
+   2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+  74:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\auth-lifecycle.e2e-spec.ts
+    1:16  warning  'TestingModule' is defined but never used                            @typescript-eslint/no-unused-vars
+   65:23  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+   72:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+   89:23  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  101:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  116:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  119:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  129:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\auth.e2e-spec.ts
+    2:16  warning  'TestingModule' is defined but never used                                 @typescript-eslint/no-unused-vars
+   49:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`       @typescript-eslint/no-unsafe-argument
+   70:22  warning  Unsafe argument of type `any` assigned to a parameter of type `App`       @typescript-eslint/no-unsafe-argument
+   83:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`       @typescript-eslint/no-unsafe-argument
+   98:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`       @typescript-eslint/no-unsafe-argument
+  100:24  warning  Unsafe argument of type `any` assigned to a parameter of type `string[]`  @typescript-eslint/no-unsafe-argument
+  107:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`       @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\billing-concurrency-db.e2e-spec.ts
+  17:7  warning  'approverId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\billing-concurrency.spec.ts
+   5:10  warning  'Prisma' is defined but never used                 @typescript-eslint/no-unused-vars
+   9:7   warning  'prisma' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  34:11  warning  'refundAmount' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\billing.e2e-spec.ts
+   2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+  77:22  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\cashier-reconciliation.e2e-spec.ts
+    2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+   89:35  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  138:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  150:36  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\cashier-voids.e2e-spec.ts
+   88:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  134:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  148:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  168:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  176:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  207:36  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\clinical-encounter.e2e-spec.ts
+  115:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  126:37  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  141:34  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  149:35  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  163:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  168:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  174:35  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  188:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  194:48  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  209:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  215:49  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  224:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  229:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\compliance-hipaa.e2e-spec.ts
+   95:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  136:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  175:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  229:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  237:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\compliance-soc2.e2e-spec.ts
+   75:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+   90:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  145:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  165:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\cross-tenant.e2e-spec.ts
+    2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+   10:10  warning  'seedTenants' is defined but never used                              @typescript-eslint/no-unused-vars
+   10:23  warning  'seedUser' is defined but never used                                 @typescript-eslint/no-unused-vars
+  119:20  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  129:20  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  139:20  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\helpers\create-auth-app.ts
+  2:10  warning  'INestApplication' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\hr-management.e2e-spec.ts
+   98:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  131:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  151:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  187:37  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  202:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  216:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\insurance-claims.e2e-spec.ts
+  126:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  147:37  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  162:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  172:37  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  190:37  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  203:44  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\invoice-locking.e2e-spec.ts
+    2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+   76:35  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  117:20  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\lab-release.e2e-spec.ts
+  111:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  122:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  154:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\lab.e2e-spec.ts
+   2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+  62:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\ledger-double-entry.e2e-spec.ts
+  172:39  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  188:48  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  208:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  229:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  235:45  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  280:39  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  295:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  320:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  326:47  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  339:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\logistics-installation.e2e-spec.ts
+  142:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`                     @typescript-eslint/no-unsafe-argument
+  157:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`                     @typescript-eslint/no-unsafe-argument
+  177:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`                     @typescript-eslint/no-unsafe-argument
+  197:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`                     @typescript-eslint/no-unsafe-argument
+  217:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`                     @typescript-eslint/no-unsafe-argument
+  230:39  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+  231:44  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+  232:42  warning  Unsafe argument of type `any` assigned to a parameter of type `string | number | Date`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\logistics.e2e-spec.ts
+  155:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  173:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  189:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  210:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\marketplace-supplier.e2e-spec.ts
+  140:32  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  146:32  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  156:32  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  172:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\metrics.e2e-spec.ts
+  64:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  81:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\mfa-recovery.e2e-spec.ts
+    1:16  warning  'TestingModule' is defined but never used                            @typescript-eslint/no-unused-vars
+  122:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  134:27  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  146:27  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  157:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  192:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  205:39  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  229:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  241:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  256:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  268:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\mfa.e2e-spec.ts
+    1:16  warning  'TestingModule' is defined but never used                            @typescript-eslint/no-unused-vars
+    2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+  121:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  137:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  144:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  159:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  170:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  177:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  193:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  271:40  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  281:41  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  292:40  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  298:41  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  306:41  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  312:42  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  321:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  328:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  336:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  346:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  353:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  363:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\multi-tenancy.e2e-spec.ts
+  107:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  127:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  146:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  166:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\orders.e2e-spec.ts
+   2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+  78:22  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\patient-portal.e2e-spec.ts
+   33:7   warning  'patientUserA' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+   34:7   warning  'patientUserB' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+  317:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  353:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  369:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  380:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  393:9   warning  'tokenB' is assigned a value but never used                          @typescript-eslint/no-unused-vars
+  396:34  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  406:34  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  417:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  428:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  437:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  447:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  472:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  493:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  527:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  537:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  544:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  555:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  566:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  577:39  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  605:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  611:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  620:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\payment-idempotency.e2e-spec.ts
+    2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+   76:35  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  132:32  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  139:32  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  149:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\payment-transaction-boundaries.e2e-spec.ts
+    2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+   76:35  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  118:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\pharmacy.e2e-spec.ts
+  189:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  203:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  212:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  222:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  237:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  257:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  287:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  300:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  356:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\policy-branch.e2e-spec.ts
+  10:3   warning  'UseGuards' is defined but never used                                   @typescript-eslint/no-unused-vars
+  25:30  warning  'body' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  60:20  warning  Unsafe argument of type `any` assigned to a parameter of type `App`     @typescript-eslint/no-unsafe-argument
+  70:20  warning  Unsafe argument of type `any` assigned to a parameter of type `App`     @typescript-eslint/no-unsafe-argument
+  80:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`     @typescript-eslint/no-unsafe-argument
+  85:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`     @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\prescription-referral.e2e-spec.ts
+   14:3   warning  'EncounterStatus' is defined but never used                          @typescript-eslint/no-unused-vars
+  113:46  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  127:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  139:42  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  156:39  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  165:45  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  181:42  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  191:42  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  198:45  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  208:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  216:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  221:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  232:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\procurement.e2e-spec.ts
+   90:39  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  114:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  131:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  147:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  157:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  181:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\queue.e2e-spec.ts
+   2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+  72:22  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\referral-partners.e2e-spec.ts
+  113:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  135:39  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  151:37  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  167:37  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  175:35  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\refund-ledger.e2e-spec.ts
+   88:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  134:38  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  155:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  173:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  181:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  213:36  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\refund-permissions.e2e-spec.ts
+    2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+   79:22  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  155:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\replication.e2e-spec.ts
+   80:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+   95:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  115:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  136:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  175:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\security\auth-bypass.e2e-spec.ts
+  31:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  46:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  64:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  84:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\security\fail-closed.e2e-spec.ts
+  30:20  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\security\headers.e2e-spec.ts
+  36:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\security\rate-limit.e2e-spec.ts
+  33:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  42:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\security\sql-injection.e2e-spec.ts
+  34:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\security\xss.e2e-spec.ts
+  32:33  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\self-approval.e2e-spec.ts
+   2:44  warning  'APP_GUARD' is defined but never used                                @typescript-eslint/no-unused-vars
+  77:20  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\sla-alerts.e2e-spec.ts
+  110:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  120:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  128:19  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+D:\Vscode\hms-login-OFFICIAL\hms-backend\test\throttle-auth.e2e-spec.ts
+   1:16  warning  'TestingModule' is defined but never used                            @typescript-eslint/no-unused-vars
+  65:21  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+  72:31  warning  Unsafe argument of type `any` assigned to a parameter of type `App`  @typescript-eslint/no-unsafe-argument
+
+✖ 437 problems (0 errors, 437 warnings)
+

@@ -98,7 +98,7 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    const mockUser = {
+    const mockUser: any = {
       id: 'user-123',
       email: 'test@example.com',
       tenantId: 'tenant-456',
@@ -106,6 +106,9 @@ describe('AuthService', () => {
       isMfaEnabled: false,
       mfaEnabled: false,
       mfaSecret: null,
+      supplierId: null,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
       status: 'ACTIVE',
       deactivatedAt: null,
       deactivatedReason: null,
@@ -130,8 +133,8 @@ describe('AuthService', () => {
     it('should create session and return tokens for non-sensitive role', async () => {
       const result = await service.login(mockUser);
 
-      expect(result.accessToken).toBe('mocked-token');
-      expect(result.refreshToken).toBeDefined();
+      expect((result as any).accessToken).toBe('mocked-token');
+      expect((result as any).refreshToken).toBeDefined();
     });
 
     it('should return MFA challenge for sensitive role', async () => {
@@ -153,9 +156,9 @@ describe('AuthService', () => {
 
       const result = await service.login(sensitiveUser);
 
-      expect(result.statusCode).toBe(202);
-      expect(result.message).toBe('MFA_REQUIRED');
-      expect(result.mfaToken).toBeDefined();
+      expect((result as any).statusCode).toBe(202);
+      expect((result as any).message).toBe('MFA_REQUIRED');
+      expect((result as any).mfaToken).toBeDefined();
     });
 
     it('should include tokenVersion in the JWT payload', async () => {
@@ -211,7 +214,7 @@ describe('AuthService', () => {
     const branchId = 'branch-789';
 
     it('should return refreshed token when active assignment exists', async () => {
-      const mockUser = {
+      const mockUser: any = {
         id: userId,
         email: 'test@example.com',
         tenantId,
@@ -612,11 +615,11 @@ describe('JWT Claim Consistency', () => {
 
     const result = await strategy.validate(payload);
 
-    expect(result.userId).toBe('user-uuid-123');
-    expect(result.email).toBe('test@hospital.com');
-    expect(result.tenantId).toBe('tenant-uuid-456');
-    expect(result.roles).toEqual(['Doctor']);
-    expect(result.tokenVersion).toBe(0);
+    expect((result as any).userId).toBe('user-uuid-123');
+    expect((result as any).email).toBe('test@hospital.com');
+    expect((result as any).tenantId).toBe('tenant-uuid-456');
+    expect((result as any).roles).toEqual(['Doctor']);
+    expect((result as any).tokenVersion).toBe(0);
   });
 
   it('tenantId must NOT be undefined when payload uses camelCase', async () => {
@@ -632,9 +635,9 @@ describe('JWT Claim Consistency', () => {
     const result = await strategy.validate(payload);
 
     // This was the bug: payload.tenant_id would produce undefined
-    expect(result.tenantId).toBeDefined();
-    expect(result.tenantId).not.toBeNull();
-    expect(result.tenantId).toBe('tenant-uuid-456');
+    expect((result as any).tenantId).toBeDefined();
+    expect((result as any).tenantId).not.toBeNull();
+    expect((result as any).tenantId).toBe('tenant-uuid-456');
   });
 
   it('PermissionsGuard would reject if tenantId is undefined', async () => {
@@ -669,8 +672,8 @@ describe('JWT Claim Consistency', () => {
 
     const result = await strategy.validate(payload);
 
-    expect(result.branchId).toBeDefined();
-    expect(result.branchId).toBe('branch-uuid-789');
+    expect((result as any).branchId).toBeDefined();
+    expect((result as any).branchId).toBe('branch-uuid-789');
   });
 
   it('JwtStrategy.validate() should safely omit branchId when missing in payload', async () => {
@@ -685,7 +688,7 @@ describe('JWT Claim Consistency', () => {
 
     const result = await strategy.validate(payload);
 
-    expect(result.branchId).toBeUndefined();
+    expect((result as any).branchId).toBeUndefined();
   });
 
   it('JwtStrategy.validate() should reject a missing user', async () => {
@@ -812,7 +815,7 @@ describe('JWT Claim Consistency', () => {
       tokenVersion: 3,
     });
 
-    expect(result.tokenVersion).toBe(3);
+    expect((result as any).tokenVersion).toBe(3);
   });
 
   it('JwtStrategy.validate() should reject missing tokenVersion', async () => {
@@ -831,12 +834,9 @@ describe('JWT Claim Consistency', () => {
 describe('AuthService Refresh Token Boundaries', () => {
   let service: AuthService;
   let jwtService: { sign: jest.Mock };
-  let sessionService: {
-    rotateRefreshToken: jest.Mock;
-    revokeSession: jest.Mock;
-  };
+  let sessionService: any;
   let prisma: {
-    user: { findUnique: jest.Mock };
+    user: { findUnique: jest.Mock; findFirst: jest.Mock; update: jest.Mock };
     userBranch: { findMany: jest.Mock; findFirst: jest.Mock };
     userRole: { findMany: jest.Mock };
     rolePermission: { findFirst: jest.Mock };
@@ -996,7 +996,7 @@ describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
     $transaction: jest.Mock;
   };
 
-  const mockUser = {
+  const mockUser: any = {
     id: 'user-123',
     email: 'test@example.com',
     tenantId: 'tenant-456',
@@ -1073,8 +1073,8 @@ describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
 
     const result = await service.login(mockUser);
 
-    expect(result.message).toBe('MFA_REQUIRED');
-    expect(result.mfaToken).toBeDefined();
+    expect((result as any).message).toBe('MFA_REQUIRED');
+    expect((result as any).mfaToken).toBeDefined();
   });
 
   it('should skip MFA challenge for sensitive roles when DISABLE_AUTH_VERIFICATION is true', async () => {
@@ -1086,7 +1086,7 @@ describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
 
     const result = await service.login(mockUser);
 
-    expect(result.accessToken).toBeDefined();
-    expect(result.message).not.toBe('MFA_REQUIRED');
+    expect((result as any).accessToken).toBeDefined();
+    expect((result as any).message).not.toBe('MFA_REQUIRED');
   });
 });

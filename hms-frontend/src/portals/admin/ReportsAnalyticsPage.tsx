@@ -51,7 +51,7 @@ export const ReportsAnalyticsPage: React.FC = () => {
   }
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="full"
       footer={<HmsAuditFooter dataSource="Mock analytics (sandbox)" />}
     >
       <AdminShellNotice />

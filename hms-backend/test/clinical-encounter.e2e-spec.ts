@@ -201,7 +201,7 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
     const rawDbRecord = await prisma.encounterDiagnosis.findUnique({
       where: { id: diagnosisId },
     });
-    expect(rawDbRecord).not.toBeNull();
+    if (!rawDbRecord) throw new Error('Expected encounterDiagnosis to exist');
     expect(rawDbRecord.deletedAt).not.toBeNull();
     expect(rawDbRecord.deleteReason).toBe('administrative_removal');
 

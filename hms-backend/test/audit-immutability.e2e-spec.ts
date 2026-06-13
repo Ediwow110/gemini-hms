@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuditModule } from '../src/audit/audit.module';
 import { cleanupDatabase } from './helpers/db-cleanup';
 import { randomUUID } from 'crypto';
+import { App } from 'supertest/types';
 
 describe('Audit Log Immutability (e2e)', () => {
   let app: INestApplication<App>;

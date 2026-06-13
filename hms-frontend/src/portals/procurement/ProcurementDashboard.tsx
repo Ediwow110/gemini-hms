@@ -34,7 +34,7 @@ export const ProcurementDashboard: React.FC = () => {
   const [department, setDepartment] = useState('all');
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="full"
       toolbar={
         <HmsToolbar
           branchName="All Branches"

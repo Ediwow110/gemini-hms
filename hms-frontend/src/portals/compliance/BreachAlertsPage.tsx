@@ -1,70 +1,69 @@
-import React, { useState } from 'react';
-import { ShieldAlert, AlertTriangle, ShieldCheck, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 import { BreachAlertPanel, BreachIncident } from './components/BreachAlertPanel';
+import { useBreachIncidents } from '../../hooks/use-compliance';
+import { complianceService } from '../../services/compliance.service';
+import { HmsDashboardShell } from '../../components/hms-dashboard';
+import { HmsPageHeader } from '../../components/hms-page';
+
+function severityToStatus(severity: string): BreachIncident['status'] {
+  switch (severity) {
+    case 'CRITICAL': return 'INVESTIGATING';
+    case 'HIGH': return 'INVESTIGATING';
+    default: return 'CONTAINED';
+  }
+}
 
 export const BreachAlertsPage: React.FC = () => {
-  const [incidents, setIncidents] = useState<BreachIncident[]>([
-    {
-      id: "INC-901",
-      timestamp: "2026-05-21 11:15:00",
-      severity: "CRITICAL",
-      source: "Tenant Partition Leak Guard",
-      tenantName: "MediClinics Group",
-      branchName: "MediClinics Central",
-      dataCategory: "PHI / Clinical History Records",
-      status: "INVESTIGATING",
-      description: "Anomalous multi-patient decrypt request from unauthorized external IP scope.",
-      timeline: [
-        { time: "11:15:02", event: "Decrypt API rate limit threshold exceeded (150 requests/sec)" },
-        { time: "11:16:00", event: "Automated alert logged in CISO dashboard" },
-        { time: "11:20:11", event: "Compliance officer assigned to investigate log trail" }
-      ]
-    },
-    {
-      id: "INC-902",
-      timestamp: "2026-05-21 08:30:22",
-      severity: "HIGH",
-      source: "Failed Login Guard",
-      tenantName: "St. Jude Hospital Network",
-      branchName: "St. Jude Metro",
-      dataCategory: "Credentials / Auth Keys",
-      status: "INVESTIGATING",
-      description: "Possible credential stuffing target. 24 failed login attempts on dr.martinez account.",
-      timeline: [
-        { time: "08:30:22", event: "Brute-force alert triggered on IP: 198.51.100.42" },
-        { time: "08:35:00", event: "IP range temporarily rate-limited at load balancer level" }
-      ]
-    },
-    {
-      id: "INC-903",
-      timestamp: "2026-05-20 14:12:00",
-      severity: "MEDIUM",
-      source: "Audit Event Analyzer",
-      tenantName: "Apex Healthcare Services",
-      branchName: "Apex West",
-      dataCategory: "Operational Metadata",
-      status: "CONTAINED",
-      description: "Admin supporting logs export from unapproved backup workstation.",
-      timeline: [
-        { time: "14:12:00", event: "Audit trail log generated" },
-        { time: "14:45:00", event: "Security staff verified workstation credentials and closed ticket" }
-      ]
+  const { incidents: hookIncidents, loading, error, refetch } = useBreachIncidents();
+  const [incidents, setIncidents] = useState<BreachIncident[]>([]);
+  const [breachReport, setBreachReport] = useState<Record<string, unknown> | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (hookIncidents.length > 0) {
+      const mapped: BreachIncident[] = hookIncidents.map((h, i) => {
+        const stableId = h.id || `ephi-${i}-${h.timestamp || 'unknown'}`;
+        return {
+          id: stableId,
+          timestamp: h.timestamp,
+          severity: (h.severity as BreachIncident['severity']) || 'MEDIUM',
+          source: h.source || 'Audit System',
+          tenantName: 'Current Tenant',
+          branchName: '—',
+          dataCategory: 'Audit Event',
+          status: severityToStatus(h.severity),
+          description: h.description,
+          timeline: [{ time: h.timestamp, event: h.description }],
+        };
+      });
+      setIncidents(mapped);
     }
-  ]);
+  }, [hookIncidents]);
+
+  const handleViewReport = async (id: string) => {
+    setSelectedId(id);
+    try {
+      const report = await complianceService.getBreachReport(id);
+      setBreachReport(report as Record<string, unknown>);
+    } catch {
+      setBreachReport({ error: 'Failed to load breach report' });
+    }
+  };
 
   const handleIncidentUpdate = (id: string, action: 'ESCALATE' | 'CONTAIN') => {
     setIncidents(prev => prev.map(inc => {
       if (inc.id === id) {
         return {
           ...inc,
-          status: action === 'ESCALATE' ? 'ESCALATED' : 'CONTAINED',
+          status: action === 'ESCALATE' ? 'ESCALATED' as const : 'CONTAINED' as const,
           timeline: [
             ...inc.timeline,
             {
               time: new Date().toLocaleTimeString(),
-              event: action === 'ESCALATE' ? 'Escalated incident to CISO response chain' : 'Marked incident as contained'
-            }
-          ]
+              event: action === 'ESCALATE' ? 'Escalated to CISO response chain' : 'Marked as contained',
+            },
+          ],
         };
       }
       return inc;
@@ -76,64 +75,96 @@ export const BreachAlertsPage: React.FC = () => {
   const totalContained = incidents.filter(i => i.status === 'CONTAINED').length;
 
   return (
-    <div className="space-y-6">
-      {/* Title Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Breach & Threat Alert Console
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Investigate real-time security alerts, anomalous data access patterns, and partition leaks</p>
+    <HmsDashboardShell widthTier="full">
+      <HmsPageHeader
+        title="Breach & Incident Management"
+        description="Security events detected by real-time audit analysis and HIPAA breach reporting"
+        actions={(
+          <button
+            onClick={refetch}
+            className="py-1.5 px-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </button>
+        )}
+      />
+
+      {error && (
+        <div
+          role="alert"
+          className="card p-4 bg-rose-50 border border-rose-200 shadow-sm rounded-2xl flex items-start gap-3"
+          data-testid="breach-error-banner"
+        >
+          <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-rose-800">
+              Failed to load breach incidents
+            </p>
+            <p className="text-xs text-rose-700 mt-0.5 break-words">
+              {error}
+            </p>
+            <button
+              onClick={refetch}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900 px-2.5 py-1 rounded-lg border border-rose-200 hover:bg-rose-100 transition-colors"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry
+            </button>
+          </div>
         </div>
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2 text-[10px] text-amber-800 leading-normal max-w-md">
-          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-          <p>
-            <strong>Sandbox Safety Rule:</strong> Breach alerts are simulation structures. No real intrusion detection automation, CISO notification dispatches, or firewall rules are triggered by containment actions.
-          </p>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="card p-4 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center">
+          <div className="text-2xl font-extrabold text-slate-900">{incidents.length}</div>
+          <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mt-1">Total Events</div>
+        </div>
+        <div className="card p-4 bg-white border border-rose-200/80 shadow-sm rounded-2xl text-center">
+          <div className="text-2xl font-extrabold text-rose-600">{activeCritical}</div>
+          <div className="text-[10px] text-rose-500 uppercase font-bold tracking-wider mt-1">Active Critical</div>
+        </div>
+        <div className="card p-4 bg-white border border-amber-200/80 shadow-sm rounded-2xl text-center">
+          <div className="text-2xl font-extrabold text-amber-600">{activeHigh}</div>
+          <div className="text-[10px] text-amber-500 uppercase font-bold tracking-wider mt-1">Active High</div>
+        </div>
+        <div className="card p-4 bg-white border border-emerald-200/80 shadow-sm rounded-2xl text-center">
+          <div className="text-2xl font-extrabold text-emerald-600">{totalContained}</div>
+          <div className="text-[10px] text-emerald-500 uppercase font-bold tracking-wider mt-1">Contained</div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[9px] text-rose-500 font-bold uppercase tracking-wider">Active Critical Threats</p>
-            <p className="text-xl font-extrabold text-rose-900 tracking-tight font-mono">{activeCritical} Incident</p>
-          </div>
-          <div className="p-2.5 bg-rose-100 border border-rose-350 rounded-xl text-rose-800 animate-pulse">
-            <ShieldAlert className="h-5 w-5" />
+      {loading ? (
+        <div className="card p-8 bg-white border border-slate-200/80 shadow-sm rounded-2xl text-center">
+          <div className="animate-pulse space-y-3">
+            {[1,2,3].map(i => <div key={i} className="h-12 bg-slate-100 rounded-xl" />)}
           </div>
         </div>
+      ) : (
+        <BreachAlertPanel
+          incidents={incidents}
+          onIncidentUpdate={handleIncidentUpdate}
+          onViewReport={handleViewReport}
+        />
+      )}
 
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[9px] text-amber-500 font-bold uppercase tracking-wider">Active High Threats</p>
-            <p className="text-xl font-extrabold text-amber-900 tracking-tight font-mono">{activeHigh} Incident</p>
+      {breachReport && selectedId && (
+        <div className="card p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-800">HIPAA Breach Report — {selectedId}</h3>
+            <button
+              onClick={() => { setBreachReport(null); setSelectedId(null); }}
+              className="text-xs text-slate-400 hover:text-slate-600"
+            >
+              Close
+            </button>
           </div>
-          <div className="p-2.5 bg-amber-100 border border-amber-350 rounded-xl text-amber-800">
-            <AlertCircle className="h-5 w-5" />
-          </div>
+          <pre className="text-xs font-mono bg-slate-50 p-4 rounded-xl border border-slate-100 overflow-auto max-h-96">
+            {JSON.stringify(breachReport, null, 2)}
+          </pre>
         </div>
-
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-wider">Contained & Resolved</p>
-            <p className="text-xl font-extrabold text-emerald-900 tracking-tight font-mono">{totalContained} Incidents</p>
-          </div>
-          <div className="p-2.5 bg-emerald-100 border border-emerald-350 rounded-xl text-emerald-800">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-        </div>
-      </div>
-
-      {/* Alerts Grid Component */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center px-1">
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Threat Investigation Dashboard</h3>
-        </div>
-        <BreachAlertPanel incidents={incidents} onIncidentUpdate={handleIncidentUpdate} />
-      </div>
-    </div>
+      )}
+    </HmsDashboardShell>
   );
 };
 

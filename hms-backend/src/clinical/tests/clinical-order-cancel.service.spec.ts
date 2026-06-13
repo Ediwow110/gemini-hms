@@ -124,7 +124,7 @@ describe('ClinicalWorkflowService.cancelClinicalOrder', () => {
   };
 
   function createMockPrisma() {
-    const mockTx = {
+    const mockTx: any = {
       order: {
         findUnique: jest.fn(),
         update: jest.fn(),

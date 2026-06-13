@@ -30,7 +30,7 @@ describe('ITSupportDashboard Redesign', () => {
 
   it('renders loading skeleton when fetching tickets', () => {
     vi.mocked(useSupportTickets).mockReturnValue({ tickets: [], total: 0, loading: true, error: null, refetch: vi.fn() });
-    vi.mocked(useTicketStats).mockReturnValue({ stats: { open: 0, inProgress: 0, urgent: 0, total: 0 }, loading: false, refetch: vi.fn() });
+    vi.mocked(useTicketStats).mockReturnValue({ stats: { open: 0, inProgress: 0, urgent: 0, total: 0 }, loading: false, statsError: null, refetch: vi.fn() });
     
     const { container } = renderWithRouter(<ITSupportDashboard />);
     expect(container.querySelector('.animate-pulse')).toBeInTheDocument(); // Inside HmsLoadingSkeleton
@@ -59,7 +59,7 @@ describe('ITSupportDashboard Redesign', () => {
       error: null,
       refetch: vi.fn()
     });
-    vi.mocked(useTicketStats).mockReturnValue({ stats: { open: 1, inProgress: 0, urgent: 0, total: 1 }, loading: false, refetch: vi.fn() });
+    vi.mocked(useTicketStats).mockReturnValue({ stats: { open: 1, inProgress: 0, urgent: 0, total: 1 }, loading: false, statsError: null, refetch: vi.fn() });
 
     renderWithRouter(<ITSupportDashboard />);
     expect(screen.getByText('IT & Infrastructure Support Workspace')).toBeInTheDocument();

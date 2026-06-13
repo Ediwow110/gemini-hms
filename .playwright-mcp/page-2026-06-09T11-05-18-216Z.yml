@@ -1,0 +1,16 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - img [ref=e7]
+    - heading "Something went wrong" [level=2] [ref=e9]
+    - paragraph [ref=e10]: The application encountered an unexpected error while trying to load this page.
+  - generic [ref=e11]:
+    - generic [ref=e12]:
+      - button "Retry Page" [ref=e13]:
+        - img [ref=e14]
+        - text: Retry Page
+      - button "Dashboard" [ref=e19]:
+        - img [ref=e20]
+        - text: Dashboard
+    - generic [ref=e23]:
+      - paragraph [ref=e24]: Developer Details
+      - generic [ref=e26]: 404 Not Found [object Object]

@@ -23,10 +23,10 @@ import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } 
 export const ITSupportDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { tickets, loading: ticketsLoading, error: ticketsError, refetch } = useSupportTickets({ pageSize: 3 });
-  const { stats, loading: statsLoading } = useTicketStats();
+  const { stats, loading: statsLoading, statsError } = useTicketStats();
 
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="IT & Infrastructure Support Workspace"
@@ -41,7 +41,13 @@ export const ITSupportDashboard: React.FC = () => {
             <p className="font-medium mt-0.5">System health, jobs, logs, and backup data are simulated for demonstration. User support ticketing and session management are real.</p>
           </div>
         </div>
-        <ITScopeFilter />
+        <ITScopeFilter displayOnly />
+
+      {statsError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+          <span className="font-semibold">Note:</span> {statsError} — numeric cards show zero values.
+        </div>
+      )}
 
       <div className="grid grid-cols-12 gap-6">
         {/* Health Metrics Row: 4 S-size Cards */}

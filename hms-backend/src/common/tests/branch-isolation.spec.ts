@@ -17,7 +17,7 @@ const TENANT_A = 'tenant-A';
 const BRANCH_A = 'branch-A';
 const USER_A = 'user-A';
 
-function prismaMock() {
+function prismaMock(): any {
   return {
     $transaction: jest.fn(async (cb: any) => cb(prismaMock())),
     patient: { count: jest.fn().mockResolvedValue(0) },
@@ -233,6 +233,7 @@ describe('Branch Isolation — PharmacyService', () => {
       service.dispenseMedication('rx-b', TENANT_A, mockUser, {
         quantity: 1,
         inventoryItemId: 'item-1',
+        version: 1,
       }),
     ).rejects.toThrow(NotFoundException);
     expect(prisma.prescription.findFirst).toHaveBeenCalledWith(
@@ -268,7 +269,7 @@ describe('Branch Isolation — NursingService', () => {
     prisma.nurseTask.findMany.mockResolvedValue([]);
     await service.listTasks(
       TENANT_A,
-      undefined,
+      BRANCH_A,
       new QueryNurseTaskDto(),
       mockUser,
     );

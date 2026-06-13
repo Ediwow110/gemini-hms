@@ -1,0 +1,9 @@
+[     379ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=860033c9:14337
+[     918ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/invoices:0
+[     919ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[     920ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/invoices:0
+[     921ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[     921ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/sessions/active:0
+[     922ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509
+[     923ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:5173/api/v1/billing/sessions/active:0
+[     923ms] [ERROR] [Auth Diagnostics] {phase: interceptor, endpoint: /v1/auth/me, status: 403, message: Access denied, apiBaseUrl: /api} @ http://localhost:5173/@vite/client:509

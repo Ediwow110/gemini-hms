@@ -181,7 +181,7 @@ export const SecurityCenterPage: React.FC = () => {
   }
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="full"
       footer={<HmsAuditFooter dataSource="Mock security data (sandbox)" />}
     >
       <AdminShellNotice />

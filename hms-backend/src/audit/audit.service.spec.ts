@@ -382,6 +382,294 @@ describe('AuditService', () => {
     });
   });
 
+  describe('exportMyEvents', () => {
+    it('should return data with honest metadata in csv format', async () => {
+      prisma.auditLog.count.mockResolvedValue(1);
+      prisma.auditLog.findMany.mockResolvedValue([
+        {
+          id: 'e1',
+          tenantId: mockTenantId,
+          userId: mockUserId,
+          eventKey: 'TEST',
+          recordType: 'test',
+          recordId: 'r1',
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+
+      const result = await service.exportMyEvents(
+        mockTenantId,
+        mockUserId,
+        {},
+        'csv',
+      );
+
+      expect(result.format).toBe('csv');
+      expect(result.data).toHaveLength(1);
+      expect(result.exportedCount).toBe(1);
+      expect(result.totalAvailable).toBe(1);
+      expect(result.truncated).toBe(false);
+    });
+
+    it('should return data with honest metadata in json format', async () => {
+      prisma.auditLog.count.mockResolvedValue(1);
+      prisma.auditLog.findMany.mockResolvedValue([
+        {
+          id: 'e1',
+          tenantId: mockTenantId,
+          userId: mockUserId,
+          eventKey: 'TEST',
+          recordType: 'test',
+          recordId: 'r1',
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+
+      const result = await service.exportMyEvents(
+        mockTenantId,
+        mockUserId,
+        {},
+        'json',
+      );
+
+      expect(result.format).toBe('json');
+      expect(result.exportedCount).toBe(1);
+      expect(result.totalAvailable).toBe(1);
+    });
+
+    it('should set truncated when export returns fewer than totalAvailable', async () => {
+      const logs = Array.from({ length: 100 }, (_, i) => ({
+        id: `e${i}`,
+        tenantId: mockTenantId,
+        userId: mockUserId,
+      }));
+      prisma.auditLog.count.mockResolvedValue(500);
+      prisma.auditLog.findMany.mockResolvedValue(logs);
+
+      const result = await service.exportMyEvents(
+        mockTenantId,
+        mockUserId,
+        {},
+        'csv',
+      );
+
+      expect(result.exportedCount).toBe(100);
+      expect(result.totalAvailable).toBe(500);
+      expect(result.truncated).toBe(true);
+    });
+
+    it('should enforce server-provided userId and ignore client-supplied userId filter', async () => {
+      prisma.auditLog.count.mockResolvedValue(1);
+      prisma.auditLog.findMany.mockResolvedValue([
+        { id: 'e1', tenantId: mockTenantId, userId: mockUserId },
+      ]);
+
+      await service.exportMyEvents(mockTenantId, mockUserId, {}, 'csv');
+
+      expect(prisma.auditLog.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ userId: mockUserId }),
+        }),
+      );
+    });
+
+    it('should emit AUDIT_LOG_EXPORTED event', async () => {
+      prisma.auditLog.count.mockResolvedValue(1);
+      prisma.auditLog.findMany.mockResolvedValue([
+        { id: 'e1', tenantId: mockTenantId, userId: mockUserId },
+      ]);
+      const logSpy = jest.spyOn(service, 'log' as any).mockResolvedValue({});
+
+      await service.exportMyEvents(mockTenantId, mockUserId, {}, 'csv');
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'AUDIT_LOG_EXPORTED' }),
+      );
+      logSpy.mockRestore();
+    });
+  });
+
+  describe('exportEvents', () => {
+    it('should emit AUDIT_LOG_EXPORTED event', async () => {
+      prisma.auditLog.count.mockResolvedValue(1);
+      prisma.auditLog.findMany.mockResolvedValue([
+        { id: 'e1', tenantId: mockTenantId, userId: mockUserId },
+      ]);
+      const logSpy = jest.spyOn(service, 'log' as any).mockResolvedValue({});
+
+      await service.exportEvents(
+        mockTenantId,
+        mockBranchId,
+        ['Branch Admin'],
+        mockUserId,
+        {},
+        'csv',
+      );
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ eventKey: 'AUDIT_LOG_EXPORTED' }),
+      );
+      logSpy.mockRestore();
+    });
+
+    it('should return honest export metadata with exportedCount and totalAvailable', async () => {
+      prisma.auditLog.count.mockResolvedValue(2);
+      prisma.auditLog.findMany.mockResolvedValue([
+        { id: 'e1', tenantId: mockTenantId, userId: mockUserId },
+        { id: 'e2', tenantId: mockTenantId, userId: mockUserId },
+      ]);
+
+      const result = await service.exportEvents(
+        mockTenantId,
+        mockBranchId,
+        ['Branch Admin'],
+        mockUserId,
+        {},
+        'json',
+      );
+
+      expect(result.exportedCount).toBe(2);
+      expect(result.totalAvailable).toBe(2);
+      expect(result.truncated).toBe(false);
+    });
+
+    it('should set truncated when export returns fewer than totalAvailable (take cap)', async () => {
+      const logs = Array.from({ length: 100 }, (_, i) => ({
+        id: `e${i}`,
+        tenantId: mockTenantId,
+        userId: mockUserId,
+      }));
+      prisma.auditLog.count.mockResolvedValue(500);
+      prisma.auditLog.findMany.mockResolvedValue(logs);
+
+      const result = await service.exportEvents(
+        mockTenantId,
+        mockBranchId,
+        ['Branch Admin'],
+        mockUserId,
+        {},
+        'csv',
+      );
+
+      expect(result.exportedCount).toBe(100);
+      expect(result.totalAvailable).toBe(500);
+      expect(result.truncated).toBe(true);
+    });
+
+    it('should enforce branch scope for non-Super-Admin export', async () => {
+      prisma.auditLog.count.mockResolvedValue(0);
+      prisma.auditLog.findMany.mockResolvedValue([]);
+
+      await service.exportEvents(
+        mockTenantId,
+        mockBranchId,
+        ['Branch Admin'],
+        mockUserId,
+        {},
+        'csv',
+      );
+
+      expect(prisma.auditLog.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ branchId: mockBranchId }),
+        }),
+      );
+    });
+
+    it('should allow Super Admin to export without branch filter', async () => {
+      prisma.auditLog.count.mockResolvedValue(0);
+      prisma.auditLog.findMany.mockResolvedValue([]);
+
+      await service.exportEvents(
+        mockTenantId,
+        undefined,
+        ['Super Admin'],
+        mockUserId,
+        {},
+        'csv',
+      );
+
+      expect(prisma.auditLog.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tenantId: mockTenantId },
+        }),
+      );
+    });
+
+    it('should apply AUDIT_CHAIN_SAFETY_CAP as take limit', async () => {
+      prisma.auditLog.count.mockResolvedValue(0);
+      prisma.auditLog.findMany.mockResolvedValue([]);
+
+      await service.exportEvents(
+        mockTenantId,
+        mockBranchId,
+        ['Branch Admin'],
+        mockUserId,
+        {},
+        'csv',
+      );
+
+      expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 10000 }),
+      );
+    });
+  });
+
+  describe('findMyEvent', () => {
+    it('should return audit log when userId matches', async () => {
+      prisma.auditLog.findUnique.mockResolvedValue({
+        id: 'log-id',
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        eventKey: 'TEST',
+        recordType: 'test',
+        recordId: 'rec-1',
+        createdAt: new Date(),
+      });
+
+      const result = await service.findMyEvent(
+        mockTenantId,
+        mockUserId,
+        'log-id',
+      );
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe('log-id');
+    });
+
+    it('should throw NotFoundException for wrong tenant', async () => {
+      prisma.auditLog.findUnique.mockResolvedValue({
+        id: 'log-id',
+        tenantId: 'other-tenant',
+        userId: mockUserId,
+      });
+
+      await expect(
+        service.findMyEvent(mockTenantId, mockUserId, 'log-id'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when userId does not match', async () => {
+      prisma.auditLog.findUnique.mockResolvedValue({
+        id: 'log-id',
+        tenantId: mockTenantId,
+        userId: 'other-user',
+      });
+
+      await expect(
+        service.findMyEvent(mockTenantId, mockUserId, 'log-id'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw NotFoundException when log does not exist', async () => {
+      prisma.auditLog.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.findMyEvent(mockTenantId, mockUserId, 'nonexistent'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('verifyChain pagination cap', () => {
     it('should apply AUDIT_CHAIN_SAFETY_CAP (10000) to verifyChain', async () => {
       prisma.auditLog.findMany.mockResolvedValue([]);

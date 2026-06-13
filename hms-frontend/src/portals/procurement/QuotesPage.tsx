@@ -2,6 +2,8 @@ import React from 'react';
 import ProcurementScopeFilter from './components/ProcurementScopeFilter';
 import { QuoteComparisonTable, Quote } from './components/QuoteComparisonTable';
 import { BadgeDollarSign } from 'lucide-react';
+import { HmsDashboardShell } from '../../components/hms-dashboard';
+import { HmsPageHeader } from '../../components/hms-page';
 
 export const QuotesPage: React.FC = () => {
   const mockQuotes: Quote[] = [
@@ -11,18 +13,11 @@ export const QuotesPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Quote Comparison & Selection
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Evaluate supplier bids for open RFQs and approve the best proposals</p>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          <strong>Sandbox Notice:</strong> Quote data is simulated. Selection does not trigger real financial obligations.
-        </div>
-      </div>
+    <HmsDashboardShell widthTier="full">
+      <HmsPageHeader
+        title="Quote Comparison & Selection"
+        description="Evaluate supplier bids for open RFQs and approve the best proposals"
+      />
 
       <ProcurementScopeFilter />
 
@@ -54,7 +49,7 @@ export const QuotesPage: React.FC = () => {
           </p>
         </div>
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

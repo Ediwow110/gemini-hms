@@ -47,9 +47,9 @@ export const ApprovalCenter = () => {
     setIsProcessing(true);
     try {
       if (modals.mode === "Approve") {
-        await approvalService.approveRequest(selected.id, selected.type, remarks);
+        await approvalService.approveRequest(selected.id, selected.type, remarks, selected.details);
       } else {
-        await approvalService.rejectRequest(selected.id, selected.type, remarks);
+        await approvalService.rejectRequest(selected.id, selected.type, remarks, selected.details);
       }
       await fetchRequests();
       setModals({ confirm: false, reason: false, mode: "" });

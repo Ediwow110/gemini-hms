@@ -2,6 +2,8 @@ import React from 'react';
 import ProcurementScopeFilter from './components/ProcurementScopeFilter';
 import { RFQStatusPanel, RFQItem } from './components/RFQStatusPanel';
 import { Plus, Search } from 'lucide-react';
+import { HmsDashboardShell } from '../../components/hms-dashboard';
+import { HmsPageHeader } from '../../components/hms-page';
 
 export const RFQsPage: React.FC = () => {
   const mockRFQs: RFQItem[] = [
@@ -11,18 +13,16 @@ export const RFQsPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Request for Quotations (RFQ)
-          </h2>
-          <p className="text-xs text-slate-500 font-medium">Manage bidding process, supplier invitations, and bid deadlines</p>
-        </div>
-        <button className="btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-indigo-100 transition-all">
-          <Plus className="h-4 w-4" /> Create New RFQ
-        </button>
-      </div>
+    <HmsDashboardShell widthTier="full">
+      <HmsPageHeader
+        title="Request for Quotations (RFQ)"
+        description="Manage bidding process, supplier invitations, and bid deadlines"
+        actions={(
+          <button className="btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-indigo-100 transition-all">
+            <Plus className="h-4 w-4" /> Create New RFQ
+          </button>
+        )}
+      />
 
       <ProcurementScopeFilter />
 
@@ -74,7 +74,7 @@ export const RFQsPage: React.FC = () => {
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-semibold">
         <strong>Sandbox Status (Backend Integration Pending):</strong> This is the Request for Quotations (RFQ) module. All data is simulated; no real financial or stock mutation is performed.
       </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

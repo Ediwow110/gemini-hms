@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { itSupportService, SupportTicketDto, TicketStats } from '../services/it-support.service';
 
 function getErrorMessage(err: unknown): string {
@@ -22,14 +22,13 @@ export function useSupportTickets(params?: {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const paramsRef = useRef(params);
-  useEffect(() => { paramsRef.current = params; });
+  const paramsKey = JSON.stringify(params);
 
   const fetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await itSupportService.getTickets(paramsRef.current);
+      const res = await itSupportService.getTickets(params);
       setTickets(res.data);
       setTotal(res.total);
     } catch (err: unknown) {
@@ -37,7 +36,8 @@ export function useSupportTickets(params?: {
     } finally {
       setLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey]);
 
   useEffect(() => {
     fetch();
@@ -49,13 +49,16 @@ export function useSupportTickets(params?: {
 export function useTicketStats() {
   const [stats, setStats] = useState<TicketStats>({ open: 0, inProgress: 0, urgent: 0, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
+    setLoading(true);
+    setStatsError(null);
     try {
       const res = await itSupportService.getTicketStats();
       setStats(res);
     } catch {
-      // silently fail
+      setStatsError('Ticket stats unavailable');
     } finally {
       setLoading(false);
     }
@@ -65,7 +68,7 @@ export function useTicketStats() {
     fetch();
   }, [fetch]);
 
-  return { stats, loading, refetch: fetch };
+  return { stats, loading, statsError, refetch: fetch };
 }
 
 export function useTicketDetail(id: string | undefined) {

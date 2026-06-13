@@ -126,6 +126,8 @@ async function main() {
     { name: 'doctor.prescription.create', scope: 'tenant/branch', riskLevel: 'HIGH' },
     { name: 'report.export', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
     { name: 'audit.view', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
+    { name: 'audit.self', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
+    { name: 'audit.export', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
     { name: 'admin.health.view', scope: 'tenant', riskLevel: 'LOW' },
     { name: 'admin.role.change', scope: 'tenant/system', riskLevel: 'PRIVILEGED' },
     { name: 'approval.request.create', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
@@ -262,7 +264,7 @@ async function main() {
       'inventory.item.view', 'inventory.item.create', 'inventory.stock.receive', 'inventory.stock.dispense',
       'queue.view', 'queue.manage', 
       'approval.request.view', 'approval.request.process',
-      'report.export', 'audit.view',
+      'report.export', 'audit.view', 'audit.self',
       'encounter.create', 'encounter.view', 'encounter.update',
       'procurement.supplier.view', 'procurement.request.view', 'procurement.po.view',
       'nurse.task.view', 'nurse.task.manage',
@@ -323,11 +325,11 @@ async function main() {
       'approval.request.process'
     ],
     'IT Support': [
-      'it.system.view', 'it.support.manage', 'it.ticket.view', 'it.ticket.manage', 'audit.view'
+      'it.system.view', 'it.support.manage', 'it.ticket.view', 'it.ticket.manage', 'audit.view', 'audit.self'
     ],
     'Compliance Officer': [
       'compliance.audit.review', 'compliance.phi.monitor', 'compliance.report.export',
-      'audit.view'
+      'audit.view', 'audit.self', 'audit.export'
     ],
     'Field Technician': [
       'field_service.job.view', 'field_service.job.update', 'field_service.delivery.proof_create',

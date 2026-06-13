@@ -21,7 +21,7 @@ export const GlobalSearchPage: React.FC = () => {
 
   const filtered = (searchResults || []).filter(r => filterType ? r.recordType === filterType : true);
   return (
-    <HmsDashboardShell>
+    <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Global Search"

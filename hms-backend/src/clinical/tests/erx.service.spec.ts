@@ -5,7 +5,7 @@ import { NotFoundException } from '@nestjs/common';
 
 describe('ErxService - Advanced Clinical Hardening', () => {
   let service: ErxService;
-  let prisma: Partial<PrismaService>;
+  let prisma: any;
 
   beforeEach(async () => {
     prisma = {

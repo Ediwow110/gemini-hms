@@ -1,6 +1,6 @@
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 
-export async function seedTestUser(prisma) {
+export async function seedTestUser(prisma: any) {
   const hashedPassword = await bcrypt.hash('TestPassword123!', 10);
   return prisma.user.upsert({
     where: { email: 'e2e-test@hms.local' },

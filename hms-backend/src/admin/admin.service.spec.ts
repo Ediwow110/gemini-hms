@@ -22,6 +22,7 @@ describe('AdminService', () => {
   const APPROVAL_STATUS_REJECTED = 'REJECTED';
   const ADMIN_ROLE_PERMISSION_GRANT = 'ADMIN_ROLE_PERMISSION_GRANT';
   let service: AdminService;
+  let metrics: any;
   let prisma: any;
   let audit: { log: jest.Mock };
 
@@ -71,6 +72,9 @@ describe('AdminService', () => {
         update: jest.fn(),
         findMany: jest.fn(),
         updateMany: jest.fn(),
+      },
+      session: {
+        count: jest.fn().mockResolvedValue(0),
       },
       permission: {
         findFirst: jest.fn(),

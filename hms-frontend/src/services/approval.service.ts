@@ -1,4 +1,5 @@
 import { apiClient } from "../lib/api";
+import { billingFrontendService } from "./billing-frontend.service";
 
 export interface ApprovalRequest {
   id: string;
@@ -24,7 +25,20 @@ export const approvalService = {
     return response.data;
   },
 
-  approveRequest: async (id: string, type: string, remarks: string) => {
+  approveRequest: async (id: string, type: string, remarks: string, details?: Record<string, unknown>) => {
+    // Billing reversal endpoints
+    if (type === 'REFUND') {
+      const reversalId = details?.reversalId;
+      if (!reversalId) throw new Error('Missing reversalId in approval request details');
+      return billingFrontendService.approveRefund(reversalId as string, remarks);
+    }
+
+    if (type === 'PAYMENT_VOID') {
+      const reversalId = details?.reversalId;
+      if (!reversalId) throw new Error('Missing reversalId in approval request details');
+      return billingFrontendService.approveVoid(reversalId as string, remarks);
+    }
+
     // Specialized admin endpoints for role/permission/user changes
     if (type === 'ADMIN_PRIVILEGED_ROLE_ASSIGN' || type === 'ADMIN_PRIVILEGED_ROLE_REVOKE') {
       return apiClient.post(`/v1/admin/role-change-requests/${id}/approve`, {
@@ -54,7 +68,20 @@ export const approvalService = {
     });
   },
 
-  rejectRequest: async (id: string, type: string, remarks: string) => {
+  rejectRequest: async (id: string, type: string, remarks: string, details?: Record<string, unknown>) => {
+    // Billing reversal endpoints
+    if (type === 'REFUND') {
+      const reversalId = details?.reversalId;
+      if (!reversalId) throw new Error('Missing reversalId in approval request details');
+      return billingFrontendService.rejectRefund(reversalId as string, remarks);
+    }
+
+    if (type === 'PAYMENT_VOID') {
+      const reversalId = details?.reversalId;
+      if (!reversalId) throw new Error('Missing reversalId in approval request details');
+      return billingFrontendService.rejectVoid(reversalId as string, remarks);
+    }
+
     // Specialized admin endpoints for role/permission/user changes
     if (type === 'ADMIN_PRIVILEGED_ROLE_ASSIGN' || type === 'ADMIN_PRIVILEGED_ROLE_REVOKE') {
       return apiClient.post(`/v1/admin/role-change-requests/${id}/reject`, {
