@@ -406,17 +406,17 @@ const router = createBrowserRouter([
           { path: 'marketplace/service-tickets', element: <PermissionRoute permission="marketplace.buyer.view"><LazyPage><MarketplaceServiceTicketsPage /></LazyPage></PermissionRoute> },
 
           // Marketplace (Supplier)
-          { path: 'supplier', element: <PermissionRoute allowedRoles={['Supplier']}><LazyPage><SupplierDashboard /></LazyPage></PermissionRoute> },
+          { path: 'supplier', element: <PermissionRoute allowedRoles={['Supplier', 'Supplier Admin', 'Marketplace Supplier']}><LazyPage><SupplierDashboard /></LazyPage></PermissionRoute> },
           { path: 'supplier/listings', element: <PermissionRoute permission="marketplace.supplier.manage_listing"><LazyPage><SupplierListingsPage /></LazyPage></PermissionRoute> },
           { path: 'supplier/service-listings', element: <PermissionRoute permission="marketplace.supplier.manage_listing"><LazyPage><SupplierServiceListingsPage /></LazyPage></PermissionRoute> },
-          { path: 'supplier/rfq-inbox', element: <PermissionRoute allowedRoles={['Supplier']}><LazyPage><SupplierRFQInboxPage /></LazyPage></PermissionRoute> },
-          { path: 'supplier/quotes', element: <PermissionRoute allowedRoles={['Supplier']}><LazyPage><SupplierQuotesPage /></LazyPage></PermissionRoute> },
-          { path: 'supplier/orders', element: <PermissionRoute allowedRoles={['Supplier']}><LazyPage><SupplierOrdersPage /></LazyPage></PermissionRoute> },
-          { path: 'supplier/fulfillment', element: <PermissionRoute allowedRoles={['Supplier']}><LazyPage><SupplierFulfillmentPage /></LazyPage></PermissionRoute> },
-          { path: 'supplier/warranty-claims', element: <PermissionRoute allowedRoles={['Supplier']}><LazyPage><SupplierWarrantyClaimsPage /></LazyPage></PermissionRoute> },
-          { path: 'supplier/service-commitments', element: <PermissionRoute allowedRoles={['Supplier']}><LazyPage><SupplierServiceCommitmentsPage /></LazyPage></PermissionRoute> },
-          { path: 'supplier/payouts', element: <PermissionRoute allowedRoles={['Supplier']}><LazyPage><SupplierPayoutsPage /></LazyPage></PermissionRoute> },
-          { path: 'supplier/performance', element: <PermissionRoute allowedRoles={['Supplier']}><LazyPage><SupplierPerformancePage /></LazyPage></PermissionRoute> },
+          { path: 'supplier/rfq-inbox', element: <PermissionRoute allowedRoles={['Supplier', 'Supplier Admin', 'Marketplace Supplier']}><LazyPage><SupplierRFQInboxPage /></LazyPage></PermissionRoute> },
+          { path: 'supplier/quotes', element: <PermissionRoute allowedRoles={['Supplier', 'Supplier Admin', 'Marketplace Supplier']}><LazyPage><SupplierQuotesPage /></LazyPage></PermissionRoute> },
+          { path: 'supplier/orders', element: <PermissionRoute allowedRoles={['Supplier', 'Supplier Admin', 'Marketplace Supplier']}><LazyPage><SupplierOrdersPage /></LazyPage></PermissionRoute> },
+          { path: 'supplier/fulfillment', element: <PermissionRoute allowedRoles={['Supplier', 'Supplier Admin', 'Marketplace Supplier']}><LazyPage><SupplierFulfillmentPage /></LazyPage></PermissionRoute> },
+          { path: 'supplier/warranty-claims', element: <PermissionRoute allowedRoles={['Supplier', 'Supplier Admin', 'Marketplace Supplier']}><LazyPage><SupplierWarrantyClaimsPage /></LazyPage></PermissionRoute> },
+          { path: 'supplier/service-commitments', element: <PermissionRoute allowedRoles={['Supplier', 'Supplier Admin', 'Marketplace Supplier']}><LazyPage><SupplierServiceCommitmentsPage /></LazyPage></PermissionRoute> },
+          { path: 'supplier/payouts', element: <PermissionRoute allowedRoles={['Supplier', 'Supplier Admin', 'Marketplace Supplier']}><LazyPage><SupplierPayoutsPage /></LazyPage></PermissionRoute> },
+          { path: 'supplier/performance', element: <PermissionRoute allowedRoles={['Supplier', 'Supplier Admin', 'Marketplace Supplier']}><LazyPage><SupplierPerformancePage /></LazyPage></PermissionRoute> },
 
           // Marketplace (Admin)
           { path: 'marketplace-admin', element: <PermissionRoute allowedRoles={['Super Admin', 'Marketplace Admin']}><LazyPage><MarketplaceAdminDashboard /></LazyPage></PermissionRoute> },
@@ -479,13 +479,13 @@ const router = createBrowserRouter([
           { path: 'nurse/specimens', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Nurse']} isBranchScoped><LazyPage><NurseSpecimenCollectionPage /></LazyPage></PermissionRoute> },
 
           // Lab Portal (branch-scoped)
-          { path: 'lab', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician']} isBranchScoped><LazyPage><LabDashboard /></LazyPage></PermissionRoute> },
-          { path: 'lab/orders', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician']} isBranchScoped><LazyPage><LabOrdersPage /></LazyPage></PermissionRoute> },
-          { path: 'lab/specimens', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician']} isBranchScoped><LazyPage><SpecimenReceivingPage /></LazyPage></PermissionRoute> },
-          { path: 'lab/encoding', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician']} isBranchScoped><LazyPage><ResultEncodingPage /></LazyPage></PermissionRoute> },
-          { path: 'lab/validation', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician']} isBranchScoped><LazyPage><ResultValidationPage /></LazyPage></PermissionRoute> },
-          { path: 'lab/critical-results', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician']} isBranchScoped><LazyPage><CriticalResultsPage /></LazyPage></PermissionRoute> },
-          { path: 'lab/turnaround', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician']} isBranchScoped><LazyPage><TurnaroundMonitorPage /></LazyPage></PermissionRoute> },
+          { path: 'lab', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><LabDashboard /></LazyPage></PermissionRoute> },
+          { path: 'lab/orders', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><LabOrdersPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/specimens', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><SpecimenReceivingPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/encoding', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><ResultEncodingPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/validation', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><ResultValidationPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/critical-results', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><CriticalResultsPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/turnaround', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><TurnaroundMonitorPage /></LazyPage></PermissionRoute> },
 
           // Cashier Portal (branch-scoped)
           { path: 'cashier', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Cashier', 'Finance']} isBranchScoped><LazyPage><CashierDashboard /></LazyPage></PermissionRoute> },

@@ -97,6 +97,7 @@ describe("Dashboard route access control", () => {
         "Branch Admin",
         "Procurement Manager",
         "Procurement Agent",
+        "Procurement Officer",
       ],
       description: "Procurement dashboard accessible to procurement roles",
     },

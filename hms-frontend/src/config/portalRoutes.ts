@@ -138,17 +138,17 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'nurse/specimens', allowedRoles: ['Super Admin', 'Branch Admin', 'Nurse'], zone: 'staff', isBranchScoped: true },
 
   // Lab Portal Workspace Routes (Staff Zone, Clinical Scope, Branch Scoped, Lab Tech/Admin allowedRoles)
-  { path: 'lab', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/orders', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/specimens', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/encoding', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/validation', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/validated', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/released', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/released/:patientId/:orderId', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/release', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/critical-results', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/turnaround', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab/orders', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab/specimens', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab/encoding', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab/validation', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab/validated', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab/released', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab/released/:patientId/:orderId', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab/release', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab/critical-results', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  { path: 'lab/turnaround', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
 
   // Cashier Portal Workspace Routes (Staff Zone, Financial Scope, Branch Scoped, Cashier/Admin/Finance allowedRoles)
   { path: 'cashier', allowedRoles: ['Super Admin', 'Branch Admin', 'Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
@@ -220,15 +220,15 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'hr/termination', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
 
   // Procurement Portal Workspace Routes (Staff Zone, Procurement Scope, Tenant Scoped)
-  { path: 'procurement', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },
-  { path: 'procurement/suppliers', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },
-  { path: 'procurement/purchase-requests', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },
-  { path: 'procurement/rfqs', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },
-  { path: 'procurement/quotes', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },
-  { path: 'procurement/purchase-orders', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },
-  { path: 'procurement/receiving', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },
-  { path: 'procurement/inventory-requests', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },
-  { path: 'procurement/vendor-performance', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },
+  { path: 'procurement', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
+  { path: 'procurement/suppliers', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
+  { path: 'procurement/purchase-requests', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
+  { path: 'procurement/rfqs', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
+  { path: 'procurement/quotes', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
+  { path: 'procurement/purchase-orders', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
+  { path: 'procurement/receiving', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
+  { path: 'procurement/inventory-requests', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
+  { path: 'procurement/vendor-performance', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
 
   // Patient Portal Workspace Routes (Patient Zone, Self-Service Scope)
   { path: 'patient', allowedRoles: ['Patient'], zone: 'patient' },

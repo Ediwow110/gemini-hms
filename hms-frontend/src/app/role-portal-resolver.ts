@@ -28,7 +28,6 @@ export const ROLE_PRIORITY: Record<string, number> = {
 };
 
 export const ROLE_ALIASES: Record<string, string> = {
-  'Admin': 'Super Admin',
   'Lab Technician': 'Med-Tech',
   'Procurement Manager': 'Procurement Officer',
   'Procurement Agent': 'Procurement Officer',
