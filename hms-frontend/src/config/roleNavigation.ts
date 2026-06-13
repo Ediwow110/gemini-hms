@@ -77,6 +77,7 @@ export const roleNavigation: NavGroupConfig[] = [
     label: 'Platform Control',
     items: [
       { label: 'SuperAdmin Dashboard', to: '/admin', icon: LayoutDashboard, allowedRoles: ['Super Admin'], zone: 'staff' },
+      { label: 'Executive View', to: '/admin/executive', icon: Activity, allowedRoles: ['Super Admin'], zone: 'staff' },
       { label: 'Tenants Manager', to: '/admin/tenants', icon: Building, allowedRoles: ['Super Admin'], zone: 'staff' },
       { label: 'Branches Manager', to: '/admin/branches', icon: GitMerge, allowedRoles: ['Super Admin'], zone: 'staff' },
       { label: 'Users & Accounts', to: '/admin/users', icon: Users, allowedRoles: ['Super Admin'], zone: 'staff' },
@@ -144,7 +145,7 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Clinical Operations',
     items: [
-      { label: 'Ops Dashboard', to: '/clinical/ops', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Admin', 'Doctor', 'Nurse'], zone: 'staff', isHiddenForDemo: true },
+      { label: 'Ops Dashboard', to: '/clinical/ops', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Admin', 'Doctor', 'Nurse'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
     ],
   },
   {
@@ -156,11 +157,12 @@ export const roleNavigation: NavGroupConfig[] = [
         icon: LayoutDashboard,
         allowedRoles: ['Super Admin', 'Branch Admin'],
         zone: 'staff',
+        isBranchScoped: true,
         children: [
-          { label: 'Branch Staff', to: '/branch-admin/staff', icon: Users, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
-          { label: 'Department Manager', to: '/branch-admin/departments', icon: Building, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
-          { label: 'Rooms / Facilities', to: '/branch-admin/rooms', icon: Map, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
-          { label: 'Schedules', to: '/branch-admin/schedules', icon: Calendar, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Branch Staff', to: '/branch-admin/staff', icon: Users, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Department Manager', to: '/branch-admin/departments', icon: Building, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Rooms / Facilities', to: '/branch-admin/rooms', icon: Map, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Schedules', to: '/branch-admin/schedules', icon: Calendar, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
         ],
       },
       {
@@ -169,14 +171,15 @@ export const roleNavigation: NavGroupConfig[] = [
         icon: PlusCircle,
         allowedRoles: ['Super Admin', 'Branch Admin'],
         zone: 'staff',
+        isBranchScoped: true,
         isHiddenForDemo: true,
         isComingSoon: true,
         children: [
-          { label: 'Branch Services', to: '/branch-admin/services', icon: PlusCircle, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
-          { label: 'Branch Equipment', to: '/branch-admin/equipment', icon: Wrench, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
-          { label: 'Inventory Rules', to: '/branch-admin/inventory-rules', icon: Package, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
-          { label: 'Billing Rules', to: '/branch-admin/billing-rules', icon: CreditCard, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
-          { label: 'Queue Settings', to: '/branch-admin/queue-settings', icon: ListOrdered, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Branch Services', to: '/branch-admin/services', icon: PlusCircle, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Branch Equipment', to: '/branch-admin/equipment', icon: Wrench, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Inventory Rules', to: '/branch-admin/inventory-rules', icon: Package, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Billing Rules', to: '/branch-admin/billing-rules', icon: CreditCard, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
+          { label: 'Queue Settings', to: '/branch-admin/queue-settings', icon: ListOrdered, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
         ],
       },
     ],

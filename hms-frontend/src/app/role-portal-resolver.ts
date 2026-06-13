@@ -40,7 +40,7 @@ export const ROLE_ALIASES: Record<string, string> = {
 };
 
 export const ROLE_PORTAL_PATHS: Record<string, string> = {
-  'Super Admin': '/admin',
+  'Super Admin': '/admin/executive',
   'Branch Admin': '/branch-admin',
   'Marketplace Admin': '/marketplace-admin',
   'Compliance Officer': '/compliance',

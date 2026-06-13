@@ -121,6 +121,7 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     expect(screen.queryByText('Backup & Recovery')).not.toBeInTheDocument();
 
     // Branch-scoped routes should be hidden (since branchId is None)
+    expect(screen.queryByText('Branch Dashboard')).not.toBeInTheDocument();
     expect(screen.queryByText('Cashier Dashboard')).not.toBeInTheDocument();
     expect(screen.queryByText('Doctor Dashboard')).not.toBeInTheDocument();
     expect(screen.queryByText('Nurse Dashboard')).not.toBeInTheDocument();
