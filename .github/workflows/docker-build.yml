@@ -1,12 +1,14 @@
-name: Production Docker Build
+name: Production Docker Build (Manual Check)
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
+  # Disabling automatic triggers to reduce redundancy with ci.yml
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+  #   branches:
+  #     - main
 
 jobs:
   build:

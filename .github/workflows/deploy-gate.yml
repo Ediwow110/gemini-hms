@@ -1,8 +1,10 @@
-name: Deployment Gate
+name: Deployment Gate (Manual Validation)
 
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
+  # Disabling automatic push trigger to reduce redundancy with ci.yml
+  # push:
+  #   branches: [ main ]
 
 jobs:
   validate-and-gate:
