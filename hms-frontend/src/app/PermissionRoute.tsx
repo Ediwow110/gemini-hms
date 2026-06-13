@@ -60,8 +60,15 @@ export const PermissionRoute: React.FC<PermissionRouteProps> = ({
   }
 
   // 0. Super Admin global-governance bypass (non-branch-scoped routes only).
+  // When allowedRoles is specified, Super Admin must be explicitly listed in the route config
+  // to be granted access via role. If only a permission is specified, Super Admin
+  // gets governance oversight access by default for non-branch-scoped zones.
   if (isSuperAdmin && !isBranchScoped) {
-    return <>{children}</>;
+    if (!allowedRoles || allowedRoles.length === 0) {
+      // No role restriction — governance oversight access granted for permission-based routes
+      return <>{children}</>;
+    }
+    // If allowedRoles is present, Super Admin will be checked in the standard role check below.
   }
 
   // 1. Role check (ANY)

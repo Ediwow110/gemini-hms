@@ -25,7 +25,7 @@ describe('PermissionRoute — Super Admin global governance bypass', () => {
     vi.clearAllMocks();
   });
 
-  it('allows Super Admin when allowedRoles is specified even if it does not include Super Admin (governance bypass)', () => {
+  it('denies Super Admin when allowedRoles is specified and does not include Super Admin', () => {
     mockUseUser.mockReturnValue({
       id: 'admin-1',
       email: 'admin@hospital.com',
@@ -43,7 +43,8 @@ describe('PermissionRoute — Super Admin global governance bypass', () => {
       </PermissionRoute>
     );
 
-    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+    expect(screen.getByText('Access Restriction Active')).toBeInTheDocument();
   });
 
   it('allows Super Admin through a permission-only global governance route', () => {
@@ -132,7 +133,7 @@ describe('PermissionRoute — Super Admin global governance bypass', () => {
     expect(screen.getByTestId('protected-content')).toBeInTheDocument();
   });
 
-  it('allows Super Admin from branch-admin routes even if Super Admin is not in allowedRoles', () => {
+  it('denies Super Admin from branch-admin routes when Super Admin is not in allowedRoles', () => {
     mockUseUser.mockReturnValue({
       id: 'admin-1',
       email: 'admin@hospital.com',
@@ -150,7 +151,8 @@ describe('PermissionRoute — Super Admin global governance bypass', () => {
       </PermissionRoute>
     );
 
-    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+    expect(screen.getByText('Access Restriction Active')).toBeInTheDocument();
   });
 
   it('allows Branch Admin role through branch-admin routes even when isBranchScoped is false or omitted', () => {
