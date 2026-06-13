@@ -1,9 +1,11 @@
 name: Production CD Ingress Deployment
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+  # Disable automatic push-to-deploy to prevent accidental production release
+  # push:
+  #   branches:
+  #     - main
 
 jobs:
   ci-verification:
