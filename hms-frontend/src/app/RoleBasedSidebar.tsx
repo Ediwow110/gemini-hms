@@ -12,13 +12,12 @@ interface RoleBasedSidebarProps {
 export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps) => {
   const user = useUser();
   const { logout } = useAuth();
-  const { canAccess, isSuperAdmin } = usePermissions();
+  const { canAccess } = usePermissions();
   const [manuallyExpanded, setManuallyExpanded] = useState<Set<string>>(new Set());
 
   const isDemoHidden = (item: NavItemConfig) => {
     if (item.isHiddenForDemo) return true;
     if (item.isComingSoon) return true;
-    if (isSuperAdmin && !user?.branchId && item.isBranchScoped) return true;
     return false;
   };
 

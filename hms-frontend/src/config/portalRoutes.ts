@@ -240,12 +240,12 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'patient/profile', allowedRoles: ['Patient'], zone: 'patient' },
 
   // Integration Bridges Workspace Routes (Staff Zone, Cross-Domain Scope, Tenant Scoped)
-  { path: 'integration', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/notifications', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/approvals', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/global-search', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/patient-timeline', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/asset-timeline', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/reconciliation', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/activity-audit', allowedRoles: ['Super Admin', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/notifications', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/approvals', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/global-search', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/patient-timeline', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/asset-timeline', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/reconciliation', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration/activity-audit', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
 ];

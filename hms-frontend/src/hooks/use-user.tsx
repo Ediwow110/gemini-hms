@@ -54,6 +54,8 @@ export const usePermissions = () => {
 
     if (isSuperAdmin) {
       if (opts.zone === 'staff') {
+        // Super Admin only sees branch-scoped items if they have an active branch context
+        if (opts.isBranchScoped && !user?.branchId) return false;
         return true;
       }
     }

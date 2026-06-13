@@ -90,15 +90,19 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
   });
 
   it('hides WIP routes and branch-scoped routes for Super Admin with no branch', () => {
-    mockUsePermissions.mockReturnValue({
-      isSuperAdmin: true,
-      canAccess: () => true,
-    });
-    mockUseUser.mockReturnValue({
+    const user = {
       id: 'sa-1',
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
       branchId: null,
+    };
+    mockUseUser.mockReturnValue(user);
+    mockUsePermissions.mockReturnValue({
+      isSuperAdmin: true,
+      canAccess: (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
+        if (opts.zone === 'staff' && opts.isBranchScoped && !user.branchId) return false;
+        return true;
+      },
     });
 
     render(
@@ -123,15 +127,19 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
   });
 
   it('shows branch-scoped routes for Super Admin when branch is selected', () => {
-    mockUsePermissions.mockReturnValue({
-      isSuperAdmin: true,
-      canAccess: () => true,
-    });
-    mockUseUser.mockReturnValue({
+    const user = {
       id: 'sa-1',
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
       branchId: 'branch-123',
+    };
+    mockUseUser.mockReturnValue(user);
+    mockUsePermissions.mockReturnValue({
+      isSuperAdmin: true,
+      canAccess: (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
+        if (opts.zone === 'staff' && opts.isBranchScoped && !user.branchId) return false;
+        return true;
+      },
     });
 
     render(

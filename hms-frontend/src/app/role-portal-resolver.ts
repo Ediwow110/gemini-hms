@@ -1,5 +1,6 @@
 export const ROLE_PRIORITY: Record<string, number> = {
   'Super Admin': 100,
+  'Admin': 95,
   'Branch Admin': 90,
   'Procurement Manager': 85,
   'Procurement Officer': 85,
@@ -27,6 +28,7 @@ export const ROLE_PRIORITY: Record<string, number> = {
 };
 
 export const ROLE_ALIASES: Record<string, string> = {
+  'Admin': 'Super Admin',
   'Lab Technician': 'Med-Tech',
   'Procurement Manager': 'Procurement Officer',
   'Procurement Agent': 'Procurement Officer',

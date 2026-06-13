@@ -66,17 +66,21 @@ describe('CommandPalette — Search and Demo Filtering', () => {
   });
 
   it('hides WIP, demo-hidden, and branch-scoped operational routes for Super Admin with Branch None', () => {
-    mockUseUser.mockReturnValue({
+    const user = {
       id: 'sa-1',
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
       branchId: null, // Branch None
-    });
+    };
+    mockUseUser.mockReturnValue(user);
     mockUsePermissions.mockReturnValue({
       isSuperAdmin: true,
       canAccess: (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
         if (opts.zone === 'public') return true;
-        if (opts.zone === 'staff') return true;
+        if (opts.zone === 'staff') {
+          if (opts.isBranchScoped && !user.branchId) return false;
+          return true;
+        }
         return true;
       },
     });
@@ -119,17 +123,21 @@ describe('CommandPalette — Search and Demo Filtering', () => {
   });
 
   it('shows branch-scoped operational routes for Super Admin when branch is selected', () => {
-    mockUseUser.mockReturnValue({
+    const user = {
       id: 'sa-1',
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
       branchId: 'branch-123', // Branch selected
-    });
+    };
+    mockUseUser.mockReturnValue(user);
     mockUsePermissions.mockReturnValue({
       isSuperAdmin: true,
       canAccess: (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
         if (opts.zone === 'public') return true;
-        if (opts.zone === 'staff') return true;
+        if (opts.zone === 'staff') {
+          if (opts.isBranchScoped && !user.branchId) return false;
+          return true;
+        }
         return true;
       },
     });

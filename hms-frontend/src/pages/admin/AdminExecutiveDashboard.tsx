@@ -113,7 +113,7 @@ export const AdminExecutiveDashboard: React.FC = () => {
   ] : [];
 
   return (
-    <HmsDashboardShell
+    <HmsDashboardShell widthTier="full"
       toolbar={
         <HmsToolbar
           branchName={selectedBranch === 'all' ? 'All Branches' : selectedBranch}

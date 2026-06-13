@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, ShieldAlert, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { roleNavigation } from '../config/roleNavigation';
-import { useUser, usePermissions } from '../hooks/use-user';
+import { usePermissions } from '../hooks/use-user';
 import type { NavItemConfig } from '../config/roleNavigation';
 
 interface CommandPaletteProps {
@@ -12,8 +12,7 @@ interface CommandPaletteProps {
 
 export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const navigate = useNavigate();
-  const user = useUser();
-  const { canAccess, isSuperAdmin } = usePermissions();
+  const { canAccess } = usePermissions();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -27,7 +26,6 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     .filter((item) => {
       if (item.isHiddenForDemo) return false;
       if (item.isComingSoon) return false;
-      if (isSuperAdmin && !user?.branchId && item.isBranchScoped) return false;
 
       return canAccess({
         permission: item.permission,
