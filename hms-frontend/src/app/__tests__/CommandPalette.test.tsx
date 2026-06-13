@@ -1,17 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { CommandPalette } from '../CommandPalette';
-import { useUser, usePermissions } from '../../hooks/use-user';
-
 // Mock the hooks
-vi.mock('../../hooks/use-user', () => ({
-  useUser: vi.fn(),
-  usePermissions: vi.fn(),
-}));
+const mockUseUser = vi.fn();
+const mockUsePermissions = vi.fn();
 
-const mockUseUser = useUser as jest.Mock;
-const mockUsePermissions = usePermissions as jest.Mock;
+vi.mock('../../hooks/use-user', () => ({
+  useUser: () => mockUseUser(),
+  usePermissions: () => mockUsePermissions(),
+}));
 
 describe('CommandPalette — Search and Demo Filtering', () => {
   beforeEach(() => {
