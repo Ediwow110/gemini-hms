@@ -209,10 +209,25 @@ function splitStatements(sql: string): string[] {
 }
 
 /**
- * Apply baseline SQL and mark each as applied so `prisma migrate deploy`
- * treats them as already-run and only applies the upgrade migrations.
+ * Apply baseline SQL and mark all baseline migrations as applied
+ * in a single batch INSERT into _prisma_migrations, so that
+ * `prisma migrate deploy` treats them as already-run and only
+ * applies the upgrade migrations.
+ *
+ * The per-migration `prisma migrate resolve --applied` call would
+ * take ~2s of CLI startup per migration; with 58 baseline
+ * migrations that adds 116s to every test that needs a fresh
+ * baseline. A single batch INSERT into _prisma_migrations has the
+ * same end state in milliseconds. The schema of _prisma_migrations
+ * is fixed by Prisma: (id, checksum, migration_name, finished_at,
+ * applied_steps_count, logs, started_at, rolled_back_at). We
+ * compute the same SHA-256 checksum that Prisma computes (over
+ * the migration.sql file content) and insert one row per
+ * migration.
  */
 async function applyBaselineMigrations(pool: Pool, baselineMigrations: string[], dbUrl: string): Promise<void> {
+  const now = ts();
+  const rows: string[] = [];
   for (const name of baselineMigrations) {
     const sqlPath = path.join(MIGRATIONS_DIR, name, 'migration.sql');
     const content = fs.readFileSync(sqlPath, 'utf-8');
@@ -221,12 +236,31 @@ async function applyBaselineMigrations(pool: Pool, baselineMigrations: string[],
     for (const stmt of statements) {
       await sql(stmt + ';', pool);
     }
-    run(
-      `npx prisma migrate resolve --applied "${name}"`,
-      `Mark baseline ${name} as applied`,
-      dbUrl,
-    );
+    const checksum = crypto.createHash('sha256').update(content).digest('hex');
+    rows.push(`('${uuid()}', '${checksum}', '${name}', '${now}', 1, NULL, '${now}', NULL)`);
   }
+  if (rows.length === 0) return;
+  // _prisma_migrations is created lazily by `prisma migrate dev/deploy`.
+  // The baseline migrations predate that call, so we must create
+  // the table ourselves. The DDL below is the canonical Prisma
+  // migration management table definition.
+  await sql(
+    `CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
+      "id" VARCHAR(36) NOT NULL,
+      "checksum" VARCHAR(64) NOT NULL,
+      "finished_at" TIMESTAMPTZ,
+      "migration_name" VARCHAR(255) NOT NULL,
+      "logs" TEXT,
+      "rolled_back_at" TIMESTAMPTZ,
+      "applied_steps_count" INTEGER NOT NULL DEFAULT 0,
+      "started_at" TIMESTAMPTZ NOT NULL,
+      PRIMARY KEY ("id")
+    )`,
+    pool,
+  );
+  const insertSql = `INSERT INTO _prisma_migrations (id, checksum, migration_name, finished_at, applied_steps_count, logs, started_at, rolled_back_at) VALUES ${rows.join(',')}`;
+  await sql(insertSql, pool);
+  console.log(`  Recorded ${rows.length} baseline migrations as applied (batch INSERT).`);
 }
 
 // ---------------------------------------------------------------------------
@@ -541,6 +575,98 @@ async function main() {
     else fail(`Expected 1 system actor, got ${sysCount4c.rows[0].c}`);
     c4c.release();
     await p4c.end();
+
+    // ------------------------------------------------------------------
+    // TEST 5: Composite Payment -> CashierSession FK rejects
+    // tenant and branch mismatches at the database level.
+    // This test is independent of the preflight checks in the
+    // migration: it proves that once the composite FK is in place,
+    // PostgreSQL itself refuses to store a row that violates the
+    // invariant. The test inserts mismatched data using raw SQL
+    // AFTER the migrations have run, then attempts an INSERT and
+    // expects a foreign-key violation.
+    //
+    // Uses a private pool because TEST 4 closes the shared testPool.
+    // ------------------------------------------------------------------
+    console.log('\n=== TEST 5: Composite FK rejects tenant/branch mismatches ===');
+    await resetAndBaseline();
+    const p5 = privatePool();
+    await applyBaselineMigrations(p5, baselineMigrations, dbUrl);
+    // Seed legacy data BEFORE the upgrade runs, so the payments
+    // table doesn't yet have branch_id NOT NULL.
+    const seeded5 = await seedLegacyTenant(p5);
+    const seeded5b = await seedLegacyTenant(p5);
+    run('npx prisma migrate deploy', 'Apply upgrade migrations for TEST 5', dbUrl);
+    const t5c = await p5.connect();
+    try {
+      const s1 = await t5c.query(`SELECT id, tenant_id, branch_id FROM "cashier_sessions" WHERE branch_id = (SELECT id FROM "branches" WHERE code = 'MAIN' AND tenant_id = $1 LIMIT 1) LIMIT 1`, [seeded5.tenantId]);
+      const sess = s1.rows[0];
+      if (!sess) {
+        fail('TEST 5 setup: could not find seeded cashier session');
+      } else {
+        // 5a: Valid payment with matching session — should succeed.
+        const goodPaymentId = uuid();
+        await t5c.query(
+          `INSERT INTO "payments" ("id", "tenant_id", "branch_id", "invoice_id", "cashier_session_id", "amount", "payment_method", "status", "idempotency_key", "created_at", "updated_at") VALUES ($1, $2, $3, $4, $5, 100, 'CASH', 'POSTED', $6, now(), now())`,
+          [goodPaymentId, sess.tenant_id, sess.branch_id, seeded5.invoiceId, sess.id, `t5-valid-${goodPaymentId}`],
+        );
+        const goodCheck = await t5c.query(`SELECT COUNT(*)::int AS c FROM "payments" WHERE id = $1`, [goodPaymentId]);
+        if (goodCheck.rows[0].c === 1) pass('Valid payment with matching session/tenant/branch accepted');
+        else fail('Valid payment with matching session should have been inserted');
+
+        // 5b: Mismatched branch — create a second branch under the same tenant,
+        // create a session in that second branch, then attempt to insert a
+        // payment that uses the original branch but the second branch's session.
+        const branchB = uuid();
+        const sessionB = uuid();
+        const tenantId = sess.tenant_id;
+        await t5c.query(`INSERT INTO "branches" ("id", "tenant_id", "name", "code", "created_at", "updated_at") VALUES ($1, $2, 'Branch B', 'BRB', now(), now())`, [branchB, tenantId]);
+        await t5c.query(`INSERT INTO "cashier_sessions" ("id", "tenant_id", "branch_id", "user_id", "status", "opening_balance", "opened_at") VALUES ($1, $2, $3, $4, 'OPEN', 0, now())`, [sessionB, tenantId, branchB, seeded5.userId]);
+        let branchMismatchRejected = false;
+        try {
+          await t5c.query(
+            `INSERT INTO "payments" ("id", "tenant_id", "branch_id", "invoice_id", "cashier_session_id", "amount", "payment_method", "status", "idempotency_key", "created_at", "updated_at") VALUES ($1, $2, $3, $4, $5, 100, 'CASH', 'POSTED', $6, now(), now())`,
+            [uuid(), tenantId, sess.branch_id, seeded5.invoiceId, sessionB, `t5-branch-${uuid()}`],
+          );
+        } catch (e: any) {
+          branchMismatchRejected = String(e?.message || '').includes('payments_tenant_id_cashier_session_id_branch_id_fkey') || String(e?.message || '').includes('foreign key');
+        }
+        if (branchMismatchRejected) pass('Database rejects payment with mismatched branch (composite FK)');
+        else fail('Database should have rejected payment with mismatched branch via composite FK');
+
+        // 5c: Mismatched tenant — create a second tenant with a branch and
+        // session, then attempt to insert a payment using Tenant A's
+        // tenantId but Tenant B's session.
+        const tenantB = uuid();
+        const branchB2 = uuid();
+        const sessionB2 = uuid();
+        const orderB2 = uuid();
+        const invoiceB2 = uuid();
+        const userBId = uuid();
+        await t5c.query(`INSERT INTO "tenants" ("id", "name", "status", "created_at", "updated_at") VALUES ($1, 'Tenant B', 'ACTIVE', now(), now())`, [tenantB]);
+        await t5c.query(`INSERT INTO "branches" ("id", "tenant_id", "name", "code", "created_at", "updated_at") VALUES ($1, $2, 'Tenant B Branch', 'TBB', now(), now())`, [branchB2, tenantB]);
+        await t5c.query(`INSERT INTO "users" ("id", "tenant_id", "email", "password_hash", "status", "failed_login_attempts", "token_version", "created_at", "updated_at") VALUES ($1, $2, 'legacy-b@test.com', '$2b$10$placeholder', 'ACTIVE', 0, 0, now(), now())`, [userBId, tenantB]);
+        const patientBId = uuid();
+        await t5c.query(`INSERT INTO "patients" ("id", "tenant_id", "patient_number", "first_name", "last_name", "dob", "created_at", "updated_at") VALUES ($1, $2, 'PAT-1002', 'Legacy', 'PatientB', '1991-01-01', now(), now())`, [patientBId, tenantB]);
+        await t5c.query(`INSERT INTO "orders" ("id", "tenant_id", "branch_id", "patient_id", "order_number", "status", "created_at", "updated_at") VALUES ($1, $2, $3, $4, 'ORD-1002', 'COMPLETED', now(), now())`, [orderB2, tenantB, branchB2, patientBId]);
+        await t5c.query(`INSERT INTO "invoices" ("id", "tenant_id", "order_id", "total_amount", "status", "created_at", "updated_at") VALUES ($1, $2, $3, 500, 'PAID', now(), now())`, [invoiceB2, tenantB, orderB2]);
+        await t5c.query(`INSERT INTO "cashier_sessions" ("id", "tenant_id", "branch_id", "user_id", "status", "opening_balance", "opened_at") VALUES ($1, $2, $3, $4, 'OPEN', 0, now())`, [sessionB2, tenantB, branchB2, userBId]);
+        let tenantMismatchRejected = false;
+        try {
+          await t5c.query(
+            `INSERT INTO "payments" ("id", "tenant_id", "branch_id", "invoice_id", "cashier_session_id", "amount", "payment_method", "status", "idempotency_key", "created_at", "updated_at") VALUES ($1, $2, $3, $4, $5, 100, 'CASH', 'POSTED', $6, now(), now())`,
+            [uuid(), tenantId, sess.branch_id, invoiceB2, sessionB2, `t5-tenant-${uuid()}`],
+          );
+        } catch (e: any) {
+          tenantMismatchRejected = String(e?.message || '').includes('payments_tenant_id_cashier_session_id_branch_id_fkey') || String(e?.message || '').includes('foreign key');
+        }
+        if (tenantMismatchRejected) pass('Database rejects payment with mismatched tenant (composite FK)');
+        else fail('Database should have rejected payment with mismatched tenant via composite FK');
+      }
+    } finally {
+      t5c.release();
+    }
+    await p5.end();
 
     // ------------------------------------------------------------------
     // Summary

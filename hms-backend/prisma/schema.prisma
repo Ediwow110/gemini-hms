@@ -746,7 +746,7 @@ model Payment {
   tenant         Tenant            @relation(fields: [tenantId], references: [id])
   branch         Branch            @relation(fields: [branchId], references: [id])
   invoice        Invoice           @relation(fields: [invoiceId], references: [id])
-  cashierSession CashierSession    @relation(fields: [cashierSessionId], references: [id])
+  cashierSession CashierSession    @relation(fields: [tenantId, cashierSessionId, branchId], references: [tenantId, id, branchId])
   reversals      PaymentReversal[]
   void           PaymentVoid?
   refunds        Refund[]
@@ -1281,6 +1281,7 @@ model CashierSession {
   ledgerEntries CashierLedgerEntry[]
 
   @@unique([tenantId, id])
+  @@unique([tenantId, id, branchId])
   @@index([tenantId, userId, branchId, status])
   @@map("cashier_sessions")
 }
