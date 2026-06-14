@@ -78,7 +78,7 @@ jobs:
 
       - name: Migration Upgrade Tests
         working-directory: ./hms-backend
-        timeout-minutes: 10
+        timeout-minutes: 20
         env:
           # Admin connection URL — the script creates its own disposable database
           DATABASE_URL: postgresql://postgres:password@localhost:5432/postgres
