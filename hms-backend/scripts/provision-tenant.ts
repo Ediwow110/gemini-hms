@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { provisionSystemActor } from '../src/tenant/tenant-provisioning';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -44,7 +45,11 @@ async function main() {
       });
       console.log(`[PROVISION] Created Tenant: ${tenant.name} (${tenant.id})`);
 
-      // 2. Create primary corporate Branch
+      // 2a. Provision a non-interactive system actor for this tenant
+      const { actorId: systemActorId } = await provisionSystemActor(tx, tenant.id);
+      console.log(`[PROVISION] Provisioned system actor: ${systemActorId}`);
+
+      // 3. Create primary corporate Branch
       const branch = await tx.branch.create({
         data: {
           tenantId: tenant.id,
