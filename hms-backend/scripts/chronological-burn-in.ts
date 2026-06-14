@@ -234,6 +234,7 @@ async function main() {
           // Create CashierLedgerEntry
           await tx.cashierLedgerEntry.create({
             data: {
+              tenantId,
               cashierSessionId: session.id,
               type: 'PAYMENT',
               amount: inv.totalAmount,

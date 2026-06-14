@@ -353,6 +353,7 @@ export class BillingService {
           if (dto.paymentMethod !== 'QRPH') {
             await tx.cashierLedgerEntry.create({
               data: {
+                tenantId,
                 cashierSessionId: dto.cashierSessionId,
                 type: 'PAYMENT',
                 amount: dto.amount,
@@ -1136,6 +1137,8 @@ export class BillingService {
 
       await activeTx.paymentVoid.create({
         data: {
+          tenantId,
+          branchId,
           paymentId: payment.id,
           approvalId: approvalRequest.id,
           voidedBy: userId,
@@ -1145,6 +1148,7 @@ export class BillingService {
 
       await activeTx.cashierLedgerEntry.create({
         data: {
+          tenantId,
           cashierSessionId: payment.cashierSessionId,
           type: 'VOID',
           amount: payment.amount,
@@ -1463,6 +1467,8 @@ export class BillingService {
 
       const refundRecord = await activeTx.refund.create({
         data: {
+          tenantId,
+          branchId,
           invoiceId: invoice.id,
           paymentId: payment.id,
           amount: refundAmount,
@@ -1474,6 +1480,7 @@ export class BillingService {
 
       await activeTx.cashierLedgerEntry.create({
         data: {
+          tenantId,
           cashierSessionId: payment.cashierSessionId,
           type: 'REFUND',
           amount: refundAmount,
@@ -1807,7 +1814,7 @@ export class BillingService {
         branchId,
         tx,
       );
-      const updated = await this.prisma.paymentReversal.update({
+      const updated = await tx.paymentReversal.update({
         where: { id: reversalId },
         data: { status: REVERSAL_STATUS.REJECTED },
       });
@@ -1882,7 +1889,7 @@ export class BillingService {
         branchId,
         tx,
       );
-      const updated = await this.prisma.paymentReversal.update({
+      const updated = await tx.paymentReversal.update({
         where: { id: reversalId },
         data: { status: REVERSAL_STATUS.REJECTED },
       });
@@ -2041,6 +2048,23 @@ export class BillingService {
         );
       }
 
+      // Lock the cashier session to prevent settlement into a closed session
+      const sessionLock = await tx.cashierSession.updateMany({
+        where: {
+          id: payment.cashierSessionId,
+          tenantId,
+          branchId,
+          status: 'OPEN',
+        },
+        data: { status: 'OPEN' },
+      });
+
+      if (sessionLock.count === 0) {
+        throw new ConflictException(
+          'Cashier session is closed or was modified concurrently',
+        );
+      }
+
       const invoice = await tx.invoice.findUnique({
         where: { id: payment.invoiceId },
       });
@@ -2052,6 +2076,7 @@ export class BillingService {
       // Post cashier ledger entry
       await tx.cashierLedgerEntry.create({
         data: {
+          tenantId,
           cashierSessionId: payment.cashierSessionId,
           type: 'PAYMENT',
           amount: payment.amount,
@@ -2172,31 +2197,39 @@ export class BillingService {
       );
     }
 
-    const updated = await this.prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        gatewayStatus: 'GATEWAY_FAILED',
-        ...(dto.gatewayReference
-          ? { gatewayReference: dto.gatewayReference }
-          : {}),
-      },
-    });
+    const previousGatewayStatus = payment.gatewayStatus;
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'PAYMENT_GATEWAY_FAILED',
-      recordType: 'Payment',
-      recordId: paymentId,
-      newValues: {
-        reason: dto.reason,
-        gatewayReference: dto.gatewayReference || null,
-        previousGatewayStatus: payment.gatewayStatus,
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.payment.update({
+        where: { id: paymentId },
+        data: {
+          gatewayStatus: 'GATEWAY_FAILED',
+          ...(dto.gatewayReference
+            ? { gatewayReference: dto.gatewayReference }
+            : {}),
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'PAYMENT_GATEWAY_FAILED',
+          recordType: 'Payment',
+          recordId: paymentId,
+          newValues: {
+            reason: dto.reason,
+            gatewayReference: dto.gatewayReference || null,
+            previousGatewayStatus,
+            branchId,
+          },
+        },
+        tx,
         branchId,
-      },
-    });
+      );
 
-    return updated;
+      return updated;
+    });
   }
 
   async expirePayment(
@@ -2223,26 +2256,34 @@ export class BillingService {
       );
     }
 
-    const updated = await this.prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        gatewayStatus: 'GATEWAY_EXPIRED',
-      },
-    });
+    const previousGatewayStatus = payment.gatewayStatus;
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'PAYMENT_GATEWAY_EXPIRED',
-      recordType: 'Payment',
-      recordId: paymentId,
-      newValues: {
-        reason: dto.reason,
-        previousGatewayStatus: payment.gatewayStatus,
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.payment.update({
+        where: { id: paymentId },
+        data: {
+          gatewayStatus: 'GATEWAY_EXPIRED',
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'PAYMENT_GATEWAY_EXPIRED',
+          recordType: 'Payment',
+          recordId: paymentId,
+          newValues: {
+            reason: dto.reason,
+            previousGatewayStatus,
+            branchId,
+          },
+        },
+        tx,
         branchId,
-      },
-    });
+      );
 
-    return updated;
+      return updated;
+    });
   }
 }

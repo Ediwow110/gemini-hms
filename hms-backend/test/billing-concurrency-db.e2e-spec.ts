@@ -759,3 +759,190 @@ describe('BillingService applyVoid vs applyRefund Race', () => {
     expect(rejected.length + fulfilled.length).toBe(2);
   });
 });
+
+describe('BillingService confirmPayment vs closeSession Race', () => {
+  let service: BillingService;
+  let prisma: PrismaService;
+  let tenantId: string;
+  let branchId: string;
+  let userId: string;
+  let cashierId: string;
+  let paymentId: string;
+  let cashierSessionId: string;
+
+  beforeAll(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      imports: [
+        ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
+      ],
+      providers: [
+        BillingService,
+        PrismaService,
+        {
+          provide: AuditService,
+          useValue: { log: jest.fn().mockResolvedValue({}) },
+        },
+        {
+          provide: ApprovalsService,
+          useValue: {
+            createRequest: jest.fn().mockResolvedValue({ id: 'app-id' }),
+            processRequest: jest.fn().mockResolvedValue({}),
+          },
+        },
+        {
+          provide: NumberingService,
+          useValue: { generateNumber: jest.fn().mockResolvedValue('RCP-123') },
+        },
+        {
+          provide: LedgerService,
+          useValue: { postEntry: jest.fn().mockResolvedValue({}) },
+        },
+      ],
+    }).compile();
+
+    service = module.get<BillingService>(BillingService);
+    prisma = module.get<PrismaService>(PrismaService);
+
+    const tenant = await prisma.tenant.create({
+      data: { name: 'Race Session Tenant' },
+    });
+    tenantId = tenant.id;
+    const branch = await prisma.branch.create({
+      data: { tenantId, name: 'Race Session Branch', code: 'BR_RACE' },
+    });
+    branchId = branch.id;
+    const cashier = await prisma.user.create({
+      data: {
+        tenantId,
+        email: 'cashier.race@hms.com',
+        passwordHash: 'hash',
+      },
+    });
+    cashierId = cashier.id;
+    userId = cashier.id;
+
+    // Seed system user for audit logs to work
+    await prisma.user.create({
+      data: {
+        tenantId,
+        email: 'system@hms.local',
+        passwordHash: 'hash',
+      },
+    });
+
+    const patient = await prisma.patient.create({
+      data: {
+        tenantId,
+        patientNumber: 'P_RACE',
+        firstName: 'Race',
+        lastName: 'Patient',
+        dob: new Date(),
+      },
+    });
+    const order = await prisma.order.create({
+      data: {
+        tenantId,
+        branchId,
+        patientId: patient.id,
+        orderNumber: 'O_RACE',
+      },
+    });
+    const invoice = await prisma.invoice.create({
+      data: {
+        tenantId,
+        orderId: order.id,
+        totalAmount: 1000,
+        paidAmount: 0,
+      },
+    });
+    const session = await prisma.cashierSession.create({
+      data: {
+        tenantId,
+        branchId,
+        userId: cashier.id,
+        openingBalance: 100,
+        status: 'OPEN',
+      },
+    });
+    cashierSessionId = session.id;
+
+    const payment = await prisma.payment.create({
+      data: {
+        tenantId,
+        invoiceId: invoice.id,
+        cashierSessionId: session.id,
+        amount: 200,
+        paymentMethod: 'QRPH',
+        status: 'POSTED',
+        gatewayStatus: 'GATEWAY_PENDING',
+        idempotencyKey: 'key-session-race',
+      },
+    });
+    paymentId = payment.id;
+  });
+
+  afterAll(async () => {
+    try {
+      await prisma.cashierLedgerEntry.deleteMany({
+        where: { cashierSessionId },
+      });
+      await prisma.payment.deleteMany({ where: { id: paymentId } });
+      await prisma.cashierSession.deleteMany({
+        where: { id: cashierSessionId },
+      });
+      await prisma.invoice.deleteMany({ where: { order: { tenantId } } });
+      await prisma.order.deleteMany({ where: { tenantId } });
+      await prisma.patient.deleteMany({ where: { tenantId } });
+      await prisma.user.deleteMany({ where: { tenantId } });
+      await prisma.branch.deleteMany({ where: { tenantId } });
+      await prisma.tenant.deleteMany({ where: { id: tenantId } });
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+
+  it('should serialize confirmPayment and closeSession concurrently without deadlocks', async () => {
+    const results = await Promise.allSettled([
+      service.confirmPayment(tenantId, cashierId, branchId, paymentId, {
+        gatewayProvider: 'QRPH',
+        gatewayReference: 'ref-race',
+      }),
+      service.closeSession(tenantId, cashierId, branchId, cashierSessionId, {
+        actualClosingBalance: 100,
+      }),
+    ]);
+
+    const confirmResult = results[0];
+    const closeResult = results[1];
+
+    // Assert that closeSession always succeeds (either it closed the session before confirmPayment or after)
+    expect(closeResult.status).toBe('fulfilled');
+
+    // Assert that confirmResult is either fulfilled or rejected with ConflictException
+    if (confirmResult.status === 'rejected') {
+      expect(confirmResult.reason.message).toContain(
+        'Cashier session is closed or was modified concurrently',
+      );
+    } else {
+      expect(confirmResult.status).toBe('fulfilled');
+    }
+
+    // Verify consistency
+    const entries = await prisma.cashierLedgerEntry.findMany({
+      where: { cashierSessionId },
+    });
+    const session = await prisma.cashierSession.findUnique({
+      where: { id: cashierSessionId },
+    });
+
+    expect(session.status).toBe('CLOSED');
+
+    if (confirmResult.status === 'fulfilled') {
+      expect(entries.length).toBe(1);
+      expect(entries[0].type).toBe('PAYMENT');
+      expect(entries[0].amount.toNumber()).toBe(200);
+    } else {
+      expect(entries.length).toBe(0);
+    }
+  });
+});
