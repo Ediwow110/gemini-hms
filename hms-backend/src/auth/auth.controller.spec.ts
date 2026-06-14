@@ -201,7 +201,11 @@ describe('AuthController', () => {
         cookie: jest.fn(),
       };
 
-      const result = await controller.getMe(mockUser, mockReq as any, mockRes as any);
+      const result = await controller.getMe(
+        mockUser,
+        mockReq as any,
+        mockRes as any,
+      );
 
       expect(result).toHaveProperty('csrfToken');
       expect(result).toMatchObject(mockProfile);
@@ -241,7 +245,11 @@ describe('AuthController', () => {
         cookie: jest.fn(),
       };
 
-      const result = await controller.getMe(mockUser, mockReq as any, mockRes as any);
+      const result = await controller.getMe(
+        mockUser,
+        mockReq as any,
+        mockRes as any,
+      );
 
       expect(result).toHaveProperty('csrfToken', existingToken);
       expect(result).toMatchObject(mockProfile);
