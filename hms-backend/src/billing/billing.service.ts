@@ -458,19 +458,24 @@ export class BillingService {
             );
           }
 
-          if (idempotencyRecord?.id) {
-            await tx.idempotencyRecord.update({
-              where: { id: idempotencyRecord.id },
-              data: {
-                status: 'COMPLETED',
-                paymentId: payment.id,
-                responseData: {
-                  payment,
-                  invoice: updatedInvoice,
-                } as Prisma.InputJsonValue,
-              },
-            });
+          // Every payment created must own a COMPLETED idempotency record.
+          // The idempotencyRecord must be defined here by the code flow above.
+          if (!idempotencyRecord?.id) {
+            throw new InternalServerErrorException(
+              'Payment created without idempotency tracking record',
+            );
           }
+          await tx.idempotencyRecord.update({
+            where: { id: idempotencyRecord.id },
+            data: {
+              status: 'COMPLETED',
+              paymentId: payment.id,
+              responseData: {
+                payment,
+                invoice: updatedInvoice,
+              } as Prisma.InputJsonValue,
+            },
+          });
 
           return { payment, invoice: updatedInvoice };
         } catch (error) {
