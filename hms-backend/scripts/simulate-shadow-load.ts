@@ -233,6 +233,7 @@ async function main() {
           const pay = await tx.payment.create({
             data: {
               tenantId,
+              branchId,
               invoiceId: inv.id,
               cashierSessionId: session.id,
               receiptNumber: `REC-${receiptCount++}`,

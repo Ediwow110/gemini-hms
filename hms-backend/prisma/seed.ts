@@ -748,6 +748,7 @@ async function main() {
     create: {
       id: '00000000-0000-0000-0000-0000000000b2',
       tenantId: tenant.id,
+      branchId: branch.id,
       invoiceId: portalInvoice.id,
       cashierSessionId: cashierSession.id,
       receiptNumber: 'DEMO-RCPT-001',

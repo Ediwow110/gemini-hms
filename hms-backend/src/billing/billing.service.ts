@@ -333,6 +333,7 @@ export class BillingService {
           const payment = await tx.payment.create({
             data: {
               tenantId,
+              branchId,
               invoiceId: dto.invoiceId,
               cashierSessionId: dto.cashierSessionId,
               receiptNumber,

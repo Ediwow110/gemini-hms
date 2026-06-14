@@ -116,6 +116,7 @@ model Branch {
   rfqs             RFQ[]
   supportTickets   SupportTicket[]
   nurseTasks       NurseTask[]
+  payments         Payment[]
   paymentVoids     PaymentVoid[]
   refunds          Refund[]
   sessions         Session[]
@@ -722,6 +723,7 @@ model Invoice {
 model Payment {
   id               String    @id @default(uuid()) @db.Uuid
   tenantId         String    @map("tenant_id") @db.Uuid
+  branchId         String    @map("branch_id") @db.Uuid
   invoiceId        String    @map("invoice_id") @db.Uuid
   cashierSessionId String    @map("cashier_session_id") @db.Uuid
   receiptNumber    String?   @map("receipt_number")
@@ -742,6 +744,7 @@ model Payment {
   archiveReason    String?   @map("archive_reason")
 
   tenant         Tenant            @relation(fields: [tenantId], references: [id])
+  branch         Branch            @relation(fields: [branchId], references: [id])
   invoice        Invoice           @relation(fields: [invoiceId], references: [id])
   cashierSession CashierSession    @relation(fields: [cashierSessionId], references: [id])
   reversals      PaymentReversal[]
@@ -750,6 +753,7 @@ model Payment {
 
   @@unique([tenantId, receiptNumber])
   @@unique([tenantId, id])
+  @@unique([tenantId, id, branchId])
   @@index([tenantId, cashierSessionId, status])
   @@index([tenantId, createdAt])
   @@map("payments")

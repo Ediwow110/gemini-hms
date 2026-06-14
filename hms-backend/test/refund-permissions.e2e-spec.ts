@@ -144,6 +144,7 @@ describe('Refund Permissions & Approval (e2e)', () => {
         data: {
           id: paymentId,
           tenantId,
+          branchId,
           invoiceId,
           cashierSessionId: sessionId,
           amount: 1000,

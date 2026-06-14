@@ -99,6 +99,7 @@ describe('BillingService Real-DB Concurrency', () => {
     const payment = await prisma.payment.create({
       data: {
         tenantId,
+        branchId,
         invoiceId: invoice.id,
         cashierSessionId: session.id,
         amount: 100,
@@ -255,6 +256,7 @@ describe('BillingService Different-Reversal Race', () => {
     const payment = await prisma.payment.create({
       data: {
         tenantId,
+        branchId,
         invoiceId: invoice.id,
         cashierSessionId: session.id,
         amount: 100,
@@ -461,6 +463,7 @@ describe('BillingService applyVoid Same-Reversal Race', () => {
     const payment = await prisma.payment.create({
       data: {
         tenantId,
+        branchId,
         invoiceId: invoice.id,
         cashierSessionId: session.id,
         amount: 100,
@@ -629,6 +632,7 @@ describe('BillingService applyVoid vs applyRefund Race', () => {
     const payment = await prisma.payment.create({
       data: {
         tenantId,
+        branchId,
         invoiceId: invoice.id,
         cashierSessionId: session.id,
         amount: 100,
@@ -869,6 +873,7 @@ describe('BillingService confirmPayment vs closeSession Race', () => {
     const payment = await prisma.payment.create({
       data: {
         tenantId,
+        branchId,
         invoiceId: invoice.id,
         cashierSessionId: session.id,
         amount: 200,
