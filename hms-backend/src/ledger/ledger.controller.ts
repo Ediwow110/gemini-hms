@@ -4,7 +4,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
-@Controller('api/v1/ledger')
+@Controller('ledger')
 @UseGuards(RolesGuard)
 @Roles('Super Admin', 'Branch Admin', 'Cashier')
 export class LedgerController {

@@ -114,7 +114,7 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
     };
 
     await request(app.getHttpServer())
-      .post('/clinical/encounters')
+      .post('/api/v1/clinical/encounters')
       .send({
         patientId,
         doctorId,
@@ -125,7 +125,7 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
     // 2. Doctor creates encounter -> 201
     MockJwtAuthGuard.user.roles = ['Doctor'];
     const createRes = await request(app.getHttpServer())
-      .post('/clinical/encounters')
+      .post('/api/v1/clinical/encounters')
       .send({
         patientId,
         doctorId,
@@ -140,7 +140,7 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
     // 3. Nurse reads encounter -> 200
     MockJwtAuthGuard.user.roles = ['Nurse'];
     const getRes = await request(app.getHttpServer())
-      .get(`/clinical/encounters/${encounterId}`)
+      .get(`/api/v1/clinical/encounters/${encounterId}`)
       .expect(200);
 
     expect(getRes.body.chiefComplaint).toBe('Severe stomach pain');
@@ -148,7 +148,7 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
     // 4. Doctor adds SOAP note to open encounter -> 201
     MockJwtAuthGuard.user.roles = ['Doctor'];
     const noteRes = await request(app.getHttpServer())
-      .post(`/clinical/encounters/${encounterId}/notes`)
+      .post(`/api/v1/clinical/encounters/${encounterId}/notes`)
       .send({
         subjective: 'Patient reports nausea and vomiting for 2 days.',
         objective: 'Abdominal tenderness in epigastrium.',
@@ -173,7 +173,7 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
 
     // 7. ICD-10 code is attached to open encounter -> 201
     const diagRes = await request(app.getHttpServer())
-      .post(`/clinical/encounters/${encounterId}/diagnoses`)
+      .post(`/api/v1/clinical/encounters/${encounterId}/diagnoses`)
       .send({
         icd10Code: 'A09',
         isPrimary: true,
@@ -187,13 +187,15 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
 
     // Remove diagnosis -> should soft-delete and return 200
     await request(app.getHttpServer())
-      .delete(`/clinical/encounters/${encounterId}/diagnoses/${diagnosisId}`)
+      .delete(
+        `/api/v1/clinical/encounters/${encounterId}/diagnoses/${diagnosisId}`,
+      )
       .expect(200);
 
     // Get encounter -> diagnoses list should be empty (since it's filtered by deletedAt: null)
     MockJwtAuthGuard.user.roles = ['Doctor'];
     const encounterAfterDelete = await request(app.getHttpServer())
-      .get(`/clinical/encounters/${encounterId}`)
+      .get(`/api/v1/clinical/encounters/${encounterId}`)
       .expect(200);
     expect(encounterAfterDelete.body.encounterDiagnoses.length).toBe(0);
 
@@ -214,7 +216,7 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
     // Get encounter again -> diagnosis should be present again!
     MockJwtAuthGuard.user.roles = ['Doctor'];
     const encounterAfterRestore = await request(app.getHttpServer())
-      .get(`/clinical/encounters/${encounterId}`)
+      .get(`/api/v1/clinical/encounters/${encounterId}`)
       .expect(200);
     expect(encounterAfterRestore.body.encounterDiagnoses.length).toBe(1);
     expect(encounterAfterRestore.body.encounterDiagnoses[0].id).toBe(
@@ -223,12 +225,12 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
 
     // 8. Close the encounter
     await request(app.getHttpServer())
-      .patch(`/clinical/encounters/${encounterId}/close`)
+      .patch(`/api/v1/clinical/encounters/${encounterId}/close`)
       .expect(200);
 
     // 9. Encounter is closed -> diagnoses cannot be added -> 409
     await request(app.getHttpServer())
-      .post(`/clinical/encounters/${encounterId}/diagnoses`)
+      .post(`/api/v1/clinical/encounters/${encounterId}/diagnoses`)
       .send({
         icd10Code: 'A09',
       })

@@ -25,7 +25,7 @@ import {
 } from './dto/marketplace.dto';
 import type { AuthenticatedRequest } from '../common/types/authenticated-request.type';
 
-@Controller('api/v1/marketplace')
+@Controller('marketplace')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class MarketplaceController {
   constructor(private readonly marketplaceService: MarketplaceService) {}

@@ -79,6 +79,19 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:3000',
         changeOrigin: true,
+        rewrite: (path) => {
+          // /api/v1/* → pass through (controllers keep api/v1 prefix: clinical,
+          // catalog, dashboard, emr, encounters, insurance, auth, analytics, billing, etc.)
+          if (path.startsWith('/api/v1/')) return path;
+          // /api/marketplace/* → /marketplace/* (restored to original path)
+          if (path.startsWith('/api/marketplace')) return path.replace('/api/', '/');
+          // /api/metrics/* → /metrics/* (restored to original path)
+          if (path.startsWith('/api/metrics')) return path.replace('/api/', '/');
+          // /api/ledger/* → /ledger/* (restored to original path)
+          if (path.startsWith('/api/ledger')) return path.replace('/api/', '/');
+          // Default: pass through
+          return path;
+        },
       },
       '/patient-portal': {
         target: 'http://127.0.0.1:3000',

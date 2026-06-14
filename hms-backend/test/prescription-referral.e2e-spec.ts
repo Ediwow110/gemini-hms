@@ -112,7 +112,7 @@ describe('Prescription & Referral E2E', () => {
     // We need to bypass RolesGuard to create the encounter first
     MockJwtAuthGuard.user.roles = ['Doctor'];
     const createEncounterRes = await request(app.getHttpServer())
-      .post('/clinical/encounters')
+      .post('/api/v1/clinical/encounters')
       .send({
         patientId,
         doctorId,
@@ -126,7 +126,7 @@ describe('Prescription & Referral E2E', () => {
     // 2. Cashier attempts to create prescription -> 403
     MockJwtAuthGuard.user.roles = ['Cashier'];
     await request(app.getHttpServer())
-      .post(`/clinical/encounters/${encounterId}/prescriptions`)
+      .post(`/api/v1/clinical/encounters/${encounterId}/prescriptions`)
       .send({
         medicationName: 'Sumatriptan 50mg',
         dosage: '1 tablet',
@@ -138,7 +138,7 @@ describe('Prescription & Referral E2E', () => {
     // 3. Doctor creates prescription on open encounter -> 201
     MockJwtAuthGuard.user.roles = ['Doctor'];
     const createPrescRes = await request(app.getHttpServer())
-      .post(`/clinical/encounters/${encounterId}/prescriptions`)
+      .post(`/api/v1/clinical/encounters/${encounterId}/prescriptions`)
       .send({
         medicationName: 'Sumatriptan 50mg',
         dosage: '1 tablet',
@@ -164,7 +164,7 @@ describe('Prescription & Referral E2E', () => {
     // 5. Doctor creates referral on open encounter -> 201
     MockJwtAuthGuard.user.roles = ['Doctor'];
     const createReferralRes = await request(app.getHttpServer())
-      .post(`/clinical/encounters/${encounterId}/referrals`)
+      .post(`/api/v1/clinical/encounters/${encounterId}/referrals`)
       .send({
         referredToName: 'Dr. Jane Smith (Neurology)',
         specialty: 'Neurology',
@@ -215,12 +215,12 @@ describe('Prescription & Referral E2E', () => {
 
     // 10. Close the encounter
     await request(app.getHttpServer())
-      .patch(`/clinical/encounters/${encounterId}/close`)
+      .patch(`/api/v1/clinical/encounters/${encounterId}/close`)
       .expect(200);
 
     // 11. Doctor attempts to create prescription on CLOSED encounter -> 409
     await request(app.getHttpServer())
-      .post(`/clinical/encounters/${encounterId}/prescriptions`)
+      .post(`/api/v1/clinical/encounters/${encounterId}/prescriptions`)
       .send({
         medicationName: 'Ibuprofen 400mg',
         dosage: '1 tablet',
@@ -231,7 +231,7 @@ describe('Prescription & Referral E2E', () => {
 
     // 12. Doctor attempts to create referral on CLOSED encounter -> 409
     await request(app.getHttpServer())
-      .post(`/clinical/encounters/${encounterId}/referrals`)
+      .post(`/api/v1/clinical/encounters/${encounterId}/referrals`)
       .send({
         referredToName: 'External Diagnostic Labs',
         specialty: 'Radiology',
