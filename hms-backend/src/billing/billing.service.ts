@@ -43,11 +43,15 @@ export const REVERSAL_STATUS = {
 /**
  * Billing Transaction Lock Order:
  * To prevent deadlocks, all billing transactions MUST acquire row-level locks in this specific order:
- * 1. Invoice
- * 2. Payment
- * 3. CashierSession
- * 4. PaymentReversal
- * 5. AuditLog
+ * 1. Invoice (updateMany — status guard / row lock)
+ * 2. CashierSession (updateMany — session guard / row lock)
+ * 3. Payment (create)
+ * 4. CashierLedgerEntry (create)
+ * 5. Ledger (postEntry — double-entry accounting)
+ * 6. Invoice (update — new paid amount / status)
+ * 7. Order (updateMany — status change to PAID)
+ * 8. AuditLog (create — PAYMENT_POSTED event)
+ * 9. IdempotencyRecord (update — status to COMPLETED)
  */
 @Injectable()
 export class BillingService {
@@ -454,17 +458,19 @@ export class BillingService {
             );
           }
 
-          await tx.idempotencyRecord.update({
-            where: { id: idempotencyRecord!.id },
-            data: {
-              status: 'COMPLETED',
-              paymentId: payment.id,
-              responseData: {
-                payment,
-                invoice: updatedInvoice,
-              } as Prisma.InputJsonValue,
-            },
-          });
+          if (idempotencyRecord?.id) {
+            await tx.idempotencyRecord.update({
+              where: { id: idempotencyRecord.id },
+              data: {
+                status: 'COMPLETED',
+                paymentId: payment.id,
+                responseData: {
+                  payment,
+                  invoice: updatedInvoice,
+                } as Prisma.InputJsonValue,
+              },
+            });
+          }
 
           return { payment, invoice: updatedInvoice };
         } catch (error) {
@@ -482,14 +488,16 @@ export class BillingService {
       const clientError = this.normalizePostPaymentError(error);
 
       // The FAILED state is only valid while this request still owns IN_PROGRESS.
-      await this.prisma.idempotencyRecord.updateMany({
-        where: { id: idempotencyRecord!.id, status: 'IN_PROGRESS' },
-        data: {
-          status: 'FAILED',
-          error: 'Payment request failed before completion',
-          updatedAt: new Date(),
-        },
-      });
+      if (idempotencyRecord?.id) {
+        await this.prisma.idempotencyRecord.updateMany({
+          where: { id: idempotencyRecord.id, status: 'IN_PROGRESS' },
+          data: {
+            status: 'FAILED',
+            error: 'Payment request failed before completion',
+            updatedAt: new Date(),
+          },
+        });
+      }
 
       throw clientError;
     }
