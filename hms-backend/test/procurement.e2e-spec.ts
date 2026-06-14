@@ -74,6 +74,59 @@ describe('Procurement E2E', () => {
     await app.close();
   });
 
+  // Shared helpers for concurrency tests
+  async function createApprovedPR(
+    staffId: string,
+    managerId: string,
+  ): Promise<{ purchaseRequestId: string; supplierId: string }> {
+    // Create supplier
+    const supplierRes = await request(app.getHttpServer())
+      .post('/api/v1/procurement/suppliers')
+      .send({
+        name: `Concurrency Supplier ${randomUUID()}`,
+        contactName: 'Test',
+        contactEmail: `supplier-${randomUUID()}@test.local`,
+      })
+      .expect(201);
+    const supplierId = supplierRes.body.id;
+
+    // Inventory staff creates PR
+    MockJwtAuthGuard.user = {
+      userId: staffId,
+      tenantId,
+      branchId,
+      roles: ['Inventory Staff'],
+      permissions: ['*'],
+      email: `staff-${randomUUID()}@hms.local`,
+    };
+    const prRes = await request(app.getHttpServer())
+      .post('/api/v1/procurement/purchase-requests')
+      .send({
+        branchId,
+        items: [{ sku: 'MED-TEST', quantity: 10, unitPrice: 5.0 }],
+        reason: 'Concurrency test',
+      })
+      .expect(201);
+    const purchaseRequestId = prRes.body.id;
+
+    // Manager approves
+    MockJwtAuthGuard.user = {
+      userId: managerId,
+      tenantId,
+      branchId,
+      roles: ['Branch Manager'],
+      permissions: ['*'],
+      email: `manager-${randomUUID()}@hms.local`,
+    };
+    await request(app.getHttpServer())
+      .patch(
+        `/api/v1/procurement/purchase-requests/${purchaseRequestId}/approve`,
+      )
+      .expect(200);
+
+    return { purchaseRequestId, supplierId };
+  }
+
   it('should implement the purchase request and PO lifecycle with role gating', async () => {
     const staffId = await createTestUser();
     const managerId = await createTestUser();
@@ -195,5 +248,207 @@ describe('Procurement E2E', () => {
       where: { id: purchaseRequestId },
     });
     expect(checkPr?.status).toBe('ORDERED');
+  });
+
+  it('should prevent duplicate POs against the same PR (concurrency race)', async () => {
+    const staffId = await createTestUser();
+    const managerId = await createTestUser();
+    const { purchaseRequestId, supplierId } = await createApprovedPR(
+      staffId,
+      managerId,
+    );
+
+    // Send two concurrent createPurchaseOrder requests
+    MockJwtAuthGuard.user = {
+      userId: managerId,
+      tenantId,
+      branchId,
+      roles: ['Branch Manager'],
+      permissions: ['*'],
+      email: `manager-${randomUUID()}@hms.local`,
+    };
+
+    // NOTE: Supertest promises ALWAYS resolve (never reject on 4xx/5xx)
+    // unless .expect() is chained. We check status codes from the response
+    // bodies rather than using fulfilled/rejected counts.
+    const responses = await Promise.all([
+      request(app.getHttpServer())
+        .post('/api/v1/procurement/purchase-orders')
+        .send({ branchId, supplierId, purchaseRequestId }),
+      request(app.getHttpServer())
+        .post('/api/v1/procurement/purchase-orders')
+        .send({ branchId, supplierId, purchaseRequestId }),
+    ]);
+
+    const statusCodes = responses.map((r) => r.status);
+    expect(statusCodes.filter((s) => s === 201).length).toBe(1);
+    expect(statusCodes.filter((s) => s === 400).length).toBe(1);
+
+    // Verify only one PO exists in DB
+    const pos = await prisma.purchaseOrder.findMany({
+      where: { purchaseRequestId },
+    });
+    expect(pos.length).toBe(1);
+    expect(pos[0].status).toBe('SENT');
+
+    // Verify PR status is ORDERED
+    const pr = await prisma.purchaseRequest.findUnique({
+      where: { id: purchaseRequestId },
+    });
+    expect(pr?.status).toBe('ORDERED');
+  });
+
+  it('should prevent duplicate receiving records against the same PO (concurrency race)', async () => {
+    const staffId = await createTestUser();
+    const managerId = await createTestUser();
+    const { purchaseRequestId, supplierId } = await createApprovedPR(
+      staffId,
+      managerId,
+    );
+
+    // Create one PO
+    MockJwtAuthGuard.user = {
+      userId: managerId,
+      tenantId,
+      branchId,
+      roles: ['Branch Manager'],
+      permissions: ['*'],
+      email: `manager-${randomUUID()}@hms.local`,
+    };
+    const poRes = await request(app.getHttpServer())
+      .post('/api/v1/procurement/purchase-orders')
+      .send({ branchId, supplierId, purchaseRequestId })
+      .expect(201);
+    const purchaseOrderId = poRes.body.id;
+
+    // Send two concurrent receive requests
+    MockJwtAuthGuard.user = {
+      userId: staffId,
+      tenantId,
+      branchId,
+      roles: ['Inventory Staff'],
+      permissions: ['*'],
+      email: `staff-${randomUUID()}@hms.local`,
+    };
+
+    // NOTE: Supertest promises ALWAYS resolve (never reject on 4xx/5xx)
+    // unless .expect() is chained. We check status codes from the response
+    // bodies rather than using fulfilled/rejected counts.
+    const responses = await Promise.all([
+      request(app.getHttpServer())
+        .post(`/api/v1/procurement/purchase-orders/${purchaseOrderId}/receive`)
+        .send({ notes: 'Concurrent receive test' }),
+      request(app.getHttpServer())
+        .post(`/api/v1/procurement/purchase-orders/${purchaseOrderId}/receive`)
+        .send({ notes: 'Concurrent receive test' }),
+    ]);
+
+    const statusCodes = responses.map((r) => r.status);
+    expect(statusCodes.filter((s) => s === 201).length).toBe(1);
+    expect(statusCodes.filter((s) => s === 400).length).toBe(1);
+
+    // Verify only one receiving record exists in DB
+    const records = await prisma.receivingRecord.findMany({
+      where: { purchaseOrderId },
+    });
+    expect(records.length).toBe(1);
+
+    // Verify PO status is RECEIVED
+    const po = await prisma.purchaseOrder.findUnique({
+      where: { id: purchaseOrderId },
+    });
+    expect(po?.status).toBe('RECEIVED');
+  });
+
+  it('should reject PO creation if PR is not APPROVED', async () => {
+    const staffId = await createTestUser();
+    const managerId = await createTestUser();
+
+    // Create PR without approving it
+    MockJwtAuthGuard.user = {
+      userId: staffId,
+      tenantId,
+      branchId,
+      roles: ['Inventory Staff'],
+      permissions: ['*'],
+      email: `staff-${randomUUID()}@hms.local`,
+    };
+    const prRes = await request(app.getHttpServer())
+      .post('/api/v1/procurement/purchase-requests')
+      .send({
+        branchId,
+        items: [{ sku: 'MED-GUARD', quantity: 1, unitPrice: 10 }],
+        reason: 'State guard test',
+      })
+      .expect(201);
+    const purchaseRequestId = prRes.body.id;
+
+    // Create a supplier
+    const supplierRes = await request(app.getHttpServer())
+      .post('/api/v1/procurement/suppliers')
+      .send({
+        name: `Guard Supplier ${randomUUID()}`,
+        contactEmail: `guard-${randomUUID()}@test.local`,
+      })
+      .expect(201);
+    const supplierId = supplierRes.body.id;
+
+    // Attempt to create PO against non-APPROVED PR -> should fail
+    MockJwtAuthGuard.user = {
+      userId: managerId,
+      tenantId,
+      branchId,
+      roles: ['Branch Manager'],
+      permissions: ['*'],
+      email: `manager-${randomUUID()}@hms.local`,
+    };
+    await request(app.getHttpServer())
+      .post('/api/v1/procurement/purchase-orders')
+      .send({ branchId, supplierId, purchaseRequestId })
+      .expect(400);
+  });
+
+  it('should reject duplicate receive and reject receive on non-SENT PO', async () => {
+    const staffId = await createTestUser();
+    const managerId = await createTestUser();
+    const { purchaseRequestId, supplierId } = await createApprovedPR(
+      staffId,
+      managerId,
+    );
+
+    // Create PO
+    MockJwtAuthGuard.user = {
+      userId: managerId,
+      tenantId,
+      branchId,
+      roles: ['Branch Manager'],
+      permissions: ['*'],
+      email: `manager-${randomUUID()}@hms.local`,
+    };
+    const poRes = await request(app.getHttpServer())
+      .post('/api/v1/procurement/purchase-orders')
+      .send({ branchId, supplierId, purchaseRequestId })
+      .expect(201);
+    const purchaseOrderId = poRes.body.id;
+
+    // First receive succeeds
+    MockJwtAuthGuard.user = {
+      userId: staffId,
+      tenantId,
+      branchId,
+      roles: ['Inventory Staff'],
+      permissions: ['*'],
+      email: `staff-${randomUUID()}@hms.local`,
+    };
+    await request(app.getHttpServer())
+      .post(`/api/v1/procurement/purchase-orders/${purchaseOrderId}/receive`)
+      .send({ notes: 'First receive' })
+      .expect(201);
+
+    // Second receive (same PO, already RECEIVED) -> fails
+    await request(app.getHttpServer())
+      .post(`/api/v1/procurement/purchase-orders/${purchaseOrderId}/receive`)
+      .send({ notes: 'Duplicate receive' })
+      .expect(400);
   });
 });
