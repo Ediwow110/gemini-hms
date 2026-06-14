@@ -353,7 +353,7 @@ async function main() {
       'approval.request.process', 'report.export'
     ],
     'Admin': [
-      'report.export', 'audit.view'
+      'admin.role.change', 'dashboard.view'
     ]
   };
 
@@ -386,8 +386,31 @@ async function main() {
     }
   }
 
-  // 5. Create Demo Users
+  // 4b. Seed System Actor for each Tenant
+  console.log('Seeding System Actors...');
   const passwordHash = await bcrypt.hash('Admin@123', 10);
+  const systemActors = [
+    { tenantId: tenant.id, userId: '00000000-0000-0000-0000-ffffff000001' },
+    { tenantId: tenantAlpha.id, userId: '00000000-0000-0000-0000-ffffff00000a' },
+    { tenantId: tenantBeta.id, userId: '00000000-0000-0000-0000-ffffff00000b' },
+  ];
+  for (const actor of systemActors) {
+    await prisma.user.upsert({
+      where: {
+        id: actor.userId,
+      },
+      update: {},
+      create: {
+        id: actor.userId,
+        tenantId: actor.tenantId,
+        email: 'system@hms.local',
+        passwordHash,
+        mfaEnabled: false,
+      },
+    });
+  }
+
+  // 5. Create Demo Users
   
   const demoUsers = [
     { email: 'admin@hospital.com', role: 'Super Admin' },

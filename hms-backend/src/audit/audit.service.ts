@@ -13,7 +13,7 @@ import { AUDIT_EVENT_KEYS } from './audit-event-keys';
 
 export interface AuditLogData {
   tenantId: string;
-  userId: string;
+  userId: string | null;
   eventKey: string;
   recordType: string;
   recordId: string;
@@ -68,7 +68,7 @@ export class AuditService {
 
   private computeHash(entry: {
     tenantId: string;
-    userId: string;
+    userId: string | null;
     eventKey: string;
     recordType: string;
     recordId: string;
@@ -108,6 +108,24 @@ export class AuditService {
     const activeRole = context?.activeRole ?? req?.user?.role;
     const sessionId = context?.sessionId ?? req?.user?.sessionId;
 
+    let userId = data.userId;
+    if (!userId) {
+      if (typeof db.user?.findFirst === 'function') {
+        const systemUser = await db.user.findFirst({
+          where: { tenantId: data.tenantId, email: 'system@hms.local' },
+          select: { id: true },
+        });
+        if (!systemUser) {
+          throw new Error(
+            `System actor user not found for tenant: ${data.tenantId}`,
+          );
+        }
+        userId = systemUser.id;
+      } else {
+        userId = '00000000-0000-0000-0000-ffffff000001';
+      }
+    }
+
     // Fetch the latest head in the tenant chain
     const lastLog =
       typeof db.auditLog?.findFirst === 'function'
@@ -122,7 +140,7 @@ export class AuditService {
 
     const hash = this.computeHash({
       tenantId: data.tenantId,
-      userId: data.userId,
+      userId: userId,
       eventKey: data.eventKey,
       recordType: data.recordType,
       recordId: data.recordId,
@@ -145,7 +163,7 @@ export class AuditService {
       data: {
         tenantId: data.tenantId,
         branchId: branchId,
-        userId: data.userId,
+        userId: userId,
         eventKey: data.eventKey,
         recordType: data.recordType,
         recordId: data.recordId,
