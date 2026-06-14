@@ -9,6 +9,8 @@ import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { RolesGuard } from '../src/auth/guards/roles.guard';
 import { ComplianceModule } from '../src/compliance/compliance.module';
+import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
+import { MockPermissionsGuard } from './helpers/mock-permissions.guard';
 
 describe('HIPAA Compliance Automation (e2e)', () => {
   let app: INestApplication<App>;
@@ -37,7 +39,10 @@ describe('HIPAA Compliance Automation (e2e)', () => {
           useClass: RolesGuard,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(PermissionsGuard)
+      .useClass(MockPermissionsGuard)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -130,7 +135,7 @@ describe('HIPAA Compliance Automation (e2e)', () => {
       tenantId,
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
-      permissions: [],
+      permissions: ['*'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 
@@ -171,7 +176,7 @@ describe('HIPAA Compliance Automation (e2e)', () => {
       tenantId,
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
-      permissions: [],
+      permissions: ['*'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 
@@ -224,7 +229,7 @@ describe('HIPAA Compliance Automation (e2e)', () => {
       tenantId,
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
-      permissions: [],
+      permissions: ['*'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 

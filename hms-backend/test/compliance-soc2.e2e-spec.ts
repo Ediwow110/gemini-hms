@@ -9,6 +9,8 @@ import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { RolesGuard } from '../src/auth/guards/roles.guard';
 import { ComplianceModule } from '../src/compliance/compliance.module';
+import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
+import { MockPermissionsGuard } from './helpers/mock-permissions.guard';
 
 describe('SOC2 Type II Readiness (e2e)', () => {
   let app: INestApplication<App>;
@@ -36,7 +38,10 @@ describe('SOC2 Type II Readiness (e2e)', () => {
           useClass: RolesGuard,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(PermissionsGuard)
+      .useClass(MockPermissionsGuard)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -84,7 +89,7 @@ describe('SOC2 Type II Readiness (e2e)', () => {
       tenantId,
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
-      permissions: [],
+      permissions: ['*'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 
@@ -139,7 +144,7 @@ describe('SOC2 Type II Readiness (e2e)', () => {
       tenantId,
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
-      permissions: [],
+      permissions: ['*'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 
@@ -161,7 +166,7 @@ describe('SOC2 Type II Readiness (e2e)', () => {
       tenantId,
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
-      permissions: [],
+      permissions: ['*'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 
