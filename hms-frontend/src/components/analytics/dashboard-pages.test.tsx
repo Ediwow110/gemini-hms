@@ -37,7 +37,7 @@ vi.mock('../../hooks/use-patient-portal', () => ({
 
 vi.mock('../../hooks/use-compliance', () => ({
   useAuditEvents: () => ({ events: [{ id: 'audit-1', createdAt: '2026-05-21T00:00:00Z', activeRole: 'Compliance Officer', recordType: 'Patient', recordId: 'PAT-1', eventKey: 'PHI_ACCESS' }], loading: false }),
-  useAccessReview: () => ({ report: { staleAccountsCount: 1, privilegeEscalationsCount: 0, complianceStatus: 'NEEDS_ATTENTION' }, loading: false }),
+  useAccessReview: () => ({ report: { staleAccountsCount: 1, privilegeEscalationsCount: 0, complianceStatus: 'NEEDS_ATTENTION' }, loading: false, error: null }),
 }));
 
 vi.mock('../../hooks/use-it-support', () => ({

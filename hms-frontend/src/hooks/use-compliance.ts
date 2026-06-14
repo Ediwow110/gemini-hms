@@ -120,14 +120,17 @@ export function useAuditEvents(params?: {
 export function useEphiAudit(from?: string, to?: string) {
   const [events, setEvents] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await complianceService.getEphiAudit(from, to);
       setEvents(res);
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load PHI access audit';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -137,7 +140,7 @@ export function useEphiAudit(from?: string, to?: string) {
     fetch();
   }, [fetch]);
 
-  return { events, loading, refetch: fetch };
+  return { events, loading, error, refetch: fetch };
 }
 
 export interface AccessReviewReport {
@@ -153,14 +156,17 @@ export interface AccessReviewReport {
 export function useAccessReview() {
   const [report, setReport] = useState<AccessReviewReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await complianceService.getAccessReviewReport();
       setReport(res as unknown as AccessReviewReport);
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load access review';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -170,7 +176,7 @@ export function useAccessReview() {
     fetch();
   }, [fetch]);
 
-  return { report, loading, refetch: fetch };
+  return { report, loading, error, refetch: fetch };
 }
 
 export interface ChainVerificationResult {
@@ -283,14 +289,17 @@ export function useBreachIncidents() {
 export function useRetentionStatus() {
   const [status, setStatus] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await complianceService.getRetentionStatus();
       setStatus(res as Record<string, unknown>);
-    } catch {
-      // silently fail
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load retention status';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -300,5 +309,5 @@ export function useRetentionStatus() {
     fetch();
   }, [fetch]);
 
-  return { status, loading, refetch: fetch };
+  return { status, loading, error, refetch: fetch };
 }

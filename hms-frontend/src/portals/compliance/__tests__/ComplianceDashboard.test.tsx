@@ -43,6 +43,7 @@ describe('ComplianceDashboard Runtime Tests', () => {
     vi.mocked(useAccessReview).mockReturnValue({
       report: null,
       loading: true,
+      error: null,
       refetch: vi.fn(),
     });
 
@@ -73,6 +74,7 @@ describe('ComplianceDashboard Runtime Tests', () => {
     vi.mocked(useAccessReview).mockReturnValue({
       report: null,
       loading: false,
+      error: null,
       refetch: vi.fn(),
     });
 
@@ -124,6 +126,7 @@ describe('ComplianceDashboard Runtime Tests', () => {
         reviewTimestamp: '2026-06-08T09:00:00Z',
       },
       loading: false,
+      error: null,
       refetch: vi.fn(),
     });
 
@@ -158,6 +161,7 @@ describe('ComplianceDashboard Runtime Tests', () => {
     vi.mocked(useAccessReview).mockReturnValue({
       report: null,
       loading: false,
+      error: null,
       refetch: vi.fn(),
     });
 

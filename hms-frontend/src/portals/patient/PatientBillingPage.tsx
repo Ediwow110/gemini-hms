@@ -13,7 +13,7 @@ export const PatientBillingPage: React.FC = () => {
   const displayInvoices = invoices.map((inv) => ({
     id: inv.id,
     service: `Invoice ${inv.invoiceNumber || inv.id.substring(0, 8)}`,
-    amount: safeMoney(inv.balance) > 0 ? safeMoney(inv.totalAmount) : safeMoney(inv.paidAmount),
+    amount: safeMoney(inv.balance) > 0 ? safeMoney(inv.balance) : safeMoney(inv.paidAmount),
     date: new Date(inv.createdAt).toLocaleDateString(),
     status: inv.status === 'PAID' ? 'PAID' as const : inv.status === 'PARTIAL' ? 'PARTIAL' as const : 'UNPAID' as const,
   }));

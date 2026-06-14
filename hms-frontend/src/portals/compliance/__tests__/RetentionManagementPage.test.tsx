@@ -33,6 +33,7 @@ describe('RetentionManagementPage Redesign Tests', () => {
         encounters: { active: 200, archived: 50 },
       },
       loading: false,
+      error: null,
       refetch: vi.fn(),
     });
 
@@ -49,6 +50,7 @@ describe('RetentionManagementPage Redesign Tests', () => {
     vi.mocked(useRetentionStatus).mockReturnValue({
       status: null,
       loading: true,
+      error: null,
       refetch: vi.fn(),
     });
 
@@ -61,6 +63,7 @@ describe('RetentionManagementPage Redesign Tests', () => {
     vi.mocked(useRetentionStatus).mockReturnValue({
       status: { patients: { active: 0, archived: 0 } },
       loading: false,
+      error: null,
       refetch: vi.fn(),
     });
 

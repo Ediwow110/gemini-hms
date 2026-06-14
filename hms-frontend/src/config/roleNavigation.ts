@@ -192,7 +192,6 @@ export const roleNavigation: NavGroupConfig[] = [
       { label: 'Approvals', to: '/branch-admin/approvals', icon: CheckSquare, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true, isComingSoon: true },
       { label: 'Branch Reports', to: '/reports', icon: BarChart3, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true },
       { label: 'Branch Audit Logs', to: '/audit-logs', icon: History, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
-      { label: 'My Audit Log', to: '/my-audit-log', icon: History, permission: PERMISSIONS.AUDIT_SELF, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
       {
         label: 'Branch Settings',
         to: '/settings',
