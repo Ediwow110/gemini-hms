@@ -55,19 +55,26 @@ export const usePermissions = () => {
       return true;
     }
 
-    if (isSuperAdmin) {
-      if (opts.zone === 'staff') {
-        // Super Admin only sees branch-scoped items if they have an active branch context
-        if (opts.isBranchScoped && !user?.branchId) return false;
+    // 0. Super Admin global-governance bypass (non-branch-scoped routes only)
+    if (isSuperAdmin && !opts.isBranchScoped) {
+      if (!opts.allowedRoles || opts.allowedRoles.length === 0) {
         return true;
       }
     }
 
-    if (opts.permission && hasPermission(opts.permission)) return true;
-    if (opts.allowedRoles && opts.allowedRoles.some(r => hasRole(r))) return true;
-    if (!opts.allowedRoles && !opts.permission) return true;
-    return false;
-  }, [isSuperAdmin, user?.branchId, hasPermission, hasRole]);
+    // 1. Role check (ANY)
+    if (opts.allowedRoles && opts.allowedRoles.length > 0) {
+      const hasAnyRole = opts.allowedRoles.some(r => hasRole(r));
+      if (!hasAnyRole) return false;
+    }
+
+    // 2. Permission check
+    if (opts.permission && !hasPermission(opts.permission)) {
+      return false;
+    }
+
+    return true;
+  }, [isSuperAdmin, hasPermission, hasRole]);
 
   return { hasRole, hasPermission, isSuperAdmin, isBranchAdmin, isStaff, canAccess };
 };

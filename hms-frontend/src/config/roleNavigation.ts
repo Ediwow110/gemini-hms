@@ -80,8 +80,8 @@ export const roleNavigation: NavGroupConfig[] = [
       { label: 'Executive View', to: '/admin/executive', icon: Activity, allowedRoles: ['Super Admin'], zone: 'staff' },
       { label: 'Tenants Manager', to: '/admin/tenants', icon: Building, allowedRoles: ['Super Admin'], zone: 'staff' },
       { label: 'Branches Manager', to: '/admin/branches', icon: GitMerge, allowedRoles: ['Super Admin'], zone: 'staff' },
-      { label: 'Users & Accounts', to: '/admin/users', icon: Users, allowedRoles: ['Super Admin'], zone: 'staff' },
-      { label: 'Roles & Permissions', to: '/admin/roles-permissions', icon: ShieldCheck, allowedRoles: ['Super Admin'], zone: 'staff' },
+      { label: 'Users & Accounts', to: '/admin/users', icon: Users, allowedRoles: ['Super Admin', 'Admin'], zone: 'staff' },
+      { label: 'Roles & Permissions', to: '/admin/roles-permissions', icon: ShieldCheck, allowedRoles: ['Super Admin', 'Admin'], zone: 'staff' },
     ],
   },
   {
