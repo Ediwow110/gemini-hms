@@ -24,6 +24,15 @@ export const ITSupportDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { tickets, loading: ticketsLoading, error: ticketsError, refetch } = useSupportTickets({ pageSize: 3 });
   const { stats, loading: statsLoading, statsError } = useTicketStats();
+  const [renderCharts, setRenderCharts] = React.useState(false);
+
+  React.useEffect(() => {
+    // Defer chart rendering to second paint / post-mount
+    const timer = setTimeout(() => {
+      setRenderCharts(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <HmsDashboardShell widthTier="full">
@@ -106,7 +115,11 @@ export const ITSupportDashboard: React.FC = () => {
         {/* Primary Work Row: System Health Metrics (L Card) + User Support Queue (L Card) */}
         <div className="col-span-12 xl:col-span-6">
           <ChartCard title="API latency and availability" description="Sandbox infrastructure trend for operational review." height={280}>
-            <TrendLineChart data={itLatencyTrend} title="API latency and availability" valueLabel="Latency ms" secondaryLabel="Availability %" />
+            {renderCharts ? (
+              <TrendLineChart data={itLatencyTrend} title="API latency and availability" valueLabel="Latency ms" secondaryLabel="Availability %" />
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-xs text-slate-400 font-semibold animate-pulse">Loading telemetry charts...</div>
+            )}
           </ChartCard>
         </div>
 
@@ -171,7 +184,11 @@ export const ITSupportDashboard: React.FC = () => {
         {/* Bottom Supporting Row: Job Status (L Card) + IT Insights (L Card) */}
         <div className="col-span-12 md:col-span-6 xl:col-span-6">
           <ChartCard title="Background job status" description="Job queue status drives retry and incident decisions." height={280}>
-            <StatusDonutChart data={jobBreakdown} title="Background job status" />
+            {renderCharts ? (
+              <StatusDonutChart data={jobBreakdown} title="Background job status" />
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-xs text-slate-400 font-semibold animate-pulse">Loading status breakdown...</div>
+            )}
           </ChartCard>
         </div>
 

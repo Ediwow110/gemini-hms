@@ -1,6 +1,6 @@
 // @refresh reset
 /* eslint-disable react-refresh/only-export-components -- Co-locating context and hooks is acceptable for this prototype */
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode, useMemo } from 'react';
 import { apiClient } from '../lib/api';
 
 export interface UserState {
@@ -38,16 +38,19 @@ export const useAuth = () => useContext(AuthContext);
 
 export const usePermissions = () => {
   const user = useUser();
-  const permissions = user?.permissions || [];
+  const permissions = useMemo(() => {
+    if (!user) return [];
+    return user.permissions || [];
+  }, [user]);
   
   // Real granular permission check
-  const hasPermission = (permission: string) => permissions.includes(permission);
-  const hasRole = (role: string) => user?.roles.includes(role) || false;
-  const isSuperAdmin = hasRole('Super Admin');
-  const isBranchAdmin = hasRole('Branch Admin');
-  const isStaff = () => !!(user && !user.roles.includes('Patient') && !user.roles.includes('Customer'));
+  const hasPermission = useCallback((permission: string) => permissions.includes(permission), [permissions]);
+  const hasRole = useCallback((role: string) => user?.roles.includes(role) || false, [user?.roles]);
+  const isSuperAdmin = useMemo(() => user?.roles.includes('Super Admin') || false, [user?.roles]);
+  const isBranchAdmin = useMemo(() => user?.roles.includes('Branch Admin') || false, [user?.roles]);
+  const isStaff = useCallback(() => !!(user && !user.roles.includes('Patient') && !user.roles.includes('Customer')), [user]);
 
-  const canAccess = (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
+  const canAccess = useCallback((opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
     if (opts.zone === 'public') {
       return true;
     }
@@ -64,7 +67,7 @@ export const usePermissions = () => {
     if (opts.allowedRoles && opts.allowedRoles.some(r => hasRole(r))) return true;
     if (!opts.allowedRoles && !opts.permission) return true;
     return false;
-  };
+  }, [isSuperAdmin, user?.branchId, hasPermission, hasRole]);
 
   return { hasRole, hasPermission, isSuperAdmin, isBranchAdmin, isStaff, canAccess };
 };

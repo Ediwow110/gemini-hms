@@ -56,7 +56,7 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'my-audit-log', requiredPermission: PERMISSIONS.AUDIT_SELF, zone: 'staff' },
   { path: 'audit/events/:id', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
   { path: 'audit/entity/:recordType/:recordId', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
-  { path: 'spatial', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff' },
+  { path: 'spatial', requiredPermission: 'it.system.view', zone: 'staff' },
   { path: 'sales-dashboard', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff' },
   { path: 'logistics-checklist', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff' },
   { path: 'notifications', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse', 'Lab Technician', 'Cashier', 'IT Support', 'HR Manager', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },

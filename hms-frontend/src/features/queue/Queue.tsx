@@ -5,13 +5,6 @@ import { Clock, UserCheck, CheckCircle2, SkipForward, Plus, Megaphone } from "lu
 import { RequirePermission } from "../../components/ui/RequirePermission";
 import { HmsDashboardShell, HmsToolbar, HmsAuditFooter } from "../../components/hms-dashboard";
 
-const QUEUE_STATS = [
-  { label: "Waiting", val: "12", icon: Clock, color: "from-amber-500 to-orange-500 shadow-amber-200/50" },
-  { label: "Called", val: "3", icon: UserCheck, color: "from-indigo-500 to-violet-500 shadow-indigo-200/50" },
-  { label: "Served", val: "42", icon: CheckCircle2, color: "from-emerald-500 to-teal-500 shadow-emerald-200/50" },
-  { label: "Skipped", val: "2", icon: SkipForward, color: "from-slate-400 to-slate-500 shadow-slate-200/50" },
-];
-
 interface QueueEntry {
   num: string;
   name: string;
@@ -30,6 +23,18 @@ export const Queue = () => {
     { num: "Q001", name: "John Doe", service: "CBC", status: "Waiting", time: "10 mins" },
     { num: "Q002", name: "Jane Smith", service: "X-Ray", status: "Calling", time: "2 mins" },
   ]);
+
+  const waitingCount = queue.filter(q => q.status.toUpperCase() === "WAITING").length;
+  const callingCount = queue.filter(q => q.status.toUpperCase() === "CALLING").length;
+  const servedCount = 42;
+  const skippedCount = 2;
+
+  const derivedStats = [
+    { label: "Waiting", val: waitingCount.toString(), icon: Clock, color: "from-amber-500 to-orange-500 shadow-amber-200/50" },
+    { label: "Calling", val: callingCount.toString(), icon: UserCheck, color: "from-indigo-500 to-violet-500 shadow-indigo-200/50" },
+    { label: "Served (Sandbox)", val: servedCount.toString(), icon: CheckCircle2, color: "from-emerald-500 to-teal-500 shadow-emerald-200/50" },
+    { label: "Skipped (Sandbox)", val: skippedCount.toString(), icon: SkipForward, color: "from-slate-400 to-slate-500 shadow-slate-200/50" },
+  ];
   const [toast, setToast] = useState<ToastNotification | null>(null);
 
   const showToast = (message: string) => {
@@ -46,7 +51,7 @@ export const Queue = () => {
       setQueue(updated);
       showToast(`Now calling: ${p.num} - ${p.name}`);
     } else {
-      alert("No patients waiting in queue.");
+      showToast("No patients waiting in queue.");
     }
   };
 
@@ -74,17 +79,23 @@ export const Queue = () => {
         </div>
       )}
       
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
         <PageHeader title="Queue Monitor" description="Real-time patient queue status and progress." />
-        <div className="flex gap-3">
+        <div className="flex items-center gap-4">
           <RequirePermission permission="queue.manage">
-            <button onClick={handleCallNext} className="btn btn-primary flex items-center gap-2 shadow-md shadow-indigo-200">
+            <button 
+              onClick={handleCallNext} 
+              className="px-5 py-3 bg-indigo-600 text-white rounded-xl text-sm font-extrabold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-250/50 flex items-center gap-2 cursor-pointer border-0"
+            >
               <Megaphone className="h-4 w-4" />
               Call Next
             </button>
           </RequirePermission>
           <RequirePermission permission="queue.manage">
-            <button onClick={handleJoinQueue} className="btn btn-secondary flex items-center gap-2">
+            <button 
+              onClick={handleJoinQueue} 
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
               <Plus className="h-4 w-4" />
               Add to Queue
             </button>
@@ -94,7 +105,7 @@ export const Queue = () => {
       
       <div className="grid grid-cols-12 gap-6">
         {/* KPI metrics - 4 S-size Cards (3 cols desktop, 6 tablet, 12 mobile) */}
-        {QUEUE_STATS.map((s, i) => {
+        {derivedStats.map((s, i) => {
           const Icon = s.icon;
           return (
             <div key={s.label} className={`col-span-12 sm:col-span-6 xl:col-span-3 card-hover p-5 text-center animate-slide-up stagger-${i + 1}`}>

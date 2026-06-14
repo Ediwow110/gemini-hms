@@ -1,0 +1,470 @@
+VERDICT: FIX BEFORE COMMIT
+
+This audit focuses on the user-reported feeling that the frontend is heavy or sluggish during normal account usage.
+
+Workspace:
+D:\Vscode\hms-login-OFFICIAL
+
+Date:
+2026-06-14
+
+Audit skills used:
+- silent-bug-hunter
+- senior-engineering-reviewer
+- Browser skill instructions loaded for local browser verification discipline
+
+Evidence boundary:
+- This is a local audit from source code and production build output.
+- No broad runtime browser profiling trace was captured in this pass.
+- Findings below distinguish between confirmed structural causes and items that still need runtime measurement.
+
+======================================================================
+1. SCOPE CHECKED
+======================================================================
+
+Question audited:
+"Why does the system feel heavy when using normal user accounts, and what in the frontend is making it feel slower than it should?"
+
+Surfaces checked:
+- shared shell and topbar
+- auth bootstrap
+- sidebar and command palette
+- query defaults and refetch behavior
+- dashboard composition
+- charting footprint
+- route/code-splitting shape
+- obvious per-page multi-query patterns
+- production build artifact sizes
+
+======================================================================
+2. EVIDENCE REVIEWED
+======================================================================
+
+Files reviewed:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\App.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\AppShell.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\CommandPalette.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\RoleBasedSidebar.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\hooks\use-user.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\components\hms-dashboard\index.ts
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\components\hms-dashboard\HmsTrendChart.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\components\analytics\charts\TrendLineChart.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\components\analytics\charts\ComparisonBarChart.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\components\analytics\charts\VolumeAreaChart.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\components\analytics\charts\StatusDonutChart.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\it-support\ITSupportDashboard.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\nurse\NurseDashboard.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\lab\LabDashboard.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\pages\pharmacy\PharmacyDashboard.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\features\queue\Queue.tsx
+
+Command evidence:
+- npm run build
+- dist asset size inspection
+- repo-wide searches for refetch and effect patterns
+
+Build evidence summary:
+- build passed cleanly
+- 3569 modules transformed
+- notable output sizes:
+  - vendor-recharts: 381.81 kB raw / 109.49 kB gzip
+  - vendor-react: 276.34 kB raw / 87.86 kB gzip
+  - index.js: 130.40 kB raw / 26.15 kB gzip
+  - index.css: 160.47 kB raw / 22.47 kB gzip
+  - vendor-data: 84.08 kB raw / 28.67 kB gzip
+  - vendor-zod: 66.94 kB raw / 18.04 kB gzip
+
+======================================================================
+3. EXECUTIVE SUMMARY
+======================================================================
+
+The app does not look heavy because of one obvious infinite loop or a broken React Query global policy.
+
+The heaviness is coming from a combination of four confirmed structural causes:
+
+1. Too many dashboards depend on chart-heavy analytics components.
+2. Shared shell features are computed globally even when they are not role-critical.
+3. Several dashboards combine multiple queries, multiple grids, and multiple derived transforms in a single first paint.
+4. Some portal pages still use rich dashboard shells even when the role only needs a lean operational workspace.
+
+The current React Query defaults are not the main problem:
+- staleTime = 60_000
+- retry = 1
+- refetchOnWindowFocus = false
+
+That means the "heavy feel" is more likely caused by page composition, analytics/chart cost, and shell-level overhead than by aggressive refetch churn.
+
+======================================================================
+4. BLOCKING FINDINGS
+======================================================================
+
+4.1 HIGH - Recharts footprint is large and spread across many dashboards
+
+Evidence:
+- production build output:
+  - vendor-recharts = 381.81 kB raw, 109.49 kB gzip
+- chart imports confirmed in many portals:
+  - admin dashboards
+  - branch-admin
+  - HR
+  - procurement
+  - cashier
+  - compliance
+  - IT support
+  - marketplace admin and supplier
+  - lab analytics pages
+
+Why it matters:
+- This is the single strongest hard build signal behind the "heavy" feel.
+- For users who spend time on dashboard-style pages, charting cost is real.
+- Even when split into a vendor chunk, this still means chart pages pay a large parsing and execution cost once loaded.
+
+Classification:
+- Confirmed real performance issue
+
+Required direction:
+- reduce default chart usage on operational pages
+- lazy-load chart sections inside dashboards where possible
+- avoid chart components for pages whose main job is workflow execution, not analytics
+
+
+4.2 HIGH - Shared shell contains global UX features that every portal pays for, even when the role does not need them
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\AppShell.tsx
+- Global shell includes:
+  - topbar search launcher
+  - command palette mount
+  - quick create modal state and actions
+  - notifications bell
+  - mobile overlay logic
+  - branch display widget
+
+Why it matters:
+- This shell wraps almost every protected route.
+- Even when a role only needs a focused work queue, the user is still carrying a broad admin-like shell.
+- This increases perceived complexity and interaction cost, even if raw CPU cost is moderate.
+
+Classification:
+- Confirmed UX/performance architecture issue
+
+Required direction:
+- trim shell behavior by role/portal
+- make command-heavy shell features optional for lean operational portals
+
+
+4.3 HIGH - Command palette rebuilds the full allowed navigation list from the entire roleNavigation tree whenever it renders
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\CommandPalette.tsx:20-46
+- It:
+  - flattens all navigation groups
+  - filters by access
+  - removes duplicates
+  - applies query filtering
+- There is no memoization around allowedItems or filteredItems
+
+Why it matters:
+- The work is not catastrophic on its own, but it is global shell work based on the entire portal graph.
+- On a system with many roles and routes, this is the wrong place to do repeated full-tree filtering without memoization.
+- It contributes to the "admin app everywhere" heaviness pattern.
+
+Classification:
+- Confirmed real performance inefficiency
+
+
+4.4 HIGH - Operational portals still use analytics-rich dashboard layouts when many users mainly need fast task execution
+
+Evidence:
+- IT Support dashboard loads:
+  - ticket data
+  - ticket stats
+  - trend chart
+  - donut chart
+  - insight panel
+  - support queue
+  - job table shell
+- Nurse dashboard loads:
+  - summary query
+  - work queue query
+  - nursing tasks query
+  - KPI strip
+  - work queue
+  - specimen queue
+  - drilldown table
+  - SLA panel
+  - quick actions
+- Similar patterns exist in other portals
+
+Why it matters:
+- Many staff roles do not need a heavyweight "executive dashboard first" experience.
+- They need a fast task board or queue-first page.
+- Heavy dashboard composition hurts perceived speed even before any confirmed backend bottleneck exists.
+
+Classification:
+- Confirmed product-performance issue
+
+Required direction:
+- move workflow-first users to lean portal home pages
+- shift charts and insight panels to secondary analytics tabs/pages
+
+======================================================================
+5. IMPORTANT MEDIUM-SEVERITY FINDINGS
+======================================================================
+
+5.1 MEDIUM - Query defaults are reasonable, so the main heaviness is not caused by global React Query churn
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\App.tsx:15-23
+- queries:
+  - staleTime: 60_000
+  - retry: 1
+  - refetchOnWindowFocus: false
+
+Why it matters:
+- This is important because it rules out a common false diagnosis.
+- The app does not appear globally slow because it is constantly refetching on focus.
+
+Classification:
+- Confirmed acceptable behavior
+
+
+5.2 MEDIUM - Many dashboards still fire multiple parallel data sources on first paint
+
+Evidence examples:
+- NurseDashboard:
+  - useClinicalDashboardSummary()
+  - useClinicalWorkQueue()
+  - useNursingTasks()
+- LabDashboard:
+  - usePendingSpecimens()
+  - useCriticalResults('OPEN')
+  - useTurnaroundMetrics()
+- ITSupportDashboard:
+  - useSupportTickets({ pageSize: 3 })
+  - useTicketStats()
+- PatientDashboard:
+  - usePatientProfile()
+  - usePatientLabResults()
+  - usePatientPrescriptions()
+
+Why it matters:
+- None of these individual patterns are outrageous.
+- Together, they create slower first paint and a more "busy" UI.
+- On real networks or lower-end devices, this compounds quickly.
+
+Classification:
+- Confirmed latent performance risk
+
+
+5.3 MEDIUM - App route file is very large and centralizes an enormous lazy route graph
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\App.tsx
+- Massive route registry with many lazy imports across many portals
+
+Why it matters:
+- Lazy loading helps, but a very large central route file still increases maintenance complexity and makes it easier to mount too much shell around too many unrelated pages.
+- This is more architectural than immediate runtime cost, but it contributes to the system feeling like one giant platform instead of focused role apps.
+
+Classification:
+- Confirmed maintainability/perf architecture risk
+
+
+5.4 MEDIUM - Fonts and shared styling add real but secondary weight
+
+Evidence:
+- Many IBM Plex font subsets are included in build output
+- index.css = 160.47 kB raw
+
+Why it matters:
+- This is not the main performance problem.
+- But it does contribute to startup network and parsing cost.
+
+Classification:
+- Confirmed minor performance contributor
+
+
+5.5 MEDIUM - Some dashboards mix live queries with mock analytics panels, paying complexity cost without gaining workflow value
+
+Evidence:
+- IT Support dashboard uses real ticket hooks while other sections remain simulated
+- Pharmacy dashboard mixes real/unavailable sections
+- Several portals include analytics mocks plus live cards
+
+Why it matters:
+- Users pay attention and rendering cost for panels that are not essential to their job.
+- This hurts perceived responsiveness and clarity.
+
+Classification:
+- Confirmed UX/performance issue
+
+
+5.6 MEDIUM - Auth provider triggers a bootstrap /v1/auth/me call for every protected app load
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\hooks\use-user.tsx:128-184
+
+Why it matters:
+- This is expected behavior, not a bug by itself.
+- But it means every protected entry depends on auth round-trip before the app fully settles.
+- If the backend is slow, this becomes one of the first things users feel.
+
+Classification:
+- Acceptable baseline behavior, but real contributor to perceived load time
+
+======================================================================
+6. LOWER-SEVERITY FINDINGS
+======================================================================
+
+6.1 LOW - Some pages create fresh Date objects in render paths and footers
+
+Evidence:
+- Multiple pages pass lastRefreshed={new Date()} or compute fresh Date formatting inline
+
+Why it matters:
+- This is not the main bottleneck.
+- But it creates avoidable render churn and makes memoization less effective.
+
+Classification:
+- Confirmed low-level inefficiency
+
+
+6.2 LOW - Queue and similar operational pages are still wrapped in rich page chrome that exceeds their actual needs
+
+Evidence:
+- queue page uses HmsDashboardShell + toolbar + audit footer + KPI cards + table for a sandbox queue
+
+Why it matters:
+- More UI than needed for a simple operational workspace increases perceived heaviness.
+
+Classification:
+- Confirmed UX/performance issue
+
+
+6.3 LOW - Sidebar and command surfaces are feature-rich even for narrow roles
+
+Evidence:
+- shared shell and sidebar patterns across portals
+
+Why it matters:
+- This increases the "platform heaviness" feeling even where raw performance is acceptable.
+
+Classification:
+- Confirmed UX weight issue
+
+======================================================================
+7. WHAT THIS AUDIT DOES NOT SUPPORT
+======================================================================
+
+Do not claim:
+- "The system is slow because React Query is misconfigured"
+- "The main problem is infinite refetching"
+- "There is a confirmed render loop across the app"
+- "The backend is definitely the root cause"
+- "Caching is the first thing to add"
+
+Current evidence does not support those claims.
+
+In particular:
+- global query defaults are fairly conservative
+- no obvious app-wide refetch storm was confirmed
+- the current strongest causes are UI architecture and dashboard/chart weight
+
+======================================================================
+8. SHOULD CACHE BE ADDED NOW?
+======================================================================
+
+Short answer:
+Not as the first move.
+
+Why:
+- The current "heavy feel" looks frontend-structural before it looks database-protection-driven.
+- Adding cache too early could hide slow UI architecture without actually improving user experience enough.
+- You already have some measurement and React Query caching in place; the immediate win is lighter first paint and leaner role portals.
+
+Best sequencing:
+1. lighten shell and dashboard composition
+2. reduce chart/default analytics cost on operational portals
+3. make workflow-first roles land on leaner pages
+4. then measure real backend latency again
+5. only after that decide whether Redis or server-side cache is justified
+
+======================================================================
+9. HIGHEST-VALUE OPTIMIZATION PLAN
+======================================================================
+
+Priority 1 - Make operational portals lean
+- Receptionist, queue, pharmacy, nurse, cashier, field roles should default to work queues or task boards, not analytics-heavy overview pages
+
+Priority 2 - Contain chart cost
+- move chart-heavy components behind deeper routes or lazy section boundaries
+- keep analytics dashboards for admin/oversight users, not every workflow user
+
+Priority 3 - Slim the global shell
+- role-scope Quick Create
+- role-scope notifications
+- avoid broad command behavior everywhere
+- consider lighter shell variants for narrow portals
+
+Priority 4 - Memoize expensive global navigation transforms
+- command palette allowedItems / filteredItems
+- any full navigation flattening done on open/render
+
+Priority 5 - Measure before adding infrastructure cache
+- capture real browser timing on login, first route, and route-to-route navigation
+- capture backend timing for auth/me and top dashboard endpoints
+
+======================================================================
+10. NEXT-AI PROMPT
+======================================================================
+
+Use silent-bug-hunter and senior-engineering-reviewer first. Also use browser/performance-related skills or local browser tooling if available for evidence gathering. Work locally only. Do not push. Do not open a PR. Do not broaden scope into backend caching or Redis yet unless measurement proves frontend fixes are insufficient.
+
+Workspace:
+D:\Vscode\hms-login-OFFICIAL
+
+Task:
+Perform a surgical frontend optimization pass focused on perceived speed for normal user accounts.
+
+Scope:
+1. Identify the narrowest role portals that should not open on analytics-heavy dashboards.
+2. Reduce shell heaviness for workflow users:
+   - role-scope Quick Create
+   - role-scope notifications
+   - avoid unnecessary global command behavior
+3. Memoize or simplify expensive shared navigation computations, especially command palette navigation flattening/filtering.
+4. Audit chart-heavy pages and move non-essential analytics out of first-paint paths where safe.
+5. Preserve correctness and role ownership truth from prior audits.
+6. Do not add Redis or backend caching in this pass unless measurement proves the frontend is no longer the bottleneck.
+
+Validation:
+- frontend lint
+- frontend typecheck
+- targeted frontend tests
+- frontend build
+
+Required final output:
+1. Executive verdict
+2. Exact performance issues fixed
+3. Exact files audited
+4. Exact files changed
+5. Validation results
+6. Residual risks
+7. Whether backend caching is still recommended after the frontend pass
+
+======================================================================
+11. FINAL JUDGMENT
+======================================================================
+
+Current status:
+FIX BEFORE COMMIT
+
+Reason:
+- The app’s heavy feel is credibly explained by frontend structure right now:
+  - large chart dependency usage
+  - analytics-heavy default portal composition
+  - globally mounted shell behavior
+  - expensive navigation/command surfaces
+
+No code edits were made in this performance audit pass.

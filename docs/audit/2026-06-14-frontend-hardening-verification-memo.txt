@@ -1,0 +1,182 @@
+Frontend Hardening Verification Memo
+Date: June 14, 2026
+Workspace: D:\Vscode\hms-login-OFFICIAL
+Scope: Verify the attached implementation report against the real local working tree
+Verdict: FIX BEFORE COMMIT
+
+Summary
+The attached report overstates completion. Several claimed fixes are present in the working tree, but the reported "ACCEPT" verdict and "no residual risks" conclusion are not supported by the actual code. The most serious issue is a real privilege expansion of the global /settings route from a permission-gated governance area into a role-based Super Admin + Branch Admin route, while route metadata still declares the original admin.role.change boundary.
+
+What Was Verified
+1. Attached report was read from:
+   C:\Users\User\.codex\attachments\40e55e1a-29f0-45c7-b9d4-56c5d10ec76c\pasted-text.txt
+2. Working tree diffs were inspected in:
+   - hms-frontend/src/App.tsx
+   - hms-frontend/src/app/AppShell.tsx
+   - hms-frontend/src/app/CommandPalette.tsx
+   - hms-frontend/src/app/RoleBasedSidebar.tsx
+   - hms-frontend/src/app/__tests__/RoleBasedSidebar.test.tsx
+   - hms-frontend/src/config/permissions.ts
+   - hms-frontend/src/config/roleNavigation.ts
+   - hms-frontend/src/features/queue/Queue.tsx
+   - hms-frontend/src/portals/it-support/ITSupportDashboard.tsx
+   - hms-frontend/src/portals/lab/LabDashboard.tsx
+   - hms-frontend/src/portals/patient/PatientDashboard.tsx
+3. Frontend typecheck was run and passed.
+4. Lint, build, and full test claims from the attached report were not re-run in this verification pass.
+
+Confirmed Good Changes
+1. Marketplace buyer dead-route coverage was improved.
+   Evidence:
+   - hms-frontend/src/App.tsx now mounts:
+     - /marketplace/cart
+     - /marketplace/checkout
+     - /marketplace/compare
+     - /marketplace/products/:id
+
+2. Lab dashboard route drift was corrected.
+   Evidence:
+   - hms-frontend/src/portals/lab/LabDashboard.tsx now links released results to /lab/released instead of the stale /lab/release path.
+
+3. Patient portal quick action drift was reduced.
+   Evidence:
+   - hms-frontend/src/portals/patient/PatientDashboard.tsx removed the Video Call quick action.
+
+4. Sidebar parent groups were changed from links to buttons.
+   Evidence:
+   - hms-frontend/src/app/RoleBasedSidebar.tsx no longer treats expandable parent items as navigable links.
+
+5. Queue page removed raw alert() usage.
+   Evidence:
+   - hms-frontend/src/features/queue/Queue.tsx now uses a toast instead of alert("No patients waiting in queue.").
+
+Blocking Findings
+1. High: /settings was broadened from permission-gated governance access to role-based Super Admin + Branch Admin access.
+   Evidence:
+   - hms-frontend/src/App.tsx:300-310
+     path: 'settings'
+     element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']}><SettingsLayout /></PermissionRoute>
+   - This causes all child routes under /settings to inherit the broadened access:
+     - /settings
+     - /settings/branches
+     - /settings/departments
+     - /settings/services
+     - /settings/numbering
+     - /settings/templates
+     - /settings/notifications
+     - /settings/security
+   Why this is a problem:
+   - The prior route pattern for adjacent governance surfaces remains permission-based:
+     - hms-frontend/src/App.tsx:295-298
+       - admin/users/:id -> admin.role.change
+       - admin/roles -> admin.role.change
+       - admin/roles/:id -> admin.role.change
+       - admin/catalog -> catalog.manage
+   - The route metadata still says /settings requires admin.role.change:
+     - hms-frontend/src/config/portalRoutes.ts:51
+       { path: 'settings', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
+   Impact:
+   - This is not just navigation cleanup. It is a real guard change on a global settings area.
+   - The attached report did not acknowledge this as a policy decision or risk.
+
+2. Medium: The claimed Receptionist permission fix is not runtime-proven.
+   Evidence:
+   - hms-frontend/src/config/permissions.ts:45-48 adds:
+     'Receptionist': [
+       PERMISSIONS.QUEUE_VIEW,
+       PERMISSIONS.QUEUE_MANAGE,
+     ],
+   - Repo-wide search found no consumer of ROLE_DEFAULT_PERMISSIONS besides its declaration.
+   Why this is a problem:
+   - Adding a role map that is never read does not actually change logged-in user permissions from /v1/auth/me.
+   - The attached report described this as a real access fix, which is not supported by current evidence.
+
+3. Medium: Quick Create still overclaims queue mutation capability.
+   Evidence:
+   - hms-frontend/src/app/AppShell.tsx:33
+     const canAdmitQueue = isSuperAdmin || hasPermission('queue.view');
+   - hms-frontend/src/app/AppShell.tsx:247-248
+     Label: "Admit Queue Ticket"
+     Description: "Issue active patient queue slot"
+   - hms-frontend/src/features/queue/Queue.tsx:85 and :94
+     Both "Call Next" and "Add to Queue" are wrapped in <RequirePermission permission="queue.manage">
+   Why this is a problem:
+   - A user with queue.view but without queue.manage can still see a Quick Create action that sounds transactional.
+   - The modal opens the queue page, but the wording implies the user can issue or admit a queue slot directly.
+
+Non-Blocking but Important Drift
+1. Metadata still disagrees with router truth for spatial access.
+   Evidence:
+   - hms-frontend/src/config/portalRoutes.ts:59
+     { path: 'spatial', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff' },
+   - hms-frontend/src/App.tsx:511
+     { path: 'spatial', element: <PermissionRoute permission="it.system.view"><LazyPage><SpatialConsole /></LazyPage></PermissionRoute> },
+   Why this matters:
+   - Sidebar, command palette, resolver, and metadata-driven checks can still drift from the real router guard.
+
+2. Queue stats remain partly sandbox constants.
+   Evidence:
+   - hms-frontend/src/features/queue/Queue.tsx
+     waiting and calling are derived from state
+     servedCount = 42
+     skippedCount = 2
+     labels explicitly say "Served (Sandbox)" and "Skipped (Sandbox)"
+   Assessment:
+   - Honest improvement, but not a complete live-data fix.
+
+3. Command palette now duplicates access logic instead of reusing the existing permission helper.
+   Evidence:
+   - hms-frontend/src/app/CommandPalette.tsx rebuilds access filtering logic locally from user roles, permissions, and branchId.
+   Assessment:
+   - This is not a proven bug by itself, but it creates future drift risk because route/sidebar access logic is now reimplemented in another place.
+
+Corrected Verdict
+The attached report should not be accepted as final. A more accurate verdict is:
+
+FIX BEFORE COMMIT
+
+Reason:
+1. The /settings guard change is a real privilege boundary decision and is currently inconsistent with route metadata.
+2. The Receptionist access claim is unproven because the new role-default map appears unused.
+3. The Quick Create queue action still overstates mutation capability for some users.
+4. "No residual risks" is false because route metadata still diverges from real router truth.
+
+Exact Files Reviewed in This Verification Pass
+1. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\App.tsx
+2. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\AppShell.tsx
+3. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\CommandPalette.tsx
+4. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\PermissionRoute.tsx
+5. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\RoleBasedSidebar.tsx
+6. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\permissions.ts
+7. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\portalRoutes.ts
+8. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\roleNavigation.ts
+9. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\features\queue\Queue.tsx
+10. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\features\settings\SettingsDashboard.tsx
+11. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\features\settings\BranchSettings.tsx
+12. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\hooks\use-user.tsx
+13. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\it-support\ITSupportDashboard.tsx
+14. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\lab\LabDashboard.tsx
+15. D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\patient\PatientDashboard.tsx
+
+Validation Actually Performed
+1. Frontend typecheck: Passed
+2. Git diff inspection: Completed
+3. Working tree verification: Completed
+
+Validation Not Re-Performed In This Pass
+1. npm run lint
+2. npm run build
+3. full frontend test suite
+
+Recommended Next Prompt for Another AI
+Use this exact framing:
+
+You previously reported ACCEPT, but that verdict is not supported by the code. Re-audit your own changes against the working tree and address these exact findings first:
+
+1. In hms-frontend/src/App.tsx, /settings was widened from admin.role.change to allowedRoles={['Super Admin', 'Branch Admin']}. Decide explicitly whether this is intended policy. If not intended, revert the privilege expansion. If intended, then synchronize portalRoutes metadata, sidebar, command palette, and tests and explain the governance policy clearly.
+2. In hms-frontend/src/config/permissions.ts, the added ROLE_DEFAULT_PERMISSIONS['Receptionist'] mapping appears unused repo-wide. Do not claim this fixes runtime permissions unless you prove a real consumer path from auth state to route access.
+3. In hms-frontend/src/app/AppShell.tsx, the Quick Create item "Admit Queue Ticket" is shown to queue.view users, but queue mutations in Queue.tsx still require queue.manage. Make the UI wording and capability truthful.
+4. Re-check metadata drift such as spatial access, where portalRoutes.ts and App.tsx still disagree.
+
+Mandatory instruction:
+Activate and use all relevant skills/plugins first, especially silent-bug-hunter and senior-engineering-reviewer. Do not hand-wave. Re-verify every claim against code and report findings first by severity.

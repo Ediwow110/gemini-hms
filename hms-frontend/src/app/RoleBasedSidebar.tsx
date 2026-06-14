@@ -99,8 +99,9 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
         else next.add(item.to);
         return next;
       });
+    } else {
+      onNavClick?.();
     }
-    onNavClick?.();
   };
 
   const renderNavItem = (item: NavItemConfig, depth = 0) => {
@@ -109,36 +110,53 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
     const expanded = isExpanded(item);
     const hasChildren = Boolean(item.children?.length);
 
+    const navItemContent = (
+      <>
+        {active && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-r-full animate-fade-in" />
+        )}
+        <Icon className={`h-[18px] w-[18px] transition-colors duration-200 ${
+          active
+            ? 'text-indigo-600'
+            : expanded
+              ? 'text-slate-600'
+              : 'text-slate-400 group-hover:text-slate-600'
+        }`} />
+        <span className="flex-1 min-w-0">{item.label}</span>
+        {hasChildren ? (
+          <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+        ) : null}
+      </>
+    );
+
+    const navItemClassName = `w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group relative ${
+      active
+        ? 'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 font-semibold shadow-sm shadow-indigo-100'
+        : expanded
+          ? 'bg-slate-50 text-slate-900'
+          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+    } ${depth > 0 ? 'ml-4 py-2 text-[12px]' : ''}`;
+
     return (
       <div key={item.to} className="space-y-1">
-        <Link
-          to={item.to}
-          onClick={() => handleNavClick(item)}
-          role={hasChildren ? 'button' : undefined}
-          aria-expanded={hasChildren ? expanded : undefined}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group relative ${
-            active
-              ? 'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 font-semibold shadow-sm shadow-indigo-100'
-              : expanded
-                ? 'bg-slate-50 text-slate-900'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-          } ${depth > 0 ? 'ml-4 py-2 text-[12px]' : ''}`}
-        >
-          {active && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-r-full animate-fade-in" />
-          )}
-          <Icon className={`h-[18px] w-[18px] transition-colors duration-200 ${
-            active
-              ? 'text-indigo-600'
-              : expanded
-                ? 'text-slate-600'
-                : 'text-slate-400 group-hover:text-slate-600'
-          }`} />
-          <span className="flex-1 min-w-0">{item.label}</span>
-          {hasChildren ? (
-            <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
-          ) : null}
-        </Link>
+        {hasChildren ? (
+          <button
+            type="button"
+            onClick={() => handleNavClick(item)}
+            aria-expanded={expanded}
+            className={navItemClassName}
+          >
+            {navItemContent}
+          </button>
+        ) : (
+          <Link
+            to={item.to}
+            onClick={() => handleNavClick(item)}
+            className={navItemClassName}
+          >
+            {navItemContent}
+          </Link>
+        )}
 
         {hasChildren ? (
           <div

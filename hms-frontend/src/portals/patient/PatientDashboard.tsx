@@ -8,8 +8,7 @@ import {
   Bell,
   Calendar,
   FileText,
-  UserCircle,
-  Video
+  UserCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PatientHomeCard from './components/PatientHomeCard';
@@ -102,7 +101,6 @@ export const PatientDashboard: React.FC = () => {
             {[
               { label: 'Book Visit', icon: Calendar, path: '/patient/appointments' },
               { label: 'Get Records', icon: FileText, path: '/patient/medical-records' },
-              { label: 'Video Call', icon: Video, path: '/telehealth' },
               { label: 'Messages', icon: MessageSquare, path: '/patient/messages' },
               { label: 'Lab Results', icon: ShieldCheck, path: '/patient/lab-results' },
               { label: 'Prescriptions', icon: Pill, path: '/patient/prescriptions' },

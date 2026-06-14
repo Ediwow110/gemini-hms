@@ -106,6 +106,7 @@ export const roleNavigation: NavGroupConfig[] = [
         allowedRoles: ['Super Admin'],
         zone: 'staff',
         children: [
+          { label: 'Overview', to: '/settings', icon: Sliders, allowedRoles: ['Super Admin'], zone: 'staff' },
           { label: 'Branches', to: '/settings/branches', icon: Building, allowedRoles: ['Super Admin'], zone: 'staff' },
           { label: 'Departments', to: '/settings/departments', icon: Box, allowedRoles: ['Super Admin'], zone: 'staff' },
           { label: 'Services & Packages', to: '/settings/services', icon: Stethoscope, allowedRoles: ['Super Admin'], zone: 'staff' },
@@ -159,6 +160,7 @@ export const roleNavigation: NavGroupConfig[] = [
         zone: 'staff',
         isBranchScoped: true,
         children: [
+          { label: 'Overview', to: '/branch-admin', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
           { label: 'Branch Staff', to: '/branch-admin/staff', icon: Users, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
           { label: 'Department Manager', to: '/branch-admin/departments', icon: Building, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
           { label: 'Rooms / Facilities', to: '/branch-admin/rooms', icon: Map, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true, isComingSoon: true },
@@ -195,16 +197,17 @@ export const roleNavigation: NavGroupConfig[] = [
         label: 'Branch Settings',
         to: '/settings',
         icon: SettingsIcon,
-        allowedRoles: ['Super Admin', 'Branch Admin'],
+        allowedRoles: ['Super Admin'],
         zone: 'staff',
         children: [
-          { label: 'Branches', to: '/settings/branches', icon: Building, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
-          { label: 'Departments', to: '/settings/departments', icon: Box, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
-          { label: 'Services & Packages', to: '/settings/services', icon: Stethoscope, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
-          { label: 'Numbering Rules', to: '/settings/numbering', icon: ListOrdered, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
-          { label: 'Print Templates', to: '/settings/templates', icon: FileText, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
-          { label: 'Notifications', to: '/settings/notifications', icon: MessageSquare, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
-          { label: 'Security', to: '/settings/security', icon: ShieldCheck, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
+          { label: 'Overview', to: '/settings', icon: Sliders, allowedRoles: ['Super Admin'], zone: 'staff' },
+          { label: 'Branches', to: '/settings/branches', icon: Building, allowedRoles: ['Super Admin'], zone: 'staff' },
+          { label: 'Departments', to: '/settings/departments', icon: Box, allowedRoles: ['Super Admin'], zone: 'staff' },
+          { label: 'Services & Packages', to: '/settings/services', icon: Stethoscope, allowedRoles: ['Super Admin'], zone: 'staff' },
+          { label: 'Numbering Rules', to: '/settings/numbering', icon: ListOrdered, allowedRoles: ['Super Admin'], zone: 'staff' },
+          { label: 'Print Templates', to: '/settings/templates', icon: FileText, allowedRoles: ['Super Admin'], zone: 'staff' },
+          { label: 'Notifications', to: '/settings/notifications', icon: MessageSquare, allowedRoles: ['Super Admin'], zone: 'staff' },
+          { label: 'Security', to: '/settings/security', icon: ShieldCheck, allowedRoles: ['Super Admin'], zone: 'staff' },
         ],
       },
     ],
@@ -219,6 +222,8 @@ export const roleNavigation: NavGroupConfig[] = [
         allowedRoles: ['Compliance Officer'],
         zone: 'staff',
         children: [
+          { label: 'Overview', to: '/compliance', icon: LayoutDashboard, allowedRoles: ['Compliance Officer'], zone: 'staff' },
+          { label: 'My Audit Log', to: '/my-audit-log', icon: History, permission: PERMISSIONS.AUDIT_SELF, allowedRoles: ['Compliance Officer'], zone: 'staff' },
           { label: 'PHI Access Monitor', to: '/compliance/phi-access', icon: Activity, allowedRoles: ['Compliance Officer'], zone: 'staff' },
           { label: 'Audit Log Review', to: '/compliance/audit-review', icon: ClipboardList, allowedRoles: ['Compliance Officer'], zone: 'staff' },
           { label: 'Access Reviews', to: '/compliance/access-reviews', icon: Users, allowedRoles: ['Compliance Officer'], zone: 'staff' },
@@ -241,6 +246,8 @@ export const roleNavigation: NavGroupConfig[] = [
         allowedRoles: ['IT Support'],
         zone: 'staff',
         children: [
+          { label: 'Overview', to: '/it', icon: LayoutDashboard, allowedRoles: ['IT Support'], zone: 'staff' },
+          { label: 'My Audit Log', to: '/my-audit-log', icon: History, permission: PERMISSIONS.AUDIT_SELF, allowedRoles: ['IT Support'], zone: 'staff' },
           { label: 'System Health Monitor', to: '/it/system-health', icon: Cpu, allowedRoles: ['IT Support'], zone: 'staff' },
           { label: 'User Support Queue', to: '/it/user-support', icon: LifeBuoy, allowedRoles: ['IT Support'], zone: 'staff' },
           { label: 'Active User Sessions', to: '/it/sessions', icon: Key, allowedRoles: ['IT Support'], zone: 'staff' },
@@ -263,6 +270,7 @@ export const roleNavigation: NavGroupConfig[] = [
         allowedRoles: ['HR Manager', 'HR Staff'],
         zone: 'staff',
         children: [
+          { label: 'Overview', to: '/hr', icon: LayoutDashboard, allowedRoles: ['HR Manager', 'HR Staff'], zone: 'staff' },
           { label: 'Employee Directory', to: '/hr/employees', icon: Users, allowedRoles: ['HR Manager'], zone: 'staff' },
           { label: 'Department Manager', to: '/hr/departments', icon: Building, allowedRoles: ['HR Manager', 'HR Staff'], zone: 'staff' },
           { label: 'Attendance Tracking', to: '/hr/attendance', icon: Clock, allowedRoles: ['HR Manager', 'HR Staff'], zone: 'staff', isHiddenForDemo: true },
@@ -285,6 +293,7 @@ export const roleNavigation: NavGroupConfig[] = [
         allowedRoles: ['Procurement Manager', 'Procurement Agent', 'Procurement Officer'],
         zone: 'staff',
         children: [
+          { label: 'Overview', to: '/procurement', icon: LayoutDashboard, allowedRoles: ['Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
           { label: 'Supplier Directory', to: '/procurement/suppliers', icon: Truck, allowedRoles: ['Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
           { label: 'Purchase Requests', to: '/procurement/purchase-requests', icon: FilePlus, allowedRoles: ['Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
           { label: 'RFQ Manager', to: '/procurement/rfqs', icon: Send, allowedRoles: ['Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
@@ -300,9 +309,8 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Pharmacy Workspace',
     items: [
+      { label: 'Dispensing Hub', to: '/pharmacy', icon: Pill, permission: PERMISSIONS.INVENTORY_DISPENSE, allowedRoles: ['Pharmacist'], zone: 'staff', isBranchScoped: true },
       { label: 'Pharmacy Dashboard', to: '/pharmacy/dashboard', icon: LayoutDashboard, permission: PERMISSIONS.INVENTORY_VIEW, allowedRoles: ['Pharmacist'], zone: 'staff', isBranchScoped: true },
-      { label: 'Dispense Queue', to: '/pharmacy', icon: Pill, permission: PERMISSIONS.INVENTORY_DISPENSE, allowedRoles: ['Pharmacist'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
-      { label: 'Drug Inventory', to: '/pharmacy', icon: Package, permission: PERMISSIONS.INVENTORY_VIEW, allowedRoles: ['Pharmacist'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
     ],
   },
   {
@@ -327,6 +335,7 @@ export const roleNavigation: NavGroupConfig[] = [
         allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'],
         zone: 'marketplace',
         children: [
+          { label: 'Overview', to: '/supplier', icon: LayoutDashboard, allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
           { label: 'Product Listings', to: '/supplier/listings', icon: Package, allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
           { label: 'Service Offerings', to: '/supplier/service-listings', icon: Wrench, allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
           { label: 'RFQ Inbox', to: '/supplier/rfq-inbox', icon: FileText, allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
@@ -425,8 +434,8 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Dashboard & Core',
     items: [
-      { label: 'Command Center', to: '/', icon: LayoutDashboard, zone: 'staff' },
-      { label: 'Spatial Tracking', to: '/spatial', icon: Map, zone: 'staff' },
+      { label: 'Command Center', to: '/', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Branch Admin', 'Admin'], zone: 'staff' },
+      { label: 'Spatial Tracking', to: '/spatial', icon: Map, permission: 'it.system.view', zone: 'staff' },
     ],
   },
 ];

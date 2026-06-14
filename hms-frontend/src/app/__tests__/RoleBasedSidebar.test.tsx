@@ -26,11 +26,11 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     vi.clearAllMocks();
   });
 
-  it('marks only the exact matched item active (e.g. Branch Settings on /settings)', () => {
+  it('marks only the exact matched item active (e.g. Organization Settings on /settings)', () => {
     mockUseUser.mockReturnValue({
-      id: 'ba-1',
-      email: 'branch-admin@hospital.com',
-      roles: ['Branch Admin'],
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
     });
 
     render(
@@ -39,19 +39,20 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       </MemoryRouter>
     );
 
-    const settingLinks = screen.getAllByText('Branch Settings');
-    const settingLink = settingLinks.find(link => link.closest('a')?.getAttribute('href') === '/settings')?.closest('a');
-    const dashboardLink = screen.getByText('Branch Dashboard').closest('a');
+    const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
+    const settingLinks = screen.getAllByText('Organization Settings');
+    const settingLink = settingLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings' || parent?.tagName.toLowerCase() === 'button');
+    const tenantsLink = getNavItem(screen.getByText('Tenants Manager'));
 
     expect(settingLink).toHaveClass('bg-gradient-to-r'); // active style
-    expect(dashboardLink).not.toHaveClass('bg-gradient-to-r'); // should not be active!
+    expect(tenantsLink).not.toHaveClass('bg-gradient-to-r'); // should not be active!
   });
 
-  it('marks the longest prefix match active when on a sub-route (e.g. Branch Settings on /settings/security)', () => {
+  it('marks the longest prefix match active when on a sub-route (e.g. Organization Settings on /settings/security)', () => {
     mockUseUser.mockReturnValue({
-      id: 'ba-1',
-      email: 'branch-admin@hospital.com',
-      roles: ['Branch Admin'],
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
     });
 
     render(
@@ -60,12 +61,13 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       </MemoryRouter>
     );
 
-    const settingLinks = screen.getAllByText('Branch Settings');
-    const settingLink = settingLinks.find(link => link.closest('a')?.getAttribute('href') === '/settings')?.closest('a');
-    const dashboardLink = screen.getByText('Branch Dashboard').closest('a');
+    const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
+    const settingLinks = screen.getAllByText('Organization Settings');
+    const settingLink = settingLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings' || parent?.tagName.toLowerCase() === 'button');
+    const tenantsLink = getNavItem(screen.getByText('Tenants Manager'));
 
     expect(settingLink).toHaveClass('bg-gradient-to-r'); // active style
-    expect(dashboardLink).not.toHaveClass('bg-gradient-to-r');
+    expect(tenantsLink).not.toHaveClass('bg-gradient-to-r');
   });
 
   it('marks Branch Dashboard active when exactly on /branch-admin', () => {
@@ -81,9 +83,10 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       </MemoryRouter>
     );
 
+    const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
     const settingLinks = screen.getAllByText('Branch Settings');
-    const settingLink = settingLinks.find(link => link.closest('a')?.getAttribute('href') === '/settings')?.closest('a');
-    const dashboardLink = screen.getByText('Branch Dashboard').closest('a');
+    const settingLink = settingLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings' || parent?.tagName.toLowerCase() === 'button');
+    const dashboardLink = getNavItem(screen.getByText('Branch Dashboard'));
 
     expect(dashboardLink).toHaveClass('bg-gradient-to-r'); // active style
     expect(settingLink).not.toHaveClass('bg-gradient-to-r');

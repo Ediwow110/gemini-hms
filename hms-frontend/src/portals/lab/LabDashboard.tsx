@@ -134,7 +134,7 @@ export const LabDashboard = () => {
   const metrics = [
     { id: 'pending-spec', label: 'Pending Specimens', value: pendingCount, severity: 'info' as const, href: '/lab/specimens' },
     { id: 'in-progress', label: 'In Progress', value: pendingResultsCount, severity: 'warning' as const, href: '/lab/encoding' },
-    { id: 'released', label: 'Released Today', value: releasedCount, severity: 'success' as const, href: '/lab/release' },
+    { id: 'released', label: 'Released Today', value: releasedCount, severity: 'success' as const, href: '/lab/released' },
     { id: 'critical', label: 'Open Critical', value: criticalOpenCount, severity: criticalOpenCount > 0 ? 'critical' as const : 'success' as const, href: '/lab/critical-results' },
     { id: 'avg-tat', label: 'Avg TAT', value: avgSpecToRelease !== null ? `${avgSpecToRelease}m` : '—', severity: 'info' as const, href: '/lab/turnaround' },
     { id: 'missing-ts', label: 'Missing TS', value: missingTimestampCount, severity: missingTimestampCount > 0 ? 'warning' as const : 'success' as const, href: '/lab/turnaround' },
@@ -173,7 +173,7 @@ export const LabDashboard = () => {
     { id: 'specimens', label: 'Specimen Receiving', icon: <FlaskConical className="h-4 w-4" />, href: '/lab/specimens' },
     { id: 'encode', label: 'Result Encoding', icon: <FileText className="h-4 w-4" />, href: '/lab/encoding' },
     { id: 'validate', label: 'Verification', icon: <FileCheck2 className="h-4 w-4" />, href: '/lab/validation' },
-    { id: 'release', label: 'Release Results', icon: <Send className="h-4 w-4" />, href: '/lab/release' },
+    { id: 'release', label: 'Release Results', icon: <Send className="h-4 w-4" />, href: '/lab/released' },
   ];
 
   return (
