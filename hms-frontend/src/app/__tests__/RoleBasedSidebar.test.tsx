@@ -182,4 +182,30 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     expect(screen.queryByText('Drug Inventory')).not.toBeInTheDocument();
     expect(screen.queryByText('Backup & Recovery')).not.toBeInTheDocument();
   });
+
+  it('does not mark sibling leaf Overview active when on sibling sub-route (e.g., Overview is inactive on /settings/security)', () => {
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/settings/security']}>
+        <RoleBasedSidebar pathname="/settings/security" />
+      </MemoryRouter>
+    );
+
+    const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
+    const overviewLinks = screen.getAllByText('Overview');
+    
+    // Find the Overview under Organization Settings (which has href='/settings')
+    const overviewLink = overviewLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings');
+    
+    const securityLinks = screen.getAllByText('Security');
+    const securityLink = securityLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings/security');
+
+    expect(securityLink).toHaveClass('bg-gradient-to-r'); // exact matched child should be active
+    expect(overviewLink).not.toHaveClass('bg-gradient-to-r'); // Overview sibling should NOT be active!
+  });
 });
