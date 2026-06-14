@@ -13,7 +13,16 @@ import { AUDIT_EVENT_KEYS } from './audit-event-keys';
 
 export interface AuditLogData {
   tenantId: string;
-  userId: string | null;
+  userId: string;
+  eventKey: string;
+  recordType: string;
+  recordId: string;
+  oldValues?: any;
+  newValues?: any;
+}
+
+export interface SystemAuditLogData {
+  tenantId: string;
   eventKey: string;
   recordType: string;
   recordId: string;
@@ -93,6 +102,30 @@ export class AuditService {
     return createHash('sha256').update(payload).digest('hex');
   }
 
+  /**
+   * Resolve the system actor user for a given tenant.
+   * System actors are non-interactive accounts created per tenant.
+   */
+  private async resolveSystemActor(
+    tenantId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<string> {
+    const db = tx || this.prisma;
+    const systemUser = await (db as any).user.findFirst({
+      where: { tenantId, isSystem: true },
+      select: { id: true },
+    });
+    if (!systemUser) {
+      throw new Error(
+        `System actor not found for tenant ${tenantId}. Ensure every tenant has a non-interactive system actor.`,
+      );
+    }
+    return systemUser.id;
+  }
+
+  /**
+   * Log a human-initiated audit event. Requires a real userId.
+   */
   async log(
     data: AuditLogData,
     tx?: Prisma.TransactionClient,
@@ -108,22 +141,12 @@ export class AuditService {
     const activeRole = context?.activeRole ?? req?.user?.role;
     const sessionId = context?.sessionId ?? req?.user?.sessionId;
 
-    let userId = data.userId;
+    // Human audit requires a non-null userId
+    const userId = data.userId;
     if (!userId) {
-      if (typeof db.user?.findFirst === 'function') {
-        const systemUser = await db.user.findFirst({
-          where: { tenantId: data.tenantId, email: 'system@hms.local' },
-          select: { id: true },
-        });
-        if (!systemUser) {
-          throw new Error(
-            `System actor user not found for tenant: ${data.tenantId}`,
-          );
-        }
-        userId = systemUser.id;
-      } else {
-        userId = '00000000-0000-0000-0000-ffffff000001';
-      }
+      throw new Error(
+        'AuditService.log() requires a non-null userId for human-initiated events. Use logSystemEvent() for system events.',
+      );
     }
 
     // Fetch the latest head in the tenant chain
@@ -469,6 +492,81 @@ export class AuditService {
       signatureErrors,
       isValid: chainResult.isValid && signatureErrors.length === 0,
     };
+  }
+
+  /**
+   * Log a system-initiated audit event. Resolves the tenant's system actor internally.
+   */
+  async logSystemEvent(
+    data: SystemAuditLogData,
+    tx?: Prisma.TransactionClient,
+    branchId?: string,
+    context?: AuditContext,
+  ) {
+    const db = tx || this.prisma;
+    const req = auditStorage.getStore() as any;
+
+    const ipAddress =
+      context?.ipAddress ?? req?.headers?.['x-forwarded-for'] ?? req?.ip;
+    const userAgent = context?.userAgent ?? req?.headers?.['user-agent'];
+    const activeRole = 'SYSTEM';
+    const sessionId = null;
+
+    const userId = await this.resolveSystemActor(data.tenantId, tx);
+
+    // Fetch the latest head in the tenant chain
+    const lastLog =
+      typeof (db as any).auditLog?.findFirst === 'function'
+        ? await (db as any).auditLog.findFirst({
+            where: { tenantId: data.tenantId },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          })
+        : null;
+
+    const previousHash = lastLog ? lastLog.hash : null;
+    const createdAt = new Date();
+
+    const hash = this.computeHash({
+      tenantId: data.tenantId,
+      userId: userId,
+      eventKey: data.eventKey,
+      recordType: data.recordType,
+      recordId: data.recordId,
+      branchId: branchId || null,
+      oldValues: data.oldValues,
+      newValues: data.newValues,
+      createdAt,
+      previousHash,
+    });
+
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET must be defined for audit signing');
+    }
+
+    const signature = createHmac('sha256', process.env.JWT_SECRET)
+      .update(hash)
+      .digest('hex');
+
+    return db.auditLog.create({
+      data: {
+        tenantId: data.tenantId,
+        branchId: branchId,
+        userId: userId,
+        eventKey: data.eventKey,
+        recordType: data.recordType,
+        recordId: data.recordId,
+        oldValues: data.oldValues,
+        newValues: data.newValues,
+        ipAddress: ipAddress || null,
+        userAgent: userAgent || null,
+        activeRole: activeRole || null,
+        sessionId: sessionId || null,
+        createdAt,
+        previousHash,
+        hash,
+        signature,
+      },
+    });
   }
 
   async exportMyEvents(

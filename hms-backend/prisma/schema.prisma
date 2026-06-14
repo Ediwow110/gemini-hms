@@ -137,6 +137,7 @@ model User {
   tokenVersion        Int       @default(0) @map("token_version")
   failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime? @map("locked_until")
+  isSystem            Boolean   @default(false) @map("is_system")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
@@ -706,6 +707,8 @@ model Invoice {
   order           Order             @relation(fields: [orderId], references: [id])
   payments        Payment[]
   reversals       PaymentReversal[]
+
+  @@unique([tenantId, id])
   claims          Claim[]
   refunds         Refund[]
   insuranceClaims InsuranceClaim[]
@@ -746,6 +749,7 @@ model Payment {
   refunds        Refund[]
 
   @@unique([tenantId, receiptNumber])
+  @@unique([tenantId, id])
   @@index([tenantId, cashierSessionId, status])
   @@index([tenantId, createdAt])
   @@map("payments")
@@ -1272,6 +1276,7 @@ model CashierSession {
   payments      Payment[]
   ledgerEntries CashierLedgerEntry[]
 
+  @@unique([tenantId, id])
   @@index([tenantId, userId, branchId, status])
   @@map("cashier_sessions")
 }

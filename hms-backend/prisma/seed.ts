@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import type { Permission, Role } from '@prisma/client';  
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -388,29 +389,32 @@ async function main() {
 
   // 4b. Seed System Actor for each Tenant
   console.log('Seeding System Actors...');
-  const passwordHash = await bcrypt.hash('Admin@123', 10);
-  const systemActors = [
-    { tenantId: tenant.id, userId: '00000000-0000-0000-0000-ffffff000001' },
-    { tenantId: tenantAlpha.id, userId: '00000000-0000-0000-0000-ffffff00000a' },
-    { tenantId: tenantBeta.id, userId: '00000000-0000-0000-0000-ffffff00000b' },
-  ];
-  for (const actor of systemActors) {
-    await prisma.user.upsert({
-      where: {
-        id: actor.userId,
-      },
-      update: {},
-      create: {
-        id: actor.userId,
-        tenantId: actor.tenantId,
-        email: 'system@hms.local',
-        passwordHash,
+  const systemPasswordHash = await bcrypt.hash(crypto.randomUUID(), 12);
+  const allTenants = await prisma.tenant.findMany({ select: { id: true } });
+  for (const t of allTenants) {
+    const existing = await prisma.user.findFirst({
+      where: { tenantId: t.id, isSystem: true },
+      select: { id: true },
+    });
+    if (existing) continue; // already provisioned (e.g., by migration)
+
+    const actorId = crypto.randomUUID();
+    await prisma.user.create({
+      data: {
+        id: actorId,
+        tenantId: t.id,
+        email: `system@${t.id.slice(0, 8)}.hms.local`,
+        passwordHash: systemPasswordHash,
         mfaEnabled: false,
+        isSystem: true,
+        status: 'DISABLED',
       },
     });
   }
 
   // 5. Create Demo Users
+  // Demo users use a known password for development/testing
+  const passwordHash = await bcrypt.hash('Admin@123', 10);
   
   const demoUsers = [
     { email: 'admin@hospital.com', role: 'Super Admin' },
