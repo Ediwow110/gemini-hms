@@ -70,6 +70,27 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     expect(tenantsLink).not.toHaveClass('bg-gradient-to-r');
   });
 
+  it('does not mark sibling prefix routes active (e.g. SuperAdmin Dashboard on /admin/tenants)', () => {
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/admin/tenants']}>
+        <RoleBasedSidebar pathname="/admin/tenants" />
+      </MemoryRouter>
+    );
+
+    const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
+    const dashboardLink = getNavItem(screen.getByText('SuperAdmin Dashboard'));
+    const tenantsLink = getNavItem(screen.getByText('Tenants Manager'));
+
+    expect(tenantsLink).toHaveClass('bg-gradient-to-r'); // exact match active style
+    expect(dashboardLink).not.toHaveClass('bg-gradient-to-r'); // should not be active since it is a leaf sibling!
+  });
+
   it('marks Branch Dashboard active when exactly on /branch-admin', () => {
     mockUseUser.mockReturnValue({
       id: 'ba-1',

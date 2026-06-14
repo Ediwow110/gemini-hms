@@ -76,14 +76,14 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
     bestActiveTo = '/';
   }
 
-  const isActive = (path: string): boolean => {
+  const isActive = (path: string, hasChildren = false): boolean => {
     if (bestActiveTo === path) return true;
-    if (bestActiveTo && path !== '/' && bestActiveTo.startsWith(path + '/')) return true;
+    if (bestActiveTo && path !== '/' && hasChildren && bestActiveTo.startsWith(path + '/')) return true;
     return false;
   };
 
   const hasActiveDescendant = (item: NavItemConfig): boolean =>
-    item.children?.some((child) => isActive(child.to) || hasActiveDescendant(child)) ?? false;
+    item.children?.some((child) => isActive(child.to, Boolean(child.children?.length)) || hasActiveDescendant(child)) ?? false;
 
   const isExpanded = (item: NavItemConfig) => {
     const auto = Boolean(item.children?.length) && (pathname === item.to || pathname.startsWith(`${item.to}/`) || hasActiveDescendant(item));
@@ -106,9 +106,9 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
 
   const renderNavItem = (item: NavItemConfig, depth = 0) => {
     const Icon = item.icon;
-    const active = isActive(item.to);
-    const expanded = isExpanded(item);
     const hasChildren = Boolean(item.children?.length);
+    const active = isActive(item.to, hasChildren);
+    const expanded = isExpanded(item);
 
     const navItemContent = (
       <>
