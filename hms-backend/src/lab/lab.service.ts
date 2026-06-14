@@ -333,6 +333,7 @@ export class LabService {
 
       await tx.notificationOutbox.create({
         data: {
+          tenantId,
           recipientId: result.order.patientId,
           type: 'LAB_RESULT_READY',
           payload: JSON.stringify({
@@ -722,6 +723,7 @@ export class LabService {
       // Create notification outbox entry for critical result
       await tx.notificationOutbox.create({
         data: {
+          tenantId,
           recipientId: result.order.patientId,
           type: 'CRITICAL_RESULT',
           payload: JSON.stringify({
