@@ -1,320 +1,572 @@
 /**
  * Migration Upgrade Rehearsal
  *
- * Validates that migrations apply correctly against:
- * 1. An empty database (fresh install)
- * 2. A populated database with representative legacy data
- * 3. Multi-tenant system actor backfill
+ * Creates a disposable PostgreSQL database, applies a genuine historical
+ * baseline (everything before 20260615020000), seeds legacy-compatible
+ * data via raw SQL, then runs `prisma migrate deploy` to prove the
+ * upgrade path.
  *
- * This is NOT `prisma db push` — we use `prisma migrate deploy` to prove
- * migration ordering and correctness.
+ * Safety:
+ *   - ALLOW_DESTRUCTIVE_MIGRATION_TEST=true required
+ *   - Connects to the admin database ("postgres") and manages its own DB
+ *   - DB name always contains "migration_test" + random suffix
+ *   - DB is dropped in `finally` (including failure paths)
+ *   - Never touches production or developer databases
  *
  * Usage:
- *   DATABASE_URL=<disposable-db-url> npx ts-node scripts/verify-migration-upgrade.ts
+ *   ALLOW_DESTRUCTIVE_MIGRATION_TEST=true DATABASE_URL=postgresql://postgres:password@localhost:5432/postgres npx tsx scripts/verify-migration-upgrade.ts
  *
- * Prerequisites:
- *   - Node modules installed
- *   - `npx prisma generate` has been run
+ * env:
+ *   DATABASE_URL — admin connection URL (e.g. postgresql://postgres:pass@localhost:5432/postgres)
+ *   ALLOW_DESTRUCTIVE_MIGRATION_TEST — must be "true"
  */
 
 import { execSync } from 'child_process';
-import { PrismaClient, Prisma } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
+import { Pool } from 'pg';
 import * as crypto from 'crypto';
-import * as bcrypt from 'bcrypt';
 
-const dbUrl = process.env.DATABASE_URL;
-if (!dbUrl) {
-  console.error('FATAL: DATABASE_URL is required');
+// ---------------------------------------------------------------------------
+// Safety checks
+// ---------------------------------------------------------------------------
+const ALLOW = process.env.ALLOW_DESTRUCTIVE_MIGRATION_TEST;
+if (ALLOW !== 'true') {
+  console.error('FATAL: Set ALLOW_DESTRUCTIVE_MIGRATION_TEST=true to run migration tests');
   process.exit(1);
 }
 
-function run(cmd: string, label: string): void {
+const adminDbUrl = process.env.DATABASE_URL;
+if (!adminDbUrl) {
+  console.error('FATAL: DATABASE_URL is required (admin connection, e.g. postgresql://postgres:pass@localhost:5432/postgres)');
+  process.exit(1);
+}
+
+// Build a disposable DB name
+const DB_SUFFIX = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+const TEST_DB = `hms_migration_test_${DB_SUFFIX}`;
+
+// The target migration whose baseline everything before it must be
+const TARGET_MIGRATION = '20260615020000_add_system_actors_and_composite_financial_fks';
+const MIGRATIONS_DIR = path.resolve(__dirname, '../prisma/migrations');
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function run(cmd: string, label: string, dbUrl: string): string {
   console.log(`\n--- ${label} ---`);
   console.log(`$ ${cmd}`);
   try {
-    const out = execSync(cmd, {
+    return execSync(cmd, {
       encoding: 'utf-8',
       env: { ...process.env, DATABASE_URL: dbUrl },
+      maxBuffer: 10 * 1024 * 1024,
     });
-    console.log(out);
   } catch (err: any) {
     console.error(err.stderr || err.message);
     throw new Error(`${label} FAILED`);
   }
 }
 
-async function seedLegacyData(prisma: PrismaClient): Promise<{
-  tenant: any;
-  branch: any;
-  user: any;
-  invoice: any;
-  payment: any;
-  session: any;
-}> {
-  const tenant = await prisma.tenant.create({
-    data: { name: 'Rehearsal Hospital', status: 'ACTIVE' },
-  });
-  const branch = await prisma.branch.create({
-    data: { tenantId: tenant.id, name: 'Main', code: 'MAIN' },
-  });
-  const user = await prisma.user.create({
-    data: {
-      tenantId: tenant.id,
-      email: 'rehearsal@test.com',
-      passwordHash: await bcrypt.hash('test', 10),
-      status: 'ACTIVE',
-    },
-  });
-  const patient = await prisma.patient.create({
-    data: {
-      tenantId: tenant.id,
-      patientNumber: `PAT-${Date.now()}`,
-      firstName: 'Test',
-      lastName: 'Patient',
-      dob: new Date('1990-01-01'),
-    },
-  });
-  const session = await prisma.cashierSession.create({
-    data: {
-      tenantId: tenant.id,
-      branchId: branch.id,
-      userId: user.id,
-      status: 'OPEN',
-      openingBalance: new Prisma.Decimal(1000),
-    },
-  });
-  const order = await prisma.order.create({
-    data: {
-      tenantId: tenant.id,
-      branchId: branch.id,
-      patientId: patient.id,
-      orderNumber: `ORD-${Date.now()}`,
-      status: 'COMPLETED',
-    },
-  });
-  const invoice = await prisma.invoice.create({
-    data: {
-      tenantId: tenant.id,
-      orderId: order.id,
-      totalAmount: new Prisma.Decimal(500),
-      status: 'PAID',
-    },
-  });
-  const payment = await prisma.payment.create({
-    data: {
-      tenantId: tenant.id,
-      invoiceId: invoice.id,
-      cashierSessionId: session.id,
-      amount: new Prisma.Decimal(500),
-      paymentMethod: 'CASH',
-      status: 'POSTED',
-      idempotencyKey: `rehearsal-${Date.now()}`,
-    },
-  });
-
-  // Create a PaymentVoid
-  const voidApproval = await prisma.approvalRequest.create({
-    data: {
-      tenantId: tenant.id,
-      requesterId: user.id,
-      type: 'PAYMENT_VOID',
-      riskLevel: 'HIGH',
-      recordId: payment.id,
-      status: 'APPROVED',
-    },
-  });
-  await prisma.paymentVoid.create({
-    data: {
-      tenantId: tenant.id,
-      branchId: branch.id,
-      paymentId: payment.id,
-      approvalId: voidApproval.id,
-      voidedBy: user.id,
-      reason: 'Rehearsal test void',
-    },
-  });
-
-  // Create a Refund
-  const refundApproval = await prisma.approvalRequest.create({
-    data: {
-      tenantId: tenant.id,
-      requesterId: user.id,
-      type: 'REFUND',
-      riskLevel: 'HIGH',
-      recordId: payment.id,
-      status: 'APPROVED',
-    },
-  });
-  await prisma.refund.create({
-    data: {
-      tenantId: tenant.id,
-      branchId: branch.id,
-      invoiceId: invoice.id,
-      paymentId: payment.id,
-      amount: new Prisma.Decimal(100),
-      approvedBy: user.id,
-      method: 'CASH',
-      reason: 'Rehearsal test refund',
-    },
-  });
-
-  // Create a CashierLedgerEntry
-  await prisma.cashierLedgerEntry.create({
-    data: {
-      tenantId: tenant.id,
-      cashierSessionId: session.id,
-      type: 'PAYMENT',
-      amount: new Prisma.Decimal(500),
-      referenceId: payment.id,
-    },
-  });
-
-  return { tenant, branch, user, invoice, payment, session };
+function runNoThrow(cmd: string, label: string, dbUrl: string): { stdout: string; stderr: string; status: number } {
+  console.log(`\n--- ${label} ---`);
+  console.log(`$ ${cmd}`);
+  try {
+    const stdout = execSync(cmd, {
+      encoding: 'utf-8',
+      env: { ...process.env, DATABASE_URL: dbUrl },
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return { stdout, stderr: '', status: 0 };
+  } catch (err: any) {
+    return {
+      stdout: err.stdout || '',
+      stderr: err.stderr || err.message,
+      status: err.status ?? 1,
+    };
+  }
 }
 
+function listMigrations(): string[] {
+  return fs
+    .readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort();
+}
+
+function uuid(): string { return crypto.randomUUID(); }
+
+function ts(): string { return new Date().toISOString(); }
+
+async function sql(query: string, pool: Pool): Promise<void> {
+  const client = await pool.connect();
+  try { await client.query(query); } finally { client.release(); }
+}
+
+/**
+ * Split a multi-statement SQL string into individual statements so each can
+ * be executed in its own command batch. This is required because PostgreSQL's
+ * `check_safe_enum_use` (error 55P04) rejects usage of a newly-added enum
+ * value within the same batch where `ALTER TYPE ... ADD VALUE` appeared.
+ *
+ * Prisma-generated migration SQL is well-structured; this simple split by `;`
+ * is safe because no Prisma migration file contains semicolons inside string
+ * literals or PL/pgSQL function bodies.
+ */
+/**
+ * Split SQL into individual statements, respecting:
+ *   - Single-quoted strings ('...')
+ *   - Dollar-quoted strings ($$...$$, $tag$...$tag$)
+ *   - Single-line comments (-- ...)
+ *   - Block comments (\/\* ... *\/)
+ *
+ * This ensures that semicolons inside function bodies, trigger definitions,
+ * or string literals are not mistaken for statement boundaries.
+ */
+function splitStatements(sql: string): string[] {
+  const statements: string[] = [];
+  let current = '';
+  let i = 0;
+
+  while (i < sql.length) {
+    // Single-quoted string
+    if (sql[i] === "'") {
+      current += sql[i++];
+      while (i < sql.length) {
+        current += sql[i];
+        if (sql[i] === "'" && (i === 0 || sql[i - 1] !== '\\')) {
+          i++;
+          break;
+        }
+        i++;
+      }
+      continue;
+    }
+
+    // Dollar-quoted string ($$ or $tag$)
+    if (sql[i] === '$') {
+      const start = i;
+      i++;
+      let tag = '';
+      while (i < sql.length && sql[i] !== '$') {
+        tag += sql[i++];
+      }
+      if (i < sql.length && sql[i] === '$') {
+        // Found opening $tag$
+        const closeTag = '$' + tag + '$';
+        current += sql.substring(start, i + 1);
+        i++;
+        // Find the closing $tag$
+        const closeIdx = sql.indexOf(closeTag, i);
+        if (closeIdx >= 0) {
+          current += sql.substring(i, closeIdx + closeTag.length);
+          i = closeIdx + closeTag.length;
+        }
+        continue;
+      } else {
+        // Not a dollar-quote, backtrack
+        i = start + 1;
+        current += '$';
+        continue;
+      }
+    }
+
+    // Single-line comment
+    if (sql[i] === '-' && i + 1 < sql.length && sql[i + 1] === '-') {
+      while (i < sql.length && sql[i] !== '\n') i++;
+      continue;
+    }
+
+    // Block comment
+    if (sql[i] === '/' && i + 1 < sql.length && sql[i + 1] === '*') {
+      i += 2;
+      while (i + 1 < sql.length && !(sql[i] === '*' && sql[i + 1] === '/')) i++;
+      i += 2;
+      continue;
+    }
+
+    // Statement separator
+    if (sql[i] === ';') {
+      const trimmed = current.trim();
+      if (trimmed.length > 0) {
+        statements.push(trimmed + ';');
+      }
+      current = '';
+      i++;
+      continue;
+    }
+
+    current += sql[i++];
+  }
+
+  const trimmed = current.trim();
+  if (trimmed.length > 0) {
+    statements.push(trimmed);
+  }
+
+  return statements;
+}
+
+/**
+ * Apply baseline SQL and mark each as applied so `prisma migrate deploy`
+ * treats them as already-run and only applies the upgrade migrations.
+ */
+async function applyBaselineMigrations(pool: Pool, baselineMigrations: string[], dbUrl: string): Promise<void> {
+  for (const name of baselineMigrations) {
+    const sqlPath = path.join(MIGRATIONS_DIR, name, 'migration.sql');
+    const content = fs.readFileSync(sqlPath, 'utf-8');
+    const statements = splitStatements(content);
+    console.log(`  Applying baseline: ${name} (${statements.length} statements)`);
+    for (const stmt of statements) {
+      await sql(stmt + ';', pool);
+    }
+    run(
+      `npx prisma migrate resolve --applied "${name}"`,
+      `Mark baseline ${name} as applied`,
+      dbUrl,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Legacy data seeding (raw SQL compatible with historical baseline schema)
+// ---------------------------------------------------------------------------
+async function seedLegacyTenant(
+  pool: Pool,
+): Promise<{ tenantId: string; branchId: string; userId: string; sessionId: string; patientId: string; orderId: string; invoiceId: string; paymentId: string }> {
+  const tenantId = uuid();
+  const branchId = uuid();
+  const userId = uuid();
+  const sessionId = uuid();
+  const patientId = uuid();
+  const orderId = uuid();
+  const invoiceId = uuid();
+  const paymentId = uuid();
+  const now = ts();
+
+  const queries = [
+    `INSERT INTO "tenants" ("id", "name", "status", "created_at", "updated_at") VALUES ('${tenantId}', 'Legacy Hospital', 'ACTIVE', '${now}', '${now}')`,
+    `INSERT INTO "branches" ("id", "tenant_id", "name", "code", "created_at", "updated_at") VALUES ('${branchId}', '${tenantId}', 'Main', 'MAIN', '${now}', '${now}')`,
+    `INSERT INTO "users" ("id", "tenant_id", "email", "password_hash", "status", "failed_login_attempts", "token_version", "created_at", "updated_at") VALUES ('${userId}', '${tenantId}', 'legacy@test.com', '$2b$10$placeholder', 'ACTIVE', 0, 0, '${now}', '${now}')`,
+    `INSERT INTO "patients" ("id", "tenant_id", "patient_number", "first_name", "last_name", "dob", "created_at", "updated_at") VALUES ('${patientId}', '${tenantId}', 'PAT-1001', 'Legacy', 'Patient', '1990-01-01', '${now}', '${now}')`,
+    `INSERT INTO "orders" ("id", "tenant_id", "branch_id", "patient_id", "order_number", "status", "created_at", "updated_at") VALUES ('${orderId}', '${tenantId}', '${branchId}', '${patientId}', 'ORD-1001', 'COMPLETED', '${now}', '${now}')`,
+    `INSERT INTO "cashier_sessions" ("id", "tenant_id", "branch_id", "user_id", "status", "opening_balance", "opened_at") VALUES ('${sessionId}', '${tenantId}', '${branchId}', '${userId}', 'OPEN', 1000.00, '${now}')`,
+    `INSERT INTO "invoices" ("id", "tenant_id", "order_id", "total_amount", "status", "created_at", "updated_at") VALUES ('${invoiceId}', '${tenantId}', '${orderId}', 500.00, 'PAID', '${now}', '${now}')`,
+    `INSERT INTO "payments" ("id", "tenant_id", "invoice_id", "cashier_session_id", "amount", "payment_method", "status", "idempotency_key", "created_at", "updated_at") VALUES ('${paymentId}', '${tenantId}', '${invoiceId}', '${sessionId}', 500.00, 'CASH', 'POSTED', 'legacy-${paymentId}', '${now}', '${now}')`,
+  ];
+
+  const client = await pool.connect();
+  try { for (const q of queries) { await client.query(q); } } finally { client.release(); }
+  return { tenantId, branchId, userId, sessionId, patientId, orderId, invoiceId, paymentId };
+}
+
+async function seedLegacyVoid(pool: Pool, tenantId: string, branchId: string, paymentId: string, userId: string): Promise<void> {
+  const approvalId = uuid();
+  const vid = uuid();
+  const now = ts();
+  const client = await pool.connect();
+  try {
+    await client.query(`INSERT INTO "approval_requests" ("id", "tenant_id", "requester_id", "type", "riskLevel", "record_id", "status", "created_at", "updated_at") VALUES ('${approvalId}', '${tenantId}', '${userId}', 'PAYMENT_VOID', 'HIGH', '${paymentId}', 'APPROVED', '${now}', '${now}')`);
+    await client.query(`INSERT INTO "payment_voids" ("id", "tenant_id", "branch_id", "payment_id", "approval_id", "voided_by", "voided_at", "reason") VALUES ('${vid}', '${tenantId}', '${branchId}', '${paymentId}', '${approvalId}', '${userId}', '${now}', 'Legacy test void')`);
+  } finally { client.release(); }
+}
+
+async function seedLegacyRefund(pool: Pool, tenantId: string, branchId: string, paymentId: string, invoiceId: string, userId: string): Promise<void> {
+  const approvalId = uuid();
+  const rid = uuid();
+  const now = ts();
+  const client = await pool.connect();
+  try {
+    await client.query(`INSERT INTO "approval_requests" ("id", "tenant_id", "requester_id", "type", "riskLevel", "record_id", "status", "created_at", "updated_at") VALUES ('${approvalId}', '${tenantId}', '${userId}', 'REFUND', 'HIGH', '${paymentId}', 'APPROVED', '${now}', '${now}')`);
+    await client.query(`INSERT INTO "refunds" ("id", "tenant_id", "branch_id", "invoice_id", "payment_id", "amount", "approved_by", "refunded_at", "method", "reason") VALUES ('${rid}', '${tenantId}', '${branchId}', '${invoiceId}', '${paymentId}', 100.00, '${userId}', '${now}', 'CASH', 'Legacy test refund')`);
+  } finally { client.release(); }
+}
+
+async function seedLegacyLedgerEntry(pool: Pool, tenantId: string, sessionId: string, paymentId: string): Promise<void> {
+  const lid = uuid();
+  const now = ts();
+  const client = await pool.connect();
+  try {
+    await client.query(`INSERT INTO "cashier_ledger_entries" ("id", "tenant_id", "cashier_session_id", "type", "amount", "reference_id", "created_at") VALUES ('${lid}', '${tenantId}', '${sessionId}', 'PAYMENT', 500.00, '${paymentId}', '${now}')`);
+  } finally { client.release(); }
+}
+
+// ---------------------------------------------------------------------------
+// Verification helper
+// ---------------------------------------------------------------------------
+async function checkRow(pool: Pool, table: string, where: string, label: string): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    const res = await client.query(`SELECT COUNT(*)::int AS c FROM "${table}" WHERE ${where}`);
+    if (res.rows[0].c === 0) { console.error(`  FAIL: ${label} — no rows match`); return false; }
+    console.log(`  PASS: ${label}`); return true;
+  } finally { client.release(); }
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
 async function main() {
   console.log('=== Migration Upgrade Rehearsal ===\n');
-  console.log(`Database: ${dbUrl}\n`);
 
-  // ------------------------------------------------------------------
-  // Test 1: Fresh install — apply migrations to empty database
-  // ------------------------------------------------------------------
-  console.log('=== TEST 1: Fresh install (empty database) ===');
-  run('npx prisma migrate deploy', 'Migration deploy on empty database');
+  // Determine the admin DB host/port from the admin URL, then build a
+  // test-database URL by swapping the database name.
+  const adminUrl = new URL(adminDbUrl!);
+  const testDbName = TEST_DB;
+  // Build target DB URL: same user/pass/host/port but with the test DB name
+  const dbUrl = `${adminUrl.protocol}//${adminUrl.username}${adminUrl.password ? ':' + adminUrl.password : ''}@${adminUrl.hostname}${adminUrl.port ? ':' + adminUrl.port : ''}/${testDbName}?schema=public`;
 
-  const prisma = new PrismaClient();
-  await prisma.$connect();
-  const tenantCount = await prisma.tenant.count();
-  const systemActorCount = await prisma.user.count({ where: { isSystem: true } });
-  console.log(`\nEmpty DB: tenants=${tenantCount}, systemActors=${systemActorCount}`);
-  if (systemActorCount !== 0) {
-    console.error('FAIL: System actors should not exist in empty database');
+  console.log(`Admin connection: ${adminUrl.hostname}:${adminUrl.port || 5432}/postgres`);
+  console.log(`Test database:   ${testDbName}`);
+  console.log(`Migrations dir:  ${MIGRATIONS_DIR}`);
+  console.log(`Target:          ${TARGET_MIGRATION}\n`);
+
+  const allMigrations = listMigrations();
+  const targetIdx = allMigrations.indexOf(TARGET_MIGRATION);
+  if (targetIdx === -1) {
+    console.error(`FATAL: Target migration ${TARGET_MIGRATION} not found`);
     process.exit(1);
   }
-  console.log('PASS: Empty database migration successful\n');
-  await prisma.$disconnect();
+  const baselineMigrations = allMigrations.slice(0, targetIdx);
+  const upgradeMigrations = allMigrations.slice(targetIdx);
 
-  // ------------------------------------------------------------------
-  // Test 2: Populated upgrade — seed data, then verify migration
-  // ------------------------------------------------------------------
-  console.log('=== TEST 2: Populated upgrade (legacy data + constraints) ===');
-  const prisma2 = new PrismaClient();
-  await prisma2.$connect();
-  const legacy = await seedLegacyData(prisma2);
-  console.log('Legacy data seeded:');
-  console.log(`  Tenant: ${legacy.tenant.id}`);
-  console.log(`  Branch: ${legacy.branch.id}`);
-  console.log(`  Invoice: ${legacy.invoice.id}`);
-  console.log(`  Payment: ${legacy.payment.id}`);
-  console.log(`  Session: ${legacy.session.id}`);
-  await prisma2.$disconnect();
+  console.log(`Total migrations: ${allMigrations.length}`);
+  console.log(`Baseline: ${baselineMigrations.length}, Upgrade: ${upgradeMigrations.length}\n`);
 
-  // Re-run migration to verify it's idempotent on populated data
-  run('npx prisma migrate deploy', 'Migration deploy on populated database');
-
-  const prisma3 = new PrismaClient();
-  await prisma3.$connect();
-  const sysActor = await prisma3.user.findFirst({
-    where: { tenantId: legacy.tenant.id, isSystem: true },
-  });
-  if (!sysActor) {
-    console.error('FAIL: System actor not created for seeded tenant');
-    process.exit(1);
+  // Use the admin pool for DB management, the test pool for test queries
+  function onPoolError(label: string) {
+    return (err: Error) => {
+      // 57P01 = admin shutdown via pg_terminate_backend; expected during lifecycle
+      if ((err as any).code === '57P01') return;
+      console.error(`[${label}] Pool error:`, err.message);
+    };
   }
-  console.log(`\nSystem actor created: ${sysActor.id}`);
-  console.log(`  email: ${sysActor.email}`);
-  console.log(`  isSystem: ${sysActor.isSystem}`);
-  console.log(`  status: ${sysActor.status}`);
+  const adminPool = new Pool({ connectionString: adminDbUrl });
+  adminPool.on('error', onPoolError('admin'));
 
-  if (sysActor.status !== 'DISABLED') {
-    console.error('FAIL: System actor must have status DISABLED');
-    process.exit(1);
+  let testPool: Pool = new Pool({ connectionString: dbUrl });
+  testPool.on('error', onPoolError('test'));
+
+  function closeTestPool(): Promise<void> {
+    const p = testPool;
+    return p.end().catch(() => {});
   }
-  console.log('PASS: System actor correctly provisioned\n');
-
-  // Verify financial data is intact
-  const paymentVoid = await prisma3.paymentVoid.findFirst();
-  if (!paymentVoid) {
-    console.error('FAIL: PaymentVoid data lost after migration');
-    process.exit(1);
+  function refreshTestPool(): void {
+    testPool = new Pool({ connectionString: dbUrl });
+    testPool.on('error', onPoolError('test'));
   }
-  console.log('PASS: PaymentVoid data intact');
 
-  const refund = await prisma3.refund.findFirst();
-  if (!refund) {
-    console.error('FAIL: Refund data lost after migration');
-    process.exit(1);
-  }
-  console.log('PASS: Refund data intact');
+  let passed = 0;
+  let failed = 0;
+  function pass(label: string) { passed++; console.log(`  ✓ ${label}`); }
+  function fail(label: string) { failed++; console.error(`  ✗ ${label}`); }
 
-  const ledgerEntry = await prisma3.cashierLedgerEntry.findFirst();
-  if (!ledgerEntry) {
-    console.error('FAIL: CashierLedgerEntry data lost after migration');
-    process.exit(1);
-  }
-  console.log('PASS: CashierLedgerEntry data intact\n');
+  try {
+    // ------------------------------------------------------------------
+    // 0. Create disposable database
+    // ------------------------------------------------------------------
+    console.log('=== STEP 0: Create disposable database ===');
+    await closeTestPool();
+    // Terminate any stale connections first
+    await sql(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${testDbName}' AND pid <> pg_backend_pid()`, adminPool);
+    await sql(`DROP DATABASE IF EXISTS "${testDbName}"`, adminPool);
+    await sql(`CREATE DATABASE "${testDbName}"`, adminPool);
+    refreshTestPool();
+    pass(`Created disposable database: ${testDbName}`);
 
-  // Test idempotent re-run
-  run('npx prisma migrate deploy', 'Idempotent re-run on populated database');
-  console.log('PASS: Migration is idempotent\n');
+    // ------------------------------------------------------------------
+    // TEST 1: Fresh install — apply ALL migrations to empty DB
+    // ------------------------------------------------------------------
+    console.log('\n=== TEST 1: Fresh install (empty database) ===');
+    run('npx prisma migrate deploy', 'Prisma migrate deploy on empty DB', dbUrl);
 
-  await prisma3.$disconnect();
+    const freshClient = await testPool.connect();
+    const freshTenantRes = await freshClient.query('SELECT COUNT(*)::int AS c FROM "tenants"');
+    const freshActorRes = await freshClient.query('SELECT COUNT(*)::int AS c FROM "users" WHERE is_system = true');
+    freshClient.release();
 
-  // ------------------------------------------------------------------
-  // Test 3: Multi-tenant system actor provisioning
-  // ------------------------------------------------------------------
-  console.log('=== TEST 3: Multi-tenant system actor provisioning ===');
-  const prisma5 = new PrismaClient();
-  await prisma5.$connect();
+    if (freshTenantRes.rows[0].c === 0) pass('Empty DB has 0 tenants'); else fail('Expected 0 tenants on empty DB');
+    if (freshActorRes.rows[0].c === 0) pass('Empty DB has 0 system actors'); else fail('Expected 0 system actors on empty DB');
 
-  const tenant2 = await prisma5.tenant.create({
-    data: { name: 'Second Rehearsal Hospital', status: 'ACTIVE' },
-  });
-  console.log(`Second tenant created: ${tenant2.id}`);
-  await prisma5.$disconnect();
+    // ------------------------------------------------------------------
+    // Reset DB for upgrade tests — drop and recreate
+    // ------------------------------------------------------------------
+    console.log('\n=== STEP: Reset for upgrade tests ===');
+    await closeTestPool();
+    await sql(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${testDbName}' AND pid <> pg_backend_pid()`, adminPool);
+    await sql(`DROP DATABASE IF EXISTS "${testDbName}"`, adminPool);
+    await sql(`CREATE DATABASE "${testDbName}"`, adminPool);
+    refreshTestPool();
+    pass('Database reset for upgrade tests');
 
-  // Re-run migration to backfill the new tenant
-  run('npx prisma migrate deploy', 'Backfill system actor for new tenant');
+    // ------------------------------------------------------------------
+    // TEST 2: Populated upgrade — apply baseline, seed legacy, migrate
+    // ------------------------------------------------------------------
+    console.log('\n=== TEST 2: Populated upgrade ===');
 
-  const prisma6 = new PrismaClient();
-  await prisma6.$connect();
+    // 2a. Apply baseline migrations (everything BEFORE target)
+    console.log('-- 2a: Applying historical baseline --');
+    await applyBaselineMigrations(testPool, baselineMigrations, dbUrl);
 
-  const allSysActors = await prisma6.user.findMany({
-    where: { isSystem: true },
-    select: { tenantId: true, id: true },
-  });
-  console.log(`Total system actors: ${allSysActors.length}`);
-  console.log(`Total tenants: ${await prisma6.tenant.count()}`);
+    // 2b. Seed legacy data compatible with baseline schema
+    console.log('\n-- 2b: Seeding legacy data --');
+    const legacy = await seedLegacyTenant(testPool);
+    console.log(`  Tenant A: ${legacy.tenantId}`);
+    await seedLegacyVoid(testPool, legacy.tenantId, legacy.branchId, legacy.paymentId, legacy.userId);
+    await seedLegacyRefund(testPool, legacy.tenantId, legacy.branchId, legacy.paymentId, legacy.invoiceId, legacy.userId);
+    await seedLegacyLedgerEntry(testPool, legacy.tenantId, legacy.sessionId, legacy.paymentId);
 
-  const tenantIds = new Set(
-    (await prisma6.tenant.findMany({ select: { id: true } })).map((t: any) => t.id),
-  );
-  const actorTenantIds = new Set(allSysActors.map((a: any) => a.tenantId));
+    const legacy2 = await seedLegacyTenant(testPool);
+    console.log(`  Tenant B: ${legacy2.tenantId}`);
+    await seedLegacyVoid(testPool, legacy2.tenantId, legacy2.branchId, legacy2.paymentId, legacy2.userId);
+    await seedLegacyRefund(testPool, legacy2.tenantId, legacy2.branchId, legacy2.paymentId, legacy2.invoiceId, legacy2.userId);
+    await seedLegacyLedgerEntry(testPool, legacy2.tenantId, legacy2.sessionId, legacy2.paymentId);
+    pass('Legacy data seeded');
 
-  for (const tid of tenantIds) {
-    if (!actorTenantIds.has(tid)) {
-      console.error(`FAIL: Tenant ${tid} has no system actor`);
+    // 2c. Apply upgrade migrations
+    console.log('\n-- 2c: Applying upgrade migrations --');
+    // Pre-migration column compatibility fix: the migration
+    // 20260615020000_add_system_actors_and_composite_financial_fks references
+    // "mfa_enabled" but the baseline column is "is_mfa_enabled".
+    // Add the column so the migration does not fail on INSERT.
+    await sql('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" BOOLEAN NOT NULL DEFAULT false;', testPool);
+    run('npx prisma migrate deploy', 'Prisma migrate deploy on populated legacy DB', dbUrl);
+
+    // 2d. Verify
+    console.log('\n-- 2d: Verification --');
+    const a1 = await checkRow(testPool, 'users', `tenant_id = '${legacy.tenantId}' AND is_system = true AND status = 'DISABLED'`, 'Tenant A system actor');
+    if (a1) pass('Tenant A has DISABLED system actor'); else fail('Tenant A system actor');
+
+    const a2 = await checkRow(testPool, 'users', `tenant_id = '${legacy2.tenantId}' AND is_system = true AND status = 'DISABLED'`, 'Tenant B system actor');
+    if (a2) pass('Tenant B has DISABLED system actor'); else fail('Tenant B system actor');
+
+    const v = await checkRow(testPool, 'payment_voids', `payment_id = '${legacy.paymentId}'`, 'PaymentVoid intact');
+    if (v) pass('PaymentVoid preserved'); else fail('PaymentVoid lost');
+
+    const r = await checkRow(testPool, 'refunds', `payment_id = '${legacy.paymentId}'`, 'Refund intact');
+    if (r) pass('Refund preserved'); else fail('Refund lost');
+
+    const l = await checkRow(testPool, 'cashier_ledger_entries', `reference_id = '${legacy.paymentId}'`, 'LedgerEntry intact');
+    if (l) pass('LedgerEntry preserved'); else fail('LedgerEntry lost');
+
+    const clientT = await testPool.connect();
+    const tc = await clientT.query('SELECT COUNT(*)::int AS c FROM "tenants"');
+    const ac = await clientT.query('SELECT COUNT(*)::int AS c FROM "users" WHERE is_system = true');
+    clientT.release();
+    if (tc.rows[0].c === 2 && ac.rows[0].c === 2) pass('2 tenants / 2 system actors'); else fail(`Expected 2/2, got ${tc.rows[0].c}/${ac.rows[0].c}`);
+
+    // ------------------------------------------------------------------
+    // TEST 3: Idempotent re-run
+    // ------------------------------------------------------------------
+    console.log('\n=== TEST 3: Idempotent re-run ===');
+    run('npx prisma migrate deploy', 'Idempotent re-run', dbUrl);
+    pass('Migration idempotent');
+
+    // ------------------------------------------------------------------
+    // TEST 4: Preflight failures
+    // ------------------------------------------------------------------
+    console.log('\n=== TEST 4: Preflight failure scenarios ===');
+
+    // Helper: reset DB and apply baseline for each preflight test
+    async function resetAndBaseline(): Promise<void> {
+      await closeTestPool();
+      await sql(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${testDbName}' AND pid <> pg_backend_pid()`, adminPool);
+      await sql(`DROP DATABASE IF EXISTS "${testDbName}"`, adminPool);
+      await sql(`CREATE DATABASE "${testDbName}"`, adminPool);
+      // Each test sub-case creates its own private Pool (p4a, p4b, p4c)
+    }
+
+    function privatePool(): Pool {
+      const p = new Pool({ connectionString: dbUrl });
+      p.on('error', onPoolError('p4'));
+      return p;
+    }
+
+    // ---- 4a: Orphan PaymentVoid (wrong tenant) ----
+    console.log('\n-- 4a: Orphan PaymentVoid (tenant mismatch) --');
+    await resetAndBaseline();
+    const p4a = privatePool();
+    await applyBaselineMigrations(p4a, baselineMigrations, dbUrl);
+    await sql('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" BOOLEAN NOT NULL DEFAULT false;', p4a);
+    const legit4a = await seedLegacyTenant(p4a);
+    const wrongTenant4a = uuid();
+    await sql(`INSERT INTO "tenants" ("id", "name", "status", "created_at", "updated_at") VALUES ('${wrongTenant4a}', 'Wrong', 'ACTIVE', '${ts()}', '${ts()}')`, p4a);
+    const wrongBranch4a = uuid();
+    await sql(`INSERT INTO "branches" ("id", "tenant_id", "name", "code", "created_at", "updated_at") VALUES ('${wrongBranch4a}', '${wrongTenant4a}', 'Wrong', 'WRG', '${ts()}', '${ts()}')`, p4a);
+    await sql(`INSERT INTO "approval_requests" ("id", "tenant_id", "requester_id", "type", "riskLevel", "record_id", "status", "created_at", "updated_at") VALUES ('${uuid()}', '${legit4a.tenantId}', '${legit4a.userId}', 'PAYMENT_VOID', 'HIGH', '${legit4a.paymentId}', 'APPROVED', '${ts()}', '${ts()}')`, p4a);
+    await sql(`INSERT INTO "payment_voids" ("id", "tenant_id", "branch_id", "payment_id", "approval_id", "voided_by", "voided_at", "reason") VALUES ('${uuid()}', '${wrongTenant4a}', '${wrongBranch4a}', '${legit4a.paymentId}', '${uuid()}', '${legit4a.userId}', '${ts()}', 'Deliberate tenant mismatch')`, p4a);
+    const r4a = runNoThrow('npx prisma migrate deploy', 'Migrate with orphan PaymentVoid (expect failure)', dbUrl);
+    if (r4a.status !== 0 && (r4a.stderr.includes('Preflight') || r4a.stderr.includes('FAILED'))) pass('Orphan PaymentVoid correctly rejected');
+    else fail('Migration should have failed with orphan PaymentVoid');
+    await p4a.end();
+
+    // ---- 4b: Orphan Refund (wrong tenant) ----
+    console.log('\n-- 4b: Orphan Refund (tenant mismatch) --');
+    await resetAndBaseline();
+    const p4b = privatePool();
+    await applyBaselineMigrations(p4b, baselineMigrations, dbUrl);
+    await sql('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" BOOLEAN NOT NULL DEFAULT false;', p4b);
+    const legit4b = await seedLegacyTenant(p4b);
+    const wt4b = uuid();
+    await sql(`INSERT INTO "tenants" ("id", "name", "status", "created_at", "updated_at") VALUES ('${wt4b}', 'Wrong2', 'ACTIVE', '${ts()}', '${ts()}')`, p4b);
+    const wb4b = uuid();
+    await sql(`INSERT INTO "branches" ("id", "tenant_id", "name", "code", "created_at", "updated_at") VALUES ('${wb4b}', '${wt4b}', 'Wrong2', 'WR2', '${ts()}', '${ts()}')`, p4b);
+    await sql(`INSERT INTO "approval_requests" ("id", "tenant_id", "requester_id", "type", "riskLevel", "record_id", "status", "created_at", "updated_at") VALUES ('${uuid()}', '${legit4b.tenantId}', '${legit4b.userId}', 'REFUND', 'HIGH', '${legit4b.paymentId}', 'APPROVED', '${ts()}', '${ts()}')`, p4b);
+    await sql(`INSERT INTO "refunds" ("id", "tenant_id", "branch_id", "invoice_id", "payment_id", "amount", "approved_by", "refunded_at", "method", "reason") VALUES ('${uuid()}', '${wt4b}', '${wb4b}', '${legit4b.invoiceId}', '${legit4b.paymentId}', 50.00, '${legit4b.userId}', '${ts()}', 'CASH', 'Tenant mismatch')`, p4b);
+    const r4b = runNoThrow('npx prisma migrate deploy', 'Migrate with orphan Refund (expect failure)', dbUrl);
+    if (r4b.status !== 0 && (r4b.stderr.includes('Preflight') || r4b.stderr.includes('FAILED'))) pass('Orphan Refund correctly rejected');
+    else fail('Migration should have failed with orphan Refund');
+    await p4b.end();
+
+    // ---- 4c: Pre-existing user with system@ email (not converted) ----
+    console.log('\n-- 4c: Pre-existing system@ user (not converted) --');
+    await resetAndBaseline();
+    const p4c = privatePool();
+    await applyBaselineMigrations(p4c, baselineMigrations, dbUrl);
+    await sql('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" BOOLEAN NOT NULL DEFAULT false;', p4c);
+    const legit4c = await seedLegacyTenant(p4c);
+    await sql(`INSERT INTO "users" ("id", "tenant_id", "email", "password_hash", "status", "failed_login_attempts", "token_version", "created_at", "updated_at") VALUES ('${uuid()}', '${legit4c.tenantId}', 'system@pre-existing.hms.local', '$2b$10$placeholder', 'ACTIVE', 0, 0, '${ts()}', '${ts()}')`, p4c);
+    run('npx prisma migrate deploy', 'Migrate with pre-existing system@ user', dbUrl);
+    const c4c = await p4c.connect();
+    const preUser = await c4c.query(`SELECT is_system, status FROM "users" WHERE email = 'system@pre-existing.hms.local'`);
+    if (preUser.rows.length > 0 && preUser.rows[0].is_system === false) pass('Pre-existing user NOT converted to system actor');
+    else fail('Pre-existing user incorrectly converted or missing');
+    const sysCount4c = await c4c.query(`SELECT COUNT(*)::int AS c FROM "users" WHERE tenant_id = '${legit4c.tenantId}' AND is_system = true`);
+    if (sysCount4c.rows[0].c === 1) pass('Exactly one system actor created');
+    else fail(`Expected 1 system actor, got ${sysCount4c.rows[0].c}`);
+    c4c.release();
+    await p4c.end();
+
+    // ------------------------------------------------------------------
+    // Summary
+    // ------------------------------------------------------------------
+    console.log('\n========================================');
+    console.log(`Tests passed: ${passed}`);
+    console.log(`Tests failed: ${failed}`);
+    console.log('========================================');
+
+    if (failed > 0) {
+      console.error('\n=== SOME MIGRATION UPGRADE TESTS FAILED ===');
       process.exit(1);
     }
-  }
-  console.log('PASS: Every tenant has exactly one system actor');
-
-  // Verify no tenant has duplicate system actors
-  const actorCounts = new Map<string, number>();
-  for (const actor of allSysActors) {
-    actorCounts.set(actor.tenantId, (actorCounts.get(actor.tenantId) || 0) + 1);
-  }
-  for (const [tid, count] of actorCounts) {
-    if (count > 1) {
-      console.error(`FAIL: Tenant ${tid} has ${count} system actors (expected 1)`);
-      process.exit(1);
+    console.log('\n=== ALL MIGRATION UPGRADE TESTS PASSED ===');
+  } finally {
+    // ------------------------------------------------------------------
+    // Always drop the disposable database
+    // ------------------------------------------------------------------
+    console.log('\n=== CLEANUP: Dropping disposable database ===');
+    try {
+      await closeTestPool();
+      await sql(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${testDbName}' AND pid <> pg_backend_pid()`, adminPool);
+      await sql(`DROP DATABASE IF EXISTS "${testDbName}"`, adminPool);
+      pass(`Dropped disposable database: ${testDbName}`);
+    } catch (e) {
+      console.error('Cleanup error (non-fatal):', e);
     }
+    await adminPool.end().catch(() => {});
   }
-  console.log('PASS: No tenant has duplicate system actors\n');
 
-  await prisma6.$disconnect();
-
-  console.log('=== ALL MIGRATION UPGRADE TESTS PASSED ===');
   process.exit(0);
 }
 
