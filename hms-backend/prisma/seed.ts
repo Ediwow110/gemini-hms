@@ -197,6 +197,19 @@ async function main() {
     { name: 'nurse.task.view', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'nurse.task.manage', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
     { name: 'nurse.task.update', scope: 'tenant/branch', riskLevel: 'LOW' },
+
+    // Dashboard & Admin
+    { name: 'dashboard.view', scope: 'tenant', riskLevel: 'LOW' },
+    { name: 'admin.users.view', scope: 'tenant', riskLevel: 'LOW' },
+    { name: 'admin.users.manage', scope: 'tenant', riskLevel: 'HIGH' },
+
+    // Finance / Billing Reports
+    { name: 'billing.payment.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'billing.report.view', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
+
+    // HR Attendance & Leave
+    { name: 'hr.attendance.view', scope: 'tenant/branch', riskLevel: 'LOW' },
+    { name: 'hr.leave.manage', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
   ];
 
   console.log('Seeding Permissions...');
@@ -237,7 +250,12 @@ async function main() {
     { name: 'Compliance Officer', id: '00000000-0000-0000-0000-000000000017' },
     { name: 'Field Technician', id: '00000000-0000-0000-0000-000000000018' },
     { name: 'Marketplace Admin', id: '00000000-0000-0000-0000-000000000019' },
+    { name: 'Finance', id: '00000000-0000-0000-0000-000000000020' },
+    { name: 'Branch Manager', id: '00000000-0000-0000-0000-000000000021' },
+    { name: 'Admin', id: '00000000-0000-0000-0000-000000000022' },
   ];
+
+  console.log('Seeding Missing Permission Entries...');
 
   console.log('Seeding Roles...');
   for (const r of rolesData) {
@@ -337,6 +355,20 @@ async function main() {
     ],
     'Marketplace Admin': [
       'marketplace.admin.view', 'marketplace.admin.manage'
+    ],
+    'Finance': [
+      'billing.invoice.view', 'billing.payment.view', 'billing.payment.create',
+      'billing.refund.request', 'billing.report.view',
+      'patient.view', 'order.view', 'queue.view'
+    ],
+    'Branch Manager': [
+      'hr.employee.view', 'hr.employee.manage', 'hr.attendance.view',
+      'hr.leave.manage', 'hr.payroll.view',
+      'approval.request.process', 'report.export'
+    ],
+    'Admin': [
+      'dashboard.view', 'admin.users.view', 'admin.users.manage',
+      'report.export', 'audit.view'
     ]
   };
 
