@@ -20,6 +20,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "npx tsx test/setup-db.ts && jest --config ./test/jest-e2e.json --runInBand",
+    "test:migrations": "npx tsx scripts/verify-migration-upgrade.ts",
     "db:check:demo": "npx tsx scripts/check-demo-data.ts",
     "db:fix:demo": "npx tsx scripts/fix-demo-data.ts",
     "db:reset:demo:safe": "npx tsx scripts/reset-demo-db.ts",
