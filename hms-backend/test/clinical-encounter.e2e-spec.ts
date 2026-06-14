@@ -162,12 +162,12 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
 
     // 5. Doctor locks note -> 201
     await request(app.getHttpServer())
-      .post(`/clinical/notes/${noteId}/lock`)
+      .post(`/api/v1/clinical/notes/${noteId}/lock`)
       .expect(201);
 
     // 6. Doctor attempts to update locked note -> 409 (Conflict)
     await request(app.getHttpServer())
-      .patch(`/clinical/notes/${noteId}`)
+      .patch(`/api/v1/clinical/notes/${noteId}`)
       .send({ subjective: 'Updated text' })
       .expect(409);
 
@@ -210,7 +210,7 @@ describe('Clinical Encounter & SOAP Notes E2E', () => {
     // Restore diagnosis (Super Admin only)
     MockJwtAuthGuard.user.roles = ['Super Admin'];
     await request(app.getHttpServer())
-      .delete(`/clinical/diagnoses/${diagnosisId}/restore`)
+      .delete(`/api/v1/clinical/diagnoses/${diagnosisId}/restore`)
       .expect(200);
 
     // Get encounter again -> diagnosis should be present again!
