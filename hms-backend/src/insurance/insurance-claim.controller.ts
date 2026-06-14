@@ -12,7 +12,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
-@Controller('insurance/claims')
+@Controller('api/v1/insurance/claims')
 @UseGuards(RolesGuard)
 @Roles('Super Admin', 'Branch Admin', 'Cashier')
 export class InsuranceClaimController {

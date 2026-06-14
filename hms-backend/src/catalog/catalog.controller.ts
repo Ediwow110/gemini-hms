@@ -23,7 +23,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import type { AuthenticatedRequest } from '../common/types/authenticated-request.type';
 
-@Controller('catalog')
+@Controller('api/v1/catalog')
 @UseGuards(PermissionsGuard)
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}

@@ -46,7 +46,7 @@ const PATIENT_CSRF_COOKIE_OPTIONS = (isProd: boolean) => ({
   path: '/patient-portal',
 });
 
-@Controller('patient-portal')
+@Controller('api/v1/patient-portal')
 @Public()
 export class PatientPortalController {
   constructor(
