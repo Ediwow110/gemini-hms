@@ -3,13 +3,13 @@ import { HipaaComplianceService } from './hipaa-compliance.service';
 import { DataRetentionService } from './data-retention.service';
 import { AccessReviewService } from './access-review.service';
 import { ChangeManagementService } from './change-management.service';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
-@UseGuards(RolesGuard)
+@UseGuards(PermissionsGuard)
 @Controller('api/v1/compliance')
-@Roles('Super Admin', 'Branch Admin')
+@RequirePermissions('compliance.audit.review')
 export class ComplianceController {
   constructor(
     private readonly hipaaService: HipaaComplianceService,
