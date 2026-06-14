@@ -426,11 +426,6 @@ async function main() {
 
     // 2c. Apply upgrade migrations
     console.log('\n-- 2c: Applying upgrade migrations --');
-    // Pre-migration column compatibility fix: the migration
-    // 20260615020000_add_system_actors_and_composite_financial_fks references
-    // "mfa_enabled" but the baseline column is "is_mfa_enabled".
-    // Add the column so the migration does not fail on INSERT.
-    await sql('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" BOOLEAN NOT NULL DEFAULT false;', testPool);
     run('npx prisma migrate deploy', 'Prisma migrate deploy on populated legacy DB', dbUrl);
 
     // 2d. Verify
@@ -455,6 +450,18 @@ async function main() {
     const ac = await clientT.query('SELECT COUNT(*)::int AS c FROM "users" WHERE is_system = true');
     clientT.release();
     if (tc.rows[0].c === 2 && ac.rows[0].c === 2) pass('2 tenants / 2 system actors'); else fail(`Expected 2/2, got ${tc.rows[0].c}/${ac.rows[0].c}`);
+
+    // Schema and data assertions — prove the real migration chain untouched
+    const sc = await testPool.connect();
+    const colCheck1 = await sc.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'is_mfa_enabled'`);
+    if (colCheck1.rows.length > 0) pass('users.is_mfa_enabled exists'); else fail('Missing is_mfa_enabled column');
+    const colCheck2 = await sc.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'mfa_enabled'`);
+    if (colCheck2.rows.length === 0) pass('users.mfa_enabled does NOT exist'); else fail('Spurious mfa_enabled column found');
+    const sysMfa = await sc.query(`SELECT COUNT(*)::int AS c FROM "users" WHERE is_system = true AND is_mfa_enabled = false`);
+    if (sysMfa.rows[0].c === 2) pass('Both system actors have is_mfa_enabled = false'); else fail(`Expected 2 system actors with mfa=false, got ${sysMfa.rows[0].c}`);
+    const existingUser = await sc.query(`SELECT is_system, is_mfa_enabled FROM "users" WHERE email = 'legacy@test.com'`);
+    if (existingUser.rows.length > 0 && existingUser.rows[0].is_system === false) pass('Existing legacy user unchanged (is_system=false)'); else fail('Existing user was incorrectly modified');
+    sc.release();
 
     // ------------------------------------------------------------------
     // TEST 3: Idempotent re-run
@@ -488,7 +495,6 @@ async function main() {
     await resetAndBaseline();
     const p4a = privatePool();
     await applyBaselineMigrations(p4a, baselineMigrations, dbUrl);
-    await sql('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" BOOLEAN NOT NULL DEFAULT false;', p4a);
     const legit4a = await seedLegacyTenant(p4a);
     const wrongTenant4a = uuid();
     await sql(`INSERT INTO "tenants" ("id", "name", "status", "created_at", "updated_at") VALUES ('${wrongTenant4a}', 'Wrong', 'ACTIVE', '${ts()}', '${ts()}')`, p4a);
@@ -506,7 +512,6 @@ async function main() {
     await resetAndBaseline();
     const p4b = privatePool();
     await applyBaselineMigrations(p4b, baselineMigrations, dbUrl);
-    await sql('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" BOOLEAN NOT NULL DEFAULT false;', p4b);
     const legit4b = await seedLegacyTenant(p4b);
     const wt4b = uuid();
     await sql(`INSERT INTO "tenants" ("id", "name", "status", "created_at", "updated_at") VALUES ('${wt4b}', 'Wrong2', 'ACTIVE', '${ts()}', '${ts()}')`, p4b);
@@ -524,7 +529,6 @@ async function main() {
     await resetAndBaseline();
     const p4c = privatePool();
     await applyBaselineMigrations(p4c, baselineMigrations, dbUrl);
-    await sql('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" BOOLEAN NOT NULL DEFAULT false;', p4c);
     const legit4c = await seedLegacyTenant(p4c);
     await sql(`INSERT INTO "users" ("id", "tenant_id", "email", "password_hash", "status", "failed_login_attempts", "token_version", "created_at", "updated_at") VALUES ('${uuid()}', '${legit4c.tenantId}', 'system@pre-existing.hms.local', '$2b$10$placeholder', 'ACTIVE', 0, 0, '${ts()}', '${ts()}')`, p4c);
     run('npx prisma migrate deploy', 'Migrate with pre-existing system@ user', dbUrl);

@@ -90,7 +90,7 @@ BEGIN
 
     INSERT INTO "users" (
       "id", "tenant_id", "email", "password_hash",
-      "is_system", "status", "mfa_enabled",
+      "is_system", "status", "is_mfa_enabled",
       "token_version", "failed_login_attempts",
       "created_at", "updated_at"
     ) VALUES (
