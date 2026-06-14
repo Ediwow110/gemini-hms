@@ -81,6 +81,7 @@ model Tenant {
   nurseTasks                  NurseTask[]
   refillRequests              RefillRequest[]
   medicalRecordRequests       MedicalRecordRequest[]
+  notificationOutbox          NotificationOutbox[]
 
   @@map("tenants")
 }
@@ -167,6 +168,7 @@ model User {
   nurseTasksCancelled     NurseTask[]           @relation("NurseTaskCancelled")
   reviewedRefillRequests       RefillRequest[]         @relation("RefillReviewedBy")
   reviewedMedicalRecordRequests MedicalRecordRequest[] @relation("MedRecordReviewedBy")
+  notificationOutbox            NotificationOutbox[]
 
   @@unique([tenantId, email])
   @@map("users")
@@ -219,10 +221,12 @@ model Role {
   userRoles       UserRole[]
   rolePermissions RolePermission[]
 
+  @@unique([tenantId, name])
   @@map("roles")
 }
 
 model UserRole {
+  id            String    @id @default(uuid()) @db.Uuid
   userId        String    @map("user_id") @db.Uuid
   roleId        String    @map("role_id") @db.Uuid
   status        String    @default("ACTIVE")
@@ -232,7 +236,7 @@ model UserRole {
   user User @relation(fields: [userId], references: [id])
   role Role @relation(fields: [roleId], references: [id])
 
-  @@id([userId, roleId])
+  @@unique([userId, roleId])
   @@map("user_roles")
 }
 
@@ -838,6 +842,7 @@ model LabResultSignature {
 
 model NotificationOutbox {
   id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String?   @map("tenant_id") @db.Uuid
   recipientId String    @map("recipient_id") @db.Uuid
   type        String
   payload     String
@@ -845,6 +850,12 @@ model NotificationOutbox {
   sentAt      DateTime? @map("sent_at")
   status      String    @default("PENDING")
 
+  tenant    Tenant? @relation(fields: [tenantId], references: [id])
+  recipient User    @relation(fields: [recipientId], references: [id])
+
+  @@index([tenantId])
+  @@index([recipientId])
+  @@index([status, scheduledAt])
   @@map("notification_outbox")
 }
 
@@ -1042,6 +1053,7 @@ model Payslip {
   branch   Branch   @relation(fields: [branchId], references: [id])
   employee Employee @relation(fields: [employeeId], references: [id])
 
+  @@unique([tenantId, employeeId, periodStart, periodEnd])
   @@index([tenantId, branchId])
   @@index([tenantId, employeeId, branchId])
   @@map("payslips")
@@ -1164,8 +1176,8 @@ model RolePermission {
   roleId       String @map("role_id") @db.Uuid
   permissionId String @map("permission_id") @db.Uuid
 
-  role       Role       @relation(fields: [roleId], references: [id])
-  permission Permission @relation(fields: [permissionId], references: [id])
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
   @@map("role_permissions")
@@ -1380,6 +1392,9 @@ model CashierLedgerEntry {
 
   cashierSession CashierSession @relation(fields: [cashierSessionId], references: [id])
 
+  @@index([cashierSessionId])
+  @@index([type])
+  @@index([referenceId])
   @@map("cashier_ledger_entries")
 }
 
