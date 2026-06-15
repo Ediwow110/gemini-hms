@@ -209,21 +209,25 @@ function splitStatements(sql: string): string[] {
 }
 
 /**
- * Apply baseline SQL and mark all baseline migrations as applied
- * in a single batch INSERT into _prisma_migrations, so that
- * `prisma migrate deploy` treats them as already-run and only
- * applies the upgrade migrations.
+ * Test-only baseline state emulation.
  *
- * The per-migration `prisma migrate resolve --applied` call would
- * take ~2s of CLI startup per migration; with 58 baseline
- * migrations that adds 116s to every test that needs a fresh
- * baseline. A single batch INSERT into _prisma_migrations has the
- * same end state in milliseconds. The schema of _prisma_migrations
- * is fixed by Prisma: (id, checksum, migration_name, finished_at,
- * applied_steps_count, logs, started_at, rolled_back_at). We
- * compute the same SHA-256 checksum that Prisma computes (over
- * the migration.sql file content) and insert one row per
- * migration.
+ * Applies baseline SQL statements directly, then batch-inserts rows into
+ * Prisma's private `_prisma_migrations` table so that `prisma migrate
+ * deploy` treats them as already-applied and only applies upgrade
+ * migrations.
+ *
+ * This is NOT an officially supported Prisma API. The `_prisma_migrations`
+ * table is an internal implementation detail. We depend on it for
+ * performance: calling `prisma migrate resolve --applied` per migration
+ * would add ~2s of CLI startup per call (116s for 58 baselines). The
+ * emulation is version-sensitive — Prisma CLI is pinned to `7.9.0-dev.13`
+ * (see package.json) so the _prisma_migrations schema and checksum
+ * algorithm are locked to that version.
+ *
+ * We compute SHA-256 checksums over migration.sql file content, matching
+ * Prisma's own algorithm. The emulated columns are:
+ *   id, checksum, migration_name, finished_at, applied_steps_count,
+ *   logs, started_at, rolled_back_at
  */
 async function applyBaselineMigrations(pool: Pool, baselineMigrations: string[], dbUrl: string): Promise<void> {
   const now = ts();
@@ -339,6 +343,252 @@ async function checkRow(pool: Pool, table: string, where: string, label: string)
 }
 
 // ---------------------------------------------------------------------------
+// Strict baseline-state and post-deploy verification
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify the `_prisma_migrations` table via DIRECT DATABASE QUERIES
+ * (deterministic, not CLI-dependent) before running upgrade migrations.
+ *
+ * Checks:
+ *   1. Every expected baseline migration appears exactly once
+ *   2. No unexpected records exist (no upgrades pre-applied, no unknowns)
+ *   3. Every baseline row has finished_at IS NOT NULL
+ *   4. Every baseline row has rolled_back_at IS NULL
+ *   5. Every baseline row has applied_steps_count > 0
+ *   6. Every stored checksum matches the current migration.sql file
+ *   7. No baseline row has error/failure indicators in logs
+ *
+ * Cross-check: runs `prisma migrate status` and verifies it does NOT exit
+ * with a connection/divergence/error status. It will exit 1 because
+ * upgrades are pending — that exit code alone is not treated as success.
+ */
+async function verifyBaselineMigrationState(
+  pool: Pool,
+  dbUrl: string,
+  expectedBaselines: string[],
+  expectedUpgrades: string[],
+  migrationsDir: string,
+  pass: (label: string) => void,
+  fail: (label: string) => void,
+): Promise<void> {
+  let allClean = true;
+  const ok = (label: string) => { pass(label); };
+  const nok = (label: string) => { allClean = false; fail(label); };
+
+  // 1. Query _prisma_migrations
+  let rows: any[];
+  try {
+    const client = await pool.connect();
+    try {
+      const res = await client.query(
+        'SELECT migration_name, checksum, finished_at, rolled_back_at, applied_steps_count, logs FROM _prisma_migrations ORDER BY migration_name',
+      );
+      rows = res.rows;
+    } finally { client.release(); }
+  } catch (e: any) {
+    nok('Cannot query _prisma_migrations table: ' + e.message);
+    return;
+  }
+
+  const baselineSet = new Set(expectedBaselines);
+  const upgradeSet = new Set(expectedUpgrades);
+
+  // 2. Every expected baseline appears exactly once
+  for (const name of expectedBaselines) {
+    const count = rows.filter((r: any) => r.migration_name === name).length;
+    if (count === 0) nok('Baseline "' + name + '" is MISSING from _prisma_migrations');
+    else if (count > 1) nok('Baseline "' + name + '" appears ' + count + 'x (expected 1)');
+  }
+
+  // 3. No unexpected records (no upgrades pre-applied, no unknowns)
+  for (const row of rows) {
+    if (baselineSet.has(row.migration_name)) continue;
+    if (upgradeSet.has(row.migration_name)) {
+      nok('Upgrade "' + row.migration_name + '" must NOT be applied before deploy');
+    } else {
+      nok('Unknown migration record "' + row.migration_name + '"');
+    }
+  }
+
+  // 4. finished_at IS NOT NULL
+  for (const name of expectedBaselines) {
+    const matches = rows.filter((r: any) => r.migration_name === name);
+    if (matches.length !== 1) continue;
+    if (!matches[0].finished_at) nok('Baseline "' + name + '" has NULL finished_at');
+  }
+
+  // 5. rolled_back_at IS NULL
+  for (const name of expectedBaselines) {
+    const matches = rows.filter((r: any) => r.migration_name === name);
+    if (matches.length !== 1) continue;
+    if (matches[0].rolled_back_at) nok('Baseline "' + name + '" has non-NULL rolled_back_at');
+  }
+
+  // 6. applied_steps_count > 0
+  for (const name of expectedBaselines) {
+    const matches = rows.filter((r: any) => r.migration_name === name);
+    if (matches.length !== 1) continue;
+    if (matches[0].applied_steps_count <= 0) {
+      nok('Baseline "' + name + '" has applied_steps_count=' + matches[0].applied_steps_count);
+    }
+  }
+
+  // 7. Checksum verification
+  for (const name of expectedBaselines) {
+    const matches = rows.filter((r: any) => r.migration_name === name);
+    if (matches.length !== 1) continue;
+    const sqlPath = path.join(migrationsDir, name, 'migration.sql');
+    let content: string;
+    try {
+      content = fs.readFileSync(sqlPath, 'utf-8');
+    } catch {
+      nok('Cannot read migration.sql for "' + name + '"');
+      continue;
+    }
+    const expectedChecksum = crypto.createHash('sha256').update(content).digest('hex');
+    if (matches[0].checksum !== expectedChecksum) {
+      nok('Checksum MISMATCH for "' + name + '": stored="' + matches[0].checksum + '" file="' + expectedChecksum + '"');
+    }
+  }
+
+  // 8. Logs — no error/failure indicators
+  for (const name of expectedBaselines) {
+    const matches = rows.filter((r: any) => r.migration_name === name);
+    if (matches.length !== 1) continue;
+    const logs: string | null = matches[0].logs;
+    if (logs) {
+      const lower = logs.toLowerCase();
+      if (lower.includes('error') || lower.includes('fail')) {
+        nok('Baseline "' + name + '" has suspicious logs: ' + logs.slice(0, 120));
+      }
+    }
+  }
+
+  // 9. CLI cross-check — reject crashes, divergence, failed migrations
+  const statusResult = runNoThrow(
+    'npx prisma migrate status',
+    'Prisma migrate status cross-check',
+    dbUrl,
+  );
+  if (statusResult.status > 1) {
+    nok('prisma migrate status crashed (exit ' + statusResult.status + '): ' + statusResult.stderr.slice(0, 500));
+  } else if (statusResult.status === 0) {
+    nok('prisma migrate status says database is up-to-date but upgrade migrations should be pending');
+  } else {
+    // Exit 1 — check for error indicators in combined output
+    const combined = (statusResult.stdout + ' ' + statusResult.stderr).toLowerCase();
+    if (combined.includes('migration history') && combined.includes('diverge')) {
+      nok('prisma migrate status reports migration history divergence');
+    } else if (combined.includes('failed migration') || combined.includes('migration failed')) {
+      nok('prisma migrate status reports a failed migration');
+    } else if (
+      statusResult.stderr &&
+      statusResult.stderr.length > 0 &&
+      !statusResult.stderr.includes('Loaded Prisma config') &&
+      !statusResult.stderr.includes('Prisma schema loaded')
+    ) {
+      nok('prisma migrate status wrote unexpected material to stderr: ' + statusResult.stderr.slice(0, 300));
+    }
+  }
+
+  if (allClean) {
+    ok('All baseline state checks passed (' + expectedBaselines.length + ' baselines, ' + expectedUpgrades.length + ' upgrades pending)');
+  }
+}
+
+/**
+ * Verify the `_prisma_migrations` table after `prisma migrate deploy`.
+ *
+ * Checks:
+ *   1. All migrations appear exactly once
+ *   2. Every row has finished_at IS NOT NULL
+ *   3. Every row has rolled_back_at IS NULL
+ *   4. Every row has applied_steps_count > 0
+ *   5. Every stored checksum matches the migration.sql file
+ *   6. No error logs
+ *   7. `prisma migrate status` exits 0 (fully up-to-date)
+ */
+async function verifyPostDeployState(
+  pool: Pool,
+  dbUrl: string,
+  allMigrations: string[],
+  migrationsDir: string,
+  pass: (label: string) => void,
+  fail: (label: string) => void,
+): Promise<void> {
+  let allClean = true;
+  const ok = (label: string) => { pass(label); };
+  const nok = (label: string) => { allClean = false; fail(label); };
+
+  let rows: any[];
+  try {
+    const client = await pool.connect();
+    try {
+      const res = await client.query(
+        'SELECT migration_name, checksum, finished_at, rolled_back_at, applied_steps_count, logs FROM _prisma_migrations ORDER BY migration_name',
+      );
+      rows = res.rows;
+    } finally { client.release(); }
+  } catch (e: any) {
+    nok('Cannot query _prisma_migrations after deploy: ' + e.message);
+    return;
+  }
+
+  // All migrations appear exactly once
+  for (const name of allMigrations) {
+    const count = rows.filter((r: any) => r.migration_name === name).length;
+    if (count === 0) nok('Migration "' + name + '" MISSING after deploy');
+    else if (count > 1) nok('Migration "' + name + '" appears ' + count + 'x after deploy');
+  }
+  for (const row of rows) {
+    if (!allMigrations.includes(row.migration_name)) {
+      nok('Unexpected migration "' + row.migration_name + '" after deploy');
+    }
+  }
+
+  // Row-level checks
+  for (const name of allMigrations) {
+    const matches = rows.filter((r: any) => r.migration_name === name);
+    if (matches.length !== 1) continue;
+    const row = matches[0];
+    if (!row.finished_at) nok('Migration "' + name + '" has NULL finished_at after deploy');
+    if (row.rolled_back_at) nok('Migration "' + name + '" has rolled_back_at after deploy');
+    if (row.applied_steps_count <= 0) nok('Migration "' + name + '" has applied_steps_count=' + row.applied_steps_count);
+
+    const sqlPath = path.join(migrationsDir, name, 'migration.sql');
+    try {
+      const content = fs.readFileSync(sqlPath, 'utf-8');
+      const expectedChecksum = crypto.createHash('sha256').update(content).digest('hex');
+      if (row.checksum !== expectedChecksum) {
+        nok('Checksum MISMATCH for "' + name + '" after deploy: stored="' + row.checksum + '" file="' + expectedChecksum + '"');
+      }
+    } catch {
+      nok('Cannot read migration.sql for "' + name + '" after deploy');
+    }
+
+    if (row.logs) {
+      const lower = row.logs.toLowerCase();
+      if (lower.includes('error') || lower.includes('fail')) {
+        nok('Migration "' + name + '" has suspicious logs after deploy: ' + row.logs.slice(0, 120));
+      }
+    }
+  }
+
+  // CLI status — must exit 0
+  const statusResult = runNoThrow('npx prisma migrate status', 'Prisma migrate status after deploy', dbUrl);
+  if (statusResult.status !== 0) {
+    nok('prisma migrate status should exit 0 after deploy (got ' + statusResult.status + '): ' + (statusResult.stderr || statusResult.stdout).slice(0, 300));
+  } else {
+    ok('prisma migrate status confirms database is up-to-date');
+  }
+
+  if (allClean) {
+    ok('All post-deploy state checks passed (' + allMigrations.length + ' migrations)');
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
@@ -443,22 +693,19 @@ async function main() {
     console.log('-- 2a: Applying historical baseline --');
     await applyBaselineMigrations(testPool, baselineMigrations, dbUrl);
 
-    // 2a.5: Verify Prisma CLI recognises the baseline state.
-    // This proves that the direct _prisma_migrations batch INSERT
-    // produces a state that the Prisma Migrate engine can read.
-    // Prisma CLI is pinned to "7.9.0-dev.13" (see package.json) so
-    // the _prisma_migrations table schema and checksum algorithm
-    // are locked to this version.
-    console.log('-- 2a.5: Verifying Prisma migrate status --');
-    const statusCheck = runNoThrow('npx prisma migrate status', 'Prisma migrate status after baseline', dbUrl);
-    // Prisma exits 0 (up-to-date) when all migrations are applied, and 1
-    // when migrations are pending. After baseline insert, upgrade migrations
-    // are pending so exit code 1 is also valid. Exit code > 1 means error.
-    if (statusCheck.status > 1) {
-      fail('prisma migrate status failed (exit code ' + statusCheck.status + '): ' + statusCheck.stderr.slice(0, 200));
-    } else {
-      pass('Prisma migrate status reports consistent baseline state (exit ' + statusCheck.status + ')');
-    }
+    // 2a.5: Strictly verify baseline migration state via direct DB queries
+    // and CLI cross-check. This replaces the previous weak exit-code-only
+    // check that could not distinguish "pending migrations" from errors.
+    console.log('\n-- 2a.5: Strict baseline state verification --');
+    await verifyBaselineMigrationState(
+      testPool,
+      dbUrl,
+      baselineMigrations,
+      upgradeMigrations,
+      MIGRATIONS_DIR,
+      pass,
+      fail,
+    );
 
     // 2b. Seed legacy data compatible with baseline schema
     console.log('\n-- 2b: Seeding legacy data --');
@@ -513,6 +760,17 @@ async function main() {
     const existingUser = await sc.query(`SELECT is_system, is_mfa_enabled FROM "users" WHERE email = 'legacy@test.com'`);
     if (existingUser.rows.length > 0 && existingUser.rows[0].is_system === false) pass('Existing legacy user unchanged (is_system=false)'); else fail('Existing user was incorrectly modified');
     sc.release();
+
+    // 2e. Post-deploy migration state verification
+    console.log('\n-- 2e: Post-deploy migration state verification --');
+    await verifyPostDeployState(
+      testPool,
+      dbUrl,
+      allMigrations,
+      MIGRATIONS_DIR,
+      pass,
+      fail,
+    );
 
     // ------------------------------------------------------------------
     // TEST 3: Idempotent re-run
@@ -686,6 +944,152 @@ async function main() {
     await p5.end();
 
     // ------------------------------------------------------------------
+    // TEST 6: Invalid-state rejection — prove verifyBaselineMigrationState
+    // detects missing records, duplicate records, failed rows, rolled-back
+    // rows, checksum mismatches, and wrong applied_steps_count.
+    // Each sub-test creates a fresh disposable database, applies baselines,
+    // corrupts _prisma_migrations, and asserts rejection.
+    // ------------------------------------------------------------------
+    console.log('\n=== TEST 6: Invalid-state rejection ===');
+
+    async function resetBaselineAndVerify(
+      label: string,
+      corruptFn: (p: Pool) => Promise<void>,
+      expectRejection: boolean,
+    ): Promise<void> {
+      await closeTestPool();
+      await sql('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = \'' + testDbName + '\' AND pid <> pg_backend_pid()', adminPool);
+      await sql('DROP DATABASE IF EXISTS "' + testDbName + '"', adminPool);
+      await sql('CREATE DATABASE "' + testDbName + '"', adminPool);
+      refreshTestPool();
+
+      const p6 = new Pool({ connectionString: dbUrl });
+      p6.on('error', onPoolError('p6'));
+      try {
+        await applyBaselineMigrations(p6, baselineMigrations, dbUrl);
+        await corruptFn(p6);
+
+        // Use local counters so individual assertion failures don't
+        // pollute the global passed/failed totals.
+        let subPassed = 0;
+        let subFailed = 0;
+        const subPass = (lbl: string) => { subPassed++; console.log('  \u2713 ' + lbl); };
+        const subFail = (lbl: string) => { subFailed++; console.error('  \u2717 ' + lbl); };
+
+        await verifyBaselineMigrationState(
+          p6, dbUrl, baselineMigrations, upgradeMigrations,
+          MIGRATIONS_DIR,
+          subPass,
+          subFail,
+        );
+
+        const newFails = subFailed;
+        if (expectRejection && newFails === 0) {
+          fail(label + ': expected rejection but verifyBaselineMigrationState passed');
+        } else if (!expectRejection && newFails > 0) {
+          fail(label + ': expected acceptance but verifyBaselineMigrationState failed');
+        } else {
+          pass(label + ' (' + (expectRejection ? 'correctly rejected' : 'correctly accepted') + ')');
+        }
+      } finally {
+        await p6.end();
+      }
+    }
+
+    // 6a: Missing baseline record — delete one record
+    await resetBaselineAndVerify(
+      '6a Missing baseline record',
+      async (p) => {
+        const names = baselineMigrations;
+        await sql('DELETE FROM _prisma_migrations WHERE migration_name = \'' + names[Math.floor(names.length / 2)] + '\'', p);
+      },
+      true,
+    );
+
+    // 6b: Duplicate baseline record — duplicate one
+    await resetBaselineAndVerify(
+      '6b Duplicate baseline record',
+      async (p) => {
+        const res = await p.query('SELECT * FROM _prisma_migrations ORDER BY migration_name LIMIT 1');
+        if (res.rows.length > 0) {
+          const r = res.rows[0];
+          await p.query(
+            'INSERT INTO _prisma_migrations (id, checksum, migration_name, finished_at, applied_steps_count, logs, started_at, rolled_back_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+            [uuid(), r.checksum, r.migration_name, r.finished_at, r.applied_steps_count, r.logs, r.started_at, r.rolled_back_at],
+          );
+        }
+      },
+      true,
+    );
+
+    // 6c: NULL finished_at (simulates failed migration)
+    await resetBaselineAndVerify(
+      '6c NULL finished_at (failed migration)',
+      async (p) => {
+        const names = baselineMigrations;
+        await sql('UPDATE _prisma_migrations SET finished_at = NULL WHERE migration_name = \'' + names[Math.floor(names.length / 2)] + '\'', p);
+      },
+      true,
+    );
+
+    // 6d: Non-NULL rolled_back_at (rolled back)
+    await resetBaselineAndVerify(
+      '6d rolled_back_at set (rolled-back row)',
+      async (p) => {
+        const names = baselineMigrations;
+        await sql('UPDATE _prisma_migrations SET rolled_back_at = NOW() WHERE migration_name = \'' + names[Math.floor(names.length / 2)] + '\'', p);
+      },
+      true,
+    );
+
+    // 6e: applied_steps_count = 0
+    await resetBaselineAndVerify(
+      '6e applied_steps_count = 0',
+      async (p) => {
+        const names = baselineMigrations;
+        await sql('UPDATE _prisma_migrations SET applied_steps_count = 0 WHERE migration_name = \'' + names[Math.floor(names.length / 2)] + '\'', p);
+      },
+      true,
+    );
+
+    // 6f: Checksum mismatch
+    await resetBaselineAndVerify(
+      '6f Checksum mismatch',
+      async (p) => {
+        const names = baselineMigrations;
+        await sql('UPDATE _prisma_migrations SET checksum = \'0000000000000000000000000000000000000000000000000000000000000000\' WHERE migration_name = \'' + names[Math.floor(names.length / 2)] + '\'', p);
+      },
+      true,
+    );
+
+    // 6g: Upgrade migration pre-applied (should be rejected before deploy)
+    await resetBaselineAndVerify(
+      '6g Upgrade migration pre-applied',
+      async (p) => {
+        const upgrade = upgradeMigrations[0];
+        const sqlPath = path.join(MIGRATIONS_DIR, upgrade, 'migration.sql');
+        const content = fs.readFileSync(sqlPath, 'utf-8');
+        const statements = splitStatements(content);
+        for (const stmt of statements) {
+          await sql(stmt + ';', p);
+        }
+        const checksum = crypto.createHash('sha256').update(content).digest('hex');
+        await sql(
+          'INSERT INTO _prisma_migrations (id, checksum, migration_name, finished_at, applied_steps_count, logs, started_at, rolled_back_at) VALUES (\'' + uuid() + '\', \'' + checksum + '\', \'' + upgrade + '\', NOW(), 1, NULL, NOW(), NULL)',
+          p,
+        );
+      },
+      true,
+    );
+
+    // 6h: Valid baseline (should be accepted — golden path proof)
+    await resetBaselineAndVerify(
+      '6h Valid baseline (golden path)',
+      async (_p) => { /* no corruption */ },
+      false,
+    );
+
+    // ------------------------------------------------------------------
     // Summary
     // ------------------------------------------------------------------
     console.log('\n========================================');
@@ -694,8 +1098,8 @@ async function main() {
     console.log('========================================');
 
     if (failed > 0) {
-      console.error('\n=== SOME MIGRATION UPGRADE TESTS FAILED ===');
-      process.exit(1);
+      // Throw so the finally block runs cleanup before the outer catch
+      throw new Error(`${failed} test(s) failed`);
     }
     console.log('\n=== ALL MIGRATION UPGRADE TESTS PASSED ===');
   } finally {
