@@ -443,6 +443,20 @@ async function main() {
     console.log('-- 2a: Applying historical baseline --');
     await applyBaselineMigrations(testPool, baselineMigrations, dbUrl);
 
+    // 2a.5: Verify Prisma CLI recognises the baseline state.
+    // This proves that the direct _prisma_migrations batch INSERT
+    // produces a state that the Prisma Migrate engine can read.
+    // Prisma CLI is pinned to "7.9.0-dev.13" (see package.json) so
+    // the _prisma_migrations table schema and checksum algorithm
+    // are locked to this version.
+    console.log('-- 2a.5: Verifying Prisma migrate status --');
+    const statusCheck = runNoThrow('npx prisma migrate status', 'Prisma migrate status after baseline', dbUrl);
+    if (statusCheck.status !== 0) {
+      fail('prisma migrate status should exit 0 after baseline insertion');
+    } else {
+      pass('Prisma migrate status reports consistent baseline state');
+    }
+
     // 2b. Seed legacy data compatible with baseline schema
     console.log('\n-- 2b: Seeding legacy data --');
     const legacy = await seedLegacyTenant(testPool);
