@@ -124,8 +124,8 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
-          JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
           MASTER_MFA_KEY: ${{ secrets.MASTER_MFA_KEY }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}

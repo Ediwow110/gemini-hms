@@ -2,30 +2,30 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JoinQueueDto, UpdateQueueStatusDto } from './dto/queue.dto';
 import { AuditService } from '../audit/audit.service';
+import { NumberingService } from '../numbering/numbering.service';
 
 @Injectable()
 export class QueueService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private numbering: NumberingService,
   ) {}
 
   async joinQueue(tenantId: string, branchId: string, dto: JoinQueueDto) {
-    // 1. Generate Queue Number (Token Engine)
+    // 1. Generate Queue Number atomically
+    const todayStr = new Date().toISOString().split('T')[0];
+    const sequenceType = `QUEUE_${dto.serviceType}_${todayStr}`;
+    const rawNumber = await this.numbering.generateNumber(
+      tenantId,
+      sequenceType,
+      branchId,
+    );
+
+    // Remove the generic prefix added by NumberingService and apply our custom queue format
+    const numberPart = rawNumber.split('-').pop();
     const prefix = dto.serviceType.charAt(0).toUpperCase();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const count = await this.prisma.queueEntry.count({
-      where: {
-        tenantId,
-        branchId,
-        serviceType: dto.serviceType,
-        createdAt: { gte: today },
-      },
-    });
-
-    const queueNumber = `${prefix}-${(count + 1).toString().padStart(3, '0')}`;
+    const queueNumber = `${prefix}-${numberPart!.padStart(3, '0')}`;
 
     // 2. Create Entry
     const entry = await this.prisma.queueEntry.create({

@@ -174,10 +174,36 @@ export class DiagnosisService {
     }
   }
 
-  async restore(diagnosisId: string, _userId: string) {
-    return this.prisma.encounterDiagnosis.update({
-      where: { id: diagnosisId },
-      data: { deletedAt: null, deletedById: null, deleteReason: null },
+  async restore(tenantId: string, userId: string, diagnosisId: string) {
+    const diagnosis = await this.prisma.encounterDiagnosis.findFirst({
+      where: { id: diagnosisId, encounter: { tenantId } },
+      include: { encounter: true },
+    });
+
+    if (!diagnosis) {
+      throw new NotFoundException('Encounter diagnosis not found');
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      const restored = await tx.encounterDiagnosis.update({
+        where: { id: diagnosisId },
+        data: { deletedAt: null, deletedById: null, deleteReason: null },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'CLINICAL_DIAGNOSIS_RESTORED',
+          recordType: 'EncounterDiagnosis',
+          recordId: diagnosisId,
+          newValues: { restoredAt: new Date() },
+        },
+        tx,
+        diagnosis.encounter.branchId,
+      );
+
+      return restored;
     });
   }
 }

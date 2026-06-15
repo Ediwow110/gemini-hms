@@ -240,6 +240,8 @@ describe('LabService — Phase 4D additions', () => {
         ...mockResult,
         status: 'RELEASED',
         lockedAt: new Date(),
+        releasedAt: new Date(),
+        releasedById: mockUserId,
       });
       prisma.labResultSignature.create.mockResolvedValue({ id: 'sig-1' });
       prisma.notificationOutbox.create.mockResolvedValue({});
@@ -252,8 +254,24 @@ describe('LabService — Phase 4D additions', () => {
         mockBranchId,
         mockResultId,
       );
+
+      expect(prisma.labResult.update).toHaveBeenCalledWith({
+        where: { id: mockResultId },
+        data: expect.objectContaining({
+          status: 'RELEASED',
+          releasedAt: expect.any(Date),
+          releasedById: mockUserId,
+        }),
+      });
+
       expect(audit.log).toHaveBeenCalledWith(
-        expect.objectContaining({ eventKey: 'LAB_RESULT_RELEASED' }),
+        expect.objectContaining({
+          eventKey: 'LAB_RESULT_RELEASED',
+          newValues: expect.objectContaining({
+            releasedAt: expect.any(Date),
+            releasedById: mockUserId,
+          }),
+        }),
         expect.anything(),
         expect.anything(),
       );

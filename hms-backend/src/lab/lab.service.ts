@@ -75,8 +75,10 @@ export class LabService {
         where: { id, order: { tenantId, branchId }, version: result.version },
         data: {
           status: 'ENCODED',
-          results: dto.results,
+          results: dto.results as any,
           remarks: dto.remarks,
+          encodedById: userId,
+          encodedAt: new Date(),
           version: { increment: 1 },
         },
       });
@@ -321,7 +323,12 @@ export class LabService {
 
       const released = await tx.labResult.update({
         where: { id },
-        data: { status: 'RELEASED', lockedAt: new Date() },
+        data: {
+          status: 'RELEASED',
+          lockedAt: new Date(),
+          releasedAt: new Date(),
+          releasedById: userId,
+        },
       });
 
       await tx.labResultSignature.create({
@@ -363,7 +370,11 @@ export class LabService {
           eventKey: 'LAB_RESULT_RELEASED',
           recordType: 'LabResult',
           recordId: id,
-          newValues: { status: 'RELEASED', releasedAt: released.lockedAt },
+          newValues: {
+            status: 'RELEASED',
+            releasedAt: released.releasedAt,
+            releasedById: released.releasedById,
+          },
         },
         tx,
         branchId,

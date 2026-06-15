@@ -9,6 +9,15 @@ import {
   RefillRequest
 } from '../services/patient-portal.service';
 
+const handleAuthError = (err: unknown) => {
+  const respErr = err as { response?: { status?: number } };
+  if (respErr?.response?.status === 401 || respErr?.response?.status === 403) {
+    window.location.assign('/login');
+    return true;
+  }
+  return false;
+};
+
 export function usePatientProfile() {
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,8 +30,7 @@ export function usePatientProfile() {
       const res = await patientPortalService.getProfile();
       setProfile(res);
     } catch (err: unknown) {
-      const respErr = err as { response?: { status?: number } };
-      if (respErr?.response?.status !== 401 && respErr?.response?.status !== 403) {
+      if (!handleAuthError(err)) {
         setError('Failed to load profile');
       }
     } finally {
@@ -46,8 +54,7 @@ export function usePatientLabResults() {
       const res = await patientPortalService.getLabResults();
       setResults(res);
     } catch (err: unknown) {
-      const respErr = err as { response?: { status?: number } };
-      if (respErr?.response?.status !== 401 && respErr?.response?.status !== 403) {
+      if (!handleAuthError(err)) {
         setError('Failed to load lab results');
       }
       console.error('usePatientLabResults error:', err);
@@ -72,8 +79,7 @@ export function usePatientPrescriptions() {
       const res = await patientPortalService.getPrescriptions();
       setPrescriptions(res);
     } catch (err: unknown) {
-      const respErr = err as { response?: { status?: number } };
-      if (respErr?.response?.status !== 401 && respErr?.response?.status !== 403) {
+      if (!handleAuthError(err)) {
         setError('Failed to load prescriptions');
       }
       console.error('usePatientPrescriptions error:', err);
@@ -98,8 +104,7 @@ export function usePatientInvoices() {
       const res = await patientPortalService.getInvoices();
       setInvoices(res);
     } catch (err: unknown) {
-      const respErr = err as { response?: { status?: number } };
-      if (respErr?.response?.status !== 401 && respErr?.response?.status !== 403) {
+      if (!handleAuthError(err)) {
         setError('Failed to load invoices');
       }
       console.error('usePatientInvoices error:', err);
@@ -124,8 +129,7 @@ export function usePatientMedicalRecordRequests() {
       const res = await patientPortalService.getMedicalRecordRequests();
       setRequests(res);
     } catch (err: unknown) {
-      const respErr = err as { response?: { status?: number } };
-      if (respErr?.response?.status !== 401 && respErr?.response?.status !== 403) {
+      if (!handleAuthError(err)) {
         setError('Failed to load medical record requests');
       }
     } finally {
@@ -149,8 +153,7 @@ export function usePatientRefillRequests() {
       const res = await patientPortalService.getRefillRequests();
       setRequests(res);
     } catch (err: unknown) {
-      const respErr = err as { response?: { status?: number } };
-      if (respErr?.response?.status !== 401 && respErr?.response?.status !== 403) {
+      if (!handleAuthError(err)) {
         setError('Failed to load refill requests');
       }
     } finally {

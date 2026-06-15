@@ -298,6 +298,19 @@ export class InventoryService {
     this.assertPositiveQuantity(quantity);
 
     const db = tx || this.prisma;
+
+    const item = await db.inventoryItem.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Inventory item not found');
+    }
+
+    if (item.status === 'INACTIVE') {
+      throw new BadRequestException('Cannot dispense an inactive item');
+    }
+
     const stock = await db.branchStock.findUnique({
       where: {
         tenantId_branchId_inventoryItemId: {

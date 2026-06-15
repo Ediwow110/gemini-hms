@@ -345,7 +345,9 @@ describe('AuditService', () => {
           previousHash: null,
         },
       ];
-      prisma.auditLog.findMany.mockResolvedValue(logs);
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logs)
+        .mockResolvedValueOnce([]);
 
       jest.spyOn(service as any, 'computeHash').mockReturnValue(logs[0].hash);
 
@@ -370,7 +372,9 @@ describe('AuditService', () => {
           previousHash: null,
         },
       ];
-      prisma.auditLog.findMany.mockResolvedValue(logs);
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logs)
+        .mockResolvedValueOnce([]);
 
       jest
         .spyOn(service as any, 'computeHash')
@@ -444,7 +448,9 @@ describe('AuditService', () => {
         userId: mockUserId,
       }));
       prisma.auditLog.count.mockResolvedValue(500);
-      prisma.auditLog.findMany.mockResolvedValue(logs);
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logs)
+        .mockResolvedValueOnce([]);
 
       const result = await service.exportMyEvents(
         mockTenantId,
@@ -540,7 +546,9 @@ describe('AuditService', () => {
         userId: mockUserId,
       }));
       prisma.auditLog.count.mockResolvedValue(500);
-      prisma.auditLog.findMany.mockResolvedValue(logs);
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logs)
+        .mockResolvedValueOnce([]);
 
       const result = await service.exportEvents(
         mockTenantId,
@@ -670,17 +678,17 @@ describe('AuditService', () => {
     });
   });
 
-  describe('verifyChain pagination cap', () => {
-    it('should apply AUDIT_CHAIN_SAFETY_CAP (10000) to verifyChain', async () => {
-      prisma.auditLog.findMany.mockResolvedValue([]);
+  describe('verifyChain batched pagination', () => {
+    it('should use batching size of 5000 in verifyChain', async () => {
+      prisma.auditLog.findMany.mockResolvedValueOnce([]).mockResolvedValue([]);
       await service.verifyChain(mockTenantId);
       expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ take: 10000 }),
+        expect.objectContaining({ take: 5000 }),
       );
     });
 
     it('should preserve tenantId filter in verifyChain', async () => {
-      prisma.auditLog.findMany.mockResolvedValue([]);
+      prisma.auditLog.findMany.mockResolvedValueOnce([]).mockResolvedValue([]);
       await service.verifyChain(mockTenantId);
       expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -689,8 +697,8 @@ describe('AuditService', () => {
       );
     });
 
-    it('should set truncated flag when count equals cap', async () => {
-      const logs = Array.from({ length: 10000 }, (_, i) => ({
+    it('should process correctly when logs exceed batch size', async () => {
+      const logsBatch1 = Array.from({ length: 5000 }, (_, i) => ({
         id: `log-${i}`,
         tenantId: mockTenantId,
         userId: 'user-1',
@@ -704,15 +712,34 @@ describe('AuditService', () => {
         hash: `placeholder-${i}`,
         previousHash: i === 0 ? null : `placeholder-${i - 1}`,
       }));
-      prisma.auditLog.findMany.mockResolvedValue(logs);
+      const logsBatch2 = Array.from({ length: 1000 }, (_, i) => ({
+        id: `log-${i + 5000}`,
+        tenantId: mockTenantId,
+        userId: 'user-1',
+        eventKey: 'TEST',
+        recordType: 'test',
+        recordId: 'rec-1',
+        branchId: 'branch-1',
+        oldValues: null,
+        newValues: null,
+        createdAt: new Date(Date.UTC(2024, 0, 1) + (i + 5000) * 1000),
+        hash: `placeholder-${i + 5000}`,
+        previousHash: `placeholder-${i + 4999}`,
+      }));
+
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logsBatch1)
+        .mockResolvedValueOnce(logsBatch2)
+        .mockResolvedValueOnce([]);
 
       const result = await service.verifyChain(mockTenantId);
-      expect(result.truncated).toBe(true);
-      expect(result.verificationCount).toBe(10000);
+      expect(result.truncated).toBe(false);
+      expect(result.verificationCount).toBe(6000);
+      expect(prisma.auditLog.findMany).toHaveBeenCalledTimes(3);
     });
 
-    it('should not set truncated flag when under cap', async () => {
-      const logs = Array.from({ length: 5000 }, (_, i) => ({
+    it('should not set truncated flag', async () => {
+      const logs = Array.from({ length: 2000 }, (_, i) => ({
         id: `log-${i}`,
         tenantId: mockTenantId,
         userId: 'user-1',
@@ -726,11 +753,13 @@ describe('AuditService', () => {
         hash: `valid-hash-${i}`,
         previousHash: i === 0 ? null : `valid-hash-${i - 1}`,
       }));
-      prisma.auditLog.findMany.mockResolvedValue(logs);
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logs)
+        .mockResolvedValueOnce([]);
 
       const result = await service.verifyChain(mockTenantId);
       expect(result.truncated).toBe(false);
-      expect(result.verificationCount).toBe(5000);
+      expect(result.verificationCount).toBe(2000);
     });
   });
 });

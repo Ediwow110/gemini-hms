@@ -80,6 +80,20 @@ export class ClaimsService {
 
       this.assertBranchAccess(user, invoice.order.branchId);
 
+      const existingClaim = await tx.claim.findFirst({
+        where: {
+          invoiceId: dto.invoiceId,
+          tenantId,
+          status: { not: 'DENIED' },
+        },
+      });
+
+      if (existingClaim) {
+        throw new ConflictException(
+          'A non-denied claim already exists for this invoice',
+        );
+      }
+
       const hmoPartner = await tx.hmoPartner.findFirst({
         where: {
           id: dto.hmoPartnerId,

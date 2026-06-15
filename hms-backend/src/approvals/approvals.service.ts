@@ -116,8 +116,18 @@ export class ApprovalsService {
     const requestBranchId =
       request.branchId ?? this.getRequestBranchId(request.details);
 
-    if (requestBranchId && requestBranchId !== branchId) {
-      throw new NotFoundException('Approval request not found');
+    // Branch scoping enforcement:
+    // 1. If user is branch-scoped (has branchId), they can only process requests for their branch.
+    // 2. If request is tenant-wide (no requestBranchId), branch-scoped users cannot process it.
+    if (branchId) {
+      if (requestBranchId !== branchId) {
+        throw new ForbiddenException(
+          'Branch-scoped users cannot process this approval request',
+        );
+      }
+    } else if (requestBranchId) {
+      // If user is tenant-wide but request is branch-specific, we allow it (Super Admin / Tenant Admin case)
+      // unless the business rule specifically forbids it. For now, we allow tenant-wide actors to process branch requests.
     }
 
     if (request.status !== 'PENDING') {

@@ -12,15 +12,21 @@ export class PhiMaskingInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
+    const patientUser = request.patientUser;
 
     // Default to true (masking enabled) if no user context is found
     let shouldMask = true;
 
-    if (user && user.roles) {
+    // Bypass masking for Patient Portal users viewing their own data
+    if (patientUser) {
+      shouldMask = false;
+    } else if (user && user.roles) {
       const roles: string[] = user.roles;
-      // Super Admin, Branch Admin, and Doctor bypass masking (shouldMask = false)
+      // Super Admin, Branch Admin, Doctor, Nurse, and Cashier bypass masking
       const hasClinicalBypass = roles.some((role) =>
-        ['Super Admin', 'Branch Admin', 'Doctor'].includes(role),
+        ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse', 'Cashier'].includes(
+          role,
+        ),
       );
       if (hasClinicalBypass) {
         shouldMask = false;

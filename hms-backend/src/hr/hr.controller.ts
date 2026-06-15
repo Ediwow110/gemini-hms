@@ -85,8 +85,9 @@ export class HrController {
   getEmployeeById(
     @GetUser('tenantId') tenantId: string,
     @Param('id') id: string,
+    @GetUser() user: AuthTypes.RequestUser,
   ) {
-    return this.hrService.getEmployeeById(tenantId, id);
+    return this.hrService.getEmployeeById(tenantId, id, user);
   }
 
   @Patch('employees/:id/status')
@@ -167,8 +168,9 @@ export class HrController {
   getLicensesByEmployee(
     @GetUser('tenantId') tenantId: string,
     @Param('employeeId') employeeId: string,
+    @GetUser() user: AuthTypes.RequestUser,
   ) {
-    return this.hrService.getLicensesByEmployee(tenantId, employeeId);
+    return this.hrService.getLicensesByEmployee(tenantId, employeeId, user);
   }
 
   @Post('payroll/generate')
