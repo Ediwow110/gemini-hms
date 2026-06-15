@@ -1,98 +1,95 @@
-import { useState } from "react";
-import { PatientIdentityHeader } from "../../components/ui/patient-identity-header";
-import { StatusBadge } from "../../components/ui/status-badge";
-import { PageHeader } from "../../components/ui/page-header";
-import { Search, CreditCard, Banknote, Smartphone } from "lucide-react";
+import { useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { AlertTriangle, CreditCard, Receipt } from 'lucide-react';
+import { PageHeader } from '../../components/ui/page-header';
+import { useAuth } from '../../hooks/use-user';
 
 export const Billing = () => {
-  const [patient, setPatient] = useState<{ id: string; name: string; age: number; gender: string; category: string; balance: number } | null>(null);
+  const location = useLocation();
+  const { user } = useAuth();
+  const userRoles = user?.roles ?? [];
+  const isCashierOrFinance = userRoles.some((r) =>
+    ['Cashier', 'Finance', 'Super Admin', 'Branch Admin'].includes(r),
+  );
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.value === "P001") {
-      setPatient({ id: "P001", name: "John Doe", age: 45, gender: "M", category: "Regular", balance: 50 });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.warn(
+        '[Billing] /billing route rendered. The legacy prototype at this path has been replaced with an honest notice. Real billing surfaces live at /billing/dashboard, /cashier/billing, and /patient/billing. See hms-frontend/src/features/billing/Billing.tsx for context.',
+      );
     }
-  };
-
-  const paymentMethods = [
-    { id: "cash", label: "Cash", icon: Banknote, color: "emerald" },
-    { id: "card", label: "Card", icon: CreditCard, color: "indigo" },
-    { id: "gcash", label: "GCash", icon: Smartphone, color: "blue" },
-  ];
-  const [selectedMethod, setSelectedMethod] = useState("cash");
+  }, [location.pathname]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader title="Billing & Payment" description="Manage invoices and process payments." />
-      
-      <div className="card p-5">
-        <label className="block text-sm font-semibold text-slate-700 mb-2">Search Patient or Invoice</label>
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input className="input w-full pl-10" onChange={handleSearch} placeholder="Search by name, ID, or invoice number..." />
+    <div className="space-y-6 pb-12 animate-fade-in">
+      <PageHeader
+        title="Billing & Payment"
+        description="This legacy prototype surface has been replaced by live billing surfaces."
+      />
+
+      <div
+        role="alert"
+        className="card p-6 bg-amber-50 border border-amber-200 rounded-2xl flex gap-3"
+        data-testid="billing-prototype-notice"
+      >
+        <AlertTriangle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-amber-900">
+          <p className="font-bold mb-1">This page is not the production billing surface.</p>
+          <p>
+            The form, patient search, and &ldquo;Process Payment&rdquo; button on this route were
+            a UI prototype. No payment is processed here &mdash; clicking the old button
+            previously fired a fake success alert. Use one of the live surfaces below
+            instead.
+          </p>
         </div>
       </div>
 
-      {patient && (
-        <>
-          <PatientIdentityHeader patient={patient} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="card p-6 animate-slide-up stagger-1">
-              <h2 className="font-bold text-slate-900 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Invoice Summary</h2>
-              <div className="space-y-3 text-sm text-slate-600">
-                <div className="flex justify-between">
-                  <span>Invoice #</span>
-                  <span className="font-semibold text-slate-900">INV-2026-001</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Status</span>
-                  <StatusBadge status="Unpaid" />
-                </div>
-                <div className="pt-4 mt-4 border-t border-slate-100 flex justify-between items-baseline">
-                  <span className="text-slate-900 font-bold text-base">Balance Due</span>
-                  <span className="text-rose-600 font-extrabold text-2xl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                    ₱{patient.balance.toFixed(2)}
-                  </span>
-                </div>
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <a
+          href="/billing/dashboard"
+          className="card p-5 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 hover:shadow-sm transition-all"
+          data-testid="link-billing-dashboard"
+        >
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-indigo-50 rounded-lg">
+              <Receipt className="h-5 w-5 text-indigo-600" />
             </div>
-
-            <div className="card p-6 animate-slide-up stagger-2">
-              <h2 className="font-bold text-slate-900 mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Add Payment</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Payment Method</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {paymentMethods.map(m => {
-                      const Icon = m.icon;
-                      const active = selectedMethod === m.id;
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => setSelectedMethod(m.id)}
-                          className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                            active 
-                              ? "border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100" 
-                              : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50"
-                          }`}
-                        >
-                          <Icon className="h-5 w-5" />
-                          {m.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Amount</label>
-                  <input className="input text-lg font-bold" placeholder="0.00" type="number" step="0.01" />
-                </div>
-                <button onClick={() => alert("Payment Processed Successfully!")} className="btn btn-success w-full mt-2 py-3">Process Payment</button>
-              </div>
+            <div>
+              <h3 className="font-bold text-slate-900">Billing &amp; Finance Dashboard</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Live KPIs, outstanding balances, recent payments, and reconciliation alerts.
+                Calls <code className="font-mono text-[11px]">/v1/billing/invoices</code> and
+                <code className="font-mono text-[11px]"> /v1/billing/sessions/active</code>.
+              </p>
             </div>
           </div>
-        </>
-      )}
+        </a>
+
+        {isCashierOrFinance && (
+          <a
+            href="/cashier/billing"
+            className="card p-5 bg-white border border-slate-200 rounded-2xl hover:border-emerald-300 hover:shadow-sm transition-all"
+            data-testid="link-cashier-billing"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-emerald-50 rounded-lg">
+                <CreditCard className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900">Cashier Billing Workspace</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Real cashier payment processing, draft autosave, and invoice settlement.
+                  Gated to Cashier / Finance / Branch Admin / Super Admin.
+                </p>
+              </div>
+            </div>
+          </a>
+        )}
+      </div>
+
+      <Navigate to="/billing/dashboard" replace />
     </div>
   );
 };
+
+export default Billing;
