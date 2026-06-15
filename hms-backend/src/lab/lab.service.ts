@@ -323,7 +323,12 @@ export class LabService {
 
       const released = await tx.labResult.update({
         where: { id },
-        data: { status: 'RELEASED', lockedAt: new Date() },
+        data: {
+          status: 'RELEASED',
+          lockedAt: new Date(),
+          releasedAt: new Date(),
+          releasedById: userId,
+        },
       });
 
       await tx.labResultSignature.create({
@@ -365,7 +370,11 @@ export class LabService {
           eventKey: 'LAB_RESULT_RELEASED',
           recordType: 'LabResult',
           recordId: id,
-          newValues: { status: 'RELEASED', releasedAt: released.lockedAt },
+          newValues: {
+            status: 'RELEASED',
+            releasedAt: released.releasedAt,
+            releasedById: released.releasedById,
+          },
         },
         tx,
         branchId,

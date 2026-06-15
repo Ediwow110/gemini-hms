@@ -263,7 +263,10 @@ export class AuditService {
           previousHash: expectedPreviousHash,
         });
 
-        if (log.hash !== computed || log.previousHash !== expectedPreviousHash) {
+        if (
+          log.hash !== computed ||
+          log.previousHash !== expectedPreviousHash
+        ) {
           corruptedLogIds.push(log.id);
         }
 
