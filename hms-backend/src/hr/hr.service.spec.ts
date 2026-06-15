@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { HrService } from './hr.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NumberingService } from '../numbering/numbering.service';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { RequestUser } from '../common/types/authenticated-request.type';
 import { CreateEmployeeDto } from './dto/hr.dto';
@@ -101,6 +102,12 @@ describe('HrService', () => {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: NumberingService,
+          useValue: {
+            generateNumber: jest.fn().mockResolvedValue('EMP-00001'),
           },
         },
       ],

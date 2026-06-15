@@ -86,6 +86,7 @@ export function useAuditEvents(params?: {
   recordType?: string;
   startDate?: string;
   endDate?: string;
+  search?: string;
   page?: number;
   pageSize?: number;
 }) {

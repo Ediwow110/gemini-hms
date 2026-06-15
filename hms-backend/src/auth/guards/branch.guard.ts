@@ -5,7 +5,10 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { REQUIRE_BRANCH_CONTEXT_KEY } from '../decorators/branch-context.decorator';
+import {
+  REQUIRE_BRANCH_CONTEXT_KEY,
+  BRANCH_BYPASS_ROLES_KEY,
+} from '../decorators/branch-context.decorator';
 
 @Injectable()
 export class BranchGuard implements CanActivate {
@@ -21,6 +24,12 @@ export class BranchGuard implements CanActivate {
       return true;
     }
 
+    const bypassRoles =
+      this.reflector.getAllAndOverride<string[]>(BRANCH_BYPASS_ROLES_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) || [];
+
     const request = context.switchToHttp().getRequest<any>();
     const user = request.user;
 
@@ -28,9 +37,11 @@ export class BranchGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    const isSuperAdmin = user.roles?.includes('Super Admin');
+    const userRoles: string[] = user.roles || [];
+    const isSuperAdmin = userRoles.includes('Super Admin');
+    const hasBypassRole = bypassRoles.some((r) => userRoles.includes(r));
 
-    if (!user.branchId && !isSuperAdmin) {
+    if (!user.branchId && !isSuperAdmin && !hasBypassRole) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -62,7 +73,12 @@ export class BranchGuard implements CanActivate {
       }
       // If Super Admin, they can target any branch as long as they are consistent
       // across params/body/query. Tenant scoping is handled at service layer.
-    } else if (isRequired && !user.branchId && !isSuperAdmin) {
+    } else if (
+      isRequired &&
+      !user.branchId &&
+      !isSuperAdmin &&
+      !hasBypassRole
+    ) {
       // No branchId provided in request and none in token
       throw new ForbiddenException('Branch context is required');
     }

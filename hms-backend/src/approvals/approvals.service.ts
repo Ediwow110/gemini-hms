@@ -77,11 +77,21 @@ export class ApprovalsService {
     return request;
   }
 
-  async getRequests(tenantId: string, branchId?: string, isSuperAdmin = false) {
+  async getRequests(
+    tenantId: string,
+    branchId?: string,
+    isSuperAdmin = false,
+    isTenantWide = false,
+  ) {
+    // Tenant-wide users (no branch scope) see all requests for the tenant.
+    // Branch-scoped users see only their branch's requests.
+    const effectiveBranchId =
+      isSuperAdmin || isTenantWide ? undefined : branchId;
+
     return this.prisma.approvalRequest.findMany({
       where: {
         tenantId,
-        branchId: isSuperAdmin ? undefined : branchId,
+        branchId: effectiveBranchId,
       },
       include: {
         requester: {

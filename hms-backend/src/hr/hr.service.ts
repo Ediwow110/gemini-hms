@@ -14,6 +14,7 @@ import {
   CreateLicenseRecordDto,
 } from './dto/hr.dto';
 import { AuditService } from '../audit/audit.service';
+import { NumberingService } from '../numbering/numbering.service';
 import { RequestUser } from '../common/types/authenticated-request.type';
 
 @Injectable()
@@ -21,6 +22,7 @@ export class HrService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private numbering: NumberingService,
   ) {}
 
   private isTenantWideHr(roles: string[]): boolean {
@@ -80,10 +82,14 @@ export class HrService {
       throw new ForbiddenException('Insufficient permissions');
     }
 
-    // 1. Generate employee number atomically within transaction to prevent race condition
+    // 1. Generate employee number atomically via NumberingService to prevent race conditions
     return await this.prisma.$transaction(async (tx) => {
-      const count = await tx.employee.count({ where: { tenantId } });
-      const employeeNumber = `EMP-${(count + 1).toString().padStart(5, '0')}`;
+      const employeeNumber = await this.numbering.generateNumber(
+        tenantId,
+        'EMPLOYEE',
+        undefined,
+        tx,
+      );
 
       // 2. Create Employee
       const employee = await tx.employee.create({
