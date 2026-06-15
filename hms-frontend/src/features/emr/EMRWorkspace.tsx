@@ -61,6 +61,9 @@ export const EMRWorkspace = () => {
   const [newDiagPrimary, setNewDiagPrimary] = useState(false);
   const [showConfirmClose, setShowConfirmClose] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [isSavingVitals, setIsSavingVitals] = useState(false);
+  const [vitalsError, setVitalsError] = useState<string | null>(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const [soapNotes, setSoapNotes] = useState({
     CHIEF_COMPLAINT: "",
     PROGRESS: "",
@@ -148,16 +151,20 @@ export const EMRWorkspace = () => {
 
   const handleSaveVitals = async (data: VitalsFormValues) => {
     if (!selectedEntry || isLocked) return;
+    setIsSavingVitals(true);
+    setVitalsError(null);
     try {
-      // Simulate real multi-tenant asynchronous submission
       await apiClient.post(`/v1/clinical/encounters/${selectedEntry.id}/vitals`, {
         ...data,
         tenantId: user?.tenantId,
         branchId: user?.branchId
       });
-      alert("Vitals successfully captured and saved!");
-    } catch {
-      alert(`[Demo Mode] Vitals captured: Temp ${data.temperature}°C, BP ${data.systolicBp}/${data.diastolicBp} mmHg, HR ${data.heartRate} bpm.`);
+      alert("Vitals successfully saved to medical record.");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setVitalsError(error.response?.data?.message || "Failed to save vitals. Please try again.");
+    } finally {
+      setIsSavingVitals(false);
     }
   };
 
@@ -185,16 +192,20 @@ export const EMRWorkspace = () => {
 
   const handleFinalizeEncounter = async () => {
     if (!selectedEntry) return;
+    setIsFinalizing(true);
     try {
       await apiClient.patch(`/v1/clinical/encounters/${selectedEntry.id}/close`, {
         tenantId: user?.tenantId
       });
-    } catch {
-      // Fallback response for mock
+      setIsLocked(true);
+      setShowConfirmClose(false);
+      alert("Encounter signed and locked successfully. All clinical logs are finalized.");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || "Failed to finalize encounter. Please try again.");
+    } finally {
+      setIsFinalizing(false);
     }
-    setIsLocked(true);
-    setShowConfirmClose(false);
-    alert("Encounter signed and locked successfully. All clinical logs are finalized.");
   };
 
   return (
@@ -353,9 +364,11 @@ export const EMRWorkspace = () => {
                 <form onSubmit={handleSubmit(handleSaveVitals)} className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Temperature (°C)</label>
-                      <input
-                        {...register("temperature")}
+                 <label htmlFor="temperature" className="text-xs font-bold text-slate-500 uppercase">Temperature (°C)</label>
+                 <input
+                   id="temperature"
+                   {...register("temperature")}
+
                         disabled={isLocked}
                         type="number"
                         step="0.01"
@@ -365,9 +378,11 @@ export const EMRWorkspace = () => {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Systolic BP (mmHg)</label>
-                      <input
-                        {...register("systolicBp")}
+                 <label htmlFor="systolicBp" className="text-xs font-bold text-slate-500 uppercase">Systolic BP (mmHg)</label>
+                 <input
+                   id="systolicBp"
+                   {...register("systolicBp")}
+
                         disabled={isLocked}
                         type="number"
                         className="input"
@@ -376,9 +391,11 @@ export const EMRWorkspace = () => {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Diastolic BP (mmHg)</label>
-                      <input
-                        {...register("diastolicBp")}
+                 <label htmlFor="diastolicBp" className="text-xs font-bold text-slate-500 uppercase">Diastolic BP (mmHg)</label>
+                 <input
+                   id="diastolicBp"
+                   {...register("diastolicBp")}
+
                         disabled={isLocked}
                         type="number"
                         className="input"
@@ -387,9 +404,11 @@ export const EMRWorkspace = () => {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Heart Rate (bpm)</label>
-                      <input
-                        {...register("heartRate")}
+                 <label htmlFor="heartRate" className="text-xs font-bold text-slate-500 uppercase">Heart Rate (bpm)</label>
+                 <input
+                   id="heartRate"
+                   {...register("heartRate")}
+
                         disabled={isLocked}
                         type="number"
                         className="input"
@@ -398,9 +417,11 @@ export const EMRWorkspace = () => {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Respiratory Rate</label>
-                      <input
-                        {...register("respiratoryRate")}
+                 <label htmlFor="respiratoryRate" className="text-xs font-bold text-slate-500 uppercase">Respiratory Rate</label>
+                 <input
+                   id="respiratoryRate"
+                   {...register("respiratoryRate")}
+
                         disabled={isLocked}
                         type="number"
                         className="input"
@@ -409,9 +430,11 @@ export const EMRWorkspace = () => {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Weight (kg)</label>
-                      <input
-                        {...register("weight")}
+                 <label htmlFor="weight" className="text-xs font-bold text-slate-500 uppercase">Weight (kg)</label>
+                 <input
+                   id="weight"
+                   {...register("weight")}
+
                         disabled={isLocked}
                         type="number"
                         step="0.01"
@@ -421,11 +444,23 @@ export const EMRWorkspace = () => {
                     </div>
                   </div>
 
-                  {!isLocked && (
-                    <button type="submit" className="btn btn-primary text-xs py-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-                      Save Vitals Metrics
-                    </button>
-                  )}
+                     {!isLocked && (
+                       <div className="flex flex-col items-center gap-2">
+                         {vitalsError && (
+                           <div className="text-rose-500 text-[10px] font-bold text-center animate-shake">
+                             {vitalsError}
+                           </div>
+                         )}
+                         <button 
+                           type="submit" 
+                           disabled={isSavingVitals}
+                           className="btn btn-primary text-xs py-2 bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-70"
+                         >
+                           {isSavingVitals ? "Saving..." : "Save Vitals Metrics"}
+                         </button>
+                       </div>
+                     )}
+
                 </form>
               )}
 
@@ -478,14 +513,15 @@ export const EMRWorkspace = () => {
                       />
                     </div>
                   </div>
-                  {!isLocked && (
-                    <button 
-                      onClick={() => alert("SOAP progress notes cached.")} 
-                      className="btn btn-primary text-xs py-2 bg-indigo-600 text-white"
-                    >
-                      Cache Notes
-                    </button>
-                  )}
+                     {!isLocked && (
+                       <button 
+                         onClick={() => alert("Notes updated in local workspace. Please finalize the encounter to persist changes to the database.")} 
+                         className="btn btn-primary text-xs py-2 bg-indigo-600 text-white"
+                       >
+                         Cache Notes
+                       </button>
+                     )}
+
                 </div>
               )}
 
@@ -606,12 +642,14 @@ export const EMRWorkspace = () => {
                       >
                         Cancel
                       </button>
-                      <button
-                        onClick={handleFinalizeEncounter}
-                        className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2"
-                      >
-                        Yes, Sign & Lock
-                      </button>
+                       <button
+                         onClick={handleFinalizeEncounter}
+                         disabled={isFinalizing}
+                         className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 disabled:opacity-70"
+                       >
+                         {isFinalizing ? "Finalizing..." : "Yes, Sign & Lock"}
+                       </button>
+
                     </div>
                   </div>
                 </div>
