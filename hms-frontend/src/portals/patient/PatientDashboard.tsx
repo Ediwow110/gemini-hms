@@ -26,7 +26,10 @@ export const PatientDashboard: React.FC = () => {
   const { results, loading: resultsLoading } = usePatientLabResults();
   const { prescriptions, loading: rxLoading } = usePatientPrescriptions();
 
-  const displayResults = results.slice(0, 3).map(r => ({
+  const rawResults = Array.isArray(results) ? results : [];
+  const rawPrescriptions = Array.isArray(prescriptions) ? prescriptions : [];
+
+  const displayResults = rawResults.slice(0, 3).map(r => ({
     id: r.id,
     testName: `Lab Result #${r.id.substring(0, 8)}`,
     dateReleased: r.lockedAt ? new Date(r.lockedAt).toLocaleDateString() : new Date(r.createdAt).toLocaleDateString(),
@@ -36,7 +39,7 @@ export const PatientDashboard: React.FC = () => {
     doctorNotes: r.remarks || '',
   }));
 
-  const displayPrescriptions = prescriptions.slice(0, 3).map(p => ({
+  const displayPrescriptions = rawPrescriptions.slice(0, 3).map(p => ({
     id: p.id,
     medication: p.medicationName,
     dosage: p.dosage,

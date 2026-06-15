@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PatientDashboard } from '../PatientDashboard';
@@ -46,5 +47,53 @@ describe('PatientDashboard Redesign', () => {
     expect(screen.getByText('Hello, John')).toBeInTheDocument();
     expect(screen.getByText('Quick Actions')).toBeInTheDocument();
     expect(screen.getByText('Upcoming Appointment')).toBeInTheDocument();
+  });
+
+  it('does not crash when lab results is null', () => {
+    vi.mocked(usePatientProfile).mockReturnValue({
+      profile: { id: '1', patientNumber: 'PT-123', firstName: 'John', lastName: 'Doe', dob: '1990-01-01', status: 'ACTIVE' } as any,
+      loading: false, error: null, refetch: vi.fn()
+    });
+    vi.mocked(usePatientLabResults).mockReturnValue({ results: null as any, loading: false, error: null, refetch: vi.fn() });
+    vi.mocked(usePatientPrescriptions).mockReturnValue({ prescriptions: [], loading: false, error: null, refetch: vi.fn() });
+
+    expect(() => renderWithRouter(<PatientDashboard />)).not.toThrow();
+    expect(screen.getByText('Hello, John')).toBeInTheDocument();
+  });
+
+  it('does not crash when lab results is an object instead of array', () => {
+    vi.mocked(usePatientProfile).mockReturnValue({
+      profile: { id: '1', patientNumber: 'PT-123', firstName: 'John', lastName: 'Doe', dob: '1990-01-01', status: 'ACTIVE' } as any,
+      loading: false, error: null, refetch: vi.fn()
+    });
+    vi.mocked(usePatientLabResults).mockReturnValue({ results: { unexpected: true } as any, loading: false, error: null, refetch: vi.fn() });
+    vi.mocked(usePatientPrescriptions).mockReturnValue({ prescriptions: [], loading: false, error: null, refetch: vi.fn() });
+
+    expect(() => renderWithRouter(<PatientDashboard />)).not.toThrow();
+    expect(screen.getByText('Hello, John')).toBeInTheDocument();
+  });
+
+  it('does not crash when prescriptions is null', () => {
+    vi.mocked(usePatientProfile).mockReturnValue({
+      profile: { id: '1', patientNumber: 'PT-123', firstName: 'John', lastName: 'Doe', dob: '1990-01-01', status: 'ACTIVE' } as any,
+      loading: false, error: null, refetch: vi.fn()
+    });
+    vi.mocked(usePatientLabResults).mockReturnValue({ results: [], loading: false, error: null, refetch: vi.fn() });
+    vi.mocked(usePatientPrescriptions).mockReturnValue({ prescriptions: null as any, loading: false, error: null, refetch: vi.fn() });
+
+    expect(() => renderWithRouter(<PatientDashboard />)).not.toThrow();
+    expect(screen.getByText('Hello, John')).toBeInTheDocument();
+  });
+
+  it('does not crash when prescriptions is an object instead of array', () => {
+    vi.mocked(usePatientProfile).mockReturnValue({
+      profile: { id: '1', patientNumber: 'PT-123', firstName: 'John', lastName: 'Doe', dob: '1990-01-01', status: 'ACTIVE' } as any,
+      loading: false, error: null, refetch: vi.fn()
+    });
+    vi.mocked(usePatientLabResults).mockReturnValue({ results: [], loading: false, error: null, refetch: vi.fn() });
+    vi.mocked(usePatientPrescriptions).mockReturnValue({ prescriptions: { unexpected: true } as any, loading: false, error: null, refetch: vi.fn() });
+
+    expect(() => renderWithRouter(<PatientDashboard />)).not.toThrow();
+    expect(screen.getByText('Hello, John')).toBeInTheDocument();
   });
 });
