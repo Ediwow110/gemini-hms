@@ -4,10 +4,12 @@ import { PageHeader } from "../../components/ui/page-header";
 import { UserStatusBadge, RoleBadge } from "../../components/ui/user-badges";
 import { ConfirmationModal, ReasonModal } from "../../components/ui/approval-modals";
 import { KeyRound, LogOut, UserX, ShieldAlert } from "lucide-react";
+import { apiClient } from "../../lib/api";
 
 export const UserDetail = () => {
   const { id } = useParams();
   const [modals, setModals] = useState({ reset: false, forceLogout: false, suspend: false, changeRole: false });
+  const [loading, setLoading] = useState(false);
 
   const user = { 
     id, name: "Maria Santos", email: "maria@hms.com", role: "Receptionist", 
@@ -19,6 +21,19 @@ export const UserDetail = () => {
     { label: "Users", to: "/admin/users" },
     { label: user.name, current: true }
   ];
+
+  const handleSuspend = async (reason: string) => {
+    setLoading(true);
+    try {
+      await apiClient.post(`/v1/admin/users/${id}/deactivate`, { reason });
+      alert('Account suspended successfully');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to suspend account');
+    } finally {
+      setLoading(false);
+      setModals({...modals, suspend: false});
+    }
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -33,7 +48,10 @@ export const UserDetail = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="card p-6">
-            <h3 className="font-bold text-slate-900 mb-4 border-b pb-2">Personal Information</h3>
+            <div className="flex justify-between items-center mb-4 border-b pb-2">
+              <h3 className="font-bold text-slate-900">Personal Information</h3>
+              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 uppercase tracking-wider">Read-Only Mock</span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
                 <p className="text-xs font-medium text-slate-500 uppercase">Email Address</p>
@@ -55,7 +73,10 @@ export const UserDetail = () => {
           </div>
 
           <div className="card p-6">
-            <h3 className="font-bold text-slate-900 mb-4 border-b pb-2">Account Status</h3>
+            <div className="flex justify-between items-center mb-4 border-b pb-2">
+              <h3 className="font-bold text-slate-900">Account Status</h3>
+              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 uppercase tracking-wider">Read-Only Mock</span>
+            </div>
             <div className="flex items-center gap-6">
               <div className="space-y-1">
                 <p className="text-xs font-medium text-slate-500 uppercase">Current Role</p>
@@ -77,25 +98,26 @@ export const UserDetail = () => {
             </div>
             <div className="grid grid-cols-1 gap-3">
               <button 
-                onClick={() => setModals({...modals, reset: true})} 
-                className="btn btn-secondary w-full flex items-center justify-center gap-2"
+                disabled
+                className="btn btn-secondary w-full flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
               >
                 <KeyRound className="h-4 w-4" />
-                Reset Password
+                Reset Password (WIP)
               </button>
               <button 
-                onClick={() => setModals({...modals, forceLogout: true})} 
-                className="btn btn-secondary w-full flex items-center justify-center gap-2"
+                disabled
+                className="btn btn-secondary w-full flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
               >
                 <LogOut className="h-4 w-4" />
-                Force Logout
+                Force Logout (WIP)
               </button>
               <button 
                 onClick={() => setModals({...modals, suspend: true})} 
-                className="btn btn-danger w-full flex items-center justify-center gap-2"
+                className={`btn btn-danger w-full flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-wait' : ''}`}
+                disabled={loading}
               >
                 <UserX className="h-4 w-4" />
-                Suspend Account
+                {loading ? 'Processing...' : 'Suspend Account'}
               </button>
             </div>
           </div>
@@ -116,7 +138,7 @@ export const UserDetail = () => {
         isOpen={modals.suspend} 
         title="Suspend Account" 
         guidance="Reason for suspension required." 
-        onConfirm={() => setModals({...modals, suspend: false})} 
+        onConfirm={handleSuspend} 
         onClose={() => setModals({...modals, suspend: false})} 
       />
     </div>
