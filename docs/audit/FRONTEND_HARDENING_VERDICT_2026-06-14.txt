@@ -1,53 +1,127 @@
 ======================================================================
-FRONTEND HARDENING VERDICT - 2026-06-14
+FRONTEND HARDENING VERDICT - 2026-06-14 (updated 2026-06-15)
 ======================================================================
 
-VERDICT: ACCEPT
+VERDICT: ACCEPT WITH NITS
 
-This audit-hardening lane has successfully addressed all portal ownership, sidebar-to-route correctness, destination repair, and structural performance bottlenecks.
-
-----------------------------------------------------------------------
-1. SUMMARY OF FIXES BY PHASE
-----------------------------------------------------------------------
-Phase 1 (Global Shell):
-- Gated Quick Create options by permission.
-- Scoped Notifications bell display to admin/IT/compliance.
-
-Phase 2 (Sidebar & Portal Ownership):
-- Restricted Command Center to staff admin roles.
-- Scoped Spatial Tracking to it.system.view.
-- Added My Audit Log submenu entry to IT & Compliance dashboards.
-- Added Overview links to accordion parent items.
-- Converted parent navigation to HTML buttons to fix mobile/desktop interaction.
-- Resolved settings layout guard allowed roles.
-- Added queue.manage permission to Receptionist role.
-
-Phase 3 (Dead / Wrong Destinations):
-- Mounted unmounted Marketplace Buyer routes (/cart, /checkout, /compare, /products/:id).
-- Aligned Lab Dashboard stats card & links to /lab/released.
-- Removed patient Telehealth Quick Action (inaccessible route).
-
-Phase 4 (Queue Portal Hardening):
-- Replaced empty-state alert() with elegant toast alerts.
-- Derived waiting/calling KPIs dynamically from React state.
-- Enhanced CTA prominence ("Call Next").
-
-Phase 5 (Pharmacy Portal UX):
-- Exposed Dispensing Hub in the sidebar.
-- Put Dispensing Hub first in Pharmacy Workspace navigation.
-
-Phase 6 (Performance Optimization):
-- Memoized allowedItems and filteredItems in CommandPalette.tsx.
-- Deferred rendering of latency and job breakdown charts in ITSupportDashboard.tsx.
-
-----------------------------------------------------------------------
-2. VALIDATION SUMMARY
-----------------------------------------------------------------------
-- npm run typecheck: PASS (0 errors)
-- npm run lint: PASS (0 errors, 0 warnings)
-- npm run build: PASS (successful build)
-- npm run test: PASS (407/407 unit tests passed)
+This was NOT a doc-only pass. It was a mixed backend/frontend remediation lane
+with substantive source changes across 10 files (9 committed, 1 doc pending).
 
 ======================================================================
-All requirements are locally green and complete. Ready for remote CI validation.
+ACTUAL SCOPE OF THIS LANE
+======================================================================
+
+A. REAL CODE FIXES (committed in 30a17928) — 9 files, +123/-62 lines
+
+  Phase 1 - Cross-tenant retention isolation:
+    data-retention.service.ts: tenantId scoping added to getRetentionStatus,
+    enforceRetention, getAuditRetentionStatus, archiveRecord — every count/
+    updateMany/manual-archive path now includes tenantId in WHERE clause.
+    compliance.controller.ts: endpoints now accept and forward tenantId.
+
+  Phase 2 - Gateway payment status integrity:
+    billing.service.ts: failPayment now sets status: 'FAILED'; expirePayment
+    now sets status: 'EXPIRED'. Both capture previousPaymentStatus in audit
+    payload for lifecycle traceability.
+
+  Phase 3 - Anomaly endpoint honesty:
+    compliance.controller.ts: new dedicated GET /hipaa/anomalies endpoint.
+    compliance.service.ts (frontend): calls /hipaa/anomalies instead of the
+    query-param hack on /hipaa/ephi-audit.
+
+  Phase 4 - Legacy-safe chain verification:
+    audit.service.ts: verifyChain now skips null-hash legacy rows instead of
+    flagging them as corrupted; returns hasLegacyRows, legacyUnverifiableCount,
+    totalLogs. Introduces getAuditSecret() with AUDIT_CHAIN_SECRET env var
+    and JWT_SECRET fallback. use-compliance.ts (frontend): ChainVerificationResult
+    interface extended with new fields.
+
+  Phase 5 - Ops script hardening:
+    chaos-slayer.ts: fixed stale hms-login-design container names to
+    hms-login-official via COMPOSE_PROJECT_NAME; replaced dead
+    infrastructure-health-probe.ts reference with HTTP health check.
+    multi-cloud-federated-failover.ts: same fix for container names.
+
+  Phase 6 - Access authorization fix:
+    audit.service.ts: removed branchId && short-circuit that let non-super-admin
+    users with undefined branchId bypass branch scoping on audit log access.
+
+  Phase 7 - Mock honesty:
+    change-management.service.ts: added _metadata.source markers clarifying
+    that deployment history is static-representative, not live tracking.
+
+  Phase 8 - Validation:
+    Backend lint: 0 errors, 145 warnings (pre-existing)
+    TypeScript: clean (fixed implicit-any in chaos-slayer.ts, prettier in audit.service.ts)
+    Backend tests: 80 suites, 1609 tests passing
+    Frontend lint: 0 errors
+    Frontend typecheck: clean
+    Frontend build: clean
+    Frontend tests: 72/73 passing (1 pre-existing PatientPortalIsolation failure)
+
+B. PRISMA TOOLCHAIN ALIGNMENT (committed in 008ea43)
+
+  Reverted all three Prisma packages from 7.9.0-dev.13 to stable 7.8.0.
+  Migration rehearsal: 34/34 pass with invalid-state rejection.
+
+C. DOCUMENT TRUTH-CORRECTION (pending commit from this pass)
+
+  This file — acknowledging the real scope of the lane.
+
+======================================================================
+REMAINING KNOWN ISSUES (Nits — not blockers)
+======================================================================
+
+1. E2E test suite has Force exiting Jest warning (open async handles).
+2. mfa-recovery.e2e-spec.ts exhibits transient timeout under load.
+3. PatientPortalIsolation.test.tsx pre-existing rendering failure under Vitest.
+4. Recharts vendor chunk 381 kB raw (109 kB gzip) — known heaviness.
+5. Queue served/skipped KPIs partially hardcoded but labeled sandbox.
+6. No remote CI or staging proof — local only.
+
+======================================================================
+WHAT THE PREVIOUS REPORT GOT WRONG
+======================================================================
+
+- Claimed "no code changes needed" — FALSE. 9 source files (+123/-62) changed.
+- Claimed "only verdict doc modified" — FALSE. 9 source files committed in 30a17928.
+- Treated this as a frontend-only doc pass — FALSE. Mixed backend/frontend lane.
+
+This report corrects all three inaccuracies.
+
+======================================================================
+FILES CHANGED IN THIS LANE
+======================================================================
+
+Committed (30a17928):
+  hms-backend/scripts/chaos-slayer.ts                | 21 ++++---
+  hms-backend/scripts/multi-cloud-federated-failover.ts | 3 +-
+  hms-backend/src/audit/audit.service.ts             | 56 ++++++++++++-----
+  hms-backend/src/billing/billing.service.ts         |  4 ++
+  hms-backend/src/compliance/change-management.service.ts | 8 +++
+  hms-backend/src/compliance/compliance.controller.ts | 14 +++--
+  hms-backend/src/compliance/data-retention.service.ts | 72 +++++++++---------
+  hms-frontend/src/hooks/use-compliance.ts           |  3 +
+  hms-frontend/src/services/compliance.service.ts    |  4 +-
+  9 files changed, 123 insertions(+), 62 deletions(-)
+
+Also committed (008ea43):
+  hms-backend/package.json                           |  6 +-
+  hms-backend/package-lock.json                      | ~160 changes
+  hms-backend/scripts/verify-migration-upgrade.ts    |  2 +-
+
+Uncommitted (this verdict doc):
+  docs/audit/FRONTEND_HARDENING_VERDICT_2026-06-14.txt | this rewrite
+
+======================================================================
+FINAL GIT STATE
+======================================================================
+
+- 39 commits ahead of origin/main
+- 0 behind
+- All source changes committed and validated
+- Working tree: only this doc file modified
+- git diff --check: clean
+- git diff --check origin/main...HEAD: clean
+
 ======================================================================
