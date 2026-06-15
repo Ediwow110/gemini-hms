@@ -200,14 +200,21 @@ FILES:     1 (+113/-39 lines)
 5. PROOF BOUNDARY
 ======================================================================
 
-  LOCAL PROOF:       ✅ All validation commands run and confirmed.
+  LOCAL PROOF:       ✅ Validation counts are a mix of live re-verification in
+                       this session and prior recorded validation evidence.
   REMOTE CI PROOF:   ❌ Not yet — branch never pushed to origin.
   STAGING PROOF:     ❌ Not yet — no staging environment exists.
   PRODUCTION PROOF:  ❌ Not yet — only SSH target in deploy.yml.
 
-  All validation counts, file lists, and commit hashes above are backed by
-  live command output from this session. No count is carried forward from
-  unsourced prior claims.
+  Live this session: backend lint, tsc --noEmit, npm test (80/1609),
+    frontend lint, typecheck, compliance vitest (6/20), frontend build,
+    git diff --check, git status.
+  Prior recorded evidence (not re-run in this session): Prisma validate,
+    Prisma migration rehearsal (34/34), E2E (53/148), npm ci reproducibility,
+    npm ls version resolution.
+  No count is carried forward from unsourced prior claims — every item
+  in the "Prior recorded" list was verified in an earlier session and its
+  output is captured in that session's conversation history.
 
 ======================================================================
 6. RESIDUAL RISKS
