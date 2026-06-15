@@ -2,11 +2,12 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ResultValidationPage } from '../ResultValidationPage';
 import { MemoryRouter } from 'react-router-dom';
-import { useLabDraftEncodingContext, useValidateLabResult } from '../../../hooks/use-clinical-workflow';
+import { useLabDraftEncodingContext, useValidateLabResult, useParameterDefinitions } from '../../../hooks/use-clinical-workflow';
 
 vi.mock('../../../hooks/use-clinical-workflow', () => ({
   useLabDraftEncodingContext: vi.fn(),
   useValidateLabResult: vi.fn(),
+  useParameterDefinitions: vi.fn(),
 }));
 
 describe('ResultValidationPage Unit Tests', () => {
@@ -59,6 +60,37 @@ describe('ResultValidationPage Unit Tests', () => {
       error: null,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
+
+    vi.mocked(useParameterDefinitions).mockReturnValue({
+      data: [
+        {
+          parameterName: 'Hemoglobin',
+          code: 'HGB',
+          unit: 'g/dL',
+          referenceRangeText: '12.0 - 16.0',
+          minNormal: 12.0,
+          maxNormal: 16.0,
+          valueType: 'NUMERIC',
+          isRequired: true,
+          displayOrder: 1,
+        },
+        {
+          parameterName: 'WBC',
+          code: 'WBC',
+          unit: 'x10^9/L',
+          referenceRangeText: '4.5 - 11.0',
+          minNormal: 4.5,
+          maxNormal: 11.0,
+          valueType: 'NUMERIC',
+          isRequired: true,
+          displayOrder: 2,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
   });
 
   it('renders safety bar, order metadata, and encoded parameter list', () => {
@@ -95,7 +127,20 @@ describe('ResultValidationPage Unit Tests', () => {
     });
   });
 
-  it('displays reject input panel when reject is clicked', () => {
+  it('shows unit and reference range from parameter definitions', () => {
+    render(
+      <MemoryRouter initialEntries={['/lab/validate?patientId=patient-456&orderId=order-123']}>
+        <ResultValidationPage />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('g/dL')).toBeInTheDocument();
+    expect(screen.getByText('12.0 - 16.0')).toBeInTheDocument();
+    expect(screen.getByText('x10^9/L')).toBeInTheDocument();
+    expect(screen.getByText('4.5 - 11.0')).toBeInTheDocument();
+  });
+
+  it('shows honest WIP message instead of faking reject submission', () => {
     render(
       <MemoryRouter initialEntries={['/lab/validate?patientId=patient-456&orderId=order-123']}>
         <ResultValidationPage />
@@ -107,5 +152,13 @@ describe('ResultValidationPage Unit Tests', () => {
 
     expect(screen.getByPlaceholderText(/Explain what parameters need review/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Return to Entry Desk/i })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/Explain what parameters need review/i), {
+      target: { value: 'Hemoglobin value seems too high' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Return to Entry Desk/i }));
+
+    expect(screen.getByText(/Return-to-Encoder requires backend API support/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Dismiss/i })).toBeInTheDocument();
   });
 });

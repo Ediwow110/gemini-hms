@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { HmsPageHeader, HmsSafetyBar } from '../../components/hms-page';
 import { ResultFlagBadge } from './components/ResultFlagBadge';
@@ -16,8 +16,8 @@ import {
   BriefcaseMedical,
   CreditCard,
 } from 'lucide-react';
-import { useLabDraftEncodingContext, useValidateLabResult } from '../../hooks/use-clinical-workflow';
-import type { LabResultDraftContextDto } from '../../services/clinicalWorkflow.service';
+import { useLabDraftEncodingContext, useValidateLabResult, useParameterDefinitions } from '../../hooks/use-clinical-workflow';
+import type { LabResultDraftContextDto, LabParameterDefinitionDto } from '../../services/clinicalWorkflow.service';
 import axios from 'axios';
 import {
   HmsDashboardShell,
@@ -52,18 +52,24 @@ function parseNumericValue(value: string): number | null {
   return isNaN(num) ? null : num;
 }
 
-function deriveParameters(context: LabResultDraftContextDto): VerifiedParameter[] {
+function deriveParameters(
+  context: LabResultDraftContextDto,
+  paramDefMap: Map<string, LabParameterDefinitionDto>,
+): VerifiedParameter[] {
   if (!context.draftResults) return [];
   return context.testItems.map((item) => {
+    const def = paramDefMap.get(item.itemName);
     const rawValue = context.draftResults?.[item.itemName];
     const valueStr = String(rawValue ?? '');
     const numericValue = parseNumericValue(valueStr);
     return {
       name: item.itemName,
       value: valueStr,
-      unit: '',
-      refRange: '—',
-      flag: numericValue !== null ? determineFlag(numericValue) : 'Normal',
+      unit: def?.unit ?? '',
+      refRange: def?.referenceRangeText ?? '—',
+      flag: numericValue !== null
+        ? determineFlag(numericValue, def?.minNormal, def?.maxNormal)
+        : 'Normal',
       previousValue: undefined,
     };
   });
@@ -78,10 +84,23 @@ export const ResultValidationPage = () => {
   const { data: context, isLoading: contextLoading, error: contextError, refetch } =
     useLabDraftEncodingContext(patientId || '', orderId || '');
 
+  const { data: paramDefs } = useParameterDefinitions(orderId || '');
+
+  const paramDefMap = useMemo(() => {
+    const map = new Map<string, LabParameterDefinitionDto>();
+    if (paramDefs) {
+      for (const def of paramDefs) {
+        map.set(def.parameterName, def);
+      }
+    }
+    return map;
+  }, [paramDefs]);
+
   const validateMutation = useValidateLabResult();
 
   const [rejectMode, setRejectMode] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectMessage, setRejectMessage] = useState<string | null>(null);
 
   const isLoading = contextLoading || validateMutation.isPending;
   const error = contextError || validateMutation.error;
@@ -107,10 +126,16 @@ export const ResultValidationPage = () => {
     e.preventDefault();
     if (!rejectReason.trim()) return;
 
-    alert(`Results rejected and returned to encoder with remarks: "${rejectReason}"`);
+    setRejectMessage(
+      'Return-to-Encoder requires backend API support which is not yet implemented. ' +
+      'No changes were made to this result. Please coordinate directly with the encoder.'
+    );
+  };
+
+  const handleDismissRejectMessage = () => {
+    setRejectMessage(null);
     setRejectMode(false);
     setRejectReason('');
-    navigate('/lab/orders');
   };
 
   if (!patientId || !orderId) {
@@ -139,7 +164,7 @@ export const ResultValidationPage = () => {
     );
   }
 
-  const parameters = context ? deriveParameters(context) : [];
+  const parameters = context ? deriveParameters(context, paramDefMap) : [];
   const panelName = context?.panelName || 'Laboratory Panel';
   const draftRemarks = context?.draftRemarks;
   const dobStr = context?.dob ? new Date(context.dob).toLocaleDateString() : '—';
@@ -329,6 +354,13 @@ export const ResultValidationPage = () => {
                       </div>
                     </div>
 
+                    {rejectMessage && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-semibold flex gap-2">
+                        <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                        <span>{rejectMessage}</span>
+                      </div>
+                    )}
+
                     <div className="space-y-1.5 text-xs">
                       <label className="text-[10px] font-bold text-slate-400 uppercase block">Rejection Feedback Notes</label>
                       <textarea
@@ -341,19 +373,31 @@ export const ResultValidationPage = () => {
                     </div>
 
                     <div className="flex gap-2">
-                      <button
-                        type="submit"
-                        className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer"
-                      >
-                        Return to Entry Desk
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRejectMode(false)}
-                        className="border border-slate-200 hover:bg-slate-50 text-slate-650 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
-                      >
-                        Cancel
-                      </button>
+                      {rejectMessage ? (
+                        <button
+                          type="button"
+                          onClick={handleDismissRejectMessage}
+                          className="w-full bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer"
+                        >
+                          Dismiss
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="submit"
+                            className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer"
+                          >
+                            Return to Entry Desk
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setRejectMode(false); setRejectMessage(null); }}
+                            className="border border-slate-200 hover:bg-slate-50 text-slate-650 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
                     </div>
                   </form>
                 ) : (
