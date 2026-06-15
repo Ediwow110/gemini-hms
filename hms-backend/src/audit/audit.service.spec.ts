@@ -345,7 +345,9 @@ describe('AuditService', () => {
           previousHash: null,
         },
       ];
-      prisma.auditLog.findMany.mockResolvedValueOnce(logs).mockResolvedValueOnce([]);
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logs)
+        .mockResolvedValueOnce([]);
 
       jest.spyOn(service as any, 'computeHash').mockReturnValue(logs[0].hash);
 
@@ -370,7 +372,9 @@ describe('AuditService', () => {
           previousHash: null,
         },
       ];
-      prisma.auditLog.findMany.mockResolvedValueOnce(logs).mockResolvedValueOnce([]);
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logs)
+        .mockResolvedValueOnce([]);
 
       jest
         .spyOn(service as any, 'computeHash')
@@ -444,7 +448,9 @@ describe('AuditService', () => {
         userId: mockUserId,
       }));
       prisma.auditLog.count.mockResolvedValue(500);
-      prisma.auditLog.findMany.mockResolvedValueOnce(logs).mockResolvedValueOnce([]);
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logs)
+        .mockResolvedValueOnce([]);
 
       const result = await service.exportMyEvents(
         mockTenantId,
@@ -540,7 +546,9 @@ describe('AuditService', () => {
         userId: mockUserId,
       }));
       prisma.auditLog.count.mockResolvedValue(500);
-      prisma.auditLog.findMany.mockResolvedValueOnce(logs).mockResolvedValueOnce([]);
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logs)
+        .mockResolvedValueOnce([]);
 
       const result = await service.exportEvents(
         mockTenantId,
@@ -745,7 +753,9 @@ describe('AuditService', () => {
         hash: `valid-hash-${i}`,
         previousHash: i === 0 ? null : `valid-hash-${i - 1}`,
       }));
-      prisma.auditLog.findMany.mockResolvedValueOnce(logs).mockResolvedValueOnce([]);
+      prisma.auditLog.findMany
+        .mockResolvedValueOnce(logs)
+        .mockResolvedValueOnce([]);
 
       const result = await service.verifyChain(mockTenantId);
       expect(result.truncated).toBe(false);
