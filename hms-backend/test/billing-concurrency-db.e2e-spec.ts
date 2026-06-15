@@ -940,7 +940,8 @@ describe('BillingService confirmPayment vs closeSession Race', () => {
       where: { id: cashierSessionId },
     });
 
-    expect(session.status).toBe('CLOSED');
+    expect(session).not.toBeNull();
+    expect(session!.status).toBe('CLOSED');
 
     if (confirmResult.status === 'fulfilled') {
       expect(entries.length).toBe(1);
