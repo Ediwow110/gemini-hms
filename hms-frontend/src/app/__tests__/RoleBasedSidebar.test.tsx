@@ -198,10 +198,10 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
 
     const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
     const overviewLinks = screen.getAllByText('Overview');
-    
+
     // Find the Overview under Organization Settings (which has href='/settings')
     const overviewLink = overviewLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings');
-    
+
     const securityLinks = screen.getAllByText('Security');
     const securityLink = securityLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings/security');
 

@@ -129,8 +129,8 @@ export const AppShell = () => {
             {/* Quick Create */}
             {showQuickCreateBtn && (
               <>
-                <button 
-                  onClick={() => setShowQuickCreate(true)} 
+                <button
+                  onClick={() => setShowQuickCreate(true)}
                   className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200 cursor-pointer"
                 >
                   <PlusCircle className="h-4 w-4" aria-hidden="true" />
@@ -138,7 +138,7 @@ export const AppShell = () => {
                 </button>
 
                 {/* Mobile Quick Create Icon */}
-                <button 
+                <button
                   onClick={() => setShowQuickCreate(true)}
                   className="md:hidden p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all border border-indigo-100"
                   aria-label="Quick Create"

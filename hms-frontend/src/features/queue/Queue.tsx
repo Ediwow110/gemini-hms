@@ -83,8 +83,8 @@ export const Queue = () => {
         <PageHeader title="Queue Monitor" description="Real-time patient queue status and progress." />
         <div className="flex items-center gap-4">
           <RequirePermission permission="queue.manage">
-            <button 
-              onClick={handleCallNext} 
+            <button
+              onClick={handleCallNext}
               className="px-5 py-3 bg-indigo-600 text-white rounded-xl text-sm font-extrabold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-250/50 flex items-center gap-2 cursor-pointer border-0"
             >
               <Megaphone className="h-4 w-4" />
@@ -92,8 +92,8 @@ export const Queue = () => {
             </button>
           </RequirePermission>
           <RequirePermission permission="queue.manage">
-            <button 
-              onClick={handleJoinQueue} 
+            <button
+              onClick={handleJoinQueue}
               className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
