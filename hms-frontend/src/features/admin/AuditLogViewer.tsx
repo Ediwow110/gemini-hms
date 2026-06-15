@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "../../components/ui/page-header";
 import { useAuditEvents } from "../../hooks/use-compliance";
 import { useNavigate } from "react-router-dom";
@@ -9,12 +9,18 @@ export const AuditLogViewer = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [searchText, setSearchText] = useState("");
+  const [debouncedSearchText, setDebouncedSearchText] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearchText(searchText), 300);
+    return () => clearTimeout(handler);
+  }, [searchText]);
 
   const { events, total, loading, error, refetch } = useAuditEvents({
     page,
     pageSize,
-    search: searchText || undefined,
+    search: debouncedSearchText || undefined,
   });
 
   const getEventLabel = (key: string): string =>
@@ -41,7 +47,7 @@ export const AuditLogViewer = () => {
     navigate(`/audit/events/${event.id}`);
   };
 
-  const totalLabel = searchText ? `${total} total (filtered)` : `${total} total`;
+  const totalLabel = debouncedSearchText ? `${total} total (filtered)` : `${total} total`;
   const totalPages = Math.ceil(total / pageSize);
 
   return (

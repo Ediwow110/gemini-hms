@@ -11,6 +11,7 @@ import { downloadFile, objectsToCsv } from '../../lib/download';
 export const MyAuditLogPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [searchText, setSearchText] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -19,6 +20,14 @@ export const MyAuditLogPage: React.FC = () => {
   const navigate = useNavigate();
 
   const { events, total, loading, error, refetch } = useMyAuditEvents({ page, pageSize });
+
+  const filteredEvents = searchText
+    ? events.filter(e =>
+        e.eventKey.toLowerCase().includes(searchText.toLowerCase()) ||
+        e.recordType.toLowerCase().includes(searchText.toLowerCase()) ||
+        e.userId.toLowerCase().includes(searchText.toLowerCase())
+      )
+    : events;
 
   const handleRowClick = (event: AuditLogEntry) => {
     navigate(`/audit/my-events/${event.id}`);
@@ -81,6 +90,8 @@ export const MyAuditLogPage: React.FC = () => {
           <input
             type="text"
             placeholder="Search events..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
         </div>
@@ -129,8 +140,8 @@ export const MyAuditLogPage: React.FC = () => {
       </div>
 
       <AuditEventTable
-        events={events}
-        total={total}
+        events={filteredEvents}
+        total={searchText ? filteredEvents.length : total}
         page={page}
         pageSize={pageSize}
         loading={loading}
