@@ -1,32 +1,131 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PatientIdentityHeader } from "../../components/ui/patient-identity-header";
 import { PageHeader } from "../../components/ui/page-header";
-import { PlusCircle, Receipt, Search } from "lucide-react";
-
-const MOCK_SERVICES: Service[] = [
-  { id: "S-001", type: "SERVICE", code: "CBC", name: "Complete Blood Count", department: "Hematology", price: 25.00 },
-  { id: "S-002", type: "SERVICE", code: "URN", name: "Urinalysis", department: "Clinical Microscopy", price: 15.00 },
-  { id: "S-003", type: "SERVICE", code: "ECG", name: "Electrocardiogram", department: "Cardiology", price: 50.00 },
-];
+import { PlusCircle, Receipt, Search, Save } from "lucide-react";
+import { apiClient } from "../../lib/api";
+import { useNavigate } from "react-router-dom";
+import { useUser } from "../../hooks/use-user";
+import axios from 'axios';
 
 interface Service { id: string; type: 'SERVICE' | 'INVENTORY'; code: string; name: string; department: string; price: number; }
-interface OrderItem extends Omit<Service, 'price'> { quantity: number; discount: number; remarks: string; }
+interface OrderItem { 
+  itemId: string; 
+  itemType: 'SERVICE' | 'INVENTORY'; 
+  name: string; 
+  quantity: number; 
+  discount: number; 
+  remarks: string; 
+  unitPrice: number;
+}
 interface Patient { id: string; name: string; age: number; gender: string; category: string; balance: number; }
 
 export const CreateOrder = () => {
+  const navigate = useNavigate();
+  const user = useUser();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.value === "P001") {
-      setPatient({ id: "P001", name: "John Doe", age: 45, gender: "M", category: "Regular", balance: 50 });
+  useEffect(() => {
+    const fetchServices = async () => {
+      setIsLoadingServices(true);
+      try {
+        const res = await apiClient.get('/v1/catalog');
+        setServices(res.data);
+      } catch (err) {
+        console.error("Failed to fetch services:", err);
+      } finally {
+        setIsLoadingServices(false);
+      }
+    };
+    fetchServices();
+  }, []);
+
+  const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value.length < 2) {
+      setPatient(null);
+      return;
+    }
+
+    try {
+      const res = await apiClient.get('/v1/patients', { params: { search: value } });
+      if (res.data && res.data.length > 0) {
+        const p = res.data[0];
+        setPatient({
+          id: p.id,
+          name: `${p.firstName} ${p.lastName}`,
+          age: p.age,
+          gender: p.gender,
+          category: p.category || "Regular",
+          balance: p.balance || 0,
+        });
+      } else {
+        setPatient(null);
+      }
+    } catch (err) {
+      console.error("Patient search failed:", err);
+      setPatient(null);
     }
   };
 
   const addService = (service: Service) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { price, ...itemData } = service;
-    setItems([...items, { ...itemData, quantity: 1, discount: 0, remarks: "" }]);
+    setItems([...items, { 
+      itemId: service.id, 
+      itemType: service.type, 
+      name: service.name, 
+      quantity: 1, 
+      discount: 0, 
+      remarks: "",
+      unitPrice: service.price 
+    }]);
+  };
+
+  const updateItem = (index: number, field: keyof OrderItem, value: string | number) => {
+    setItems(prev => {
+      const newItems = [...prev];
+      newItems[index] = { ...newItems[index], [field]: value };
+      return newItems;
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!patient) {
+      setError("Please search and select a patient first.");
+      return;
+    }
+    if (items.length === 0) {
+      setError("Please add at least one service to the order.");
+      return;
+    }
+    if (!user?.branchId) {
+      setError("Branch context is missing. Please ensure you are assigned to a branch.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await apiClient.post('/v1/orders', {
+        patientId: patient.id,
+        branchId: user.branchId,
+        items: items.map(item => ({
+          itemType: item.itemType,
+          itemId: item.itemId,
+          quantity: item.quantity,
+        })),
+      });
+      navigate('/queue');
+    } catch (err) {
+      const axiosError = err as axios.AxiosError<{ message: string }>;
+      setError(axiosError.response?.data?.message || "Failed to create order. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -52,16 +151,20 @@ export const CreateOrder = () => {
                   <h2 className="font-bold text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Available Services</h2>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  {MOCK_SERVICES.map(s => (
-                    <button 
-                      key={s.code} 
-                      onClick={() => addService(s)} 
-                      className="btn btn-secondary flex items-center gap-2"
-                    >
-                      <PlusCircle className="h-4 w-4 text-indigo-600" />
-                      {s.name}
-                    </button>
-                  ))}
+                  {isLoadingServices ? (
+                    <div className="text-xs text-slate-400 animate-pulse">Loading services...</div>
+                  ) : (
+                    services.map(s => (
+                      <button 
+                        key={s.id} 
+                        onClick={() => addService(s)} 
+                        className="btn btn-secondary flex items-center gap-2"
+                      >
+                        <PlusCircle className="h-4 w-4 text-indigo-600" />
+                        {s.name}
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -93,15 +196,31 @@ export const CreateOrder = () => {
                         <tr key={i} className="hover:bg-indigo-50/30 transition-colors">
                           <td className="px-6 py-4 font-semibold text-slate-900">
                             {item.name}
-                            <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{item.type}:{item.id}</span>
+                            <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{item.itemType}:{item.itemId}</span>
                           </td>
-                          <td className="px-6 py-4 text-right text-slate-400 italic text-xs">
-                            Trusted Price
+                          <td className="px-6 py-4 text-right text-slate-600 font-mono text-xs">
+                            ₱{item.unitPrice.toFixed(2)}
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <input className="input h-8 py-0 w-24 text-right inline-block" defaultValue={0} disabled />
+                            <div className="flex items-center justify-end gap-2">
+                              <input 
+                                type="number"
+                                className="input h-8 py-0 w-16 text-right" 
+                                value={item.quantity} 
+                                onChange={(e) => updateItem(i, 'quantity', parseInt(e.target.value) || 0)}
+                                min="1"
+                              />
+                              <input 
+                                type="number"
+                                className="input h-8 py-0 w-16 text-right" 
+                                value={item.discount} 
+                                onChange={(e) => updateItem(i, 'discount', parseFloat(e.target.value) || 0)}
+                              />
+                            </div>
                           </td>
-                          <td className="px-6 py-4 text-right font-bold text-slate-400">--</td>
+                          <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
+                            ₱{(item.unitPrice * item.quantity - item.discount).toFixed(2)}
+                          </td>
                         </tr>
                       ))
                     )}
@@ -121,29 +240,45 @@ export const CreateOrder = () => {
                 <div className="space-y-3 text-sm font-medium text-slate-600">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span className="text-slate-400">Trusted Pricing</span>
+                    <span className="text-slate-900 font-mono">
+                      ₱{items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0).toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Discount</span>
-                    <span className="text-slate-400">--</span>
+                    <span className="text-rose-500 font-mono">
+                      -₱{items.reduce((sum, item) => sum + item.discount, 0).toFixed(2)}
+                    </span>
                   </div>
                   <div className="pt-4 mt-2 border-t border-slate-100 flex justify-between items-baseline">
                     <span className="font-bold text-slate-900 text-lg">Total</span>
-                    <span className="font-extrabold text-indigo-400 text-xl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                      ₱ --
+                    <span className="font-extrabold text-indigo-600 text-xl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                      ₱{items.reduce((sum, item) => sum + (item.unitPrice * item.quantity - item.discount), 0).toFixed(2)}
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400 italic">Final pricing and tax calculations are performed during the billing checkout process.</p>
                 </div>
+                {error && (
+                  <div className="text-rose-500 text-xs font-semibold text-center mb-4 animate-shake">
+                    {error}
+                  </div>
+                )}
                 <button 
-                  disabled={items.length === 0}
-                  onClick={() => {
-                    alert("Order payload validated against backend contract: items include type/id. API integration pending.");
-                    window.location.href = '/queue';
-                  }}
-                  className="btn btn-primary w-full mt-8 flex items-center justify-center gap-2 py-3"
+                  disabled={items.length === 0 || isLoading}
+                  onClick={handleSubmit}
+                  className="btn btn-primary w-full mt-4 flex items-center justify-center gap-2 py-3 disabled:opacity-70"
                 >
-                  Create Order
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      Creating Order...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      Create Order
+                    </>
+                  )}
                 </button>
               </div>
             </div>
