@@ -40,8 +40,8 @@ Risks ranked by severity:
 - AuditLog archive: retention is count-only (schema change deferred; immutability trigger blocks physical delete)
 
 **LOW:**
-- Two chaos scripts (`chaos-slayer.ts`, `multi-cloud-federated-failover.ts`) still reference stale `prisma/infrastructure-health-probe.ts` path
-- Two clean working-tree changes exist: `CashierDashboard.tsx` and `billing-frontend.service.ts`
+- (Resolved) Chaos script health-probe path drift fixed in `b088259`; no stale references remain
+- (Resolved) Working tree is clean; no uncommitted changes remain
 
 ## Key Decisions
 - Reuse existing `AuditLog` model and `AuditService.log()` throughout
@@ -81,5 +81,5 @@ Ranked by severity:
 4. **AuditLog retention** — count-only enforcement; no schema change for archival by class
 
 **LOW:**
-5. **Stale health-probe path in chaos scripts** — `chaos-slayer.ts` and `multi-cloud-federated-failover.ts` still reference `prisma/infrastructure-health-probe.ts`
-6. **Two clean working-tree changes** — `CashierDashboard.tsx` and `billing-frontend.service.ts` modified but not committed
+5. (Resolved) **Stale health-probe path in chaos scripts** — fixed in `b088259`; no stale references remain
+6. (Resolved) **Working tree** — clean; no uncommitted changes

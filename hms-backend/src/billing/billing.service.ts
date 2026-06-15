@@ -1945,23 +1945,27 @@ export class BillingService {
       );
     }
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: dto.eventKey,
-      recordType: 'Receipt',
-      recordId: dto.paymentId,
-      newValues: {
-        paymentId: dto.paymentId,
-        invoiceId: payment.invoiceId,
-        receiptNumber: dto.receiptNumber || payment.receiptNumber,
-        amount: payment.amount.toString(),
-        paymentMethod: payment.paymentMethod,
-        format: dto.format || 'thermal',
-        reason: dto.reason,
-        branchId,
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: dto.eventKey,
+        recordType: 'Receipt',
+        recordId: dto.paymentId,
+        newValues: {
+          paymentId: dto.paymentId,
+          invoiceId: payment.invoiceId,
+          receiptNumber: dto.receiptNumber || payment.receiptNumber,
+          amount: payment.amount.toString(),
+          paymentMethod: payment.paymentMethod,
+          format: dto.format || 'thermal',
+          reason: dto.reason,
+          branchId,
+        },
       },
-    });
+      undefined,
+      branchId,
+    );
   }
 
   async getPaymentHistory(
