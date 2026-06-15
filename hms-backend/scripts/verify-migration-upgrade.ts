@@ -220,7 +220,7 @@ function splitStatements(sql: string): string[] {
  * table is an internal implementation detail. We depend on it for
  * performance: calling `prisma migrate resolve --applied` per migration
  * would add ~2s of CLI startup per call (116s for 58 baselines). The
- * emulation is version-sensitive — Prisma CLI is pinned to `7.9.0-dev.13`
+ * emulation is version-sensitive — Prisma CLI is pinned to `7.8.0`
  * (see package.json) so the _prisma_migrations schema and checksum
  * algorithm are locked to that version.
  *
