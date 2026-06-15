@@ -3290,4 +3290,127 @@ describe('BillingService Reversals', () => {
       );
     });
   });
+
+  describe('logReceiptEvent', () => {
+    const validDto = {
+      paymentId: mockPaymentId,
+      eventKey: 'RECEIPT_PRINTED',
+      format: 'thermal',
+      reason: 'Test print',
+    };
+
+    it('should log receipt event for same-branch payment', async () => {
+      const mockPayment = {
+        id: mockPaymentId,
+        tenantId: mockTenantId,
+        branchId: mockBranchId,
+        invoiceId: mockInvoiceId,
+        amount: new Prisma.Decimal(100),
+        paymentMethod: 'CASH',
+        receiptNumber: 'RCP-001',
+      };
+      prisma.payment.findFirst = jest.fn().mockResolvedValue(mockPayment);
+
+      await service.logReceiptEvent(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+        validDto,
+      );
+
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: mockPaymentId,
+          tenantId: mockTenantId,
+          branchId: mockBranchId,
+        },
+      });
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'RECEIPT_PRINTED',
+          recordType: 'Receipt',
+          recordId: mockPaymentId,
+        }),
+        undefined,
+        mockBranchId,
+      );
+    });
+
+    it('should throw NotFoundException for cross-branch payment', async () => {
+      prisma.payment.findFirst = jest.fn().mockResolvedValue(null);
+
+      await expect(
+        service.logReceiptEvent(
+          mockTenantId,
+          mockUserId,
+          'other-branch-uuid',
+          validDto,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: mockPaymentId,
+          tenantId: mockTenantId,
+          branchId: 'other-branch-uuid',
+        },
+      });
+    });
+
+    it('should throw NotFoundException for wrong-tenant payment', async () => {
+      prisma.payment.findFirst = jest.fn().mockResolvedValue(null);
+
+      await expect(
+        service.logReceiptEvent(
+          'wrong-tenant-uuid',
+          mockUserId,
+          mockBranchId,
+          validDto,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should reject invalid event key', async () => {
+      const mockPayment = {
+        id: mockPaymentId,
+        tenantId: mockTenantId,
+        branchId: mockBranchId,
+        invoiceId: mockInvoiceId,
+        amount: new Prisma.Decimal(100),
+        paymentMethod: 'CASH',
+      };
+      prisma.payment.findFirst = jest.fn().mockResolvedValue(mockPayment);
+
+      await expect(
+        service.logReceiptEvent(mockTenantId, mockUserId, mockBranchId, {
+          ...validDto,
+          eventKey: 'INVALID_KEY',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should accept RECEIPT_REPRINTED and RECEIPT_EXPORTED event keys', async () => {
+      const mockPayment = {
+        id: mockPaymentId,
+        tenantId: mockTenantId,
+        branchId: mockBranchId,
+        invoiceId: mockInvoiceId,
+        amount: new Prisma.Decimal(100),
+        paymentMethod: 'CASH',
+      };
+      prisma.payment.findFirst = jest.fn().mockResolvedValue(mockPayment);
+
+      await service.logReceiptEvent(mockTenantId, mockUserId, mockBranchId, {
+        ...validDto,
+        eventKey: 'RECEIPT_REPRINTED',
+      });
+      expect(audit.log).toHaveBeenCalled();
+
+      await service.logReceiptEvent(mockTenantId, mockUserId, mockBranchId, {
+        ...validDto,
+        eventKey: 'RECEIPT_EXPORTED',
+      });
+      expect(audit.log).toHaveBeenCalledTimes(2);
+    });
+  });
 });

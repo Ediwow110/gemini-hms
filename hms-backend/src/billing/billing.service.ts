@@ -1928,7 +1928,7 @@ export class BillingService {
     },
   ) {
     const payment = await this.prisma.payment.findFirst({
-      where: { id: dto.paymentId, tenantId },
+      where: { id: dto.paymentId, tenantId, branchId },
     });
     if (!payment) {
       throw new NotFoundException('Payment not found');
