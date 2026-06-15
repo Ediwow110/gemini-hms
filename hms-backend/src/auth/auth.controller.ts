@@ -182,15 +182,29 @@ export class AuthController {
 
   @SkipThrottle({ auth: true, sensitive: true, default: true })
   @Get('me')
-  async getMe(@GetUser() user: RequestUser) {
-    const res = await this.authService.getMe(user.userId!, user.tenantId);
-    if (res && user.branchId !== undefined) {
+  async getMe(
+    @GetUser() user: RequestUser,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const userData = await this.authService.getMe(user.userId!, user.tenantId);
+
+    // Return CSRF token so new tabs / page refreshes can bootstrap it
+    let csrfToken = req.cookies?.csrf_token as string | undefined;
+    if (!csrfToken) {
+      const isProd = process.env.NODE_ENV === 'production';
+      csrfToken = crypto.randomBytes(32).toString('hex');
+      res.cookie('csrf_token', csrfToken, CSRF_COOKIE_OPTIONS(isProd));
+    }
+
+    if (userData && user.branchId !== undefined) {
       return {
-        ...res,
+        ...userData,
         branchId: user.branchId,
+        csrfToken,
       };
     }
-    return res;
+    return { ...userData, csrfToken };
   }
 
   @Get('branches')

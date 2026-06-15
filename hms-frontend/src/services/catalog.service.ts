@@ -28,28 +28,28 @@ export interface CatalogFormData {
 
 export const catalogService = {
   getCategories: async (): Promise<CatalogCategoryDto[]> => {
-    const response = await apiClient.get('/catalog/categories?includeInactive=true');
+    const response = await apiClient.get('/v1/catalog/categories?includeInactive=true');
     return response.data;
   },
 
   getItems: async (): Promise<CatalogItemDto[]> => {
-    const response = await apiClient.get('/catalog/items?includeInactive=true');
+    const response = await apiClient.get('/v1/catalog/items?includeInactive=true');
     return response.data;
   },
 
   createItem: async (data: CatalogFormData): Promise<void> => {
-    await apiClient.post('/catalog/items', data);
+    await apiClient.post('/v1/catalog/items', data);
   },
 
   updateItem: async (id: string, data: CatalogFormData): Promise<void> => {
-    await apiClient.patch(`/catalog/items/${id}`, data);
+    await apiClient.patch(`/v1/catalog/items/${id}`, data);
   },
 
   createCategory: async (data: Omit<CatalogFormData, 'code' | 'categoryId'>): Promise<void> => {
-    await apiClient.post('/catalog/categories', data);
+    await apiClient.post('/v1/catalog/categories', data);
   },
 
   updateCategory: async (id: string, data: Omit<CatalogFormData, 'code' | 'categoryId'>): Promise<void> => {
-    await apiClient.patch(`/catalog/categories/${id}`, data);
+    await apiClient.patch(`/v1/catalog/categories/${id}`, data);
   },
 };

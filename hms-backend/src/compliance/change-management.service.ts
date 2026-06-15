@@ -132,6 +132,14 @@ export class ChangeManagementService {
       deployments: filteredDeployments,
       totalSchemaChangesCount: filteredSchemaChanges.length,
       schemaChanges: filteredSchemaChanges,
+      _metadata: {
+        deploymentHistorySource:
+          'static-representative' /* pre-configured log, not live deployment tracking */,
+        schemaChangesSource:
+          filteredSchemaChanges.length > 0 && filteredSchemaChanges[0].id
+            ? 'prisma-migrations-table'
+            : 'static-fallback',
+      },
     };
   }
 }

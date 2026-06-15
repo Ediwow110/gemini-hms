@@ -26,11 +26,11 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     vi.clearAllMocks();
   });
 
-  it('marks only the exact matched item active (e.g. Branch Settings on /settings)', () => {
+  it('marks only the exact matched item active (e.g. Organization Settings on /settings)', () => {
     mockUseUser.mockReturnValue({
-      id: 'ba-1',
-      email: 'branch-admin@hospital.com',
-      roles: ['Branch Admin'],
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
     });
 
     render(
@@ -39,19 +39,20 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       </MemoryRouter>
     );
 
-    const settingLinks = screen.getAllByText('Branch Settings');
-    const settingLink = settingLinks.find(link => link.closest('a')?.getAttribute('href') === '/settings')?.closest('a');
-    const dashboardLink = screen.getByText('Branch Dashboard').closest('a');
+    const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
+    const settingLinks = screen.getAllByText('Organization Settings');
+    const settingLink = settingLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings' || parent?.tagName.toLowerCase() === 'button');
+    const tenantsLink = getNavItem(screen.getByText('Tenants Manager'));
 
     expect(settingLink).toHaveClass('bg-gradient-to-r'); // active style
-    expect(dashboardLink).not.toHaveClass('bg-gradient-to-r'); // should not be active!
+    expect(tenantsLink).not.toHaveClass('bg-gradient-to-r'); // should not be active!
   });
 
-  it('marks the longest prefix match active when on a sub-route (e.g. Branch Settings on /settings/security)', () => {
+  it('marks the longest prefix match active when on a sub-route (e.g. Organization Settings on /settings/security)', () => {
     mockUseUser.mockReturnValue({
-      id: 'ba-1',
-      email: 'branch-admin@hospital.com',
-      roles: ['Branch Admin'],
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
     });
 
     render(
@@ -60,12 +61,34 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       </MemoryRouter>
     );
 
-    const settingLinks = screen.getAllByText('Branch Settings');
-    const settingLink = settingLinks.find(link => link.closest('a')?.getAttribute('href') === '/settings')?.closest('a');
-    const dashboardLink = screen.getByText('Branch Dashboard').closest('a');
+    const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
+    const settingLinks = screen.getAllByText('Organization Settings');
+    const settingLink = settingLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings' || parent?.tagName.toLowerCase() === 'button');
+    const tenantsLink = getNavItem(screen.getByText('Tenants Manager'));
 
     expect(settingLink).toHaveClass('bg-gradient-to-r'); // active style
-    expect(dashboardLink).not.toHaveClass('bg-gradient-to-r');
+    expect(tenantsLink).not.toHaveClass('bg-gradient-to-r');
+  });
+
+  it('does not mark sibling prefix routes active (e.g. SuperAdmin Dashboard on /admin/tenants)', () => {
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/admin/tenants']}>
+        <RoleBasedSidebar pathname="/admin/tenants" />
+      </MemoryRouter>
+    );
+
+    const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
+    const dashboardLink = getNavItem(screen.getByText('SuperAdmin Dashboard'));
+    const tenantsLink = getNavItem(screen.getByText('Tenants Manager'));
+
+    expect(tenantsLink).toHaveClass('bg-gradient-to-r'); // exact match active style
+    expect(dashboardLink).not.toHaveClass('bg-gradient-to-r'); // should not be active since it is a leaf sibling!
   });
 
   it('marks Branch Dashboard active when exactly on /branch-admin', () => {
@@ -81,9 +104,10 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       </MemoryRouter>
     );
 
+    const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
     const settingLinks = screen.getAllByText('Branch Settings');
-    const settingLink = settingLinks.find(link => link.closest('a')?.getAttribute('href') === '/settings')?.closest('a');
-    const dashboardLink = screen.getByText('Branch Dashboard').closest('a');
+    const settingLink = settingLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings' || parent?.tagName.toLowerCase() === 'button');
+    const dashboardLink = getNavItem(screen.getByText('Branch Dashboard'));
 
     expect(dashboardLink).toHaveClass('bg-gradient-to-r'); // active style
     expect(settingLink).not.toHaveClass('bg-gradient-to-r');
@@ -157,5 +181,31 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     // But WIP routes should still be hidden
     expect(screen.queryByText('Drug Inventory')).not.toBeInTheDocument();
     expect(screen.queryByText('Backup & Recovery')).not.toBeInTheDocument();
+  });
+
+  it('does not mark sibling leaf Overview active when on sibling sub-route (e.g., Overview is inactive on /settings/security)', () => {
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/settings/security']}>
+        <RoleBasedSidebar pathname="/settings/security" />
+      </MemoryRouter>
+    );
+
+    const getNavItem = (element: HTMLElement | null) => element ? (element.closest('a') || element.closest('button')) : null;
+    const overviewLinks = screen.getAllByText('Overview');
+
+    // Find the Overview under Organization Settings (which has href='/settings')
+    const overviewLink = overviewLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings');
+
+    const securityLinks = screen.getAllByText('Security');
+    const securityLink = securityLinks.map(el => getNavItem(el)).find(parent => parent?.getAttribute('href') === '/settings/security');
+
+    expect(securityLink).toHaveClass('bg-gradient-to-r'); // exact matched child should be active
+    expect(overviewLink).not.toHaveClass('bg-gradient-to-r'); // Overview sibling should NOT be active!
   });
 });

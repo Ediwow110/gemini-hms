@@ -125,7 +125,7 @@ describe('Insurance Claims E2E', () => {
     };
 
     await request(app.getHttpServer())
-      .post('/insurance/claims')
+      .post('/api/v1/insurance/claims')
       .send({
         invoiceId,
         providerCode: 'PHILHEALTH',
@@ -146,7 +146,7 @@ describe('Insurance Claims E2E', () => {
     };
 
     const createRes = await request(app.getHttpServer())
-      .post('/insurance/claims')
+      .post('/api/v1/insurance/claims')
       .send({
         invoiceId,
         providerCode: 'PHILHEALTH',
@@ -161,7 +161,7 @@ describe('Insurance Claims E2E', () => {
 
     // 3. Duplicate active claim check -> 409
     await request(app.getHttpServer())
-      .post('/insurance/claims')
+      .post('/api/v1/insurance/claims')
       .send({
         invoiceId,
         providerCode: 'PHILHEALTH',
@@ -171,7 +171,7 @@ describe('Insurance Claims E2E', () => {
 
     // 4. Cashier submits claim -> status becomes SUBMITTED, claimNumber set
     const submitRes = await request(app.getHttpServer())
-      .post(`/insurance/claims/${claimId}/submit`)
+      .post(`/api/v1/insurance/claims/${claimId}/submit`)
       .expect(201);
 
     expect(submitRes.body.status).toBe('SUBMITTED');
@@ -189,7 +189,7 @@ describe('Insurance Claims E2E', () => {
     };
 
     const settleRes = await request(app.getHttpServer())
-      .patch(`/insurance/claims/${claimId}/status`)
+      .patch(`/api/v1/insurance/claims/${claimId}/status`)
       .send({
         status: 'PAID',
         settledAmount: 950.0,

@@ -83,6 +83,14 @@ export class AuthService {
 
     if (!user) return null;
 
+    // Reject system actor logins (non-interactive accounts)
+    if (user.isSystem) {
+      this.logger.warn(
+        `Login attempt by system actor ${user.id} for tenant ${user.tenantId}`,
+      );
+      return null;
+    }
+
     // Check account lockout
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       throw new UnauthorizedException({

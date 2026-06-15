@@ -208,6 +208,7 @@ async function main() {
           const payment = await tx.payment.create({
             data: {
               tenantId,
+              branchId,
               invoiceId: inv.id,
               cashierSessionId: session.id,
               receiptNumber: `REC-BURN-${receiptCountSeed++}`,
@@ -234,6 +235,7 @@ async function main() {
           // Create CashierLedgerEntry
           await tx.cashierLedgerEntry.create({
             data: {
+              tenantId,
               cashierSessionId: session.id,
               type: 'PAYMENT',
               amount: inv.totalAmount,

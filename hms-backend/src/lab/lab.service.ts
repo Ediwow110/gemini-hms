@@ -294,7 +294,17 @@ export class LabService {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.labResult.findFirst({
         where: { id, order: { tenantId, branchId } },
-        include: { order: true },
+        include: {
+          order: {
+            include: {
+              patient: {
+                include: {
+                  portalUser: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!result) {
@@ -331,13 +341,16 @@ export class LabService {
         data: { status: 'RELEASED' },
       });
 
+      const hasPortalAccount = !!result.order?.patient?.portalUser;
       await tx.notificationOutbox.create({
         data: {
+          tenantId,
           recipientId: result.order.patientId,
           type: 'LAB_RESULT_READY',
           payload: JSON.stringify({
             resultId: released.id,
             orderId: result.orderId,
+            hasPortalAccount,
           }),
           scheduledAt: new Date(),
         },
@@ -683,7 +696,17 @@ export class LabService {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.labResult.findFirst({
         where: { id: resultId, order: { tenantId, branchId }, deletedAt: null },
-        include: { order: true },
+        include: {
+          order: {
+            include: {
+              patient: {
+                include: {
+                  portalUser: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!result) {
@@ -720,14 +743,17 @@ export class LabService {
       }
 
       // Create notification outbox entry for critical result
+      const hasPortalAccount = !!result.order?.patient?.portalUser;
       await tx.notificationOutbox.create({
         data: {
+          tenantId,
           recipientId: result.order.patientId,
           type: 'CRITICAL_RESULT',
           payload: JSON.stringify({
             resultId,
             orderId: result.orderId,
             reason: reason || null,
+            hasPortalAccount,
           }),
           scheduledAt: new Date(),
         },

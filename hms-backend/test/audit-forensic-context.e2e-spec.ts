@@ -108,7 +108,7 @@ describe('Audit Log Forensic Context (e2e)', () => {
 
     // 2. Create encounter
     const encounterRes = await request(app.getHttpServer())
-      .post('/clinical/encounters')
+      .post('/api/v1/clinical/encounters')
       .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; ForensicAgent)')
       .set('X-Forwarded-For', '203.0.113.195')
       .send({

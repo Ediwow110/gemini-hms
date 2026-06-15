@@ -178,7 +178,7 @@ describe('AuthController', () => {
   });
 
   describe('getMe', () => {
-    it('should return user profile', async () => {
+    it('should return user profile with csrfToken', async () => {
       const mockUser: RequestUser = {
         userId: 'user-123',
         tenantId: 'tenant-456',
@@ -196,13 +196,65 @@ describe('AuthController', () => {
       };
       authService.getMe.mockResolvedValue(mockProfile);
 
-      const result = await controller.getMe(mockUser);
+      const mockReq = { cookies: {} };
+      const mockRes = {
+        cookie: jest.fn(),
+      };
 
-      expect(result).toBe(mockProfile);
+      const result = await controller.getMe(
+        mockUser,
+        mockReq as any,
+        mockRes as any,
+      );
+
+      expect(result).toHaveProperty('csrfToken');
+      expect(result).toMatchObject(mockProfile);
       expect(authService.getMe).toHaveBeenCalledWith(
         mockUser.userId,
         mockUser.tenantId,
       );
+      // When no cookie exists, a new one should be set
+      expect(mockRes.cookie).toHaveBeenCalledWith(
+        'csrf_token',
+        expect.any(String),
+        expect.any(Object),
+      );
+    });
+
+    it('should return existing csrfToken from cookie', async () => {
+      const mockUser: RequestUser = {
+        userId: 'user-123',
+        tenantId: 'tenant-456',
+        roles: ['Admin'],
+      };
+      const mockProfile = {
+        id: 'user-123',
+        userId: 'user-123',
+        email: 'admin@test.com',
+        tenantId: 'tenant-456',
+        branchId: undefined,
+        roles: ['Admin'],
+        permissions: [],
+        defaultPortalPath: '/admin',
+      };
+      authService.getMe.mockResolvedValue(mockProfile);
+
+      const existingToken = 'existing-csrf-token-value';
+      const mockReq = { cookies: { csrf_token: existingToken } };
+      const mockRes = {
+        cookie: jest.fn(),
+      };
+
+      const result = await controller.getMe(
+        mockUser,
+        mockReq as any,
+        mockRes as any,
+      );
+
+      expect(result).toHaveProperty('csrfToken', existingToken);
+      expect(result).toMatchObject(mockProfile);
+      // Should NOT set a new cookie since one already exists
+      expect(mockRes.cookie).not.toHaveBeenCalled();
     });
   });
 

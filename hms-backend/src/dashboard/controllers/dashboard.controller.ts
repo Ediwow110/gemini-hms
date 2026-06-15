@@ -7,7 +7,7 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import type { User } from '@prisma/client';
 
-@Controller('dashboard')
+@Controller('api/v1/dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}

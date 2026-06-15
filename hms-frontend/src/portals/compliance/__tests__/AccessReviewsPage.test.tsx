@@ -17,6 +17,7 @@ describe('AccessReviewsPage Runtime Tests', () => {
     vi.mocked(useAccessReview).mockReturnValue({
       report: null,
       loading: true,
+      error: null,
       refetch: vi.fn(),
     });
 
@@ -38,6 +39,7 @@ describe('AccessReviewsPage Runtime Tests', () => {
         reviewTimestamp: '',
       },
       loading: false,
+      error: null,
       refetch: vi.fn(),
     });
 
@@ -66,6 +68,7 @@ describe('AccessReviewsPage Runtime Tests', () => {
         reviewTimestamp: '',
       },
       loading: false,
+      error: null,
       refetch: vi.fn(),
     });
 

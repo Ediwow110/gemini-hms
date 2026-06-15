@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Database, Cpu, HardDrive, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Database, Cpu, HardDrive, ShieldAlert } from 'lucide-react';
 import { RetentionJobCard, RetentionJob } from './components/RetentionJobCard';
 import ComplianceScopeFilter from './components/ComplianceScopeFilter';
 import { useRetentionStatus } from '../../hooks/use-compliance';
@@ -8,7 +8,7 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 
 export const RetentionManagementPage: React.FC = () => {
   const [scope, setScope] = useState({ tenantId: 'all', branchId: 'all' });
-  const { status: retentionData, loading } = useRetentionStatus();
+  const { status: retentionData, loading, error: retentionError } = useRetentionStatus();
 
   // Policies remain mock until a Policy Management API is implemented
   const [jobs, setJobs] = useState<RetentionJob[]>([
@@ -70,6 +70,15 @@ export const RetentionManagementPage: React.FC = () => {
   return (
     <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
+        {retentionError && (
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex gap-3 text-xs text-rose-700">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <div>
+              <p className="font-bold">Retention status unavailable</p>
+              <p>{retentionError}</p>
+            </div>
+          </div>
+        )}
         <HmsPageHeader
           title="Data Retention & Archive Management"
           description="Configure automated database clean-up rules, set PHI retention timelines, and trigger policy dry-runs"

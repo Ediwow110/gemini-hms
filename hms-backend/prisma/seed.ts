@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import type { Permission, Role } from '@prisma/client';  
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -197,6 +198,7 @@ async function main() {
     { name: 'nurse.task.view', scope: 'tenant/branch', riskLevel: 'LOW' },
     { name: 'nurse.task.manage', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
     { name: 'nurse.task.update', scope: 'tenant/branch', riskLevel: 'LOW' },
+
   ];
 
   console.log('Seeding Permissions...');
@@ -237,6 +239,9 @@ async function main() {
     { name: 'Compliance Officer', id: '00000000-0000-0000-0000-000000000017' },
     { name: 'Field Technician', id: '00000000-0000-0000-0000-000000000018' },
     { name: 'Marketplace Admin', id: '00000000-0000-0000-0000-000000000019' },
+    { name: 'Finance', id: '00000000-0000-0000-0000-000000000020' },
+    { name: 'Branch Manager', id: '00000000-0000-0000-0000-000000000021' },
+    { name: 'Admin', id: '00000000-0000-0000-0000-000000000022' },
   ];
 
   console.log('Seeding Roles...');
@@ -337,6 +342,19 @@ async function main() {
     ],
     'Marketplace Admin': [
       'marketplace.admin.view', 'marketplace.admin.manage'
+    ],
+    'Finance': [
+      'billing.invoice.view', 'billing.payment.create',
+      'billing.refund.request',
+      'patient.view', 'order.view', 'queue.view'
+    ],
+    'Branch Manager': [
+      'hr.employee.view', 'hr.employee.manage',
+      'hr.payroll.view',
+      'approval.request.process', 'report.export'
+    ],
+    'Admin': [
+      'admin.role.change', 'dashboard.view'
     ]
   };
 
@@ -369,7 +387,33 @@ async function main() {
     }
   }
 
+  // 4b. Seed System Actor for each Tenant
+  console.log('Seeding System Actors...');
+  const systemPasswordHash = await bcrypt.hash(crypto.randomUUID(), 12);
+  const allTenants = await prisma.tenant.findMany({ select: { id: true } });
+  for (const t of allTenants) {
+    const existing = await prisma.user.findFirst({
+      where: { tenantId: t.id, isSystem: true },
+      select: { id: true },
+    });
+    if (existing) continue; // already provisioned (e.g., by migration)
+
+    const actorId = crypto.randomUUID();
+    await prisma.user.create({
+      data: {
+        id: actorId,
+        tenantId: t.id,
+        email: `system@${t.id.slice(0, 8)}.hms.local`,
+        passwordHash: systemPasswordHash,
+        mfaEnabled: false,
+        isSystem: true,
+        status: 'DISABLED',
+      },
+    });
+  }
+
   // 5. Create Demo Users
+  // Demo users use a known password for development/testing
   const passwordHash = await bcrypt.hash('Admin@123', 10);
   
   const demoUsers = [
@@ -704,6 +748,7 @@ async function main() {
     create: {
       id: '00000000-0000-0000-0000-0000000000b2',
       tenantId: tenant.id,
+      branchId: branch.id,
       invoiceId: portalInvoice.id,
       cashierSessionId: cashierSession.id,
       receiptNumber: 'DEMO-RCPT-001',

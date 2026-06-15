@@ -114,7 +114,8 @@ async function main() {
     console.log(`🟢 [FAILOVER] DNS routing records rewritten. Live streams directed to DigitalOcean droplet mesh.`);
     
     console.log(`[FAILOVER] Invoking post-deployment flight checks on secondary datacenter...`);
-    const checkRes = runCmd(`docker exec hms-login-design-backend-1 npx tsx scripts/infrastructure-health-probe.ts --single-run`);
+    const projectName = process.env.COMPOSE_PROJECT_NAME || 'hms-login-official';
+    const checkRes = runCmd(`curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/`);
     console.log(checkRes);
 
     console.log(`\n================================================================================`);

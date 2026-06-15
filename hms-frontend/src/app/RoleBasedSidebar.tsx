@@ -1,8 +1,65 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, LogOut } from 'lucide-react';
 import { useUser, useAuth, usePermissions } from '../hooks/use-user';
 import { roleNavigation, NavItemConfig } from '../config/roleNavigation';
+
+interface ActiveItemMatch {
+  item: NavItemConfig;
+  ancestors: NavItemConfig[];
+}
+
+/**
+ * Helper to normalize paths by stripping a trailing slash if present (except for root /).
+ */
+const normalizePath = (path: string): string => {
+  if (path.length > 1 && path.endsWith('/')) {
+    return path.slice(0, -1);
+  }
+  return path;
+};
+
+/**
+ * Recursively searches for the best active matching NavItem in the sidebar tree.
+ * Matches exact paths first, then falls back to the longest prefix match.
+ * Ancestor hierarchy is strictly returned to prevent sibling prefix collisions.
+ */
+const findBestMatch = (items: NavItemConfig[], targetPath: string): ActiveItemMatch | null => {
+  const normalizedTarget = normalizePath(targetPath);
+  let bestMatch: ActiveItemMatch | null = null;
+  let bestMatchLen = -1;
+
+  const traverse = (currentItems: NavItemConfig[], currentAncestors: NavItemConfig[]) => {
+    for (const item of currentItems) {
+      const normalizedItemTo = normalizePath(item.to);
+
+      // 1. Exact match
+      if (normalizedItemTo === normalizedTarget) {
+        bestMatch = { item, ancestors: currentAncestors };
+        bestMatchLen = normalizedItemTo.length;
+        if (item.children) {
+          traverse(item.children, [...currentAncestors, item]);
+        }
+        continue;
+      }
+
+      // 2. Prefix match (with trailing slash boundary check to prevent substring collisions)
+      if (normalizedItemTo !== '/' && normalizedTarget.startsWith(normalizedItemTo + '/')) {
+        if (normalizedItemTo.length > bestMatchLen) {
+          bestMatch = { item, ancestors: currentAncestors };
+          bestMatchLen = normalizedItemTo.length;
+        }
+      }
+
+      if (item.children) {
+        traverse(item.children, [...currentAncestors, item]);
+      }
+    }
+  };
+
+  traverse(items, []);
+  return bestMatch;
+};
 
 interface RoleBasedSidebarProps {
   pathname: string;
@@ -21,72 +78,72 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
     return false;
   };
 
-  const canView = (item: NavItemConfig) =>
+  const canView = useCallback((item: NavItemConfig) =>
     !isDemoHidden(item) &&
     canAccess({
       permission: item.permission,
       allowedRoles: item.allowedRoles,
       isBranchScoped: item.isBranchScoped,
       zone: item.zone,
-    });
+    }), [canAccess]);
 
-  const getAllowedItems = (items: NavItemConfig[]): NavItemConfig[] =>
-    items
-      .filter(canView)
-      .map((item) => ({
-        ...item,
-        children: item.children ? getAllowedItems(item.children) : undefined,
-      }));
+  const getAllowedItems = useCallback((items: NavItemConfig[]): NavItemConfig[] => {
+    const filterAndMap = (currentItems: NavItemConfig[]): NavItemConfig[] =>
+      currentItems
+        .filter(canView)
+        .map((item: NavItemConfig): NavItemConfig => ({
+          ...item,
+          children: item.children ? filterAndMap(item.children) : undefined,
+        }));
+    return filterAndMap(items);
+  }, [canView]);
 
-  const flattenItems = (items: NavItemConfig[]): NavItemConfig[] =>
-    items.flatMap((item) => [item, ...(item.children ? flattenItems(item.children) : [])]);
+  const navGroups = useMemo(() => {
+    return roleNavigation
+      .map((group) => ({
+        ...group,
+        items: getAllowedItems(group.items),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [getAllowedItems]);
 
-  const navGroups = roleNavigation
-    .map((group) => ({
-      ...group,
-      items: getAllowedItems(group.items),
-    }))
-    .filter((group) => group.items.length > 0);
+  const allowedTopLevelItems = useMemo(() => navGroups.flatMap((group) => group.items), [navGroups]);
 
-  const allAllowedItems = flattenItems(navGroups.flatMap((group) => group.items));
+  const activeMatch = useMemo(() => {
+    return findBestMatch(allowedTopLevelItems, pathname);
+  }, [allowedTopLevelItems, pathname]);
 
-  let bestActiveTo: string | null = null;
-  let longestMatchLength = -1;
+  const isActive = (item: NavItemConfig): boolean => {
+    if (!activeMatch) return false;
+    const normalizedItemTo = normalizePath(item.to);
+    const normalizedTarget = normalizePath(pathname);
 
-  for (const item of allAllowedItems) {
-    if (pathname === item.to) {
-      bestActiveTo = item.to;
-      longestMatchLength = item.to.length;
-      break;
+    // 1. Exact match on pathname (for both parents and leaves)
+    if (normalizedItemTo === normalizedTarget) {
+      return true;
     }
-  }
 
-  if (!bestActiveTo) {
-    for (const item of allAllowedItems) {
-      if (item.to !== '/' && pathname.startsWith(item.to + '/')) {
-        if (item.to.length > longestMatchLength) {
-          longestMatchLength = item.to.length;
-          bestActiveTo = item.to;
-        }
+    // 2. Parent check: if the item has children, it is active if it's a prefix of the target path
+    if (item.children?.length) {
+      if (normalizedItemTo !== '/' && normalizedTarget.startsWith(normalizedItemTo + '/')) {
+        return true;
+      }
+    } else {
+      // 3. Leaf check: if the item has no children, it is active if its path exactly matches the resolved active match leaf path
+      const normalizedActiveTo = normalizePath(activeMatch.item.to);
+      if (normalizedItemTo !== '/' && normalizedItemTo === normalizedActiveTo) {
+        return true;
       }
     }
-  }
 
-  if (!bestActiveTo && pathname === '/') {
-    bestActiveTo = '/';
-  }
-
-  const isActive = (path: string): boolean => {
-    if (bestActiveTo === path) return true;
-    if (bestActiveTo && path !== '/' && bestActiveTo.startsWith(path + '/')) return true;
     return false;
   };
 
   const hasActiveDescendant = (item: NavItemConfig): boolean =>
-    item.children?.some((child) => isActive(child.to) || hasActiveDescendant(child)) ?? false;
+    item.children?.some((child) => isActive(child) || hasActiveDescendant(child)) ?? false;
 
   const isExpanded = (item: NavItemConfig) => {
-    const auto = Boolean(item.children?.length) && (pathname === item.to || pathname.startsWith(`${item.to}/`) || hasActiveDescendant(item));
+    const auto = Boolean(item.children?.length) && (isActive(item) || hasActiveDescendant(item));
     if (manuallyExpanded.has(item.to)) return !auto;
     return auto;
   };
@@ -99,46 +156,64 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
         else next.add(item.to);
         return next;
       });
+    } else {
+      onNavClick?.();
     }
-    onNavClick?.();
   };
 
   const renderNavItem = (item: NavItemConfig, depth = 0) => {
     const Icon = item.icon;
-    const active = isActive(item.to);
+    const active = isActive(item);
     const expanded = isExpanded(item);
     const hasChildren = Boolean(item.children?.length);
 
+    const navItemContent = (
+      <>
+        {active && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-r-full animate-fade-in" />
+        )}
+        <Icon className={`h-[18px] w-[18px] transition-colors duration-200 ${
+          active
+            ? 'text-indigo-600'
+            : expanded
+              ? 'text-slate-600'
+              : 'text-slate-400 group-hover:text-slate-600'
+        }`} />
+        <span className="flex-1 min-w-0">{item.label}</span>
+        {hasChildren ? (
+          <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+        ) : null}
+      </>
+    );
+
+    const navItemClassName = `w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group relative ${
+      active
+        ? 'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 font-semibold shadow-sm shadow-indigo-100'
+        : expanded
+          ? 'bg-slate-50 text-slate-900'
+          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+    } ${depth > 0 ? 'ml-4 py-2 text-[12px]' : ''}`;
+
     return (
       <div key={item.to} className="space-y-1">
-        <Link
-          to={item.to}
-          onClick={() => handleNavClick(item)}
-          role={hasChildren ? 'button' : undefined}
-          aria-expanded={hasChildren ? expanded : undefined}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group relative ${
-            active
-              ? 'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 font-semibold shadow-sm shadow-indigo-100'
-              : expanded
-                ? 'bg-slate-50 text-slate-900'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-          } ${depth > 0 ? 'ml-4 py-2 text-[12px]' : ''}`}
-        >
-          {active && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-r-full animate-fade-in" />
-          )}
-          <Icon className={`h-[18px] w-[18px] transition-colors duration-200 ${
-            active
-              ? 'text-indigo-600'
-              : expanded
-                ? 'text-slate-600'
-                : 'text-slate-400 group-hover:text-slate-600'
-          }`} />
-          <span className="flex-1 min-w-0">{item.label}</span>
-          {hasChildren ? (
-            <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
-          ) : null}
-        </Link>
+        {hasChildren ? (
+          <button
+            type="button"
+            onClick={() => handleNavClick(item)}
+            aria-expanded={expanded}
+            className={navItemClassName}
+          >
+            {navItemContent}
+          </button>
+        ) : (
+          <Link
+            to={item.to}
+            onClick={() => handleNavClick(item)}
+            className={navItemClassName}
+          >
+            {navItemContent}
+          </Link>
+        )}
 
         {hasChildren ? (
           <div

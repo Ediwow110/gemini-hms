@@ -7,7 +7,7 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 
 export const AccessReviewsPage: React.FC = () => {
   const [reviewPeriod, setReviewPeriod] = useState('Q2-2026');
-  const { report, loading } = useAccessReview();
+  const { report, loading, error } = useAccessReview();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const users = (report?.accessReport || []).map((u: any) => ({
@@ -119,7 +119,13 @@ export const AccessReviewsPage: React.FC = () => {
             {loading ? 'Loading...' : `Access Review — ${allUsers.length} Users`}
           </h3>
         </div>
-        {loading ? (
+        {error ? (
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-rose-500 space-y-2">
+            <AlertTriangle className="h-8 w-8 mx-auto" />
+            <p className="text-xs font-bold">Failed to load access review</p>
+            <p className="text-xs">{error}</p>
+          </div>
+        ) : loading ? (
           <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-12 text-center text-xs text-slate-400">
             Loading access review data...
           </div>

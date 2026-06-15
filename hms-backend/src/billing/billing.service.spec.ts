@@ -113,6 +113,7 @@ describe('BillingService Reversals', () => {
     audit = { log: jest.fn().mockResolvedValue({}) };
     approvals = {
       createRequest: jest.fn().mockResolvedValue({ id: 'req-uuid' }),
+      processRequest: jest.fn(),
     };
     const numbering = {
       generateNumber: jest.fn().mockResolvedValue('RCP-000001'),
@@ -2631,6 +2632,10 @@ describe('BillingService Reversals', () => {
       prisma = createPrismaMock();
       audit = { log: jest.fn().mockResolvedValue({}) };
       ledgerService = { postEntry: jest.fn().mockResolvedValue(undefined) };
+      approvals = {
+        createRequest: jest.fn().mockResolvedValue({ id: 'req-uuid' }),
+        processRequest: jest.fn(),
+      };
 
       // Ensure $transaction passes the mock prisma as tx
       prisma.$transaction = jest
@@ -2646,7 +2651,7 @@ describe('BillingService Reversals', () => {
           { provide: AuditService, useValue: audit },
           {
             provide: ApprovalsService,
-            useValue: { createRequest: jest.fn() },
+            useValue: approvals,
           },
           {
             provide: NumberingService,
@@ -2878,6 +2883,8 @@ describe('BillingService Reversals', () => {
         );
         expect(audit.log).toHaveBeenCalledWith(
           expect.objectContaining({ eventKey: 'PAYMENT_GATEWAY_FAILED' }),
+          expect.anything(),
+          expect.anything(),
         );
         // No financial settlement should occur
         expect(prisma.invoice.update).not.toHaveBeenCalled();
@@ -2918,6 +2925,8 @@ describe('BillingService Reversals', () => {
         );
         expect(audit.log).toHaveBeenCalledWith(
           expect.objectContaining({ eventKey: 'PAYMENT_GATEWAY_EXPIRED' }),
+          expect.anything(),
+          expect.anything(),
         );
         expect(prisma.invoice.update).not.toHaveBeenCalled();
       });
@@ -2931,6 +2940,272 @@ describe('BillingService Reversals', () => {
             reason: 'test',
           }),
         ).rejects.toThrow(BadRequestException);
+      });
+    });
+
+    describe('rejectVoid transaction atomicity', () => {
+      it('should use tx.paymentReversal.update inside transaction', async () => {
+        const reversal = {
+          id: 'rev-1',
+          type: 'VOID',
+          paymentId: mockPaymentId,
+          approvalRequestId: 'approval-1',
+          reason: 'test',
+          amount: new Prisma.Decimal(100),
+        };
+        prisma.paymentReversal.findFirst.mockResolvedValue(reversal);
+        approvals.processRequest.mockResolvedValue({});
+        prisma.paymentReversal.update.mockResolvedValue({
+          ...reversal,
+          status: 'REJECTED',
+        });
+        audit.log.mockResolvedValue({});
+
+        await service.rejectVoid(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          'rev-1',
+          { remarks: 'test' },
+        );
+
+        // Verify paymentReversal.update was called on tx (first arg of mock)
+        expect(prisma.paymentReversal.update).toHaveBeenCalled();
+        // Verify audit.log was called with tx
+        expect(audit.log).toHaveBeenCalledWith(
+          expect.objectContaining({ eventKey: 'PAYMENT_VOID_REJECTED' }),
+          expect.anything(), // tx
+          mockBranchId,
+        );
+      });
+    });
+
+    describe('rejectRefund transaction atomicity', () => {
+      it('should use tx.paymentReversal.update inside transaction', async () => {
+        const reversal = {
+          id: 'rev-1',
+          type: 'REFUND',
+          paymentId: mockPaymentId,
+          approvalRequestId: 'approval-1',
+          reason: 'test',
+          amount: new Prisma.Decimal(100),
+        };
+        prisma.paymentReversal.findFirst.mockResolvedValue(reversal);
+        approvals.processRequest.mockResolvedValue({});
+        prisma.paymentReversal.update.mockResolvedValue({
+          ...reversal,
+          status: 'REJECTED',
+        });
+        audit.log.mockResolvedValue({});
+
+        await service.rejectRefund(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          'rev-1',
+          { remarks: 'test' },
+        );
+
+        expect(prisma.paymentReversal.update).toHaveBeenCalled();
+        expect(audit.log).toHaveBeenCalledWith(
+          expect.objectContaining({ eventKey: 'REFUND_REJECTED' }),
+          expect.anything(), // tx
+          mockBranchId,
+        );
+      });
+    });
+
+    describe('failPayment transaction atomicity', () => {
+      it('should wrap mutation and audit in single transaction', async () => {
+        const payment = makePaymentMock({
+          gatewayStatus: 'GATEWAY_PENDING',
+        });
+        prisma.payment.findFirst.mockResolvedValue(payment);
+        prisma.payment.update.mockResolvedValue({
+          ...payment,
+          gatewayStatus: 'GATEWAY_FAILED',
+        });
+        audit.log.mockResolvedValue({});
+
+        await service.failPayment(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          'pay-1',
+          {
+            reason: 'Gateway declined',
+          },
+        );
+
+        // Verify transaction was used
+        expect(prisma.$transaction).toHaveBeenCalled();
+        expect(prisma.payment.update).toHaveBeenCalled();
+        expect(audit.log).toHaveBeenCalledWith(
+          expect.objectContaining({ eventKey: 'PAYMENT_GATEWAY_FAILED' }),
+          expect.anything(), // tx
+          mockBranchId,
+        );
+      });
+
+      it('should rollback payment update when audit fails', async () => {
+        const payment = makePaymentMock({
+          gatewayStatus: 'GATEWAY_PENDING',
+        });
+        prisma.payment.findFirst.mockResolvedValue(payment);
+        prisma.payment.update.mockResolvedValue({
+          ...payment,
+          gatewayStatus: 'GATEWAY_FAILED',
+        });
+        audit.log.mockRejectedValue(new Error('Audit failed'));
+
+        await expect(
+          service.failPayment(mockTenantId, mockUserId, mockBranchId, 'pay-1', {
+            reason: 'Gateway declined',
+          }),
+        ).rejects.toThrow('Audit failed');
+
+        // Transaction should have rolled back
+        expect(prisma.$transaction).toHaveBeenCalled();
+      });
+    });
+
+    describe('expirePayment transaction atomicity', () => {
+      it('should wrap mutation and audit in single transaction', async () => {
+        const payment = makePaymentMock({
+          gatewayStatus: 'GATEWAY_PENDING',
+        });
+        prisma.payment.findFirst.mockResolvedValue(payment);
+        prisma.payment.update.mockResolvedValue({
+          ...payment,
+          gatewayStatus: 'GATEWAY_EXPIRED',
+        });
+        audit.log.mockResolvedValue({});
+
+        await service.expirePayment(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          'pay-1',
+          {
+            reason: 'Expired',
+          },
+        );
+
+        expect(prisma.$transaction).toHaveBeenCalled();
+        expect(prisma.payment.update).toHaveBeenCalled();
+        expect(audit.log).toHaveBeenCalledWith(
+          expect.objectContaining({ eventKey: 'PAYMENT_GATEWAY_EXPIRED' }),
+          expect.anything(), // tx
+          mockBranchId,
+        );
+      });
+
+      it('should rollback payment update when audit fails', async () => {
+        const payment = makePaymentMock({
+          gatewayStatus: 'GATEWAY_PENDING',
+        });
+        prisma.payment.findFirst.mockResolvedValue(payment);
+        prisma.payment.update.mockResolvedValue({
+          ...payment,
+          gatewayStatus: 'GATEWAY_EXPIRED',
+        });
+        audit.log.mockRejectedValue(new Error('Audit failed'));
+
+        await expect(
+          service.expirePayment(
+            mockTenantId,
+            mockUserId,
+            mockBranchId,
+            'pay-1',
+            {
+              reason: 'Expired',
+            },
+          ),
+        ).rejects.toThrow('Audit failed');
+
+        expect(prisma.$transaction).toHaveBeenCalled();
+      });
+    });
+
+    describe('confirmPayment session lock', () => {
+      it('should lock cashier session inside transaction', async () => {
+        const payment = {
+          id: 'pay-1',
+          invoiceId: 'inv-1',
+          cashierSessionId: 'sess-1',
+          status: 'POSTED',
+          gatewayStatus: 'GATEWAY_PENDING',
+          amount: new Prisma.Decimal(100),
+          invoice: {
+            id: 'inv-1',
+            totalAmount: new Prisma.Decimal(1000),
+            paidAmount: new Prisma.Decimal(900),
+            status: 'PARTIALLY_PAID',
+            orderId: 'ord-1',
+          },
+        };
+        prisma.payment.findFirst.mockResolvedValue(payment);
+        prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+        prisma.cashierSession.updateMany.mockResolvedValue({ count: 1 });
+        prisma.invoice.findUnique.mockResolvedValue(payment.invoice);
+        prisma.cashierLedgerEntry.create.mockResolvedValue({});
+        prisma.invoice.update.mockResolvedValue({});
+        prisma.order.updateMany.mockResolvedValue({ count: 1 });
+        prisma.payment.update.mockResolvedValue({});
+        audit.log.mockResolvedValue({});
+
+        await service.confirmPayment(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          'pay-1',
+          { gatewayReference: 'gw-ref' },
+        );
+
+        // Verify session was locked
+        expect(prisma.cashierSession.updateMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              id: 'sess-1',
+              tenantId: mockTenantId,
+              branchId: mockBranchId,
+              status: 'OPEN',
+            }),
+          }),
+        );
+      });
+
+      it('should reject if session is closed', async () => {
+        const payment = {
+          id: 'pay-1',
+          invoiceId: 'inv-1',
+          cashierSessionId: 'sess-1',
+          status: 'POSTED',
+          gatewayStatus: 'GATEWAY_PENDING',
+          amount: new Prisma.Decimal(100),
+          invoice: {
+            id: 'inv-1',
+            totalAmount: new Prisma.Decimal(1000),
+            paidAmount: new Prisma.Decimal(900),
+            status: 'PARTIALLY_PAID',
+            orderId: 'ord-1',
+          },
+        };
+        prisma.payment.findFirst.mockResolvedValue(payment);
+        prisma.invoice.updateMany.mockResolvedValue({ count: 1 });
+        prisma.cashierSession.updateMany.mockResolvedValue({ count: 0 }); // Session already closed
+
+        await expect(
+          service.confirmPayment(
+            mockTenantId,
+            mockUserId,
+            mockBranchId,
+            'pay-1',
+            { gatewayReference: 'gw-ref' },
+          ),
+        ).rejects.toThrow(
+          'Cashier session is closed or was modified concurrently',
+        );
       });
     });
 
@@ -3013,6 +3288,129 @@ describe('BillingService Reversals', () => {
           include: { order: { include: { patient: true } } },
         }),
       );
+    });
+  });
+
+  describe('logReceiptEvent', () => {
+    const validDto = {
+      paymentId: mockPaymentId,
+      eventKey: 'RECEIPT_PRINTED',
+      format: 'thermal',
+      reason: 'Test print',
+    };
+
+    it('should log receipt event for same-branch payment', async () => {
+      const mockPayment = {
+        id: mockPaymentId,
+        tenantId: mockTenantId,
+        branchId: mockBranchId,
+        invoiceId: mockInvoiceId,
+        amount: new Prisma.Decimal(100),
+        paymentMethod: 'CASH',
+        receiptNumber: 'RCP-001',
+      };
+      prisma.payment.findFirst = jest.fn().mockResolvedValue(mockPayment);
+
+      await service.logReceiptEvent(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+        validDto,
+      );
+
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: mockPaymentId,
+          tenantId: mockTenantId,
+          branchId: mockBranchId,
+        },
+      });
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'RECEIPT_PRINTED',
+          recordType: 'Receipt',
+          recordId: mockPaymentId,
+        }),
+        undefined,
+        mockBranchId,
+      );
+    });
+
+    it('should throw NotFoundException for cross-branch payment', async () => {
+      prisma.payment.findFirst = jest.fn().mockResolvedValue(null);
+
+      await expect(
+        service.logReceiptEvent(
+          mockTenantId,
+          mockUserId,
+          'other-branch-uuid',
+          validDto,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: mockPaymentId,
+          tenantId: mockTenantId,
+          branchId: 'other-branch-uuid',
+        },
+      });
+    });
+
+    it('should throw NotFoundException for wrong-tenant payment', async () => {
+      prisma.payment.findFirst = jest.fn().mockResolvedValue(null);
+
+      await expect(
+        service.logReceiptEvent(
+          'wrong-tenant-uuid',
+          mockUserId,
+          mockBranchId,
+          validDto,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should reject invalid event key', async () => {
+      const mockPayment = {
+        id: mockPaymentId,
+        tenantId: mockTenantId,
+        branchId: mockBranchId,
+        invoiceId: mockInvoiceId,
+        amount: new Prisma.Decimal(100),
+        paymentMethod: 'CASH',
+      };
+      prisma.payment.findFirst = jest.fn().mockResolvedValue(mockPayment);
+
+      await expect(
+        service.logReceiptEvent(mockTenantId, mockUserId, mockBranchId, {
+          ...validDto,
+          eventKey: 'INVALID_KEY',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should accept RECEIPT_REPRINTED and RECEIPT_EXPORTED event keys', async () => {
+      const mockPayment = {
+        id: mockPaymentId,
+        tenantId: mockTenantId,
+        branchId: mockBranchId,
+        invoiceId: mockInvoiceId,
+        amount: new Prisma.Decimal(100),
+        paymentMethod: 'CASH',
+      };
+      prisma.payment.findFirst = jest.fn().mockResolvedValue(mockPayment);
+
+      await service.logReceiptEvent(mockTenantId, mockUserId, mockBranchId, {
+        ...validDto,
+        eventKey: 'RECEIPT_REPRINTED',
+      });
+      expect(audit.log).toHaveBeenCalled();
+
+      await service.logReceiptEvent(mockTenantId, mockUserId, mockBranchId, {
+        ...validDto,
+        eventKey: 'RECEIPT_EXPORTED',
+      });
+      expect(audit.log).toHaveBeenCalledTimes(2);
     });
   });
 });

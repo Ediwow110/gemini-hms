@@ -40,18 +40,18 @@ export interface ShipmentDto {
 
 export const fieldServiceService = {
   getTechnicianJobs: async (): Promise<TechnicianJobsResponseDto> => {
-    const response = await apiClient.get('/logistics/technician/jobs');
+    const response = await apiClient.get('/v1/logistics/technician/jobs');
     return response.data;
   },
   getInstallations: async (): Promise<InstallationJobDto[]> => {
-    const response = await apiClient.get('/logistics/installations');
+    const response = await apiClient.get('/v1/logistics/installations');
     return response.data;
   },
   getShipments: async (): Promise<ShipmentDto[]> => {
-    const response = await apiClient.get('/logistics/shipments');
+    const response = await apiClient.get('/v1/logistics/shipments');
     return response.data;
   },
   updateInstallationStatus: async (id: string, status: InstallationJobDto['status']): Promise<void> => {
-    await apiClient.patch(`/logistics/installations/${id}/status`, { status });
+    await apiClient.patch(`/v1/logistics/installations/${id}/status`, { status });
   },
 };

@@ -21,7 +21,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 import { BranchGuard } from '../auth/guards/branch.guard';
 
-@Controller('emr/encounters')
+@Controller('api/v1/emr/encounters')
 @UseGuards(PermissionsGuard, BranchGuard)
 export class EncounterController {
   constructor(private readonly encounterService: EncounterService) {}

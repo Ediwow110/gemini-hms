@@ -33,9 +33,8 @@ export class AuditChainMonitorService {
               `Chain verification passed for tenant ${tenant.id}`,
             );
             try {
-              await this.auditService.log({
+              await this.auditService.logSystemEvent({
                 tenantId: tenant.id,
-                userId: 'system',
                 eventKey: AUDIT_EVENT_KEYS.CHAIN_VERIFICATION_RUN,
                 recordType: 'AuditChain',
                 recordId: tenant.id,
@@ -53,9 +52,8 @@ export class AuditChainMonitorService {
               `Chain corruption detected for tenant ${tenant.id}: ${result.corruptedLogIds?.length || 0} corrupted logs`,
             );
             try {
-              await this.auditService.log({
+              await this.auditService.logSystemEvent({
                 tenantId: tenant.id,
-                userId: 'system',
                 eventKey: AUDIT_EVENT_KEYS.CHAIN_CORRUPTION_DETECTED,
                 recordType: 'AuditChain',
                 recordId: tenant.id,

@@ -131,6 +131,10 @@ const MarketplaceOrdersPage = lazy(() => import('./portals/marketplace/buyer/Mar
 const MarketplaceInstallationTrackingPage = lazy(() => import('./portals/marketplace/buyer/MarketplaceInstallationTrackingPage').then(m => ({ default: m.MarketplaceInstallationTrackingPage })));
 const MarketplaceWarrantyPage = lazy(() => import('./portals/marketplace/buyer/MarketplaceWarrantyPage').then(m => ({ default: m.MarketplaceWarrantyPage })));
 const MarketplaceServiceTicketsPage = lazy(() => import('./portals/marketplace/buyer/MarketplaceServiceTicketsPage').then(m => ({ default: m.MarketplaceServiceTicketsPage })));
+const MarketplaceCartPage = lazy(() => import('./portals/marketplace/buyer/MarketplaceCartPage').then(m => ({ default: m.MarketplaceCartPage })));
+const MarketplaceCheckoutPage = lazy(() => import('./portals/marketplace/buyer/MarketplaceCheckoutPage').then(m => ({ default: m.MarketplaceCheckoutPage })));
+const MarketplaceComparePage = lazy(() => import('./portals/marketplace/buyer/MarketplaceComparePage').then(m => ({ default: m.MarketplaceComparePage })));
+const MarketplaceProductDetailPage = lazy(() => import('./portals/marketplace/buyer/MarketplaceProductDetailPage').then(m => ({ default: m.MarketplaceProductDetailPage })));
 
 const SupplierDashboard = lazy(() => import('./portals/marketplace/supplier/SupplierDashboard').then(m => ({ default: m.SupplierDashboard })));
 const SupplierListingsPage = lazy(() => import('./portals/marketplace/supplier/SupplierListingsPage').then(m => ({ default: m.SupplierListingsPage })));
@@ -404,6 +408,10 @@ const router = createBrowserRouter([
           { path: 'marketplace/installations', element: <PermissionRoute permission="marketplace.buyer.view"><LazyPage><MarketplaceInstallationTrackingPage /></LazyPage></PermissionRoute> },
           { path: 'marketplace/warranty', element: <PermissionRoute permission="marketplace.buyer.view"><LazyPage><MarketplaceWarrantyPage /></LazyPage></PermissionRoute> },
           { path: 'marketplace/service-tickets', element: <PermissionRoute permission="marketplace.buyer.view"><LazyPage><MarketplaceServiceTicketsPage /></LazyPage></PermissionRoute> },
+          { path: 'marketplace/cart', element: <PermissionRoute permission="marketplace.buyer.view"><LazyPage><MarketplaceCartPage /></LazyPage></PermissionRoute> },
+          { path: 'marketplace/checkout', element: <PermissionRoute permission="marketplace.buyer.view"><LazyPage><MarketplaceCheckoutPage /></LazyPage></PermissionRoute> },
+          { path: 'marketplace/compare', element: <PermissionRoute permission="marketplace.buyer.view"><LazyPage><MarketplaceComparePage /></LazyPage></PermissionRoute> },
+          { path: 'marketplace/products/:id', element: <PermissionRoute permission="marketplace.buyer.view"><LazyPage><MarketplaceProductDetailPage /></LazyPage></PermissionRoute> },
 
           // Marketplace (Supplier)
           { path: 'supplier', element: <PermissionRoute allowedRoles={['Supplier', 'Supplier Admin', 'Marketplace Supplier']}><LazyPage><SupplierDashboard /></LazyPage></PermissionRoute> },

@@ -43,11 +43,15 @@ export const REVERSAL_STATUS = {
 /**
  * Billing Transaction Lock Order:
  * To prevent deadlocks, all billing transactions MUST acquire row-level locks in this specific order:
- * 1. Invoice
- * 2. Payment
- * 3. CashierSession
- * 4. PaymentReversal
- * 5. AuditLog
+ * 1. Invoice (updateMany — status guard / row lock)
+ * 2. CashierSession (updateMany — session guard / row lock)
+ * 3. Payment (create)
+ * 4. CashierLedgerEntry (create)
+ * 5. Ledger (postEntry — double-entry accounting)
+ * 6. Invoice (update — new paid amount / status)
+ * 7. Order (updateMany — status change to PAID)
+ * 8. AuditLog (create — PAYMENT_POSTED event)
+ * 9. IdempotencyRecord (update — status to COMPLETED)
  */
 @Injectable()
 export class BillingService {
@@ -329,6 +333,7 @@ export class BillingService {
           const payment = await tx.payment.create({
             data: {
               tenantId,
+              branchId,
               invoiceId: dto.invoiceId,
               cashierSessionId: dto.cashierSessionId,
               receiptNumber,
@@ -349,6 +354,7 @@ export class BillingService {
           if (dto.paymentMethod !== 'QRPH') {
             await tx.cashierLedgerEntry.create({
               data: {
+                tenantId,
                 cashierSessionId: dto.cashierSessionId,
                 type: 'PAYMENT',
                 amount: dto.amount,
@@ -454,8 +460,15 @@ export class BillingService {
             );
           }
 
+          // Every payment created must own a COMPLETED idempotency record.
+          // The idempotencyRecord must be defined here by the code flow above.
+          if (!idempotencyRecord?.id) {
+            throw new InternalServerErrorException(
+              'Payment created without idempotency tracking record',
+            );
+          }
           await tx.idempotencyRecord.update({
-            where: { id: idempotencyRecord!.id },
+            where: { id: idempotencyRecord.id },
             data: {
               status: 'COMPLETED',
               paymentId: payment.id,
@@ -482,14 +495,16 @@ export class BillingService {
       const clientError = this.normalizePostPaymentError(error);
 
       // The FAILED state is only valid while this request still owns IN_PROGRESS.
-      await this.prisma.idempotencyRecord.updateMany({
-        where: { id: idempotencyRecord!.id, status: 'IN_PROGRESS' },
-        data: {
-          status: 'FAILED',
-          error: 'Payment request failed before completion',
-          updatedAt: new Date(),
-        },
-      });
+      if (idempotencyRecord?.id) {
+        await this.prisma.idempotencyRecord.updateMany({
+          where: { id: idempotencyRecord.id, status: 'IN_PROGRESS' },
+          data: {
+            status: 'FAILED',
+            error: 'Payment request failed before completion',
+            updatedAt: new Date(),
+          },
+        });
+      }
 
       throw clientError;
     }
@@ -1123,6 +1138,8 @@ export class BillingService {
 
       await activeTx.paymentVoid.create({
         data: {
+          tenantId,
+          branchId,
           paymentId: payment.id,
           approvalId: approvalRequest.id,
           voidedBy: userId,
@@ -1132,6 +1149,7 @@ export class BillingService {
 
       await activeTx.cashierLedgerEntry.create({
         data: {
+          tenantId,
           cashierSessionId: payment.cashierSessionId,
           type: 'VOID',
           amount: payment.amount,
@@ -1450,6 +1468,8 @@ export class BillingService {
 
       const refundRecord = await activeTx.refund.create({
         data: {
+          tenantId,
+          branchId,
           invoiceId: invoice.id,
           paymentId: payment.id,
           amount: refundAmount,
@@ -1461,6 +1481,7 @@ export class BillingService {
 
       await activeTx.cashierLedgerEntry.create({
         data: {
+          tenantId,
           cashierSessionId: payment.cashierSessionId,
           type: 'REFUND',
           amount: refundAmount,
@@ -1794,7 +1815,7 @@ export class BillingService {
         branchId,
         tx,
       );
-      const updated = await this.prisma.paymentReversal.update({
+      const updated = await tx.paymentReversal.update({
         where: { id: reversalId },
         data: { status: REVERSAL_STATUS.REJECTED },
       });
@@ -1869,7 +1890,7 @@ export class BillingService {
         branchId,
         tx,
       );
-      const updated = await this.prisma.paymentReversal.update({
+      const updated = await tx.paymentReversal.update({
         where: { id: reversalId },
         data: { status: REVERSAL_STATUS.REJECTED },
       });
@@ -1907,7 +1928,7 @@ export class BillingService {
     },
   ) {
     const payment = await this.prisma.payment.findFirst({
-      where: { id: dto.paymentId, tenantId },
+      where: { id: dto.paymentId, tenantId, branchId },
     });
     if (!payment) {
       throw new NotFoundException('Payment not found');
@@ -1924,23 +1945,27 @@ export class BillingService {
       );
     }
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: dto.eventKey,
-      recordType: 'Receipt',
-      recordId: dto.paymentId,
-      newValues: {
-        paymentId: dto.paymentId,
-        invoiceId: payment.invoiceId,
-        receiptNumber: dto.receiptNumber || payment.receiptNumber,
-        amount: payment.amount.toString(),
-        paymentMethod: payment.paymentMethod,
-        format: dto.format || 'thermal',
-        reason: dto.reason,
-        branchId,
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: dto.eventKey,
+        recordType: 'Receipt',
+        recordId: dto.paymentId,
+        newValues: {
+          paymentId: dto.paymentId,
+          invoiceId: payment.invoiceId,
+          receiptNumber: dto.receiptNumber || payment.receiptNumber,
+          amount: payment.amount.toString(),
+          paymentMethod: payment.paymentMethod,
+          format: dto.format || 'thermal',
+          reason: dto.reason,
+          branchId,
+        },
       },
-    });
+      undefined,
+      branchId,
+    );
   }
 
   async getPaymentHistory(
@@ -2028,6 +2053,23 @@ export class BillingService {
         );
       }
 
+      // Lock the cashier session to prevent settlement into a closed session
+      const sessionLock = await tx.cashierSession.updateMany({
+        where: {
+          id: payment.cashierSessionId,
+          tenantId,
+          branchId,
+          status: 'OPEN',
+        },
+        data: { status: 'OPEN' },
+      });
+
+      if (sessionLock.count === 0) {
+        throw new ConflictException(
+          'Cashier session is closed or was modified concurrently',
+        );
+      }
+
       const invoice = await tx.invoice.findUnique({
         where: { id: payment.invoiceId },
       });
@@ -2039,6 +2081,7 @@ export class BillingService {
       // Post cashier ledger entry
       await tx.cashierLedgerEntry.create({
         data: {
+          tenantId,
           cashierSessionId: payment.cashierSessionId,
           type: 'PAYMENT',
           amount: payment.amount,
@@ -2159,31 +2202,41 @@ export class BillingService {
       );
     }
 
-    const updated = await this.prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        gatewayStatus: 'GATEWAY_FAILED',
-        ...(dto.gatewayReference
-          ? { gatewayReference: dto.gatewayReference }
-          : {}),
-      },
-    });
+    const previousGatewayStatus = payment.gatewayStatus;
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'PAYMENT_GATEWAY_FAILED',
-      recordType: 'Payment',
-      recordId: paymentId,
-      newValues: {
-        reason: dto.reason,
-        gatewayReference: dto.gatewayReference || null,
-        previousGatewayStatus: payment.gatewayStatus,
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'FAILED',
+          gatewayStatus: 'GATEWAY_FAILED',
+          ...(dto.gatewayReference
+            ? { gatewayReference: dto.gatewayReference }
+            : {}),
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'PAYMENT_GATEWAY_FAILED',
+          recordType: 'Payment',
+          recordId: paymentId,
+          newValues: {
+            reason: dto.reason,
+            gatewayReference: dto.gatewayReference || null,
+            previousGatewayStatus,
+            previousPaymentStatus: payment.status,
+            branchId,
+          },
+        },
+        tx,
         branchId,
-      },
-    });
+      );
 
-    return updated;
+      return updated;
+    });
   }
 
   async expirePayment(
@@ -2210,26 +2263,36 @@ export class BillingService {
       );
     }
 
-    const updated = await this.prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        gatewayStatus: 'GATEWAY_EXPIRED',
-      },
-    });
+    const previousGatewayStatus = payment.gatewayStatus;
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'PAYMENT_GATEWAY_EXPIRED',
-      recordType: 'Payment',
-      recordId: paymentId,
-      newValues: {
-        reason: dto.reason,
-        previousGatewayStatus: payment.gatewayStatus,
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'EXPIRED',
+          gatewayStatus: 'GATEWAY_EXPIRED',
+        },
+      });
+
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'PAYMENT_GATEWAY_EXPIRED',
+          recordType: 'Payment',
+          recordId: paymentId,
+          newValues: {
+            reason: dto.reason,
+            previousGatewayStatus,
+            previousPaymentStatus: payment.status,
+            branchId,
+          },
+        },
+        tx,
         branchId,
-      },
-    });
+      );
 
-    return updated;
+      return updated;
+    });
   }
 }

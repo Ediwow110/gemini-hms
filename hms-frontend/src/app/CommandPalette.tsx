@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, ShieldAlert, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { roleNavigation } from '../config/roleNavigation';
@@ -17,33 +17,37 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const flattenItems = (items: NavItemConfig[]): NavItemConfig[] =>
-    items.flatMap((item) => [item, ...(item.children ? flattenItems(item.children) : [])]);
-
   // Flatten all navigation items that the user has permission to view
-  const allowedItems = roleNavigation
-    .flatMap((group) => flattenItems(group.items))
-    .filter((item) => {
-      if (item.isHiddenForDemo) return false;
-      if (item.isComingSoon) return false;
+  const allowedItems = useMemo(() => {
+    const flattenItems = (items: NavItemConfig[]): NavItemConfig[] =>
+      items.flatMap((item) => [item, ...(item.children ? flattenItems(item.children) : [])]);
 
-      return canAccess({
-        permission: item.permission,
-        allowedRoles: item.allowedRoles,
-        isBranchScoped: item.isBranchScoped,
-        zone: item.zone,
-      });
-    })
-    .filter((item, index, self) =>
-      self.findIndex((t) => t.to === item.to) === index
-    );
+    return roleNavigation
+      .flatMap((group) => flattenItems(group.items))
+      .filter((item) => {
+        if (item.isHiddenForDemo) return false;
+        if (item.isComingSoon) return false;
 
-  const filteredItems = query === ''
-    ? allowedItems
-    : allowedItems.filter((item) =>
-        item.label.toLowerCase().includes(query.toLowerCase()) ||
-        item.to.toLowerCase().includes(query.toLowerCase())
+        return canAccess({
+          permission: item.permission,
+          allowedRoles: item.allowedRoles,
+          isBranchScoped: item.isBranchScoped,
+          zone: item.zone,
+        });
+      })
+      .filter((item, index, self) =>
+        self.findIndex((t) => t.to === item.to) === index
       );
+  }, [canAccess]);
+
+  const filteredItems = useMemo(() => {
+    return query === ''
+      ? allowedItems
+      : allowedItems.filter((item) =>
+          item.label.toLowerCase().includes(query.toLowerCase()) ||
+          item.to.toLowerCase().includes(query.toLowerCase())
+        );
+  }, [allowedItems, query]);
 
   useEffect(() => {
     if (isOpen) {

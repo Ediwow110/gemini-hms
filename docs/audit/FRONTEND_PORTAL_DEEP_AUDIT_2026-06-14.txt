@@ -1,0 +1,562 @@
+VERDICT: FIX BEFORE COMMIT
+
+This audit covers frontend portal ownership, role-to-route coherence, sidebar behavior, shell-level navigation leakage, and screenshot-backed UI/UX integrity issues in the local repository at:
+D:\Vscode\hms-login-OFFICIAL
+
+Date:
+2026-06-14
+
+Auditor mode:
+- silent-bug-hunter
+- senior-engineering-reviewer
+
+Important evidence boundary:
+- This is a local code-and-UI audit.
+- Findings below are based on repository inspection plus the provided local screenshots.
+- This is not a claim that every page was runtime-clicked under every role.
+- Where behavior was not fully browser-proven, it is called out as a local audit finding, not a staging or production proof claim.
+
+======================================================================
+1. SCOPE CHECKED
+======================================================================
+
+Primary scope:
+- Portal ownership by role
+- Sidebar correctness
+- Route guard versus navigation consistency
+- Hidden real work routes versus visible wrong routes
+- Global shell contamination across staff portals
+- Screenshot-backed UI/UX problems
+- Portal pages that look empty, misleading, or structurally wrong for the owning role
+
+Focus roles and portal types:
+- Super Admin
+- Branch Admin
+- Compliance Officer
+- IT Support
+- Receptionist / queue users
+- Pharmacist
+- Patient
+- Lab Technician / Med-Tech
+- Marketplace buyer / supplier
+
+======================================================================
+2. EVIDENCE REVIEWED
+======================================================================
+
+Primary files reviewed:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\RoleBasedSidebar.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\AppShell.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\roleNavigation.ts
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\portalRoutes.ts
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\App.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\hooks\use-user.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\features\queue\Queue.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\pages\pharmacy\PharmacyDashboard.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\features\pharmacy\PharmacyHub.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\patient\PatientDashboard.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\lab\LabDashboard.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\pages\audit\MyAuditLogPage.tsx
+- D:\Vscode\hms-login-OFFICIAL\hms-backend\prisma\seed.ts
+
+Screenshots reviewed:
+- C:\Users\User\AppData\Local\Temp\codex-clipboard-c41859c9-4457-487e-b586-7c884f52f79d.png
+- C:\Users\User\AppData\Local\Temp\codex-clipboard-2cb431a5-08d5-4a3d-a0ab-f05d3e858948.png
+- C:\Users\User\AppData\Local\Temp\codex-clipboard-25053d65-cbe3-437b-9297-449b1746f4a6.png
+- C:\Users\User\AppData\Local\Temp\codex-clipboard-35612d0f-5821-4c51-982b-496ff2fc505b.png
+
+======================================================================
+3. EXECUTIVE SUMMARY
+======================================================================
+
+The strongest current problem is not one isolated page. It is portal coherence.
+
+The codebase currently has four recurring integrity failures:
+
+1. Users can see or launch actions that do not belong to their role or portal.
+2. Users do not see some pages that actually do belong to them.
+3. Some dashboards point into hidden or dead destinations.
+4. Some portal screens look operational while still being structurally sparse, mock-driven, or visually weak.
+
+This means the project is not mainly blocked by raw crashes in this lane. It is blocked by misleading navigation truth, weak role ownership boundaries, and dashboard pages that do not reliably express what the portal actually owns.
+
+======================================================================
+4. BLOCKING FINDINGS
+======================================================================
+
+4.1 HIGH - Global Quick Create leaks non-owned actions into every protected portal
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\AppShell.tsx:123-255
+- The shell shows Quick Create globally for protected users.
+- Modal actions navigate to:
+  - /patients/new
+  - /queue
+  - /orders/new
+
+Why it matters:
+- This is cross-portal contamination.
+- A shell-level action panel should not offer patient registration, queue admission, or medical order creation to every staff user by default.
+- It breaks the user’s mental model of portal ownership.
+
+Classification:
+- Confirmed real bug
+
+Impact:
+- Receptionist, Pharmacist, Compliance, IT, and other roles can be presented with actions outside their true workspace.
+
+
+4.2 HIGH - Spatial Tracking is visible in general staff navigation without matching route entitlement
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\roleNavigation.ts:429
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\App.tsx route guard evidence for /spatial from prior audit context
+- Screenshot evidence shows Spatial Tracking visible in a Receptionist queue portal
+
+Why it matters:
+- This is a portal-ownership mismatch.
+- A generic receptionist queue workspace should not advertise specialized spatial functionality unless the role truly owns it and the route is allowed.
+- Even when the route guard blocks access, visible wrong navigation is still a correctness bug.
+
+Classification:
+- Confirmed navigation mismatch
+
+
+4.3 HIGH - Notifications bell is globally visible but the route is permission-restricted
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\AppShell.tsx:150-157
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\App.tsx:511-513
+- /notifications requires it.system.view or compliance.audit.review, but the bell is rendered in the global shell for all users
+
+Why it matters:
+- This is another shell-level false affordance.
+- Users are shown a system feature they may not legally or functionally own.
+
+Classification:
+- Confirmed real bug
+
+
+4.4 HIGH - IT Support and Compliance Officer have audit.self permission but no clear owned navigation entry to My Audit Log
+
+Evidence:
+- Backend permission seeded:
+  - D:\Vscode\hms-login-OFFICIAL\hms-backend\prisma\seed.ts:327-332
+- My Audit route exists:
+  - D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\App.tsx:287-288
+- Sidebar entry is restricted to admin roles in one visible section:
+  - D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\roleNavigation.ts:193
+- IT navigation lacks My Audit Log:
+  - D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\roleNavigation.ts:238-251
+- Compliance navigation lacks My Audit Log:
+  - D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\roleNavigation.ts:219-229
+
+Why it matters:
+- This is a role ownership failure in the opposite direction.
+- Users have a real allowed page, but their portal does not disclose it.
+- Compliance and IT are precisely the kinds of roles that need dependable self-audit discoverability.
+
+Classification:
+- Confirmed real bug
+
+
+4.5 HIGH - Marketplace buyer UI still points at dead routes
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\marketplace\buyer\MarketplaceHomePage.tsx:187
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\marketplace\buyer\MarketplaceCartPage.tsx:63
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\marketplace\buyer\components\CompareBar.tsx:38
+- Destinations include:
+  - /marketplace/cart
+  - /marketplace/checkout
+  - /marketplace/compare
+- No corresponding mounted routes were established in the prior route audit
+
+Why it matters:
+- These are direct dead-end flows in a transactional area.
+- Even if marketplace is not the current top-priority lane, dead navigation in buyer flow is a confirmed portal correctness problem.
+
+Classification:
+- Confirmed real bug
+
+
+4.6 HIGH - Lab dashboard points to /lab/release while the mounted surface uses /lab/released
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\lab\LabDashboard.tsx:137
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\lab\LabDashboard.tsx:176
+- Released result routes elsewhere use /lab/released
+
+Why it matters:
+- Wrong target in operational lab workflow.
+- Users can be pushed into non-mounted or inconsistent route paths from dashboard cards and quick actions.
+
+Classification:
+- Confirmed real bug
+
+======================================================================
+5. IMPORTANT MEDIUM-SEVERITY FINDINGS
+======================================================================
+
+5.1 MEDIUM - Sidebar parent items are both navigation links and expand toggles
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\RoleBasedSidebar.tsx:94-141
+- Parent items with children still render as Link to item.to
+- Same click also toggles expansion via handleNavClick
+- onNavClick is fired on every click, including parent-expansion clicks
+
+Why it matters:
+- This creates ambiguous interaction:
+  - click means both "navigate" and "expand"
+  - mobile sidebar can close even when user intended only to expand
+- This is likely the root of some "sidebar bug" behavior the user sees.
+
+Classification:
+- Confirmed real bug
+
+
+5.2 MEDIUM - Queue KPI strip is disconnected from the actual queue state
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\features\queue\Queue.tsx:8-13
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\features\queue\Queue.tsx:29-32
+- Hardcoded stats say:
+  - Waiting 12
+  - Called 3
+  - Served 42
+  - Skipped 2
+- Actual local queue table starts with only two entries
+
+Why it matters:
+- This is a misleading operational dashboard pattern.
+- The page visually looks like a live monitor, but the KPI layer is not derived from the displayed state.
+
+Classification:
+- Confirmed real bug
+
+
+5.3 MEDIUM - Queue page still uses browser alert() for an operational empty-state path
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\features\queue\Queue.tsx:40-50
+
+Why it matters:
+- alert() is a prototype artifact.
+- In a real staff portal, queue exhaustion should be rendered in consistent product UI, not a raw browser modal.
+
+Classification:
+- Confirmed real bug
+
+
+5.4 MEDIUM - Receptionist/queue portal is structurally thin and feels like an isolated feature card inside the generic shell
+
+Evidence:
+- Screenshots 1 and 4
+- Queue workspace contains only:
+  - Patient Queue
+  - Command Center
+  - Spatial Tracking
+- The main content is a single queue page with static-feeling KPIs and a single table
+
+Why it matters:
+- This is not just a visual preference issue.
+- It indicates the portal is under-modeled compared with the role’s expected operational surface.
+- It also amplifies the wrongness of stray sidebar entries like Spatial Tracking.
+
+Classification:
+- Confirmed UX integrity issue
+
+
+5.5 MEDIUM - Pharmacy dashboard routes users into a hidden real workspace
+
+Evidence:
+- Visible role nav:
+  - D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\roleNavigation.ts:303-305
+- Real navigations inside dashboard:
+  - D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\pages\pharmacy\PharmacyDashboard.tsx:208, 218, 266, 303, 310, 334-335
+- Sidebar hides:
+  - Dispense Queue
+  - Drug Inventory
+  using isHiddenForDemo
+
+Why it matters:
+- Users are pushed to /pharmacy from the dashboard, but the sidebar does not cleanly teach that /pharmacy is their owned workspace.
+- This produces the "pharmacist portal looks like nothing" symptom from the screenshot.
+
+Classification:
+- Confirmed real bug
+
+
+5.6 MEDIUM - Pharmacy dashboard is visually sparse because major sections are unavailable while the page framing still implies a full operational hub
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\pages\pharmacy\PharmacyDashboard.tsx:139-145, 164-168, 224-228, 271-328
+- Multiple major sections render HmsDataUnavailable
+- Screenshot 3 shows a mostly empty right side and a very light overall information density
+
+Why it matters:
+- This is not a crash, but it is a portal maturity problem.
+- The dashboard reads like a production ops hub while much of it is unavailable, which makes the portal feel incomplete and unowned.
+
+Classification:
+- Confirmed UX/product issue
+
+
+5.7 MEDIUM - Patient dashboard exposes Video Call quick action to a route patients do not own
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\portals\patient\PatientDashboard.tsx:103-110
+- Quick action points to /telehealth
+- Prior route audit showed /telehealth guarded by encounter.create, which patients do not have
+
+Why it matters:
+- Patients are shown a direct action that may be inaccessible or semantically wrong.
+- That is a portal ownership bug, not just a missing feature.
+
+Classification:
+- Confirmed real bug
+
+
+5.8 MEDIUM - Branch Admin sees settings navigation that is stricter at route level
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\roleNavigation.ts:196-207
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\config\portalRoutes.ts:51
+- App route:
+  - D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\App.tsx:296-305
+
+Why it matters:
+- This creates "sidebar says yes, route guard says no" behavior.
+- It is confusing and makes branch-admin governance feel broken.
+
+Classification:
+- Confirmed navigation mismatch
+
+======================================================================
+6. LOWER-SEVERITY BUT REAL FINDINGS
+======================================================================
+
+6.1 LOW - Queue action buttons are visually cramped and weak for primary operations
+
+Evidence:
+- Screenshot 2
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\features\queue\Queue.tsx:79-90
+
+Why it matters:
+- Call Next is a primary operational action but looks tiny and visually unstable.
+- Add to Queue looks like a secondary chip rather than a core action.
+
+Classification:
+- Confirmed UX defect
+
+
+6.2 LOW - Portal width and density still vary unevenly between mature and immature workspaces
+
+Evidence:
+- Screenshot 3 pharmacy and screenshot 4 queue
+- App shell main content width is broad:
+  - D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\app\AppShell.tsx:181-184
+- Yet some portals still visually underuse space due to sparse page composition, not shell constraint
+
+Why it matters:
+- The issue is now less about global container width and more about page composition density.
+- Some staff portals still look unfinished beside more mature dashboards.
+
+Classification:
+- Confirmed UX issue
+
+
+6.3 LOW - My Audit Log discoverability is inconsistent across portals even when route and permission exist
+
+Evidence:
+- D:\Vscode\hms-login-OFFICIAL\hms-frontend\src\pages\audit\MyAuditLogPage.tsx:68
+- roleNavigation only places the entry in selected admin surfaces
+
+Why it matters:
+- This is a repeatable navigation governance smell.
+- The app now has the feature, but portal discoverability is inconsistent.
+
+Classification:
+- Confirmed UX/navigation issue
+
+======================================================================
+7. SCREENSHOT-SPECIFIC OBSERVATIONS
+======================================================================
+
+Screenshot 1 and 4 - Queue / Receptionist
+- Spatial Tracking is visibly present in the left navigation and appears out of place for this portal.
+- The portal looks too empty for an operational queue workspace.
+- The KPI cards and top actions do not visually carry enough weight for a frontline station workflow.
+- The page footer says "Mock queue (sandbox)", so the page is honest about its data source, but the surrounding portal still feels under-modeled.
+
+Screenshot 2 - Queue buttons
+- Primary and secondary actions are too small and visually crowded.
+- The button group does not communicate strong hierarchy for a fast operational workflow.
+- This is a design bug, not only a taste issue, because speed-of-recognition matters here.
+
+Screenshot 3 - Pharmacist portal
+- The portal visually looks half-empty.
+- The right panel has no catalog data and large open whitespace.
+- The page shows a live/offline mixed state, but the visible navigation does not clearly expose the true pharmacist work hub.
+- This matches the code finding that dashboard actions point to /pharmacy while the sidebar hides the more actionable pharmacy entries.
+
+======================================================================
+8. ROLE / PORTAL OWNERSHIP MAP
+======================================================================
+
+This is the current high-level portal truth map from the audit.
+
+Super Admin
+- Generally owns broad governance and global routes.
+- Still affected by shared-shell contamination because global shell actions are not sufficiently role-scoped.
+- Admin surfaces are stronger than many staff portals, but some sandbox/prototype pages still remain in the ecosystem.
+
+Branch Admin
+- Has meaningful branch-scoped operational and governance routes.
+- Still affected by settings nav mismatch and route truth drift.
+
+Compliance Officer
+- Has real compliance and audit review surfaces.
+- Missing clear My Audit Log ownership in the visible portal navigation despite audit.self.
+
+IT Support
+- Has real IT support and oversight routes.
+- Missing clear My Audit Log ownership in the visible portal navigation despite audit.self.
+- Also affected by global shell actions that are not IT-specific.
+
+Receptionist / Queue users
+- Portal is too thin.
+- Wrong nav contamination present via Spatial Tracking.
+- Queue page still contains prototype-style behaviors.
+
+Pharmacist
+- Real work hub exists at /pharmacy.
+- Dashboard is present, but visible portal discovery is weak because actionable pharmacy routes are hidden.
+- Overall portal feels visually incomplete.
+
+Patient
+- Main patient portal is more role-specific.
+- Quick action set still contains at least one wrong cross-entitlement action: Video Call -> /telehealth.
+
+Lab Technician / Med-Tech
+- Core lab routes are real and mounted.
+- Dashboard still contains route drift to /lab/release.
+
+Marketplace Buyer
+- Buyer surfaces still contain dead route destinations.
+
+Supplier / Supplier Admin / Marketplace Supplier
+- Supplier route guards appear aligned in the reviewed route layer from prior fixes.
+- No new supplier-specific blocker was confirmed in this pass.
+
+Procurement
+- No new procurement portal blocker was confirmed in this pass.
+
+Cashier / Finance
+- Prior cashier honesty hardening remains mostly intact in this session’s context.
+- No new cashier-specific blocker exceeded the newly found shell/portal coherence bugs in this pass.
+
+======================================================================
+9. CLEAN OR PARTIALLY CLEAN AREAS FROM THIS PASS
+======================================================================
+
+These are not a declaration of production readiness. They simply mean this pass did not confirm a new blocker there.
+
+- Supplier route guard alignment looked consistent with earlier hardening
+- Procurement route ownership did not produce a newly confirmed blocker in this pass
+- The queue page honestly labels its data source as mock/sandbox
+- Pharmacy dashboard does honestly show unavailable states instead of faking live charts
+- My Audit Log route itself exists and is permission-protected; the problem is discoverability, not route absence
+
+======================================================================
+10. FALSE OR OVERSTATED CLAIMS TO AVOID
+======================================================================
+
+Do not say:
+- "All portals are role-correct now"
+- "Sidebar is fully fixed"
+- "Every user only sees pages that belong to them"
+- "Pharmacy portal is complete"
+- "Queue portal is production-ready"
+- "My Audit Log is consistently available to all entitled roles"
+
+Current evidence does not support any of those claims.
+
+======================================================================
+11. RECOMMENDED FIX ORDER
+======================================================================
+
+Priority 1 - Shell truth
+- Scope Quick Create by role and portal
+- Scope topbar notifications by permission
+- Remove or permission-gate stray global shortcuts that leak cross-role actions
+
+Priority 2 - Portal ownership correctness
+- Remove Spatial Tracking from roles that do not own it
+- Add My Audit Log to IT Support and Compliance Officer navigation if they truly own audit.self
+- Reconcile Branch Admin settings visibility with route guard reality
+
+Priority 3 - Dead and wrong route targets
+- Fix marketplace buyer dead routes
+- Fix lab /lab/release -> /lab/released drift
+- Remove patient quick actions that target inaccessible routes
+
+Priority 4 - Portal maturity and UX
+- Rework queue action hierarchy and button sizing
+- Replace queue alert() behavior with proper product UI
+- Derive queue KPI cards from actual state or clearly label them as mock
+- Make pharmacist portal visibly expose the real owned work hub
+- Increase information density and ownership clarity in sparse staff portals
+
+======================================================================
+12. NEXT-AI PROMPT
+======================================================================
+
+Use silent-bug-hunter and senior-engineering-reviewer first. Also use Browser/in-app browser skills if available for local UI verification. Work locally only. Do not push. Do not open a PR. Do not broaden scope beyond portal ownership, sidebar truth, shell action scoping, and wrong/dead route fixes.
+
+Workspace:
+D:\Vscode\hms-login-OFFICIAL
+
+Task:
+Implement the highest-value fixes from this audit in the smallest safe scope:
+1. Role-scope or remove global Quick Create actions that do not belong to every portal user.
+2. Permission-gate or remove the global notifications bell for roles that cannot access /notifications.
+3. Fix sidebar/portal ownership mismatches:
+   - remove Spatial Tracking from non-owning roles
+   - add My Audit Log where audit.self is truly owned by IT Support and Compliance Officer
+   - reconcile Branch Admin settings nav with route reality
+4. Fix confirmed wrong/dead route targets:
+   - marketplace buyer dead routes
+   - lab /lab/release drift
+   - patient Video Call quick action if inaccessible
+5. Fix sidebar interaction bug where parent items both navigate and expand, especially on mobile.
+6. If safe and still within scope, replace queue alert() and make queue KPI stats truthfully derived or explicitly mock.
+
+Validation after edits:
+- frontend lint
+- frontend typecheck
+- targeted frontend tests
+- frontend build
+
+Required final output:
+1. Executive verdict
+2. Exact findings fixed
+3. Exact files audited
+4. Exact files changed
+5. Validation results
+6. Residual risks
+7. Commit hash only if a local commit is actually created
+
+======================================================================
+13. FINAL JUDGMENT
+======================================================================
+
+Current lane status:
+FIX BEFORE COMMIT
+
+Why:
+- The repo still contains confirmed shell-level navigation leakage, wrong portal ownership disclosure, hidden owned routes, and dead/wrong destinations.
+- The project is close enough that these are fixable surgical issues, but they are still real correctness issues, not cosmetic nits.
+
+No code edits were made in this audit artifact pass.

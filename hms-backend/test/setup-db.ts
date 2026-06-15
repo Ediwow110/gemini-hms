@@ -14,7 +14,7 @@ console.log(`Setting up test database at ${dbUrl}...`);
 async function main() {
   try {
     // Push the schema
-    execSync('npx prisma db push --accept-data-loss', {
+    execSync('npx prisma db push --force-reset', {
       stdio: 'inherit',
       env: { ...process.env, DATABASE_URL: dbUrl },
     });

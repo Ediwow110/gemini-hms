@@ -1,6 +1,7 @@
 export const PERMISSIONS = {
   PATIENT_VIEW: 'patient.view',
   QUEUE_VIEW: 'queue.view',
+  QUEUE_MANAGE: 'queue.manage',
   LAB_RESULT_VIEW: 'lab.result.view',
   INVENTORY_DISPENSE: 'inventory.stock.dispense',
   BILLING_VIEW: 'billing.invoice.view',
@@ -40,6 +41,10 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<string, Permission[]> = {
   ],
   'Patient': [
     PERMISSIONS.PATIENT_SELF_SERVICE,
+  ],
+  'Receptionist': [
+    PERMISSIONS.QUEUE_VIEW,
+    PERMISSIONS.QUEUE_MANAGE,
   ],
   'Marketplace Buyer': [
     PERMISSIONS.MARKETPLACE_BUYER,

@@ -28,7 +28,7 @@ import {
   UpdateReferralStatusDto,
 } from './dto/clinical.dto';
 
-@Controller('clinical')
+@Controller('api/v1/clinical')
 @UseGuards(RolesGuard, BranchGuard)
 export class ClinicalController {
   constructor(

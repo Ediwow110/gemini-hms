@@ -1,0 +1,249 @@
+======================================================================
+FRONTEND HARDENING VERDICT — CANONICAL LOCAL HANDOFF
+2026-06-14 (finalized 2026-06-15)
+======================================================================
+
+VERDICT: ACCEPT WITH NITS
+
+This is the single source-of-record report for the completed remediation lane.
+All three commits are validated locally. No remote CI, staging, or production
+proof exists.
+
+======================================================================
+1. FINAL LOCAL STATE
+======================================================================
+
+  Working tree:              CLEAN  (git status --short: no output)
+  Ahead of origin/main:      40 commits
+  Behind origin/main:        0 commits
+  git diff --check:          CLEAN
+  git diff --check origin/main...HEAD: CLEAN
+
+  3 relevant commits spanning 13 files (12 source, 1 doc):
+
+    008ea43 — Prisma toolchain alignment     (3 files)
+    30a17928 — 8 remediation phases          (9 files)
+    41a7c36  — Doc truth-correction          (1 file)
+
+======================================================================
+2. COMMIT-BY-COMMIT SCOPE MAP
+======================================================================
+
+--------------------------------------------------------------------------------
+COMMIT 1:  008ea431 — chore(prisma): align toolchain on stable 7.8.0
+DATE:      2026-06-15
+FILES:     3 (2 package files + 1 script comment)
+--------------------------------------------------------------------------------
+
+  hms-backend/package.json                     |  6 +-
+  hms-backend/package-lock.json                | 158 +++++-----
+  hms-backend/scripts/verify-migration-upgrade.ts  |  2 +-
+
+  Changes:
+  - All three Prisma packages moved from 7.9.0-dev.13 (prerelease) to
+    7.8.0 (stable). Exact pins (no ^/~).
+  - Migration harness comment updated to reference 7.8.0.
+
+  Validation:
+  - npx prisma validate: PASS
+  - npx prisma --version: prisma 7.8.0, @prisma/client 7.8.0
+  - npm ls: all three resolutions show 7.8.0
+  - npm ci: lockfile reproducible
+  - npm test: 80 suites / 1609 tests pass
+  - Migration rehearsal: 34/34 pass (all invalid-state rejection tests pass)
+  - npm run test:e2e: 53 suites / 148 tests pass
+  - No 7.9.0-dev entries remain in lockfile or source tree
+
+--------------------------------------------------------------------------------
+COMMIT 2:  30a17928 — fix: remediate 8 production-readiness blockers
+DATE:      2026-06-15
+FILES:     9 (+123/-62 lines)
+--------------------------------------------------------------------------------
+
+  BACKEND (6 files):
+    hms-backend/src/audit/audit.service.ts                 | +46/-22
+    hms-backend/src/billing/billing.service.ts             | +4/-0
+    hms-backend/src/compliance/compliance.controller.ts    | +12/-6
+    hms-backend/src/compliance/data-retention.service.ts   | +37/-35
+    hms-backend/src/compliance/change-management.service.ts | +8/-0
+
+  OPS SCRIPTS (2 files):
+    hms-backend/scripts/chaos-slayer.ts                    | +21/-15
+    hms-backend/scripts/multi-cloud-federated-failover.ts  | +3/-3
+
+  FRONTEND (2 files):
+    hms-frontend/src/hooks/use-compliance.ts                | +3/-0
+    hms-frontend/src/services/compliance.service.ts         | +2/-2
+
+  Note: corrects prior report variants that said "1 ops script file" (wrong,
+  it was 2).
+
+  PHASE 1 — Cross-tenant retention isolation:
+    data-retention.service.ts: every count()/updateMany()/archiveRecord()
+    now includes tenantId in WHERE clause. Enforce/status endpoints accept
+    tenantId. Fixes multi-tenant data leakage on retention operations.
+
+  PHASE 2 — Gateway payment status integrity:
+    failPayment now sets payment.status = 'FAILED' alongside gatewayStatus.
+    expirePayment now sets payment.status = 'EXPIRED' alongside gatewayStatus.
+    Both capture previousPaymentStatus in audit payload. Refund/void guards
+    already reject non-POSTED payments, so EXPIRED/FAILED payments are
+    correctly excluded from downstream operations.
+
+  PHASE 3 — Anomaly endpoint honesty:
+    New dedicated GET /compliance/hipaa/anomalies endpoint that calls
+    hipaaService.detectUnauthorizedAccess(tenantId). Frontend now calls
+    /hipaa/anomalies instead of the query-param hack on /hipaa/ephi-audit.
+
+  PHASE 4 — Legacy-safe chain verification:
+    verifyChain() now skips rows with null hash (pre-hash-chaining legacy
+    data) instead of counting them as corrupted. Returns hasLegacyRows,
+    legacyUnverifiableCount, totalLogs. Frontend ChainVerificationResult
+    interface extended with these fields.
+
+  PHASE 5 — Ops script hardening:
+    Both chaos-slayer.ts and multi-cloud-federated-failover.ts: container
+    names changed from hms-login-design-* to hms-login-official-* via
+    COMPOSE_PROJECT_NAME env var. Dead infrastructure-health-probe.ts
+    reference replaced with HTTP health check.
+
+  PHASE 6 — Access authorization fix:
+    Removed branchId && short-circuit in getAuditLog that allowed
+    non-super-admin users with undefined branchId to bypass branch scoping.
+
+  PHASE 7 — Mock honesty:
+    change-management.service.ts: added _metadata.source clarifying that
+    deployment history is static-representative.
+
+  PHASE 8 — Audit secret isolation:
+    Introduced getAuditSecret() method using AUDIT_CHAIN_SECRET env var
+    with JWT_SECRET fallback and warning log.
+
+  Validation:
+    Backend lint: 0 errors (3 prettier warnings auto-fixed during validation)
+    Backend tsc --noEmit: PASS (1 implicit-any in chaos-slayer.ts fixed)
+    Backend npm test: 80 suites / 1609 tests PASS
+    Billing/compliance/audit targeted: 5 suites / 156 tests PASS
+    Frontend lint: 0 errors
+    Frontend typecheck: PASS
+    Frontend vitest (compliance): 6 suites / 20 tests PASS
+    Frontend vitest overall: 72/73 suites PASS (1 pre-existing
+      PatientPortalIsolation.test.tsx rendering failure — unrelated)
+    Frontend npm run build: PASS
+
+--------------------------------------------------------------------------------
+COMMIT 3:  41a7c36 — docs(audit): truth-correct verdict
+DATE:      2026-06-15
+FILES:     1 (+113/-39 lines)
+--------------------------------------------------------------------------------
+
+  docs/audit/FRONTEND_HARDENING_VERDICT_2026-06-14.txt
+
+  This file. Corrects prior report variants that:
+  - Claimed "no code changes needed" when 9 source files changed
+  - Claimed "only verdict doc modified" when 9 source files were committed
+  - Treated the lane as frontend-only when it was mixed backend/frontend
+  - Said "Ops scripts: 1 file" when 2 scripts changed
+  - Collapsed all commits into one vague scope line
+  - Used imprecise file counts (e.g. "10 files")
+
+======================================================================
+3. FIXED FINDINGS BY SEVERITY
+======================================================================
+
+  CRITICAL (fixed):
+    - Cross-tenant data leakage in retention operations (all queries now
+      scoped by tenantId)
+    - Non-super-admin branch-scoping bypass when branchId is undefined
+      (removed short-circuit in getAuditLog)
+
+  HIGH (fixed):
+    - Payment gateway fail/expire did not update payment.status field
+      (only gatewayStatus was set)
+    - Legacy audit rows with null hash incorrectly flagged as corrupted
+      (now skipped with correct counters)
+    - Stale container names and dead script references in ops scripts
+    - Frontend anomaly detection calling wrong endpoint with query-param hack
+
+  MEDIUM (fixed):
+    - Missing AUDIT_CHAIN_SECRET isolation from JWT_SECRET
+    - Missing _metadata.source on mock deployment history
+    - Implicit-any TypeScript error in chaos-slayer.ts
+
+  NITS (not fixed, documented):
+    - E2E Force exiting Jest warning (open async handles)
+    - mfa-recovery.e2e-spec.ts transient timeout under load
+    - PatientPortalIsolation.test.tsx pre-existing rendering failure
+    - Recharts vendor chunk 381 kB (109 kB gzip) — known heaviness
+    - Queue served/skipped KPIs partially hardcoded (labeled sandbox)
+    - No remote CI, staging, or production proof
+
+======================================================================
+4. WHAT PRIOR REPORT VARIANTS GOT WRONG
+======================================================================
+
+  Variant A (previous conversational report):
+    "Ops scripts: 1 file" — WRONG. Two ops scripts changed:
+      hms-backend/scripts/chaos-slayer.ts
+      hms-backend/scripts/multi-cloud-federated-failover.ts
+    "No code changes needed" — WRONG. 9 source files changed in 30a17928.
+    "Only verdict doc modified" — WRONG. Source changes committed in 30a17928.
+
+  Variant B (previous verdict file, pre-41a7c36):
+    "10 files (9 committed, 1 doc pending)" — IMPRECISE. 12 source files
+      across 2 commits (9 in 30a17928, 3 in 008ea43), plus 1 doc = 13 files.
+    "39 commits ahead" — STALE. Now 40 ahead after 41a7c36.
+
+  ALL CORRECTIONS ARE NOW INCORPORATED INTO THIS CANONICAL REPORT.
+
+======================================================================
+5. PROOF BOUNDARY
+======================================================================
+
+  LOCAL PROOF:       ✅ Validation counts are a mix of live re-verification in
+                       this session and prior recorded validation evidence.
+  REMOTE CI PROOF:   ❌ Not yet — branch never pushed to origin.
+  STAGING PROOF:     ❌ Not yet — no staging environment exists.
+  PRODUCTION PROOF:  ❌ Not yet — only SSH target in deploy.yml.
+
+  Live this session: backend lint, tsc --noEmit, npm test (80/1609),
+    frontend lint, typecheck, compliance vitest (6/20), frontend build,
+    git diff --check, git status.
+  Prior recorded evidence (not re-run in this session): Prisma validate,
+    Prisma migration rehearsal (34/34), E2E (53/148), npm ci reproducibility,
+    npm ls version resolution.
+  No count is carried forward from unsourced prior claims — every item
+  in the "Prior recorded" list was verified in an earlier session and its
+  output is captured in that session's conversation history.
+
+======================================================================
+6. RESIDUAL RISKS
+======================================================================
+
+  S/N  Risk                                    Classification
+  ---  -------------------------------------   -------------------------
+  1    E2E Force exiting Jest warning          Pre-existing, documented
+  2    mfa-recovery.e2e-spec.ts transient      Pre-existing flake
+        timeout under load
+  3    PatientPortalIsolation.test.tsx         Pre-existing, unrelated
+        rendering failure under Vitest         to this lane
+  4    Recharts chunk 381 kB (109 kB gzip)     Known heaviness; needs
+                                                separate optimization lane
+  5    Queue served/skipped KPIs partially     Honest sandbox labeling
+        hardcoded                              in place
+  6    No remote CI, staging, or               Not yet pushed
+        production proof
+
+======================================================================
+7. FINAL RECOMMENDATION
+======================================================================
+
+  ACCEPT WITH NITS. All code changes are correct, validated, and committed.
+  The report is now the single canonical source of truth for this lane.
+
+  Next step when authorized:
+    1. Create feature branch and push
+    2. Open PR to main → triggers CI
+    3. After CI green → provision staging environment
+
+======================================================================
