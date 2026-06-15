@@ -102,6 +102,9 @@ describe('PharmacyService', () => {
         updateMany: jest.fn(),
       },
       inventoryItem: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'item-1', category: 'DRUG' }),
         findMany: jest.fn(),
       },
     };

@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -190,6 +191,17 @@ export class PharmacyService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // 1. Verify item is a DRUG
+      const item = await tx.inventoryItem.findFirst({
+        where: { id: dto.inventoryItemId, tenantId },
+      });
+
+      if (!item || item.category !== 'DRUG') {
+        throw new BadRequestException(
+          'Only DRUG items can be dispensed through the pharmacy',
+        );
+      }
+
       const updated = await tx.prescription.updateMany({
         where: {
           id: prescriptionId,

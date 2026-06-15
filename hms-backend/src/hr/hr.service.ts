@@ -115,7 +115,11 @@ export class HrService {
     });
   }
 
-  async getEmployeeById(tenantId: string, employeeId: string) {
+  async getEmployeeById(
+    tenantId: string,
+    employeeId: string,
+    user?: RequestUser,
+  ) {
     const employee = await this.prisma.employee.findFirst({
       where: { id: employeeId, tenantId },
       include: {
@@ -127,6 +131,21 @@ export class HrService {
 
     if (!employee) {
       throw new NotFoundException('Employee not found');
+    }
+
+    if (user && user.roles) {
+      if (this.isBranchScopedHr(user.roles)) {
+        if (employee.branchId !== user.branchId) {
+          throw new ForbiddenException(
+            'Branch Admin can only view employees in their branch',
+          );
+        }
+      } else if (
+        !this.isTenantWideHr(user.roles) &&
+        !user.roles.includes('Super Admin')
+      ) {
+        throw new ForbiddenException('Insufficient permissions');
+      }
     }
 
     return employee;
@@ -229,7 +248,7 @@ export class HrService {
     tenantId: string,
     actorId: string,
     leaveId: string,
-    _user: RequestUser,
+    user: RequestUser,
   ) {
     const leave = await this.prisma.leaveRequest.findFirst({
       where: { id: leaveId, tenantId },
@@ -242,6 +261,17 @@ export class HrService {
 
     if (leave.employee.userId === actorId) {
       throw new ForbiddenException('Cannot self-approve leave request');
+    }
+
+    const roles = user.roles || [];
+    if (this.isBranchScopedHr(roles)) {
+      if (leave.employee.branchId !== user.branchId) {
+        throw new ForbiddenException(
+          'Branch Admin can only approve leave for employees in their branch',
+        );
+      }
+    } else if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin')) {
+      throw new ForbiddenException('Insufficient permissions');
     }
 
     const updated = await this.prisma.leaveRequest.update({
@@ -268,7 +298,7 @@ export class HrService {
     tenantId: string,
     actorId: string,
     leaveId: string,
-    _user: RequestUser,
+    user: RequestUser,
   ) {
     const leave = await this.prisma.leaveRequest.findFirst({
       where: { id: leaveId, tenantId },
@@ -281,6 +311,17 @@ export class HrService {
 
     if (leave.employee.userId === actorId) {
       throw new ForbiddenException('Cannot self-reject leave request');
+    }
+
+    const roles = user.roles || [];
+    if (this.isBranchScopedHr(roles)) {
+      if (leave.employee.branchId !== user.branchId) {
+        throw new ForbiddenException(
+          'Branch Admin can only reject leave for employees in their branch',
+        );
+      }
+    } else if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin')) {
+      throw new ForbiddenException('Insufficient permissions');
     }
 
     const updated = await this.prisma.leaveRequest.update({
@@ -340,7 +381,34 @@ export class HrService {
     return license;
   }
 
-  async getLicensesByEmployee(tenantId: string, employeeId: string) {
+  async getLicensesByEmployee(
+    tenantId: string,
+    employeeId: string,
+    user?: RequestUser,
+  ) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: employeeId, tenantId },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    if (user && user.roles) {
+      if (this.isBranchScopedHr(user.roles)) {
+        if (employee.branchId !== user.branchId) {
+          throw new ForbiddenException(
+            'Branch Admin can only view licenses for employees in their branch',
+          );
+        }
+      } else if (
+        !this.isTenantWideHr(user.roles) &&
+        !user.roles.includes('Super Admin')
+      ) {
+        throw new ForbiddenException('Insufficient permissions');
+      }
+    }
+
     return this.prisma.licenseRecord.findMany({
       where: { employeeId, tenantId },
     });

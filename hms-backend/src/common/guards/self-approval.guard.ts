@@ -35,9 +35,17 @@ export class SelfApprovalGuard implements CanActivate {
       return true;
     }
 
-    // Check LabResult versions / orders if we needed to (assuming lab result approvals)
-    // Since LabResult itself lacks createdBy, this guard defaults to pass if it cannot verify.
-    // If the record exists but we can't prove ownership, we don't throw 403.
+    // Check LabResult maker-checker
+    const labResult = await this.prisma.labResult.findUnique({
+      where: { id: recordId },
+    });
+
+    if (labResult && labResult.tenantId === user.tenantId) {
+      if (labResult.encodedById === user.userId) {
+        await this.logAndThrow(user, recordId);
+      }
+      return true;
+    }
 
     // For specific Encounters:
     const encounter = await this.prisma.encounter.findUnique({

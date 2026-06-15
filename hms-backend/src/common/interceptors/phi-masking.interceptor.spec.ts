@@ -79,7 +79,10 @@ describe('PhiMaskingInterceptor', () => {
       };
 
       interceptor
-        .intercept(mockExecutionContext(['Cashier']), mockCallHandler(data))
+        .intercept(
+          mockExecutionContext(['Receptionist']),
+          mockCallHandler(data),
+        )
         .subscribe({
           next: (val) => {
             expect(val.notes).toBe('RESTRICTED PHI');

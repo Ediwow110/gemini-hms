@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { QueueService } from './queue.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NumberingService } from '../numbering/numbering.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('QueueService write isolation', () => {
@@ -25,6 +26,12 @@ describe('QueueService write isolation', () => {
         {
           provide: AuditService,
           useValue: { log: jest.fn() },
+        },
+        {
+          provide: NumberingService,
+          useValue: {
+            generateNumber: jest.fn().mockResolvedValue('Q-001'),
+          },
         },
       ],
     }).compile();

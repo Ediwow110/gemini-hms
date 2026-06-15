@@ -1,14 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  NotFoundException,
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { InventoryService } from './inventory.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { InventoryStatus } from './dto/inventory.dto';
+import { InventoryStatus, Prisma } from '@prisma/client';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 
 describe('InventoryService', () => {
   let service: InventoryService;
@@ -19,9 +18,18 @@ describe('InventoryService', () => {
     prisma = {
       $transaction: jest.fn(async (cb) => cb(prisma)),
       inventoryItem: {
-        findFirst: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'item-1',
+          tenantId: 'tenant1',
+          status: 'ACTIVE',
+        }),
         update: jest.fn(),
-        findUnique: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'item-1',
+          sku: 'SKU1',
+          name: 'Test',
+          status: 'ACTIVE',
+        }),
         findMany: jest.fn(),
         create: jest.fn(),
       },
@@ -35,6 +43,7 @@ describe('InventoryService', () => {
       },
       stockLog: {
         create: jest.fn(),
+        findMany: jest.fn(),
       },
       notification: {
         findFirst: jest.fn(),
@@ -122,12 +131,12 @@ describe('InventoryService', () => {
       const existing = {
         id: 'item-1',
         tenantId: mockTenantId,
-        status: InventoryStatus.ACTIVE,
+        status: 'ACTIVE',
       };
       prisma.inventoryItem.findFirst.mockResolvedValue(existing);
       prisma.inventoryItem.update.mockResolvedValue({
         ...existing,
-        status: InventoryStatus.INACTIVE,
+        status: 'INACTIVE',
       });
 
       const result = await service.deactivateItem(
@@ -136,7 +145,7 @@ describe('InventoryService', () => {
         'item-1',
       );
 
-      expect(result.status).toBe(InventoryStatus.INACTIVE);
+      expect(result.status).toBe('INACTIVE');
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'INVENTORY_ITEM_DEACTIVATED' }),
         expect.anything(),
@@ -198,13 +207,8 @@ describe('InventoryService', () => {
         reorderLevel: 10,
         version: 1,
       });
-      prisma.inventoryItem.findUnique.mockResolvedValue({
-        id: 'item-1',
-        sku: 'SKU1',
-        name: 'Test',
-      });
 
-      await service.dispenseItem('tenant1', 'branch1', 'user1', '1', 5);
+      await service.dispenseItem('tenant1', 'branch1', 'user1', 'item-1', 5);
 
       expect(prisma.notification.create).not.toHaveBeenCalled();
     });
@@ -221,14 +225,9 @@ describe('InventoryService', () => {
         quantity: 10,
         reorderLevel: 10,
       });
-      prisma.inventoryItem.findUnique.mockResolvedValue({
-        id: 'item-1',
-        sku: 'SKU1',
-        name: 'Test',
-      });
       prisma.notification.findFirst.mockResolvedValue(null);
 
-      await service.dispenseItem('tenant1', 'branch1', 'user1', '1', 5);
+      await service.dispenseItem('tenant1', 'branch1', 'user1', 'item-1', 5);
 
       expect(prisma.notification.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -249,17 +248,12 @@ describe('InventoryService', () => {
         quantity: 10,
         reorderLevel: 10,
       });
-      prisma.inventoryItem.findUnique.mockResolvedValue({
-        id: 'item-1',
-        sku: 'SKU1',
-        name: 'Test',
-      });
       prisma.notification.findFirst.mockResolvedValue({
         id: 'notif1',
         status: 'PENDING',
       }); // Existing alert
 
-      await service.dispenseItem('tenant1', 'branch1', 'user1', '1', 5);
+      await service.dispenseItem('tenant1', 'branch1', 'user1', 'item-1', 5);
 
       expect(prisma.notification.create).not.toHaveBeenCalled();
     });
@@ -267,10 +261,6 @@ describe('InventoryService', () => {
 
   describe('scoped branch stock writes', () => {
     it('receiveStock rejects when scoped stock update touches no row', async () => {
-      prisma.inventoryItem.findFirst.mockResolvedValue({
-        id: 'item-99',
-        tenantId: 'tenant1',
-      });
       prisma.branchStock.upsert.mockResolvedValue({
         id: 'bs-99',
         tenantId: 'tenant1',
@@ -311,10 +301,6 @@ describe('InventoryService', () => {
     });
 
     it('receiveStock writes audit entries with branch context', async () => {
-      prisma.inventoryItem.findFirst.mockResolvedValue({
-        id: 'item-99',
-        tenantId: 'tenant1',
-      });
       prisma.branchStock.upsert.mockResolvedValue({
         id: 'bs-99',
         tenantId: 'tenant1',
@@ -362,6 +348,11 @@ describe('InventoryService', () => {
         },
         stockLog: { create: jest.fn().mockResolvedValue({ id: 'log-1' }) },
         inventoryItem: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'item-1',
+            tenantId: 'tenant1',
+            status: 'ACTIVE',
+          }),
           findUnique: jest.fn().mockResolvedValue({
             id: 'item-1',
             sku: 'SKU1',

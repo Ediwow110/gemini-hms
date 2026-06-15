@@ -217,54 +217,67 @@ export class AuditService {
   }
 
   async verifyChain(tenantId: string) {
-    // Safety cap to prevent unbounded memory/DoS. The cap covers most
-    // tenants; very large audit stores should use batched verification.
-    const logs = await this.prisma.auditLog.findMany({
-      where: { tenantId },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      take: AUDIT_CHAIN_SAFETY_CAP,
-    });
+    let hasMore = true;
+    let cursorId: string | undefined = undefined;
+    const batchSize = 5000;
 
     const corruptedLogIds: string[] = [];
     const legacyUnverifiableIds: string[] = [];
     let expectedPreviousHash: string | null = null;
+    let totalLogs = 0;
 
-    for (const log of logs) {
-      // Legacy rows written before hash chaining was enabled have null hash.
-      // They cannot be verified but are not necessarily corrupted.
-      if (log.hash === null) {
-        legacyUnverifiableIds.push(log.id);
-        expectedPreviousHash = null;
-        continue;
-      }
-
-      const computed = this.computeHash({
-        tenantId: log.tenantId,
-        userId: log.userId,
-        eventKey: log.eventKey,
-        recordType: log.recordType,
-        recordId: log.recordId,
-        branchId: log.branchId,
-        oldValues: log.oldValues,
-        newValues: log.newValues,
-        createdAt: log.createdAt,
-        previousHash: expectedPreviousHash,
+    while (hasMore) {
+      const logs: any[] = await this.prisma.auditLog.findMany({
+        where: { tenantId },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        take: batchSize,
+        skip: cursorId ? 1 : 0,
+        cursor: cursorId ? { id: cursorId } : undefined,
       });
 
-      if (log.hash !== computed || log.previousHash !== expectedPreviousHash) {
-        corruptedLogIds.push(log.id);
+      if (logs.length === 0) {
+        hasMore = false;
+        break;
       }
 
-      expectedPreviousHash = log.hash;
+      totalLogs += logs.length;
+      cursorId = logs[logs.length - 1].id;
+
+      for (const log of logs) {
+        if (log.hash === null) {
+          legacyUnverifiableIds.push(log.id);
+          expectedPreviousHash = null;
+          continue;
+        }
+
+        const computed = this.computeHash({
+          tenantId: log.tenantId,
+          userId: log.userId,
+          eventKey: log.eventKey,
+          recordType: log.recordType,
+          recordId: log.recordId,
+          branchId: log.branchId,
+          oldValues: log.oldValues,
+          newValues: log.newValues,
+          createdAt: log.createdAt,
+          previousHash: expectedPreviousHash,
+        });
+
+        if (log.hash !== computed || log.previousHash !== expectedPreviousHash) {
+          corruptedLogIds.push(log.id);
+        }
+
+        expectedPreviousHash = log.hash;
+      }
     }
 
     return {
       isValid: corruptedLogIds.length === 0,
       hasLegacyRows: legacyUnverifiableIds.length > 0,
       legacyUnverifiableCount: legacyUnverifiableIds.length,
-      truncated: logs.length >= AUDIT_CHAIN_SAFETY_CAP,
-      verificationCount: logs.length - legacyUnverifiableIds.length,
-      totalLogs: logs.length,
+      truncated: false,
+      verificationCount: totalLogs - legacyUnverifiableIds.length,
+      totalLogs: totalLogs,
       corruptedLogIds,
     };
   }
@@ -288,9 +301,12 @@ export class AuditService {
 
     const limit = Math.min(pageSize, 100);
     const isSuperAdmin = userRoles.includes('Super Admin');
+    const isTenantWideViewer = userRoles.some((role) =>
+      ['Super Admin', 'Compliance Officer', 'Tenant Admin'].includes(role),
+    );
     const where: any = { tenantId };
 
-    if (!isSuperAdmin) {
+    if (!isTenantWideViewer) {
       if (branchId) {
         where.branchId = branchId;
       } else {
@@ -497,19 +513,34 @@ export class AuditService {
       };
     }
 
-    const logs = await this.prisma.auditLog.findMany({
-      where: { tenantId },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      take: AUDIT_CHAIN_SAFETY_CAP,
-    });
+    let hasMore = true;
+    let cursorId: string | undefined = undefined;
+    const batchSize = 5000;
 
-    for (const log of logs) {
-      if (log.signature && log.hash) {
-        const expectedSignature = createHmac('sha256', auditSecret)
-          .update(log.hash)
-          .digest('hex');
-        if (log.signature !== expectedSignature) {
-          signatureErrors.push(log.id);
+    while (hasMore) {
+      const batchLogs: any[] = await this.prisma.auditLog.findMany({
+        where: { tenantId },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        take: batchSize,
+        skip: cursorId ? 1 : 0,
+        cursor: cursorId ? { id: cursorId } : undefined,
+      });
+
+      if (batchLogs.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      cursorId = batchLogs[batchLogs.length - 1].id;
+
+      for (const log of batchLogs) {
+        if (log.signature && log.hash) {
+          const expectedSignature = createHmac('sha256', auditSecret)
+            .update(log.hash)
+            .digest('hex');
+          if (log.signature !== expectedSignature) {
+            signatureErrors.push(log.id);
+          }
         }
       }
     }

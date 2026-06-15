@@ -167,8 +167,9 @@ export class ClinicalController {
   async restoreDiagnosis(
     @Param('id') id: string,
     @GetUser('userId') userId: string,
+    @GetUser('tenantId') tenantId: string,
   ) {
-    return this.diagnosisService.restore(id, userId);
+    return this.diagnosisService.restore(tenantId, userId, id);
   }
 
   @Post('encounters/:id/prescriptions')

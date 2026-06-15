@@ -75,8 +75,10 @@ export class LabService {
         where: { id, order: { tenantId, branchId }, version: result.version },
         data: {
           status: 'ENCODED',
-          results: dto.results,
+          results: dto.results as any,
           remarks: dto.remarks,
+          encodedById: userId,
+          encodedAt: new Date(),
           version: { increment: 1 },
         },
       });

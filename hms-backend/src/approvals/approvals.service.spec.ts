@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ApprovalsService } from './approvals.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -21,6 +25,7 @@ describe('ApprovalsService write isolation', () => {
         findFirst: jest.fn(),
         updateMany: jest.fn(),
         create: jest.fn(),
+        findMany: jest.fn(),
       },
       $transaction: jest.fn().mockImplementation(async (cb: any) => cb(prisma)),
     };
@@ -54,13 +59,21 @@ describe('ApprovalsService write isolation', () => {
       tenantId,
       status: 'PENDING',
       requesterId: 'other-maker',
+      branchId: 'branch-1',
     });
     prisma.approvalRequest.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
-      service.processRequest(tenantId, userId, requestId, 'APPROVED', {
-        remarks: 'ok',
-      }),
+      service.processRequest(
+        tenantId,
+        userId,
+        requestId,
+        'APPROVED',
+        {
+          remarks: 'ok',
+        },
+        'branch-1',
+      ),
     ).rejects.toThrow(ConflictException);
 
     expect(prisma.approvalRequest.updateMany).toHaveBeenCalledWith({
@@ -83,7 +96,7 @@ describe('ApprovalsService write isolation', () => {
       tenantId,
       status: 'PENDING',
       requesterId: 'other-maker',
-      details: { branchId: 'branch-a' },
+      branchId: 'branch-a',
     });
 
     await expect(
@@ -95,7 +108,7 @@ describe('ApprovalsService write isolation', () => {
         { remarks: 'ok' },
         'branch-b',
       ),
-    ).rejects.toThrow(NotFoundException);
+    ).rejects.toThrow(ForbiddenException);
 
     expect(prisma.approvalRequest.updateMany).not.toHaveBeenCalled();
   });
@@ -106,7 +119,7 @@ describe('ApprovalsService write isolation', () => {
       tenantId,
       status: 'PENDING',
       requesterId: 'other-maker',
-      details: { branchId: 'branch-a' },
+      branchId: 'branch-a',
     };
     const processed = {
       ...pending,
@@ -192,7 +205,7 @@ describe('ApprovalsService write isolation', () => {
   });
 
   it('filters request listings by branch for branch-scoped users', async () => {
-    prisma.approvalRequest.findMany = jest.fn().mockResolvedValue([]);
+    prisma.approvalRequest.findMany.mockResolvedValue([]);
 
     await service.getRequests(tenantId, 'branch-a', false);
 
@@ -207,7 +220,7 @@ describe('ApprovalsService write isolation', () => {
   });
 
   it('omits branch filter for Super Admin request listings', async () => {
-    prisma.approvalRequest.findMany = jest.fn().mockResolvedValue([]);
+    prisma.approvalRequest.findMany.mockResolvedValue([]);
 
     await service.getRequests(tenantId, undefined, true);
 
