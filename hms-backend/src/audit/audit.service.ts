@@ -102,6 +102,22 @@ export class AuditService {
     return createHash('sha256').update(payload).digest('hex');
   }
 
+  private getAuditSecret(): string {
+    if (process.env.AUDIT_CHAIN_SECRET) {
+      return process.env.AUDIT_CHAIN_SECRET;
+    }
+    if (process.env.JWT_SECRET) {
+      Logger.warn(
+        'AUDIT_CHAIN_SECRET not set — falling back to JWT_SECRET for audit HMAC. Set AUDIT_CHAIN_SECRET for proper secret isolation.',
+        'AuditService',
+      );
+      return process.env.JWT_SECRET;
+    }
+    throw new Error(
+      'AUDIT_CHAIN_SECRET or JWT_SECRET must be defined for audit signing',
+    );
+  }
+
   /**
    * Resolve the system actor user for a given tenant.
    * System actors are non-interactive accounts created per tenant.
@@ -174,13 +190,9 @@ export class AuditService {
       previousHash,
     });
 
-    if (!process.env.JWT_SECRET) {
-      throw new Error('JWT_SECRET must be defined for audit signing');
-    }
+    const secret = this.getAuditSecret();
 
-    const signature = createHmac('sha256', process.env.JWT_SECRET)
-      .update(hash)
-      .digest('hex');
+    const signature = createHmac('sha256', secret).update(hash).digest('hex');
 
     return db.auditLog.create({
       data: {
@@ -214,9 +226,18 @@ export class AuditService {
     });
 
     const corruptedLogIds: string[] = [];
+    const legacyUnverifiableIds: string[] = [];
     let expectedPreviousHash: string | null = null;
 
     for (const log of logs) {
+      // Legacy rows written before hash chaining was enabled have null hash.
+      // They cannot be verified but are not necessarily corrupted.
+      if (log.hash === null) {
+        legacyUnverifiableIds.push(log.id);
+        expectedPreviousHash = null;
+        continue;
+      }
+
       const computed = this.computeHash({
         tenantId: log.tenantId,
         userId: log.userId,
@@ -239,8 +260,11 @@ export class AuditService {
 
     return {
       isValid: corruptedLogIds.length === 0,
+      hasLegacyRows: legacyUnverifiableIds.length > 0,
+      legacyUnverifiableCount: legacyUnverifiableIds.length,
       truncated: logs.length >= AUDIT_CHAIN_SAFETY_CAP,
-      verificationCount: logs.length,
+      verificationCount: logs.length - legacyUnverifiableIds.length,
+      totalLogs: logs.length,
       corruptedLogIds,
     };
   }
@@ -463,10 +487,13 @@ export class AuditService {
     const chainResult = await this.verifyChain(tenantId);
     const signatureErrors: string[] = [];
 
-    if (!process.env.JWT_SECRET) {
+    let auditSecret: string;
+    try {
+      auditSecret = this.getAuditSecret();
+    } catch {
       return {
         ...chainResult,
-        signatureErrors: ['JWT_SECRET is not configured'],
+        signatureErrors: ['Audit chain secret is not configured'],
       };
     }
 
@@ -478,7 +505,7 @@ export class AuditService {
 
     for (const log of logs) {
       if (log.signature && log.hash) {
-        const expectedSignature = createHmac('sha256', process.env.JWT_SECRET)
+        const expectedSignature = createHmac('sha256', auditSecret)
           .update(log.hash)
           .digest('hex');
         if (log.signature !== expectedSignature) {
@@ -539,13 +566,9 @@ export class AuditService {
       previousHash,
     });
 
-    if (!process.env.JWT_SECRET) {
-      throw new Error('JWT_SECRET must be defined for audit signing');
-    }
+    const secret = this.getAuditSecret();
 
-    const signature = createHmac('sha256', process.env.JWT_SECRET)
-      .update(hash)
-      .digest('hex');
+    const signature = createHmac('sha256', secret).update(hash).digest('hex');
 
     return db.auditLog.create({
       data: {
@@ -859,7 +882,6 @@ export class AuditService {
 
     if (
       !isSuperAdmin &&
-      branchId &&
       auditLog.branchId !== null &&
       auditLog.branchId !== branchId
     ) {

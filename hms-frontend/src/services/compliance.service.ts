@@ -91,9 +91,7 @@ export class ComplianceService {
   }
 
   async getUnauthorizedAccessDetections() {
-    const res = await apiClient.get(`${this.complianceBase}/hipaa/ephi-audit`, {
-      params: { detectAnomalies: 'true' }
-    });
+    const res = await apiClient.get(`${this.complianceBase}/hipaa/anomalies`);
     return Array.isArray(res.data) ? res.data : [];
   }
 

@@ -71,7 +71,7 @@ const RETENTION_CLASSES = {
 export class DataRetentionService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async enforceRetention() {
+  async enforceRetention(tenantId: string) {
     const sixYearsAgo = new Date();
     sixYearsAgo.setFullYear(sixYearsAgo.getFullYear() - 6);
 
@@ -79,27 +79,27 @@ export class DataRetentionService {
     const now = new Date();
 
     const patients = await this.prisma.patient.updateMany({
-      where: { createdAt: { lt: sixYearsAgo }, archivedAt: null },
+      where: { tenantId, createdAt: { lt: sixYearsAgo }, archivedAt: null },
       data: { archivedAt: now, archiveReason },
     });
 
     const encounters = await this.prisma.encounter.updateMany({
-      where: { createdAt: { lt: sixYearsAgo }, archivedAt: null },
+      where: { tenantId, createdAt: { lt: sixYearsAgo }, archivedAt: null },
       data: { archivedAt: now, archiveReason },
     });
 
     const labResults = await this.prisma.labResult.updateMany({
-      where: { createdAt: { lt: sixYearsAgo }, archivedAt: null },
+      where: { tenantId, createdAt: { lt: sixYearsAgo }, archivedAt: null },
       data: { archivedAt: now, archiveReason },
     });
 
     const invoices = await this.prisma.invoice.updateMany({
-      where: { createdAt: { lt: sixYearsAgo }, archivedAt: null },
+      where: { tenantId, createdAt: { lt: sixYearsAgo }, archivedAt: null },
       data: { archivedAt: now, archiveReason },
     });
 
     const payments = await this.prisma.payment.updateMany({
-      where: { createdAt: { lt: sixYearsAgo }, archivedAt: null },
+      where: { tenantId, createdAt: { lt: sixYearsAgo }, archivedAt: null },
       data: { archivedAt: now, archiveReason },
     });
 
@@ -112,7 +112,7 @@ export class DataRetentionService {
     };
   }
 
-  async getAuditRetentionStatus() {
+  async getAuditRetentionStatus(tenantId: string) {
     const results: Record<string, { active: number; retentionYears: number }> =
       {};
     for (const [className, config] of Object.entries(RETENTION_CLASSES)) {
@@ -122,6 +122,7 @@ export class DataRetentionService {
           : (config as any).durationDays / 365;
       const total = await this.prisma.auditLog.count({
         where: {
+          tenantId,
           OR: config.eventPrefixes.map((prefix) => ({
             eventKey: { startsWith: prefix },
           })),
@@ -135,7 +136,7 @@ export class DataRetentionService {
     return results;
   }
 
-  async getRetentionStatus() {
+  async getRetentionStatus(tenantId: string) {
     const [
       activePatients,
       archivedPatients,
@@ -149,17 +150,27 @@ export class DataRetentionService {
       archivedPayments,
       auditStatus,
     ] = await Promise.all([
-      this.prisma.patient.count({ where: { archivedAt: null } }),
-      this.prisma.patient.count({ where: { NOT: { archivedAt: null } } }),
-      this.prisma.encounter.count({ where: { archivedAt: null } }),
-      this.prisma.encounter.count({ where: { NOT: { archivedAt: null } } }),
-      this.prisma.labResult.count({ where: { archivedAt: null } }),
-      this.prisma.labResult.count({ where: { NOT: { archivedAt: null } } }),
-      this.prisma.invoice.count({ where: { archivedAt: null } }),
-      this.prisma.invoice.count({ where: { NOT: { archivedAt: null } } }),
-      this.prisma.payment.count({ where: { archivedAt: null } }),
-      this.prisma.payment.count({ where: { NOT: { archivedAt: null } } }),
-      this.getAuditRetentionStatus(),
+      this.prisma.patient.count({ where: { tenantId, archivedAt: null } }),
+      this.prisma.patient.count({
+        where: { tenantId, NOT: { archivedAt: null } },
+      }),
+      this.prisma.encounter.count({ where: { tenantId, archivedAt: null } }),
+      this.prisma.encounter.count({
+        where: { tenantId, NOT: { archivedAt: null } },
+      }),
+      this.prisma.labResult.count({ where: { tenantId, archivedAt: null } }),
+      this.prisma.labResult.count({
+        where: { tenantId, NOT: { archivedAt: null } },
+      }),
+      this.prisma.invoice.count({ where: { tenantId, archivedAt: null } }),
+      this.prisma.invoice.count({
+        where: { tenantId, NOT: { archivedAt: null } },
+      }),
+      this.prisma.payment.count({ where: { tenantId, archivedAt: null } }),
+      this.prisma.payment.count({
+        where: { tenantId, NOT: { archivedAt: null } },
+      }),
+      this.getAuditRetentionStatus(tenantId),
     ]);
 
     return {
@@ -172,14 +183,15 @@ export class DataRetentionService {
     };
   }
 
-  async archiveRecord(entityType: string, recordId: string) {
+  async archiveRecord(tenantId: string, entityType: string, recordId: string) {
     const archiveReason = 'Manual compliance-triggered data retention archival';
     const now = new Date();
+    const tenantWhere = { tenantId };
 
     switch (entityType.toLowerCase()) {
       case 'patient': {
-        const item = await this.prisma.patient.findUnique({
-          where: { id: recordId },
+        const item = await this.prisma.patient.findFirst({
+          where: { id: recordId, ...tenantWhere },
         });
         if (!item) throw new NotFoundException('Patient record not found');
         return this.prisma.patient.update({
@@ -188,8 +200,8 @@ export class DataRetentionService {
         });
       }
       case 'encounter': {
-        const item = await this.prisma.encounter.findUnique({
-          where: { id: recordId },
+        const item = await this.prisma.encounter.findFirst({
+          where: { id: recordId, ...tenantWhere },
         });
         if (!item) throw new NotFoundException('Encounter record not found');
         return this.prisma.encounter.update({
@@ -198,8 +210,8 @@ export class DataRetentionService {
         });
       }
       case 'labresult': {
-        const item = await this.prisma.labResult.findUnique({
-          where: { id: recordId },
+        const item = await this.prisma.labResult.findFirst({
+          where: { id: recordId, ...tenantWhere },
         });
         if (!item) throw new NotFoundException('LabResult record not found');
         return this.prisma.labResult.update({
@@ -208,8 +220,8 @@ export class DataRetentionService {
         });
       }
       case 'invoice': {
-        const item = await this.prisma.invoice.findUnique({
-          where: { id: recordId },
+        const item = await this.prisma.invoice.findFirst({
+          where: { id: recordId, ...tenantWhere },
         });
         if (!item) throw new NotFoundException('Invoice record not found');
         return this.prisma.invoice.update({
@@ -218,8 +230,8 @@ export class DataRetentionService {
         });
       }
       case 'payment': {
-        const item = await this.prisma.payment.findUnique({
-          where: { id: recordId },
+        const item = await this.prisma.payment.findFirst({
+          where: { id: recordId, ...tenantWhere },
         });
         if (!item) throw new NotFoundException('Payment record not found');
         return this.prisma.payment.update({

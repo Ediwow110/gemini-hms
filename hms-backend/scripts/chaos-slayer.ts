@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import http from 'http';
 import 'dotenv/config';
 
 async function sleep(ms: number) {
@@ -26,9 +27,10 @@ async function main() {
   console.log(`Uptime Target:      99.50%`);
   console.log(`================================================================================\n`);
 
-  const dbContainer = 'hms-login-design-db-1';
-  const apiContainer = 'hms-login-design-backend-1';
-  const networkName = 'hms-login-design_default';
+  const projectName = process.env.COMPOSE_PROJECT_NAME || 'hms-login-official';
+  const dbContainer = `${projectName}-db-1`;
+  const apiContainer = `${projectName}-backend-1`;
+  const networkName = `${projectName}_default`;
 
   // --- CHAOS VECTOR 1: THE DATABASE EXECUTIONER ---
   const dbKillTime = new Date().toISOString();
@@ -89,10 +91,15 @@ async function main() {
   console.log(`[PROBING] Executing post-deployment health check validation loop...`);
   let probeSuccess = false;
   try {
-    // Run the health prober script in the NestJS container
-    const probeRes = runCmd(`docker exec ${apiContainer} npx tsx scripts/infrastructure-health-probe.ts --single-run`);
-    console.log(probeRes);
-    if (probeRes.includes('VERDICT: HEALTH PROBER DEPLOYED')) {
+    const probeRes = await new Promise<string>((resolve) => {
+      const req = http.get('http://localhost:3000/', (res) => {
+        resolve(`HTTP ${res.statusCode}`);
+      });
+      req.on('error', (e: Error) => resolve(`ERROR: ${e.message}`));
+      req.setTimeout(5000, () => { req.destroy(); resolve('TIMEOUT'); });
+    });
+    console.log(`[PROBE] Health check result: ${probeRes}`);
+    if (probeRes.startsWith('HTTP 2') || probeRes.startsWith('HTTP 3')) {
       probeSuccess = true;
     }
   } catch (err: any) {

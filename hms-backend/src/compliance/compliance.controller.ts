@@ -28,6 +28,12 @@ export class ComplianceController {
     return this.hipaaService.auditEphiAccess(tenantId, from, to);
   }
 
+  @Get('hipaa/anomalies')
+  @RequirePermissions('compliance.phi.monitor')
+  async getAnomalyDetections(@GetUser('tenantId') tenantId: string) {
+    return this.hipaaService.detectUnauthorizedAccess(tenantId);
+  }
+
   @Get('hipaa/breach-report/:incidentId')
   @RequirePermissions('compliance.phi.monitor')
   async getBreachReport(
@@ -39,14 +45,14 @@ export class ComplianceController {
 
   @Get('retention/status')
   @RequirePermissions('compliance.audit.review')
-  async getRetentionStatus() {
-    return this.retentionService.getRetentionStatus();
+  async getRetentionStatus(@GetUser('tenantId') tenantId: string) {
+    return this.retentionService.getRetentionStatus(tenantId);
   }
 
   @Post('retention/enforce')
   @RequirePermissions('compliance.phi.monitor')
-  async enforceRetention() {
-    return this.retentionService.enforceRetention();
+  async enforceRetention(@GetUser('tenantId') tenantId: string) {
+    return this.retentionService.enforceRetention(tenantId);
   }
 
   // 8B - SOC2 Type II Readiness Endpoints

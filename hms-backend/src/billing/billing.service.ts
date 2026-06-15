@@ -2204,6 +2204,7 @@ export class BillingService {
       const updated = await tx.payment.update({
         where: { id: paymentId },
         data: {
+          status: 'FAILED',
           gatewayStatus: 'GATEWAY_FAILED',
           ...(dto.gatewayReference
             ? { gatewayReference: dto.gatewayReference }
@@ -2222,6 +2223,7 @@ export class BillingService {
             reason: dto.reason,
             gatewayReference: dto.gatewayReference || null,
             previousGatewayStatus,
+            previousPaymentStatus: payment.status,
             branchId,
           },
         },
@@ -2263,6 +2265,7 @@ export class BillingService {
       const updated = await tx.payment.update({
         where: { id: paymentId },
         data: {
+          status: 'EXPIRED',
           gatewayStatus: 'GATEWAY_EXPIRED',
         },
       });
@@ -2277,6 +2280,7 @@ export class BillingService {
           newValues: {
             reason: dto.reason,
             previousGatewayStatus,
+            previousPaymentStatus: payment.status,
             branchId,
           },
         },

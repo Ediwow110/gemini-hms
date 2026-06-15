@@ -181,8 +181,11 @@ export function useAccessReview() {
 
 export interface ChainVerificationResult {
   isValid: boolean;
+  hasLegacyRows?: boolean;
+  legacyUnverifiableCount?: number;
   truncated: boolean;
   verificationCount: number;
+  totalLogs?: number;
   corruptedLogIds?: string[];
   signatureErrors?: string[];
 }
