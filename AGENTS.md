@@ -3,12 +3,13 @@
 
 # Session State
 ## Goal
-- The audit-log hardening lane (5 phases) is locally complete and frozen. All 5 phases committed, 3 critical blockers fixed and validated locally. Lane is LOCAL GREEN / EXTERNAL PROOF PENDING — not pushed, not CI-proven, not staging-proven.
+- The production-readiness remediation lane was merged to `main` via PR #226. All 42 commits are merged, CI is green (5/5 checks pass), and local repo is synced.
+- Staging environment is NOT YET PROVISIONED — that is the current blocker.
 
 ## Constraints & Preferences
-- Stay local; do not push or open PR from this lane unless explicitly requested
-- Do not claim staging readiness without remote CI proof
-- Separate local proof from external proof clearly
+- Work on `main` unless branching off for a new task
+- Do not claim staging readiness unless staging is actually provisioned and verified
+- Separate local/CI proof from staging/production proof clearly
 - Workspace root: `D:\Vscode\hms-login-OFFICIAL`
 
 ## Progress
@@ -24,19 +25,20 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 2. **Pagination refetch**: `use-compliance.ts` — removed stale `paramsRef`+`useCallback([],[])` pattern; hooks now re-trigger on param change via serialized `paramsKey` dependency
 3. **Admin audit source**: `AuditLogsPage.tsx`, `AuditLogViewer.tsx` — switched from `useMyAuditEvents` to `useAuditEvents` for full tenant/branch-scoped data
 
-### Validation (Frozen State)
-- Backend: 77 suites / 1537 tests passing, typecheck clean (pre-existing spec errors only), audit lint 0 errors/3 warnings
-- Frontend: 73 files / 406 tests passing, typecheck 0 errors, lint 0 errors, build clean
+### Validation (Merged State — PR #226)
+- Remote CI: 5/5 checks pass (Static Analysis, Backend Tests, Frontend Tests, Docker Build, Vercel Preview)
+- Local: 80 suites / 1614 tests passing, lint 0 errors, tsc clean
+- Staging: NOT PROVISIONED
 
 ### Unresolved (Carryover Risks — Current)
 Risks ranked by severity:
 
 **HIGH:**
-- No remote CI proof — never pushed, CI has never run on these commits
+- (Resolved) Remote CI proof exists — PR #226 merged with 5/5 checks passed
 - No staging environment — only production SSH target exists in deploy.yml
 
 **MEDIUM:**
-- Pre-existing spec/e2e type errors (173 in `hms-backend/`) — `auth/`, `billing/`, `admin/` spec files
+- Pre-existing spec/e2e type errors (173 in `hms-backend/test/`) — auth, billing, admin spec files
 - AuditLog archive: retention is count-only (schema change deferred; immutability trigger blocks physical delete)
 
 **LOW:**
@@ -52,12 +54,13 @@ Risks ranked by severity:
 - `audit.branch`/`audit.global`/`audit.admin` not added — backend role-based filtering is the authority
 - Blocker fixes committed in `715b50f` under descriptive fix commit
 
-## Next Steps (When Authorized)
-1. Create feature branch + push + open PR to `main` → triggers CI
-2. After CI green → provision staging environment
+## Next Steps
+1. **Provision staging environment** — see `docs/infrastructure/staging-provisioning-handoff.md` for exact requirements
+2. After staging is healthy → deploy and run E2E / integration smoke tests against staging
+3. After staging validated → trigger production deploy via `deploy.yml` (manual workflow_dispatch)
 
 ## Critical Context
-- **5 committed fixes** (`8f4ce6c`–`715b50f`): All local, no pushes.
+- **42 commits merged** via PR #226 (toolchain stabilization, 8 production-readiness blockers, frontend hardening, canonical report, provenance corrections). Local repo is at parity with `origin/main`.
 - **8 backend endpoints**: 3 original + 4 Phase 2 + 1 Phase 3 (receipt/event)
 - **Audit event keys**: 70+ across CLINICAL, FINANCIAL, ADMIN, SECURITY, PHARMACY, PRESCRIPTION, LAB, INVENTORY
 - **Permissions**: `audit.view` (existing), `audit.self` (new, backend-enforced), `audit.export` (new, backend-enforced)
@@ -73,13 +76,12 @@ Risks ranked by severity:
 Ranked by severity:
 
 **HIGH:**
-1. **No remote CI proof** — never pushed, CI has never run on these commits
-2. **No staging environment** — only production SSH target exists in deploy.yml
+1. **No staging environment** — only production SSH target exists in deploy.yml
 
 **MEDIUM:**
-3. **Pre-existing spec/e2e type errors (173)** — all in `hms-backend/test/` spec/e2e files across auth, billing, admin
-4. **AuditLog retention** — count-only enforcement; no schema change for archival by class
+2. **Pre-existing spec/e2e type errors (173)** — all in `hms-backend/test/` spec/e2e files across auth, billing, admin
+3. **AuditLog retention** — count-only enforcement; no schema change for archival by class
 
 **LOW:**
-5. (Resolved) **Stale health-probe path in chaos scripts** — fixed in `b088259`; no stale references remain
-6. (Resolved) **Working tree** — clean; no uncommitted changes
+4. (Resolved) **Stale health-probe path in chaos scripts** — fixed in `b088259`; no stale references remain
+5. (Resolved) **Working tree** — clean; no uncommitted changes
