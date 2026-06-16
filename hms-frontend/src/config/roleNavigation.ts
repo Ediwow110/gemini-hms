@@ -313,6 +313,20 @@ export const roleNavigation: NavGroupConfig[] = [
     ],
   },
   {
+    label: 'Inventory & Stock',
+    items: [
+      {
+        label: 'Catalog',
+        to: '/inventory',
+        icon: Package,
+        permission: PERMISSIONS.INVENTORY_VIEW,
+        allowedRoles: ['Super Admin', 'Branch Admin', 'Pharmacist'],
+        zone: 'staff',
+        isBranchScoped: true,
+      },
+    ],
+  },
+  {
     label: 'Marketplace (Buyer)',
     items: [
       { label: 'Marketplace Home', to: '/marketplace', icon: ShoppingCart, allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
