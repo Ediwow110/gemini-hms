@@ -9,7 +9,8 @@ import {
   Clock, 
   Sparkles,
   ClipboardCheck,
-  CheckCircle2
+  CheckCircle2,
+  ShieldAlert
 } from "lucide-react";
 
 interface ImagingOrder {
@@ -32,46 +33,16 @@ export const RadiologyCanvas = () => {
   const [interpretation, setInterpretation] = useState("");
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchRadiologyOrders = async () => {
     try {
       const res = await apiClient.get("/v1/radiology/orders");
       setOrders(res.data || []);
-    } catch {
-      // Fallback premium mocks
-      setOrders([
-        {
-          id: "ORD-901",
-          orderNumber: "IMG-2026-004",
-          patientName: "Vivian Ward",
-          procedure: "Chest X-Ray (PA/Lateral)",
-          priority: "STAT",
-          phase: "PENDING",
-          requestedAt: "2026-05-17 08:32 AM"
-        },
-        {
-          id: "ORD-902",
-          orderNumber: "IMG-2026-009",
-          patientName: "Leonard Shelby",
-          procedure: "Brain MRI (w/o Contrast)",
-          priority: "ROUTINE",
-          phase: "UPLOADED",
-          uploadedFile: "brain_mri_t2_sequence.dcm",
-          interpretation: "Suspected vascular congestion in left temporal lobe.",
-          requestedAt: "2026-05-17 07:15 AM"
-        },
-        {
-          id: "ORD-903",
-          orderNumber: "IMG-2026-012",
-          patientName: "Sarah Connor",
-          procedure: "Lumbar Spine CT",
-          priority: "ROUTINE",
-          phase: "FINALIZED",
-          uploadedFile: "lumbar_spine_3d.png",
-          interpretation: "Normal alignment. No disc herniation or facet arthropathy noted.",
-          requestedAt: "2026-05-16 02:40 PM"
-        }
-      ]);
+      setFetchError(null);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setFetchError(error.response?.data?.message || "Failed to fetch radiology orders.");
     }
   };
 
@@ -116,27 +87,19 @@ export const RadiologyCanvas = () => {
     if (!selectedOrder) return;
     setIsSaving(true);
     try {
-      // Simulate live api dispatch
       await apiClient.post(`/v1/radiology/orders/${selectedOrder.id}/finalize`, {
         interpretation,
         uploadedFile,
         tenantId: user?.tenantId,
         branchId: user?.branchId
       });
-    } catch {
-      // Mock simulation updates
+      alert("Report finalized successfully.");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || "Failed to finalize radiology report.");
+    } finally {
+      setIsSaving(false);
     }
-    
-    // Update local state arrays
-    const updatedOrders = orders.map(o => 
-      o.id === selectedOrder.id 
-        ? { ...o, phase: "FINALIZED" as const, interpretation, uploadedFile: uploadedFile || undefined } 
-        : o
-    );
-    setOrders(updatedOrders);
-    setIsSaving(false);
-    setSelectedOrder({ ...selectedOrder, phase: "FINALIZED", interpretation, uploadedFile: uploadedFile || undefined });
-    alert("Radiology interpretation finalized and signed off.");
   };
 
   return (
@@ -145,6 +108,20 @@ export const RadiologyCanvas = () => {
         title="Radiology Imaging Canvas" 
         description="Process active diagnostic imaging procedures, upload study DICOM files, and author clinical interpretations." 
       />
+
+      {/* Global Read-Only Notice */}
+      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
+        <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0" />
+        <span>This module is currently in read-only mode. Report finalization is not yet available in the live environment.</span>
+      </div>
+
+      {/* Error Notice */}
+      {fetchError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
+          <ShieldAlert className="h-4 w-4 text-rose-600 flex-shrink-0" />
+          <span>{fetchError}</span>
+        </div>
+      )}
 
       {/* UPPER PANEL: Technical Study Worklist */}
       <div className="card p-5 space-y-4">
@@ -296,20 +273,21 @@ export const RadiologyCanvas = () => {
                 )}
               </div>
 
-              {selectedOrder.phase !== "FINALIZED" && (
-                <button
-                  onClick={handleSaveReport}
-                  disabled={isSaving || !uploadedFile || !interpretation}
-                  className={`btn text-xs px-4 py-2 flex items-center gap-1.5 ${
-                    uploadedFile && interpretation
-                      ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                  }`}
-                >
-                  <ClipboardCheck className="h-4 w-4" />
-                  {isSaving ? "Saving..." : "Finalize Report"}
-                </button>
-              )}
+               {selectedOrder.phase !== "FINALIZED" && (
+                 <button
+                   onClick={handleSaveReport}
+                   disabled={isSaving || !uploadedFile || !interpretation || true}
+                   className={`btn text-xs px-4 py-2 flex items-center gap-1.5 ${
+                     uploadedFile && interpretation
+                       ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                       : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                   } disabled:opacity-50 disabled:cursor-not-allowed`}
+                 >
+                   <ClipboardCheck className="h-4 w-4" />
+                   {isSaving ? "Saving..." : "Finalize Report (WIP)"}
+                 </button>
+               )}
+
             </div>
           </div>
 
