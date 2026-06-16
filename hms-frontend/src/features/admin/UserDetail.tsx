@@ -11,9 +11,9 @@ export const UserDetail = () => {
   const [modals, setModals] = useState({ reset: false, forceLogout: false, suspend: false, changeRole: false });
   const [loading, setLoading] = useState(false);
 
-  const user = { 
-    id, name: "Maria Santos", email: "maria@hms.com", role: "Receptionist", 
-    status: "Active", branch: "Main", phone: "09171234567", department: "Front Desk" 
+  const user = {
+    id, name: "Maria Santos", email: "maria@hms.com", role: "Receptionist",
+    status: "Active", branch: "Main", phone: "09171234567", department: "Front Desk"
   };
 
   const breadcrumbs = [
@@ -27,8 +27,9 @@ export const UserDetail = () => {
     try {
       await apiClient.post(`/v1/admin/users/${id}/deactivate`, { reason });
       alert('Account suspended successfully');
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to suspend account');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || 'Failed to suspend account');
     } finally {
       setLoading(false);
       setModals({...modals, suspend: false});
@@ -37,14 +38,14 @@ export const UserDetail = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      <PageHeader 
-        title={user.name} 
-        description="Staff profile and account security." 
+      <PageHeader
+        title={user.name}
+        description="Staff profile and account security."
         backFallback="/admin/users"
         backLabel="Back to Users"
         breadcrumbs={breadcrumbs}
       />
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="card p-6">
@@ -97,22 +98,22 @@ export const UserDetail = () => {
               <span>Security Actions</span>
             </div>
             <div className="grid grid-cols-1 gap-3">
-              <button 
+              <button
                 disabled
                 className="btn btn-secondary w-full flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
               >
                 <KeyRound className="h-4 w-4" />
                 Reset Password (WIP)
               </button>
-              <button 
+              <button
                 disabled
                 className="btn btn-secondary w-full flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
               >
                 <LogOut className="h-4 w-4" />
                 Force Logout (WIP)
               </button>
-              <button 
-                onClick={() => setModals({...modals, suspend: true})} 
+              <button
+                onClick={() => setModals({...modals, suspend: true})}
                 className={`btn btn-danger w-full flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-wait' : ''}`}
                 disabled={loading}
               >
@@ -124,22 +125,22 @@ export const UserDetail = () => {
         </div>
       </div>
 
-      <ConfirmationModal 
-        isOpen={modals.reset} 
-        title="Reset Password" 
-        warning="This will trigger a password reset email." 
-        onConfirm={() => setModals({...modals, reset: false})} 
+      <ConfirmationModal
+        isOpen={modals.reset}
+        title="Reset Password"
+        warning="This will trigger a password reset email."
+        onConfirm={() => setModals({...modals, reset: false})}
         onClose={() => setModals({...modals, reset: false})}
       >
         Confirm password reset for {user.name}?
       </ConfirmationModal>
 
-      <ReasonModal 
-        isOpen={modals.suspend} 
-        title="Suspend Account" 
-        guidance="Reason for suspension required." 
-        onConfirm={handleSuspend} 
-        onClose={() => setModals({...modals, suspend: false})} 
+      <ReasonModal
+        isOpen={modals.suspend}
+        title="Suspend Account"
+        guidance="Reason for suspension required."
+        onConfirm={handleSuspend}
+        onClose={() => setModals({...modals, suspend: false})}
       />
     </div>
   );

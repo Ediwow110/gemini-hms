@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useUser } from "../../hooks/use-user";
 import { apiClient } from "../../lib/api";
 import { PageHeader } from "../../components/ui/page-header";
-import { 
-  Shield, 
-  Layers, 
-  RefreshCcw, 
-  Building
+import {
+  Shield,
+  Layers,
+  RefreshCcw,
+  Building,
+  ShieldAlert
 } from "lucide-react";
 
 interface HmoPartner {
@@ -37,6 +38,7 @@ export const ClaimsDashboard = () => {
   const [remarks, setRemarks] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState<"pipeline" | "partners">("pipeline");
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchClaimsData = async () => {
     try {
@@ -46,61 +48,10 @@ export const ClaimsDashboard = () => {
       ]);
       setPartners(partnersRes.data || []);
       setClaims(claimsRes.data || []);
-    } catch {
-      // Fallback premium mocks
-      setPartners([
-        { id: "HMO-001", name: "PhilHealth Corporation", code: "PHIC-GOV", status: "ACTIVE" },
-        { id: "HMO-002", name: "Maxicare Health Plans", code: "MAXI-PVT", status: "ACTIVE" },
-        { id: "HMO-003", name: "MediCard Philippines", code: "MEDI-PVT", status: "ACTIVE" },
-        { id: "HMO-004", name: "Intellicare Health", code: "INTE-PVT", status: "INACTIVE" }
-      ]);
-
-      setClaims([
-        {
-          id: "CLM-301",
-          claimIdentifier: "CLM-2026-0005",
-          loaReference: "LOA-990812",
-          patientName: "Donald Draper",
-          invoiceId: "INV-10024",
-          totalClaimValue: 45000,
-          approvedValue: 0,
-          status: "PENDING",
-          remarks: "Awaiting clinical soap note attachment."
-        },
-        {
-          id: "CLM-302",
-          claimIdentifier: "CLM-2026-0008",
-          loaReference: "LOA-887123",
-          patientName: "Peggy Olson",
-          invoiceId: "INV-10029",
-          totalClaimValue: 12000,
-          approvedValue: 0,
-          status: "SUBMITTED",
-          remarks: "Transmitted to Maxicare claims adjudication queue."
-        },
-        {
-          id: "CLM-303",
-          claimIdentifier: "CLM-2026-0012",
-          loaReference: "LOA-776122",
-          patientName: "Roger Sterling",
-          invoiceId: "INV-10034",
-          totalClaimValue: 85000,
-          approvedValue: 80000,
-          status: "APPROVED",
-          remarks: "Co-pay settled successfully. ₱5,000 variance charged to client ledger."
-        },
-        {
-          id: "CLM-304",
-          claimIdentifier: "CLM-2026-0015",
-          loaReference: "LOA-665123",
-          patientName: "Joan Holloway",
-          invoiceId: "INV-10038",
-          totalClaimValue: 15000,
-          approvedValue: 0,
-          status: "DENIED",
-          remarks: "Pre-existing condition clause exclusion applied by Maxicare."
-        }
-      ]);
+      setFetchError(null);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setFetchError(error.response?.data?.message || "Failed to fetch insurance data.");
     }
   };
 
@@ -124,27 +75,28 @@ export const ClaimsDashboard = () => {
         status: approvedAmount > 0 ? "APPROVED" : "DENIED",
         tenantId: user?.tenantId
       });
-    } catch {
-      // Mock local fallback update
+      const updated = claims.map(c =>
+        c.id === selectedClaim.id
+          ? { ...c, approvedValue: approvedAmount, remarks, status: (approvedAmount > 0 ? "APPROVED" : "DENIED") as "APPROVED" | "DENIED" }
+          : c
+      );
+      setClaims(updated);
+      alert("Claims reconciliation updated successfully.");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || "Failed to update claims reconciliation.");
+    } finally {
+      setIsUpdating(false);
+      setSelectedClaim(null);
     }
-
-    const updated = claims.map(c => 
-      c.id === selectedClaim.id 
-        ? { ...c, approvedValue: approvedAmount, remarks, status: (approvedAmount > 0 ? "APPROVED" : "DENIED") as "APPROVED" | "DENIED" } 
-        : c
-    );
-    setClaims(updated);
-    setIsUpdating(false);
-    setSelectedClaim(null);
-    alert("Claims reconciliation updated successfully.");
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <PageHeader 
-          title="HMO & PhilHealth Claims Center" 
-          description="Track insurance partner statuses, process authorization documents, and reconcile hospital invoices." 
+        <PageHeader
+          title="HMO & PhilHealth Claims Center"
+          description="Track insurance partner statuses, process authorization documents, and reconcile hospital invoices."
         />
         <button onClick={fetchClaimsData} className="btn btn-secondary flex items-center gap-1.5 text-xs py-2">
           <RefreshCcw className="h-3.5 w-3.5" /> Refresh
@@ -179,6 +131,20 @@ export const ClaimsDashboard = () => {
         </button>
       </div>
 
+      {/* Global Notice */}
+      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
+        <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0" />
+        <span>This module is currently in read-only mode. Reconciliation updates are not yet available in the live environment.</span>
+      </div>
+
+      {/* Error Notice */}
+      {fetchError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium mt-4">
+          <ShieldAlert className="h-4 w-4 text-rose-600 flex-shrink-0" />
+          <span>{fetchError}</span>
+        </div>
+      )}
+
       {/* TAB 1: Claims Reconciliation Pipeline */}
       {activeTab === "pipeline" && (
         <div className="card overflow-hidden">
@@ -198,7 +164,7 @@ export const ClaimsDashboard = () => {
             <tbody className="divide-y divide-slate-100">
               {claims.map(claim => {
                 let statusColor = "";
-                
+
                 if (claim.status === "PENDING") {
                   statusColor = "bg-amber-50 text-amber-700 border-amber-200";
                 } else if (claim.status === "SUBMITTED") {
@@ -265,8 +231,8 @@ export const ClaimsDashboard = () => {
                   <td className="px-5 py-4 font-mono font-bold text-slate-600">{p.code}</td>
                   <td className="px-5 py-4 text-center">
                     <span className={`inline-block px-2.5 py-0.5 rounded-lg border font-bold text-[10px] ${
-                      p.status === "ACTIVE" 
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                      p.status === "ACTIVE"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                         : "bg-slate-50 text-slate-600 border-slate-200"
                     }`}>
                       {p.status}
@@ -287,7 +253,7 @@ export const ClaimsDashboard = () => {
               <RefreshCcw className="h-5 w-5 text-indigo-600" />
               Claims Reconciliation Update
             </h3>
-            
+
             <div className="mt-4 space-y-4">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs space-y-2">
                 <p><strong>Claim Identifier:</strong> {selectedClaim.claimIdentifier}</p>
@@ -327,11 +293,12 @@ export const ClaimsDashboard = () => {
                 Cancel
               </button>
               <button
-                disabled={isUpdating}
+                disabled={true}
                 onClick={handleSaveReconciliation}
-                className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2"
+                title="Reconciliation updates are currently in read-only mode."
+                className="btn btn-primary bg-slate-300 text-slate-500 text-xs px-4 py-2 cursor-not-allowed"
               >
-                {isUpdating ? "Saving..." : "Save Reconciliation"}
+                Save Reconciliation
               </button>
             </div>
           </div>

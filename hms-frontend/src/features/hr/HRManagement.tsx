@@ -2,17 +2,18 @@ import { useState, useEffect } from "react";
 import { useUser } from "../../hooks/use-user";
 import { apiClient } from "../../lib/api";
 import { PageHeader } from "../../components/ui/page-header";
-import { 
-  Briefcase, 
-  Search, 
-  Filter, 
-  UserCheck, 
-  UserX, 
-  Calendar, 
-  DollarSign, 
-  X, 
+import {
+  Briefcase,
+  Search,
+  Filter,
+  UserCheck,
+  UserX,
+  Calendar,
+  DollarSign,
+  X,
   CreditCard,
-  Building
+  Building,
+  ShieldAlert
 } from "lucide-react";
 
 interface StaffMember {
@@ -33,57 +34,16 @@ export const HRManagement = () => {
   const [search, setSearch] = useState("");
   const [selectedDept, setSelectedDept] = useState("ALL");
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-  const [updating, setUpdating] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchHRData = async () => {
     try {
       const res = await apiClient.get("/v1/hr/employees");
       setEmployees(res.data || []);
-    } catch {
-      // Fallback premium mocks
-      setEmployees([
-        {
-          id: "EMP-001",
-          staffNumber: "STF-2026-09",
-          firstName: "Dr. Gregory",
-          lastName: "House",
-          designation: "Chief of Diagnostic Medicine",
-          department: "Clinical",
-          branch: "Central Hospital",
-          status: "ACTIVE",
-          paymentHistory: [
-            { period: "April 2026", amount: 125000, date: "2026-04-30" },
-            { period: "March 2026", amount: 125000, date: "2026-03-31" }
-          ]
-        },
-        {
-          id: "EMP-002",
-          staffNumber: "STF-2026-44",
-          firstName: "Nurse Judy",
-          lastName: "Hopps",
-          designation: "Head Nurse",
-          department: "Nursing",
-          branch: "Central Hospital",
-          status: "ACTIVE",
-          paymentHistory: [
-            { period: "April 2026", amount: 48000, date: "2026-04-30" },
-            { period: "March 2026", amount: 48000, date: "2026-03-31" }
-          ]
-        },
-        {
-          id: "EMP-003",
-          staffNumber: "STF-2026-51",
-          firstName: "Charles",
-          lastName: "McGill",
-          designation: "Chief Legal Counsel",
-          department: "Administration",
-          branch: "Central Hospital",
-          status: "SUSPENDED",
-          paymentHistory: [
-            { period: "March 2026", amount: 90000, date: "2026-03-31" }
-          ]
-        }
-      ]);
+      setFetchError(null);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setFetchError(error.response?.data?.message || "Failed to fetch HR data.");
     }
   };
 
@@ -92,25 +52,24 @@ export const HRManagement = () => {
   }, []);
 
   const handleToggleStatus = async (staff: StaffMember) => {
-    setUpdating(true);
+    if (!user) return;
     const newStatus = staff.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
     try {
       await apiClient.patch(`/v1/hr/employees/${staff.id}/status`, {
         status: newStatus,
-        tenantId: user?.tenantId
+        tenantId: user.tenantId
       });
-    } catch {
-      // Mock local fallback update
+      const updated = employees.map(e => e.id === staff.id ? { ...e, status: newStatus as "ACTIVE" | "SUSPENDED" } : e);
+      setEmployees(updated);
+      if (selectedStaff?.id === staff.id) {
+        setSelectedStaff({ ...selectedStaff, status: newStatus });
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || "Failed to update staff status.");
     }
-
-    const updated = employees.map(e => e.id === staff.id ? { ...e, status: newStatus as "ACTIVE" | "SUSPENDED" } : e);
-    setEmployees(updated);
-    if (selectedStaff?.id === staff.id) {
-      setSelectedStaff({ ...selectedStaff, status: newStatus });
-    }
-    setUpdating(false);
-    alert(`Staff status updated successfully to ${newStatus}.`);
   };
+
 
   const filtered = employees.filter(emp => {
     const matchesSearch = `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(search.toLowerCase()) || emp.staffNumber.toLowerCase().includes(search.toLowerCase());
@@ -122,46 +81,60 @@ export const HRManagement = () => {
 
   return (
     <div className="space-y-6 animate-fade-in relative min-h-[600px]">
-      <PageHeader 
-        title="HR & Staff Directory Workspace" 
-        description="Oversee active staff credentials, logical assignments, status metrics, and payroll ledgers." 
+      <PageHeader
+        title="HR & Staff Directory Workspace"
+        description="Oversee active staff credentials, logical assignments, status metrics, and payroll ledgers."
       />
 
-      {/* SEARCH AND FILTERS */}
-      <div className="card p-4 flex flex-wrap gap-4 items-center">
-        <div className="flex-1 min-w-[240px] relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by staff number or complete name..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-slate-400" />
-          <span className="text-xs font-semibold text-slate-500">Department:</span>
-          <select
-            value={selectedDept}
-            onChange={e => setSelectedDept(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none"
-          >
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
-        </div>
+      {/* Global Notice */}
+      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium mb-6">
+        <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0" />
+        <span>This module is currently in read-only mode. Employee status updates are not yet available in the live environment.</span>
       </div>
+
+      {/* SEARCH AND FILTERS */}       <div className="card p-4 flex flex-wrap gap-4 items-center">
+         {fetchError && (
+           <div className="flex-1 bg-rose-50 text-rose-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border border-rose-100 animate-shake">
+             <ShieldAlert className="h-4 w-4" />
+             {fetchError}
+           </div>
+         )}
+         <div className={`flex-1 min-w-[240px] relative ${fetchError ? 'opacity-50 pointer-events-none' : ''}`}>
+           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+           <input
+             type="text"
+             placeholder={fetchError ? "Error loading data..." : "Search by staff number or complete name..."}
+             value={search}
+             onChange={e => setSearch(e.target.value)}
+             disabled={!!fetchError}
+             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all"
+           />
+         </div>
+
+         <div className="flex items-center gap-2">
+           <Filter className="h-4 w-4 text-slate-400" />
+           <span className="text-xs font-semibold text-slate-500">Department:</span>
+           <select
+             value={selectedDept}
+             onChange={e => setSelectedDept(e.target.value)}
+             disabled={!!fetchError}
+             className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none disabled:opacity-50"
+           >
+             {departments.map(dept => (
+               <option key={dept} value={dept}>{dept}</option>
+             ))}
+           </select>
+         </div>
+       </div>
+
 
       {/* MAIN CARDS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map(emp => {
           const initials = `${emp.firstName[0]}${emp.lastName[0]}`;
           return (
-            <div 
-              key={emp.id} 
+            <div
+              key={emp.id}
               className={`card p-5 space-y-4 hover:shadow-md transition-all border ${
                 emp.status === "SUSPENDED" ? "border-rose-100 bg-rose-50/10" : "border-slate-200/80"
               }`}
@@ -178,8 +151,8 @@ export const HRManagement = () => {
                 </div>
 
                 <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${
-                  emp.status === "ACTIVE" 
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                  emp.status === "ACTIVE"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                     : "bg-rose-50 text-rose-700 border-rose-200"
                 }`}>
                   {emp.status}
@@ -214,7 +187,7 @@ export const HRManagement = () => {
       {selectedStaff && (
         <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => setSelectedStaff(null)} />
-          
+
           <div className="relative w-screen max-w-md bg-white h-full shadow-2xl flex flex-col p-6 border-l border-slate-200/80 animate-slide-in-right overflow-y-auto">
             <div className="flex justify-between items-center border-b pb-4 border-slate-100">
               <div className="flex items-center gap-2">
@@ -249,13 +222,10 @@ export const HRManagement = () => {
               <div className="space-y-2.5">
                 <h5 className="font-bold text-slate-800 text-xs tracking-wider uppercase">Governance Status Control</h5>
                 <button
-                  disabled={updating}
+                  disabled={true}
                   onClick={() => handleToggleStatus(selectedStaff)}
-                  className={`w-full btn justify-center py-2.5 text-xs font-semibold gap-2 border ${
-                    selectedStaff.status === "ACTIVE"
-                      ? "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100/50"
-                      : "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100/50"
-                  }`}
+                  title="Employee status updates are currently in read-only mode."
+                  className={`w-full btn justify-center py-2.5 text-xs font-semibold gap-2 border bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed`}
                 >
                   {selectedStaff.status === "ACTIVE" ? (
                     <>

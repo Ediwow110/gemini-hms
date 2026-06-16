@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { CreateOrder } from '../CreateOrder';
 import { apiClient } from '../../../lib/api';
@@ -23,6 +23,7 @@ vi.mock('react-router-dom', async () => {
 
 const mockUser = {
   id: 'U123',
+  email: 'test@example.com',
   tenantId: 'T123',
   branchId: 'B123',
   roles: ['Admin'],
@@ -42,8 +43,8 @@ const renderWithAuth = (ui: React.ReactElement) => {
 describe('CreateOrder Honesty Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    (apiClient.get as unknown as vi.Mock).mockImplementation(async (url: string) => {
+
+    (apiClient.get as unknown as Mock).mockImplementation(async (url: string) => {
       if (url === '/v1/catalog') {
         return { data: [{ id: 'S1', type: 'SERVICE', code: 'CBC', name: 'CBC', department: 'Hem', price: 10 }] };
       }
@@ -56,7 +57,7 @@ describe('CreateOrder Honesty Tests', () => {
 
   it('does not call alert() and instead calls API on submit', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    (apiClient.post as unknown as vi.Mock).mockResolvedValue({ data: { id: 'O123' } });
+    (apiClient.post as unknown as Mock).mockResolvedValue({ data: { id: 'O123' } });
 
     renderWithAuth(<CreateOrder />);
 
@@ -82,7 +83,7 @@ describe('CreateOrder Honesty Tests', () => {
   });
 
   it('shows error message on API failure', async () => {
-    (apiClient.post as unknown as vi.Mock).mockRejectedValue({
+    (apiClient.post as unknown as Mock).mockRejectedValue({
       response: { data: { message: 'Internal Server Error' } },
     });
 

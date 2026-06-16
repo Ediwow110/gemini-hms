@@ -5,16 +5,15 @@ import { PlusCircle, Receipt, Search, Save } from "lucide-react";
 import { apiClient } from "../../lib/api";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../hooks/use-user";
-import axios from 'axios';
 
 interface Service { id: string; type: 'SERVICE' | 'INVENTORY'; code: string; name: string; department: string; price: number; }
-interface OrderItem { 
-  itemId: string; 
-  itemType: 'SERVICE' | 'INVENTORY'; 
-  name: string; 
-  quantity: number; 
-  discount: number; 
-  remarks: string; 
+interface OrderItem {
+  itemId: string;
+  itemType: 'SERVICE' | 'INVENTORY';
+  name: string;
+  quantity: number;
+  discount: number;
+  remarks: string;
   unitPrice: number;
 }
 interface Patient { id: string; name: string; age: number; gender: string; category: string; balance: number; }
@@ -73,14 +72,14 @@ export const CreateOrder = () => {
   };
 
   const addService = (service: Service) => {
-    setItems([...items, { 
-      itemId: service.id, 
-      itemType: service.type, 
-      name: service.name, 
-      quantity: 1, 
-      discount: 0, 
+    setItems([...items, {
+      itemId: service.id,
+      itemType: service.type,
+      name: service.name,
+      quantity: 1,
+      discount: 0,
       remarks: "",
-      unitPrice: service.price 
+      unitPrice: service.price
     }]);
   };
 
@@ -121,8 +120,8 @@ export const CreateOrder = () => {
       });
       navigate('/queue');
     } catch (err) {
-      const axiosError = err as axios.AxiosError<{ message: string }>;
-      setError(axiosError.response?.data?.message || "Failed to create order. Please try again.");
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || "Failed to create order. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +130,7 @@ export const CreateOrder = () => {
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       <PageHeader title="Create New Order" description="Register new medical services for a patient." />
-      
+
       <div className="card p-5">
         <label className="block text-sm font-semibold text-slate-700 mb-2">Search Patient (Try P001)</label>
         <div className="relative">
@@ -143,7 +142,7 @@ export const CreateOrder = () => {
       {patient && (
         <div className="animate-fade-in space-y-6">
           <PatientIdentityHeader patient={patient} />
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <div className="card p-6 animate-slide-up stagger-1">
@@ -155,9 +154,9 @@ export const CreateOrder = () => {
                     <div className="text-xs text-slate-400 animate-pulse">Loading services...</div>
                   ) : (
                     services.map(s => (
-                      <button 
-                        key={s.id} 
-                        onClick={() => addService(s)} 
+                      <button
+                        key={s.id}
+                        onClick={() => addService(s)}
                         className="btn btn-secondary flex items-center gap-2"
                       >
                         <PlusCircle className="h-4 w-4 text-indigo-600" />
@@ -203,17 +202,17 @@ export const CreateOrder = () => {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <input 
+                              <input
                                 type="number"
-                                className="input h-8 py-0 w-16 text-right" 
-                                value={item.quantity} 
+                                className="input h-8 py-0 w-16 text-right"
+                                value={item.quantity}
                                 onChange={(e) => updateItem(i, 'quantity', parseInt(e.target.value) || 0)}
                                 min="1"
                               />
-                              <input 
+                              <input
                                 type="number"
-                                className="input h-8 py-0 w-16 text-right" 
-                                value={item.discount} 
+                                className="input h-8 py-0 w-16 text-right"
+                                value={item.discount}
                                 onChange={(e) => updateItem(i, 'discount', parseFloat(e.target.value) || 0)}
                               />
                             </div>
@@ -263,7 +262,7 @@ export const CreateOrder = () => {
                     {error}
                   </div>
                 )}
-                <button 
+                <button
                   disabled={items.length === 0 || isLoading}
                   onClick={handleSubmit}
                   className="btn btn-primary w-full mt-4 flex items-center justify-center gap-2 py-3 disabled:opacity-70"
