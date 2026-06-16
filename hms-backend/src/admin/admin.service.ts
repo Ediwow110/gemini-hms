@@ -1216,6 +1216,116 @@ export class AdminService {
     });
   }
 
+  async forceLogout(actor: RequestUser, targetUserId: string, reason: string): Promise<AdminUserLifecycleResponse> {
+    const trimmedReason = this.validateReason(reason);
+    this.assertActorCanTarget(actor, targetUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const target = await this.getScopedTarget(tx, actor, targetUserId);
+      this.assertNonPrivilegedTarget(target);
+
+      const updateResult = await tx.user.updateMany({
+        where: {
+          id: targetUserId,
+          tenantId: actor.tenantId,
+          ...this.getBranchMutationScope(actor),
+        },
+        data: {
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException('User access scope changed before logout could be enforced');
+      }
+
+      const changedAt = new Date();
+      const updated = await this.getUpdatedUser(tx, actor.tenantId, targetUserId);
+      const branchId = this.getAuditBranchId(actor, target);
+
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'USER_FORCE_LOGOUT',
+          recordType: 'User',
+          recordId: targetUserId,
+          oldValues: this.buildAuditOldValues(target),
+          newValues: this.buildAuditNewValues(
+            actor,
+            targetUserId,
+            updated,
+            trimmedReason,
+            changedAt,
+          ),
+        },
+        tx,
+        branchId,
+      );
+
+      return this.toLifecycleResponse(updated, target);
+    });
+  }
+
+  async resetPassword(actor: RequestUser, targetUserId: string, reason: string): Promise<{ user: AdminUserLifecycleResponse; tempPassword: string }> {
+    const trimmedReason = this.validateReason(reason);
+    this.assertActorCanTarget(actor, targetUserId);
+
+    // Generate a temporary password
+    const tempPassword = 'Temp' + Math.random().toString(36).slice(-8) + '!';
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+    return this.prisma.$transaction(async (tx) => {
+      const target = await this.getScopedTarget(tx, actor, targetUserId);
+      this.assertNonPrivilegedTarget(target);
+
+      const updateResult = await tx.user.updateMany({
+        where: {
+          id: targetUserId,
+          tenantId: actor.tenantId,
+          ...this.getBranchMutationScope(actor),
+        },
+        data: {
+          passwordHash,
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException('User access scope changed before password reset could be enforced');
+      }
+
+      const changedAt = new Date();
+      const updated = await this.getUpdatedUser(tx, actor.tenantId, targetUserId);
+      const branchId = this.getAuditBranchId(actor, target);
+
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'USER_PASSWORD_RESET',
+          recordType: 'User',
+          recordId: targetUserId,
+          oldValues: this.buildAuditOldValues(target),
+          newValues: this.buildAuditNewValues(
+            actor,
+            targetUserId,
+            updated,
+            trimmedReason,
+            changedAt,
+          ),
+        },
+        tx,
+        branchId,
+      );
+
+      return {
+        user: this.toLifecycleResponse(updated, target),
+        tempPassword,
+      };
+    });
+  }
+
   async assignUserRole(
     actor: RequestUser,
     targetUserId: string,
