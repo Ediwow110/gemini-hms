@@ -1216,7 +1216,11 @@ export class AdminService {
     });
   }
 
-  async forceLogout(actor: RequestUser, targetUserId: string, reason: string): Promise<AdminUserLifecycleResponse> {
+  async forceLogout(
+    actor: RequestUser,
+    targetUserId: string,
+    reason: string,
+  ): Promise<AdminUserLifecycleResponse> {
     const trimmedReason = this.validateReason(reason);
     this.assertActorCanTarget(actor, targetUserId);
 
@@ -1236,11 +1240,17 @@ export class AdminService {
       });
 
       if (updateResult.count === 0) {
-        throw new ConflictException('User access scope changed before logout could be enforced');
+        throw new ConflictException(
+          'User access scope changed before logout could be enforced',
+        );
       }
 
       const changedAt = new Date();
-      const updated = await this.getUpdatedUser(tx, actor.tenantId, targetUserId);
+      const updated = await this.getUpdatedUser(
+        tx,
+        actor.tenantId,
+        targetUserId,
+      );
       const branchId = this.getAuditBranchId(actor, target);
 
       await this.audit.log(
@@ -1267,7 +1277,11 @@ export class AdminService {
     });
   }
 
-  async resetPassword(actor: RequestUser, targetUserId: string, reason: string): Promise<{ user: AdminUserLifecycleResponse; tempPassword: string }> {
+  async resetPassword(
+    actor: RequestUser,
+    targetUserId: string,
+    reason: string,
+  ): Promise<{ user: AdminUserLifecycleResponse; tempPassword: string }> {
     const trimmedReason = this.validateReason(reason);
     this.assertActorCanTarget(actor, targetUserId);
 
@@ -1292,11 +1306,17 @@ export class AdminService {
       });
 
       if (updateResult.count === 0) {
-        throw new ConflictException('User access scope changed before password reset could be enforced');
+        throw new ConflictException(
+          'User access scope changed before password reset could be enforced',
+        );
       }
 
       const changedAt = new Date();
-      const updated = await this.getUpdatedUser(tx, actor.tenantId, targetUserId);
+      const updated = await this.getUpdatedUser(
+        tx,
+        actor.tenantId,
+        targetUserId,
+      );
       const branchId = this.getAuditBranchId(actor, target);
 
       await this.audit.log(

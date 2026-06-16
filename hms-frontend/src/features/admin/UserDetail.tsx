@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/page-header";
 import { UserStatusBadge, RoleBadge } from "../../components/ui/user-badges";
-import { ConfirmationModal, ReasonModal } from "../../components/ui/approval-modals";
+import { ReasonModal } from "../../components/ui/approval-modals";
 import { KeyRound, LogOut, UserX, ShieldAlert, AlertCircle } from "lucide-react";
 import { adminService } from "../../services/admin.service";
 import { apiClient } from "../../lib/api";
