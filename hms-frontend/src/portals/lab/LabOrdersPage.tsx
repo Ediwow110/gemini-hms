@@ -373,8 +373,10 @@ export const LabOrdersPage = () => {
 
                   <div className="flex flex-wrap gap-3">
                     <button
-                      onClick={() => alert('Printing clinical barcode labels...')}
-                      className="btn bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-black px-5 py-3 rounded-xl flex items-center gap-2 shadow-sm transition-all"
+                      disabled
+                      data-testid="laborders-print-barcodes-disabled"
+                      title="Disabled: clinical barcode printing is not yet integrated. Use the specimen accessioning flow for now."
+                      className="btn bg-slate-50 border border-slate-200 text-slate-400 text-xs font-black px-5 py-3 rounded-xl flex items-center gap-2 cursor-not-allowed opacity-60"
                     >
                       <Printer className="h-4 w-4" /> Print Barcodes
                     </button>
