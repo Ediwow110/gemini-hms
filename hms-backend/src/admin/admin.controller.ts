@@ -54,8 +54,8 @@ export class AdminController {
       search,
       status,
       branchId,
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+      page: page ? Math.max(1, parseInt(page, 10) || 1) : undefined,
+      limit: limit ? Math.max(1, parseInt(limit, 10) || 1) : undefined,
     });
   }
 

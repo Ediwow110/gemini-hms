@@ -320,9 +320,21 @@ describe('AdminService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('deactivate rejects reason shorter than 8 chars', async () => {
+    await expect(
+      service.deactivateUser(superAdminActor, 'target-id', 'short'),
+    ).rejects.toThrow(BadRequestException);
+  });
+
   it('activate rejects blank reason', async () => {
     await expect(
       service.activateUser(superAdminActor, 'target-id', ''),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('activate rejects reason shorter than 8 chars', async () => {
+    await expect(
+      service.activateUser(superAdminActor, 'target-id', 'short'),
     ).rejects.toThrow(BadRequestException);
   });
 
@@ -332,21 +344,41 @@ describe('AdminService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('assign rejects reason shorter than 8 chars', async () => {
+    await expect(
+      service.assignUserRole(superAdminActor, 'target-id', 'role-id', 'short'),
+    ).rejects.toThrow(BadRequestException);
+  });
+
   it('revoke rejects blank reason', async () => {
     await expect(
       service.revokeUserRole(superAdminActor, 'target-id', 'role-id', '   '),
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('revoke rejects reason shorter than 8 chars', async () => {
+    await expect(
+      service.revokeUserRole(superAdminActor, 'target-id', 'role-id', 'short'),
+    ).rejects.toThrow(BadRequestException);
+  });
+
   it('deactivate rejects self changes', async () => {
     await expect(
-      service.deactivateUser(superAdminActor, superAdminActor.userId!, 'valid'),
+      service.deactivateUser(
+        superAdminActor,
+        superAdminActor.userId!,
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
   it('activate rejects self changes', async () => {
     await expect(
-      service.activateUser(superAdminActor, superAdminActor.userId!, 'valid'),
+      service.activateUser(
+        superAdminActor,
+        superAdminActor.userId!,
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -356,7 +388,7 @@ describe('AdminService', () => {
         superAdminActor,
         superAdminActor.userId!,
         'role-id',
-        'valid',
+        'valid reason',
       ),
     ).rejects.toThrow(ForbiddenException);
   });
@@ -367,7 +399,7 @@ describe('AdminService', () => {
         superAdminActor,
         superAdminActor.userId!,
         'role-id',
-        'valid',
+        'valid reason',
       ),
     ).rejects.toThrow(ForbiddenException);
   });
@@ -376,7 +408,7 @@ describe('AdminService', () => {
     prisma.user.findFirst.mockResolvedValue(null);
 
     await expect(
-      service.deactivateUser(superAdminActor, 'target-id', 'valid'),
+      service.deactivateUser(superAdminActor, 'target-id', 'valid reason'),
     ).rejects.toThrow(NotFoundException);
   });
 
@@ -384,7 +416,7 @@ describe('AdminService', () => {
     prisma.user.findFirst.mockResolvedValue(null);
 
     await expect(
-      service.activateUser(superAdminActor, 'target-id', 'valid'),
+      service.activateUser(superAdminActor, 'target-id', 'valid reason'),
     ).rejects.toThrow(NotFoundException);
   });
 
@@ -392,7 +424,12 @@ describe('AdminService', () => {
     prisma.user.findFirst.mockResolvedValue(null);
 
     await expect(
-      service.assignUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.assignUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(NotFoundException);
   });
 
@@ -402,7 +439,12 @@ describe('AdminService', () => {
     );
 
     await expect(
-      service.assignUserRole(branchActor, 'target-id', 'role-id', 'valid'),
+      service.assignUserRole(
+        branchActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -417,7 +459,12 @@ describe('AdminService', () => {
     );
 
     await expect(
-      service.assignUserRole(branchActor, 'target-id', 'role-id', 'valid'),
+      service.assignUserRole(
+        branchActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -519,7 +566,12 @@ describe('AdminService', () => {
     );
 
     await expect(
-      service.assignUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.assignUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -528,7 +580,12 @@ describe('AdminService', () => {
     prisma.role.findFirst.mockResolvedValue(null);
 
     await expect(
-      service.assignUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.assignUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(NotFoundException);
   });
 
@@ -543,7 +600,7 @@ describe('AdminService', () => {
         superAdminActor,
         'target-id',
         'super-role-id',
-        'valid',
+        'valid reason',
       ),
     ).rejects.toThrow(ForbiddenException);
   });
@@ -568,7 +625,12 @@ describe('AdminService', () => {
     );
 
     await expect(
-      service.assignUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.assignUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -582,7 +644,12 @@ describe('AdminService', () => {
     );
 
     await expect(
-      service.assignUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.assignUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -605,7 +672,12 @@ describe('AdminService', () => {
     prisma.role.findFirst.mockResolvedValue(role);
 
     await expect(
-      service.assignUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.assignUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ConflictException);
   });
 
@@ -726,7 +798,12 @@ describe('AdminService', () => {
     prisma.user.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
-      service.assignUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.assignUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ConflictException);
 
     expect(audit.log).not.toHaveBeenCalled();
@@ -752,7 +829,12 @@ describe('AdminService', () => {
     );
 
     await expect(
-      service.revokeUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.revokeUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -775,7 +857,12 @@ describe('AdminService', () => {
     prisma.role.findFirst.mockResolvedValue(role);
 
     await expect(
-      service.revokeUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.revokeUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -785,7 +872,12 @@ describe('AdminService', () => {
     prisma.role.findFirst.mockResolvedValue(role);
 
     await expect(
-      service.revokeUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.revokeUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ConflictException);
   });
 
@@ -971,7 +1063,12 @@ describe('AdminService', () => {
     );
 
     await expect(
-      service.revokeUserRole(branchActor, 'target-id', 'role-id', 'valid'),
+      service.revokeUserRole(
+        branchActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -986,7 +1083,12 @@ describe('AdminService', () => {
     );
 
     await expect(
-      service.revokeUserRole(branchActor, 'target-id', 'role-id', 'valid'),
+      service.revokeUserRole(
+        branchActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -1010,7 +1112,12 @@ describe('AdminService', () => {
     prisma.userRole.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
-      service.revokeUserRole(superAdminActor, 'target-id', 'role-id', 'valid'),
+      service.revokeUserRole(
+        superAdminActor,
+        'target-id',
+        'role-id',
+        'valid reason',
+      ),
     ).rejects.toThrow(ConflictException);
 
     expect(audit.log).not.toHaveBeenCalled();
@@ -1029,7 +1136,12 @@ describe('AdminService', () => {
 
   it('grant role permission rejects blank permissionId', async () => {
     await expect(
-      service.grantRolePermission(superAdminActor, 'role-id', '   ', 'valid'),
+      service.grantRolePermission(
+        superAdminActor,
+        'role-id',
+        '   ',
+        'valid reason',
+      ),
     ).rejects.toThrow(BadRequestException);
   });
 
@@ -2854,7 +2966,9 @@ describe('AdminService', () => {
 
     it('rejects if no update fields provided', async () => {
       await expect(
-        service.updateUser(superAdminActor, targetUserId, { reason: 'valid' }),
+        service.updateUser(superAdminActor, targetUserId, {
+          reason: 'valid reason',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -2945,7 +3059,7 @@ describe('AdminService', () => {
   describe('createCustomRole', () => {
     it('rejects branch-scoped actor from creating tenant-wide role', async () => {
       await expect(
-        service.createCustomRole(branchActor, 'New Role', 'reason'),
+        service.createCustomRole(branchActor, 'New Role', 'valid reason'),
       ).rejects.toThrow(
         'Branch-scoped actors cannot mutate tenant-wide role permissions',
       );
@@ -2965,7 +3079,7 @@ describe('AdminService', () => {
       const result = await service.createCustomRole(
         { ...branchActor, roles: ['Super Admin'] },
         'New Role',
-        'reason',
+        'valid reason',
       );
 
       expect(result.name).toBe('New Role');
@@ -2978,7 +3092,7 @@ describe('AdminService', () => {
         name: 'new role',
       });
       await expect(
-        service.createCustomRole(superAdminActor, 'New Role', 'reason'),
+        service.createCustomRole(superAdminActor, 'New Role', 'valid reason'),
       ).rejects.toThrow('A role with this name already exists in the tenant');
 
       expect(prisma.role.findFirst).toHaveBeenCalledWith({
@@ -2993,7 +3107,7 @@ describe('AdminService', () => {
       prisma.role.findFirst.mockResolvedValue(null);
       prisma.permission.findMany.mockResolvedValue([]); // Provided 1 ID, found 0
       await expect(
-        service.createCustomRole(superAdminActor, 'New Role', 'reason', [
+        service.createCustomRole(superAdminActor, 'New Role', 'valid reason', [
           'perm-id',
         ]),
       ).rejects.toThrow(
@@ -3007,7 +3121,7 @@ describe('AdminService', () => {
         { id: 'perm-id', name: 'admin.role.change', riskLevel: 'LOW' },
       ]);
       await expect(
-        service.createCustomRole(superAdminActor, 'New Role', 'reason', [
+        service.createCustomRole(superAdminActor, 'New Role', 'valid reason', [
           'perm-id',
         ]),
       ).rejects.toThrow('requires maker-checker');
@@ -3019,7 +3133,7 @@ describe('AdminService', () => {
         { id: 'perm-id', name: 'safe.perm', riskLevel: 'MEDIUM' },
       ]);
       await expect(
-        service.createCustomRole(superAdminActor, 'New Role', 'reason', [
+        service.createCustomRole(superAdminActor, 'New Role', 'valid reason', [
           'perm-id',
         ]),
       ).rejects.toThrow('has risk level MEDIUM');
@@ -3043,7 +3157,7 @@ describe('AdminService', () => {
       const result = await service.createCustomRole(
         superAdminActor,
         'New Role',
-        'reason',
+        'valid reason',
         ['perm-1'],
       );
 
@@ -3068,13 +3182,15 @@ describe('AdminService', () => {
 
     it('rejects if permissionIds contains non-string or blank', async () => {
       await expect(
-        service.createCustomRole(superAdminActor, 'New Role', 'reason', [' ']),
+        service.createCustomRole(superAdminActor, 'New Role', 'valid reason', [
+          ' ',
+        ]),
       ).rejects.toThrow('Invalid permission ID provided');
     });
 
     it('rejects duplicate permissionIds after trimming', async () => {
       await expect(
-        service.createCustomRole(superAdminActor, 'New Role', 'reason', [
+        service.createCustomRole(superAdminActor, 'New Role', 'valid reason', [
           'perm-1',
           ' perm-1 ',
         ]),

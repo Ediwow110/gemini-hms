@@ -334,9 +334,6 @@ export class AdminService {
     },
   ): Promise<CreateUserResponse> {
     const trimmedReason = this.validateReason(dto.reason);
-    if (trimmedReason.length < 8) {
-      throw new BadRequestException('Reason must be at least 8 characters');
-    }
 
     const email = dto.email.toLowerCase().trim();
     if (!email) {
@@ -1910,8 +1907,8 @@ export class AdminService {
 
   private validateReason(reason: string): string {
     const trimmed = reason.trim();
-    if (!trimmed) {
-      throw new BadRequestException('Reason is required');
+    if (trimmed.length < 8) {
+      throw new BadRequestException('Reason must be at least 8 characters');
     }
     return trimmed;
   }
