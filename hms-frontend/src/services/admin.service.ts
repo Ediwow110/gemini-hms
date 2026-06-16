@@ -96,6 +96,15 @@ export const adminService = {
     return response.data;
   },
 
+  async forceLogout(id: string, reason: string): Promise<void> {
+    await apiClient.post(`/v1/admin/users/${id}/force-logout`, { reason });
+  },
+
+  async resetPassword(id: string, reason: string): Promise<{ tempPassword: string }> {
+    const response = await apiClient.post(`/v1/admin/users/${id}/reset-password`, { reason });
+    return response.data;
+  },
+
   async listRoles(): Promise<AdminRoleListItem[]> {
     const response = await apiClient.get('/v1/admin/roles');
     return response.data;
