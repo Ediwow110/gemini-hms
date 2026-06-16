@@ -77,9 +77,9 @@ Add these to the `Staging` environment:
 
 | Secret | Purpose | Example Value |
 |--------|---------|---------------|
-| `SSH_HOST` | Staging host IP/hostname | `203.0.113.10` |
-| `SSH_USER` | SSH user | `deploy` |
-| `SSH_PRIVATE_KEY` | SSH deploy key | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
+| `STAGING_SSH_HOST` | Staging host IP/hostname | `203.0.113.10` |
+| `STAGING_SSH_USER` | SSH user | `deploy` |
+| `STAGING_SSH_PRIVATE_KEY` | SSH deploy key | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `STAGING_DATABASE_URL` | Full PostgreSQL connection string | `postgresql://staging_user:SafePass123@localhost:5432/hms_staging?schema=public` |
 | `STAGING_JWT_SECRET` | JWT signing key (different from prod) | `(64-char hex or base64)` |
 | `STAGING_JWT_REFRESH_SECRET` | JWT refresh key (different from prod) | `(64-char hex or base64)` |
