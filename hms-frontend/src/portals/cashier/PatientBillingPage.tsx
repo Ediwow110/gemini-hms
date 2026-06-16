@@ -94,13 +94,13 @@ export const PatientBillingPage = () => {
   const hasHandoff = !!handoffData;
 
   const patientName = invoice?.order?.patient
-    ? `${invoice.order.patient.firstName} ${invoice.order.patient.lastName}`
+    ? `${invoice.order.patient.firstName || '[REDACTED]'} ${invoice.order.patient.lastName || '[REDACTED]'}`
     : 'Walk-in Patient';
 
   const patient = {
     name: patientName,
     mrn: invoice?.order?.patient?.patientNumber
-      ? invoice.order.patient.patientNumber
+      ? invoice.order.patient.patientNumber || '[REDACTED]'
       : 'WALK-IN',
     age: 'N/A',
     gender: 'N/A',

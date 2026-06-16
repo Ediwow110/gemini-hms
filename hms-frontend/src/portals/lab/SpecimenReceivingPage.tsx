@@ -38,8 +38,9 @@ export const SpecimenReceivingPage = () => {
       }
     } catch (err: unknown) {
       setSuccessMsg(null);
-      const error = err as { response?: { data?: { message?: string } } };
-      setErrorMsg(error.response?.data?.message || 'Failed to receive specimen. Please try again.');
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      const serverMessage = axiosError.response?.data?.message;
+      setErrorMsg(serverMessage || 'Failed to receive specimen. Please try again.');
     } finally {
       setReceivingId(null);
     }
