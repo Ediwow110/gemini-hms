@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
 import { AdminShellNotice } from './components/AdminShellNotice';
 import { UserAccessTable } from './components/UserAccessTable';
-import { UserPlus, Search, Filter, Users } from 'lucide-react';
+import { UserPlus, Search, Filter, Users, AlertCircle } from 'lucide-react';
+import { adminService, type AdminUserItem, type AdminUserListParams } from '../../services/admin.service';
 
 interface UserItem {
   id: string;
@@ -17,76 +18,64 @@ interface UserItem {
   lastLogin: string;
 }
 
+function mapAdminUser(u: AdminUserItem): UserItem {
+  const roleNames = u.roles.map((r) => r.name).join(', ') || 'None';
+  const branchNames = u.branches.map((b) => b.name).join(', ') || 'None';
+  let displayStatus: UserItem['status'] = 'Active';
+  if (u.status === 'INACTIVE' || u.deactivatedAt) {
+    displayStatus = 'Suspended';
+  } else if (u.lockedUntil && new Date(u.lockedUntil) > new Date()) {
+    displayStatus = 'Locked';
+  }
+  return {
+    id: u.id,
+    name: u.email,
+    email: u.email,
+    tenant: u.tenantId,
+    branch: branchNames,
+    role: roleNames,
+    mfaEnabled: u.mfaEnabled,
+    status: displayStatus,
+    lastLogin: '—',
+  };
+}
+
 export const UsersPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'Active' | 'Suspended' | 'Locked'>('ALL');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<UserItem[]>([]);
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params: AdminUserListParams = {};
+      if (statusFilter !== 'ALL') {
+        if (statusFilter === 'Active') params.status = 'ACTIVE';
+        else if (statusFilter === 'Suspended') params.status = 'INACTIVE';
+      }
+      if (search) params.search = search;
+      const response = await adminService.listUsers(
+        Object.keys(params).length > 0 ? params : undefined,
+      );
+      setUsers(response.data.map(mapAdminUser));
+    } catch (err) {
+      console.error('Failed to fetch users:', err);
+      setError('Could not load user directory from server.');
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, statusFilter]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+    fetchUsers();
+  }, [fetchUsers]);
 
-  const mockUsers: UserItem[] = [
-    {
-      id: "U001",
-      name: "Maria Santos",
-      email: "maria@hms.com",
-      tenant: "St. Jude Hospital Network",
-      branch: "Metro Manila",
-      role: "Nurse",
-      mfaEnabled: true,
-      status: "Active",
-      lastLogin: "2026-05-21 12:44"
-    },
-    {
-      id: "U002",
-      name: "Mark Santos",
-      email: "mark@hms.com",
-      tenant: "St. Jude Hospital Network",
-      branch: "Metro Manila",
-      role: "Cashier",
-      mfaEnabled: false,
-      status: "Active",
-      lastLogin: "2026-05-21 11:20"
-    },
-    {
-      id: "U003",
-      name: "Dr. Arthur Stein",
-      email: "arthur@hms.com",
-      tenant: "St. Jude Hospital Network",
-      branch: "Cebu City",
-      role: "Doctor",
-      mfaEnabled: true,
-      status: "Locked",
-      lastLogin: "2026-05-20 18:15"
-    },
-    {
-      id: "U004",
-      name: "Super Admin User",
-      email: "admin@hms.com",
-      tenant: "System-wide",
-      branch: "All Branches",
-      role: "Super Admin",
-      mfaEnabled: true,
-      status: "Active",
-      lastLogin: "2026-05-21 13:10"
-    },
-    {
-      id: "U005",
-      name: "MediClinics Registrar",
-      email: "registrar@mediclinics.com",
-      tenant: "MediClinics Group",
-      branch: "Singapore",
-      role: "Branch Admin",
-      mfaEnabled: false,
-      status: "Suspended",
-      lastLogin: "2026-05-18 09:30"
-    }
-  ];
-
-  const filteredUsers = mockUsers.filter(u => {
+  const filteredUsers = users.filter((u) => {
     const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase()) ||
       u.role.toLowerCase().includes(search.toLowerCase());
@@ -102,16 +91,37 @@ export const UsersPage: React.FC = () => {
     );
   }
 
+  if (error) {
+    return (
+      <HmsDashboardShell widthTier="full">
+        <AdminShellNotice />
+        <HmsPageHeader
+          title="User Directory & Scopes"
+          description="Centralised audit and directory of active personnel, MFA security alignments, and locks."
+        />
+        <div className="flex flex-col items-center gap-3 p-12 text-center">
+          <AlertCircle className="h-10 w-10 text-rose-500" />
+          <p className="text-sm font-bold text-slate-700">{error}</p>
+          <button
+            onClick={fetchUsers}
+            className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl"
+          >
+            Retry
+          </button>
+        </div>
+      </HmsDashboardShell>
+    );
+  }
+
   return (
     <HmsDashboardShell widthTier="full"
-      footer={<HmsAuditFooter dataSource="Mock user data (sandbox)" />}
+      footer={<HmsAuditFooter dataSource="Live API — /api/v1/admin/users" />}
     >
       <AdminShellNotice />
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <HmsPageHeader
           title="User Directory & Scopes"
           description="Centralised audit and directory of active personnel, MFA security alignments, and locks."
-          badge="Sandbox"
         />
         <button 
           onClick={() => setShowCreateModal(true)}
@@ -147,7 +157,7 @@ export const UsersPage: React.FC = () => {
         </div>
       </div>
 
-      {filteredUsers.length === 0 ? (
+      {filteredUsers.length === 0 && !loading ? (
         <HmsEmptyState
           title="No matching users"
           description="Try adjusting your search query."
@@ -168,12 +178,12 @@ export const UsersPage: React.FC = () => {
                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider select-none">
                   Register User Account
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Mock governance sandbox execution</p>
+                <p className="text-xs text-slate-400 mt-0.5">Backend endpoint exists but frontend wiring is WIP</p>
               </div>
             </div>
             <div className="space-y-3 text-xs text-slate-600 leading-relaxed border-t border-b border-slate-100 py-4">
               <p className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 font-medium">
-                This triggers a simulated user invitation and provisioning flow. Email invites, temporary password setups, and branch bindings are tested in-memory with no changes persisted to the database.
+                The backend <code className="font-mono text-[11px]">POST /api/v1/admin/users</code> endpoint exists to create users. Frontend wiring for this form is deferred to a follow-up lane. No data has been sent.
               </p>
             </div>
             <div className="mt-5 flex gap-2">

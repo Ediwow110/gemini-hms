@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
@@ -37,6 +38,34 @@ export class AdminController {
   @RequirePermissions('admin.health.view')
   async getHealth() {
     return this.adminService.getHealth();
+  }
+
+  @Get('users')
+  @RequirePermissions('admin.health.view')
+  async listUsers(
+    @GetUser() actor: RequestUser,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('branchId') branchId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.listUsers(actor, {
+      search,
+      status,
+      branchId,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
+  }
+
+  @Get('users/:id')
+  @RequirePermissions('admin.health.view')
+  async getUser(
+    @GetUser() actor: RequestUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.getUser(actor, id);
   }
 
   @Get('metrics')

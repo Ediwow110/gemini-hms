@@ -31,6 +31,8 @@ describe('AdminController', () => {
 
   beforeEach(async () => {
     adminService = {
+      listUsers: jest.fn(),
+      getUser: jest.fn(),
       createUser: jest.fn(),
       updateUser: jest.fn(),
       createCustomRole: jest.fn(),
@@ -711,6 +713,86 @@ describe('AdminController', () => {
         'req-id',
         'valid',
       );
+    });
+  });
+
+  describe('User Query Endpoints', () => {
+    it('listUsers endpoint requires admin.health.view metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'listUsers',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+
+      expect(permissions).toEqual({
+        mode: 'any',
+        permissions: ['admin.health.view'],
+      });
+    });
+
+    it('listUsers calls adminService.listUsers', async () => {
+      adminService.listUsers.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 50,
+      });
+
+      await controller.listUsers(actor, undefined, undefined, undefined, undefined, undefined);
+
+      expect(adminService.listUsers).toHaveBeenCalledWith(actor, {
+        search: undefined,
+        status: undefined,
+        branchId: undefined,
+        page: undefined,
+        limit: undefined,
+      });
+    });
+
+    it('listUsers parses pagination params', async () => {
+      adminService.listUsers.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 2,
+        limit: 10,
+      });
+
+      await controller.listUsers(actor, '', 'ACTIVE', 'branch-id', '2', '10');
+
+      expect(adminService.listUsers).toHaveBeenCalledWith(actor, {
+        search: '',
+        status: 'ACTIVE',
+        branchId: 'branch-id',
+        page: 2,
+        limit: 10,
+      });
+    });
+
+    it('getUser endpoint requires admin.health.view metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'getUser',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+
+      expect(permissions).toEqual({
+        mode: 'any',
+        permissions: ['admin.health.view'],
+      });
+    });
+
+    it('getUser calls adminService.getUser', async () => {
+      adminService.getUser.mockResolvedValue({ id: 'user-id', email: 'user@test.com' });
+
+      await controller.getUser(actor, 'user-id');
+
+      expect(adminService.getUser).toHaveBeenCalledWith(actor, 'user-id');
     });
   });
 

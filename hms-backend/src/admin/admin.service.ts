@@ -264,6 +264,36 @@ export interface CreateUserResponse {
 
 import { MetricsService } from './metrics.service';
 
+export interface AdminUserListItem {
+  id: string;
+  email: string;
+  tenantId: string;
+  mfaEnabled: boolean;
+  status: string;
+  deactivatedAt: Date | null;
+  lockedUntil: Date | null;
+  isSystem: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  roles: Array<{ id: string; name: string; status: string }>;
+  branches: Array<{ id: string; name: string; isActive: boolean }>;
+}
+
+export interface AdminUserListQuery {
+  search?: string;
+  status?: string;
+  branchId?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -3878,5 +3908,146 @@ export class AdminService {
         timestamp,
       };
     }
+  }
+
+  async listUsers(
+    actor: RequestUser,
+    query: AdminUserListQuery = {},
+  ): Promise<PaginatedResult<AdminUserListItem>> {
+    const { search, status, branchId, page = 1, limit = 50 } = query;
+    const where: Prisma.UserWhereInput = { tenantId: actor.tenantId };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (search) {
+      where.OR = [
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (branchId) {
+      where.userBranches = {
+        some: { branchId, isActive: true },
+      };
+    }
+
+    // Branch-scoped admins only see users in their branch
+    if (!this.isSuperAdmin(actor) && actor.branchId) {
+      where.userBranches = {
+        ...(where.userBranches as any),
+        some: {
+          ...((where.userBranches as any)?.some || {}),
+          branchId: actor.branchId,
+          isActive: true,
+        },
+      };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        include: {
+          userRoles: {
+            include: { role: { select: { id: true, name: true } } },
+            where: { status: 'ACTIVE' },
+          },
+          userBranches: {
+            include: { branch: { select: { id: true, name: true } } },
+            where: { isActive: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: data.map((u) => ({
+        id: u.id,
+        email: u.email,
+        tenantId: u.tenantId,
+        mfaEnabled: u.mfaEnabled,
+        status: u.status,
+        deactivatedAt: u.deactivatedAt,
+        lockedUntil: u.lockedUntil,
+        isSystem: u.isSystem,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+        roles: u.userRoles.map((ur) => ({
+          id: ur.role.id,
+          name: ur.role.name,
+          status: ur.status,
+        })),
+        branches: u.userBranches.map((ub) => ({
+          id: ub.branch.id,
+          name: ub.branch.name,
+          isActive: ub.isActive,
+        })),
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getUser(
+    actor: RequestUser,
+    userId: string,
+  ): Promise<AdminUserListItem> {
+    const where: Prisma.UserWhereInput = {
+      id: userId,
+      tenantId: actor.tenantId,
+    };
+
+    if (!this.isSuperAdmin(actor) && actor.branchId) {
+      where.userBranches = {
+        some: { branchId: actor.branchId, isActive: true },
+      };
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where,
+      include: {
+        userRoles: {
+          include: { role: { select: { id: true, name: true } } },
+          where: { status: 'ACTIVE' },
+        },
+        userBranches: {
+          include: { branch: { select: { id: true, name: true } } },
+          where: { isActive: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      tenantId: user.tenantId,
+      mfaEnabled: user.mfaEnabled,
+      status: user.status,
+      deactivatedAt: user.deactivatedAt,
+      lockedUntil: user.lockedUntil,
+      isSystem: user.isSystem,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      roles: user.userRoles.map((ur) => ({
+        id: ur.role.id,
+        name: ur.role.name,
+        status: ur.status,
+      })),
+      branches: user.userBranches.map((ub) => ({
+        id: ub.branch.id,
+        name: ub.branch.name,
+        isActive: ub.isActive,
+      })),
+    };
   }
 }

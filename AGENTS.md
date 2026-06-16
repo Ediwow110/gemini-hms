@@ -1,5 +1,7 @@
 # Standing Instructions
 - **Always activate relevant skills and plugins** before any task — audit, read, edit, write, review, debug, test, or any other operation. Invoke the skill tool first, then proceed. This is not optional.
+- **Do not invent unavailable tool names.** If the environment does not expose a named tool like `run_command`, `get_current_working_directory`, or similar pseudo-tools, use the actual available shell/file tools directly and continue. Check available tools first; do not stop just because a guessed tool name failed.
+- **Work on branch `remediation/production-readiness-lane-2`** (created from `main@HEAD`). Commit locally; do not push.
 
 # Session State
 ## Goal
@@ -30,20 +32,35 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 - Local: 80 suites / 1614 tests passing, lint 0 errors, tsc clean
 - Staging: NOT PROVISIONED
 
-### Unresolved (Carryover Risks — Current)
-Risks ranked by severity:
+### This Session — Uncommitted (Tree Dirty)
+Target branch: `remediation/production-readiness-lane-2` (exists locally from prior work).
 
+**Phase 1 — Backend read surface (complete):**
+- `AdminService.listUsers()` / `getUser()` — tenant-scoped, branch-isolated, search/status/branchId filters, pagination
+- `GET /api/v1/admin/users` and `GET /api/v1/admin/users/:id` in `AdminController` (guard: `admin.health.view`)
+- 5 new controller spec tests
+- 219 tests pass (214 existing + 5 new)
+- Fields excluded from response: `passwordHash`, `mfaSecret`
+
+**Phase 2 — Frontend wiring (complete):**
+- Created `hms-frontend/src/services/admin.service.ts` — `listUsers()` / `getUser()` via apiClient
+- Rewired `UsersPage.tsx` to call live API; replaced `setTimeout` mock + hardcoded data
+- Retained existing `UserAccessTable`/`ReasonModal` with honest WIP/blocked notices for mutation actions
+- Loading skeleton, error+retry, empty state, search/status filter all functional
+- lint 0 errors, tsc clean
+
+### Carryover Risks
 **HIGH:**
-- (Resolved) Remote CI proof exists — PR #226 merged with 5/5 checks passed
 - No staging environment — only production SSH target exists in deploy.yml
 
 **MEDIUM:**
 - Pre-existing spec/e2e type errors (173 in `hms-backend/test/`) — auth, billing, admin spec files
-- AuditLog archive: retention is count-only (schema change deferred; immutability trigger blocks physical delete)
+- AuditLog retention: count-only enforcement; no schema change for archival by class
+- AdminCreateUserForm, AdminBranchForm, AdminSettingsPage, AdminTenantNetworkPage still on hardcoded/mock data (not in scope for this lane)
 
 **LOW:**
 - (Resolved) Chaos script health-probe path drift fixed in `b088259`; no stale references remain
-- (Resolved) Working tree is clean; no uncommitted changes remain
+- (Resolved) Working tree has uncommitted changes (5 modified + 2 untracked)
 
 ## Key Decisions
 - Reuse existing `AuditLog` model and `AuditService.log()` throughout
@@ -53,35 +70,35 @@ Risks ranked by severity:
 - Retention is count-only (schema change deferred)
 - `audit.branch`/`audit.global`/`audit.admin` not added — backend role-based filtering is the authority
 - Blocker fixes committed in `715b50f` under descriptive fix commit
+- Used `admin.health.view` permission for GET user endpoints (less privileged than `admin.role.change` used for mutations)
+- Excluded `passwordHash` and `mfaSecret` from admin user list/detail responses
+- Tenant-scoped by `actor.tenantId` automatically; branch-scoped admins filtered to their branch
+- Mapped backend `AdminUserItem` to frontend `UserItem` shape in UsersPage (surfacing real data where available, honest defaults for unavailable fields like `lastLogin`)
 
 ## Next Steps
-1. **Provision staging environment** — see `docs/infrastructure/staging-provisioning-handoff.md` for exact requirements
-2. After staging is healthy → deploy and run E2E / integration smoke tests against staging
-3. After staging validated → trigger production deploy via `deploy.yml` (manual workflow_dispatch)
+1. **Complete Phase 3 (Silent Bug Sweep)**: Check route-path mismatch, response-shape mismatch, stale fake action buttons, sensitive field leakage, branch/tenant leakage
+2. **Complete Phase 4 (Validation)**: Full lint, typecheck, targeted backend test run, `git diff --check` — then verify backend and frontend
+3. **Complete Phase 5 (Senior Review)**: Load `senior-engineering-reviewer` skill for adversarial audit
+4. **Complete Phase 6**: Squash-commit locally to `remediation/production-readiness-lane-2` with descriptive message
+5. **Provision staging environment** — see `docs/infrastructure/staging-provisioning-handoff.md` for exact requirements
 
 ## Critical Context
-- **42 commits merged** via PR #226 (toolchain stabilization, 8 production-readiness blockers, frontend hardening, canonical report, provenance corrections). Local repo is at parity with `origin/main`.
-- **8 backend endpoints**: 3 original + 4 Phase 2 + 1 Phase 3 (receipt/event)
+- **42 commits merged** via PR #226. Local repo at parity with `origin/main`. Current work on branch `remediation/production-readiness-lane-2`.
+- **Backend `AdminModule`** (`admin.controller.ts`, `admin.service.ts`, `admin.module.ts`) now has GET `/api/v1/admin/users` and `/:id` endpoints in addition to existing mutation endpoints.
+- **Frontend `UsersPage`** now calls live API via `admin.service.ts`; retains honest WIP notices for mutation actions.
+- **Other 6 admin pages** still on mock/hardcoded data: BranchForm, SettingsPage, TenantNetworkPage, CreateUserForm (not in lane scope).
 - **Audit event keys**: 70+ across CLINICAL, FINANCIAL, ADMIN, SECURITY, PHARMACY, PRESCRIPTION, LAB, INVENTORY
-- **Permissions**: `audit.view` (existing), `audit.self` (new, backend-enforced), `audit.export` (new, backend-enforced)
+- **Permissions**: `audit.view`, `audit.self`, `audit.export` for audit module; `admin.health.view` for user read endpoints
 - **Roles added**: `Compliance Officer` (all 3 audit permissions), `IT Support` (audit.view + audit.self)
 - **Daily cron**: `AuditChainMonitorService` at midnight per tenant
 - **Retention**: 6-class (FINANCIAL 10y, CLINICAL 10y, ADMIN 3y, SECURITY 5y, EXPORT 1y, TRANSIENT 90d)
-- **31 files changed**: 13 new, 18 modified across all phases + blocker fixes
 
 ## Relevant Files
-(unchanged from prior session — see committed baseline and working-tree diffs)
-
-## Carryover Risks
-Ranked by severity:
-
-**HIGH:**
-1. **No staging environment** — only production SSH target exists in deploy.yml
-
-**MEDIUM:**
-2. **Pre-existing spec/e2e type errors (173)** — all in `hms-backend/test/` spec/e2e files across auth, billing, admin
-3. **AuditLog retention** — count-only enforcement; no schema change for archival by class
-
-**LOW:**
-4. (Resolved) **Stale health-probe path in chaos scripts** — fixed in `b088259`; no stale references remain
-5. (Resolved) **Working tree** — clean; no uncommitted changes
+### This Session (Uncommitted)
+- `hms-backend/src/admin/admin.controller.ts` — GET `/api/v1/admin/users` and `/:id`
+- `hms-backend/src/admin/admin.service.ts` — `listUsers()`, `getUser()`, pagination, filters
+- `hms-backend/src/admin/admin.controller.spec.ts` — 5 new test cases
+- `hms-frontend/src/services/admin.service.ts` — API service (untracked)
+- `hms-frontend/src/portals/admin/UsersPage.tsx` — live API wiring, loading/empty/error states
+- `docs/superpowers/plans/2026-06-16-admin-governance-backend-roadmap.md` — roadmap doc (intentional, untracked)
+- `AGENTS.md` — this session state file
