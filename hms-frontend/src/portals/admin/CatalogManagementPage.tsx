@@ -3,7 +3,6 @@ import {
   Plus,
   Search,
   Edit2,
-  Archive,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -25,6 +24,8 @@ export const CatalogManagementPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState<'item' | 'category' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [itemError, setItemError] = useState<string | null>(null);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
   const [itemForm, setItemForm] = useState<CatalogFormData>({
     name: '',
@@ -44,6 +45,7 @@ export const CatalogManagementPage: React.FC = () => {
 
   const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    setItemError(null);
     try {
       if (editingId) {
         await catalogService.updateItem(editingId, itemForm);
@@ -54,12 +56,17 @@ export const CatalogManagementPage: React.FC = () => {
       setEditingId(null);
       invalidateCatalog();
     } catch (err) {
-      console.error('Failed to save item:', err);
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'Failed to save item. Please try again.';
+      setItemError(message);
     }
   };
 
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCategoryError(null);
     try {
       if (editingId) {
         await catalogService.updateCategory(editingId, categoryForm);
@@ -70,7 +77,11 @@ export const CatalogManagementPage: React.FC = () => {
       setEditingId(null);
       invalidateCatalog();
     } catch (err) {
-      console.error('Failed to save category:', err);
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'Failed to save category. Please try again.';
+      setCategoryError(message);
     }
   };
 
@@ -94,6 +105,7 @@ export const CatalogManagementPage: React.FC = () => {
         isActive: true,
       });
     }
+    setItemError(null);
     setShowModal('item');
   };
 
@@ -113,6 +125,7 @@ export const CatalogManagementPage: React.FC = () => {
         isActive: true,
       });
     }
+    setCategoryError(null);
     setShowModal('category');
   };
 
@@ -282,9 +295,6 @@ export const CatalogManagementPage: React.FC = () => {
                               >
                                 <Edit2 className="h-4 w-4" />
                               </button>
-                              <button className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all">
-                                <Archive className="h-4 w-4" />
-                              </button>
                             </div>
                           </td>
                         </tr>
@@ -327,9 +337,6 @@ export const CatalogManagementPage: React.FC = () => {
                                 className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                               >
                                 <Edit2 className="h-4 w-4" />
-                              </button>
-                              <button className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all">
-                                <Archive className="h-4 w-4" />
                               </button>
                             </div>
                           </td>
@@ -426,6 +433,20 @@ export const CatalogManagementPage: React.FC = () => {
                     <label htmlFor="itemIsActive" className="text-xs font-black text-slate-700 uppercase tracking-widest cursor-pointer">Active in Catalog</label>
                   </div>
 
+                  {itemError && (
+                    <div
+                      role="alert"
+                      data-testid="catalog-item-error"
+                      className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-xs text-rose-800"
+                    >
+                      <AlertCircle className="h-4 w-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-black text-[10px] uppercase tracking-widest">Save failed</p>
+                        <p className="mt-0.5 leading-relaxed">{itemError}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="pt-4">
                     <button
                       type="submit"
@@ -489,6 +510,20 @@ export const CatalogManagementPage: React.FC = () => {
                     />
                     <label htmlFor="catIsActive" className="text-xs font-black text-slate-700 uppercase tracking-widest cursor-pointer">Active</label>
                   </div>
+
+                  {categoryError && (
+                    <div
+                      role="alert"
+                      data-testid="catalog-category-error"
+                      className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-xs text-rose-800"
+                    >
+                      <AlertCircle className="h-4 w-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-black text-[10px] uppercase tracking-widest">Save failed</p>
+                        <p className="mt-0.5 leading-relaxed">{categoryError}</p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="pt-4">
                     <button
