@@ -3942,9 +3942,7 @@ export class AdminService {
     }
 
     if (search) {
-      where.OR = [
-        { email: { contains: search, mode: 'insensitive' } },
-      ];
+      where.OR = [{ email: { contains: search, mode: 'insensitive' } }];
     }
 
     if (branchId) {
@@ -4103,7 +4101,9 @@ export class AdminService {
     }));
   }
 
-  async listPermissions(actor: RequestUser): Promise<AdminPermissionListItem[]> {
+  async listPermissions(
+    actor: RequestUser,
+  ): Promise<AdminPermissionListItem[]> {
     const permissions = await this.prisma.permission.findMany({
       where: { tenantId: actor.tenantId },
       select: {

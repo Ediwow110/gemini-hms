@@ -61,10 +61,7 @@ export class AdminController {
 
   @Get('users/:id')
   @RequirePermissions('admin.health.view')
-  async getUser(
-    @GetUser() actor: RequestUser,
-    @Param('id') id: string,
-  ) {
+  async getUser(@GetUser() actor: RequestUser, @Param('id') id: string) {
     return this.adminService.getUser(actor, id);
   }
 

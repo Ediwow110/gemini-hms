@@ -743,7 +743,14 @@ describe('AdminController', () => {
         limit: 50,
       });
 
-      await controller.listUsers(actor, undefined, undefined, undefined, undefined, undefined);
+      await controller.listUsers(
+        actor,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      );
 
       expect(adminService.listUsers).toHaveBeenCalledWith(actor, {
         search: undefined,
@@ -790,7 +797,10 @@ describe('AdminController', () => {
     });
 
     it('getUser calls adminService.getUser', async () => {
-      adminService.getUser.mockResolvedValue({ id: 'user-id', email: 'user@test.com' });
+      adminService.getUser.mockResolvedValue({
+        id: 'user-id',
+        email: 'user@test.com',
+      });
 
       await controller.getUser(actor, 'user-id');
 
