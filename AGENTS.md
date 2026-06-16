@@ -5,8 +5,9 @@
 
 # Session State
 ## Goal
-- The production-readiness remediation lane and 2 subsequent admin lanes are committed (42 commits + `252fe42` + `e66dd6dc`). CI green, local 1643 + 463 tests passing.
-- Staging provisioning is the next blocker. Docs truth-correction pass complete.
+- The production-readiness remediation lane, 2 subsequent admin lanes, and proactive staging repo-prep lane are committed (42 commits + `252fe42` + `e66dd6dc` + `72bd168`). CI green, local 1643 + 463 tests passing.
+- Staging repo-prep is now complete: all 3 missing deployment artifacts exist and are consistent with the handoff doc.
+- Staging is **still NOT provisioned** — the hard external blocker remains (no VM, no DB, no DNS, no GitHub environment/secrets).
 
 ## Constraints & Preferences
 - Work on `main` unless branching off for a new task
@@ -15,32 +16,33 @@
 - Workspace root: `D:\Vscode\hms-login-OFFICIAL`
 
 ## Progress
-### Done (Committed Baseline)
+### Done (Committed Baseline — Prior Sessions)
 - **Phase 1 (`8f4ce6c`):** 4 Prisma indexes, event key registry (70+ keys), DTO validation (audit-query, audit-export with class-validator), `ValidationPipe` in findAll. 21/21 audit tests.
 - **Phase 2 (`4c5e0a7`):** `findMyEvents`, `findEntityTimeline`, `verifyChainWithSignatures`, `exportEvents`; 4 new controller endpoints. 21/21 audit tests.
 - **Phase 3 (`94bff48`):** `PAYMENT_VOID_REJECTED`/`REFUND_REJECTED`/`RECONCILIATION_PERFORMED`; `POST /receipts/event` endpoint. 21/21 audit tests.
 - **Phase 4+5 (`7b27178`):** Frontend audit UX (MyAuditLog, AuditEventDetail, EntityTimeline, admin rewrites, permissions, routes, hooks) + operational hardening (chain review UI, breach/compliance pages, 6-class retention, daily chain verification cron). 23 audit tests total.
-
-### Done (Blocker Fixes — Committed)
-Three verified critical blockers were fixed and committed in `715b50f`:
-1. **Backend permission enforcement**: `audit.controller.ts` — `events/self` now requires `audit.self`, `export` now requires `audit.export`
-2. **Pagination refetch**: `use-compliance.ts` — removed stale `paramsRef`+`useCallback([],[])` pattern; hooks now re-trigger on param change via serialized `paramsKey` dependency
-3. **Admin audit source**: `AuditLogsPage.tsx`, `AuditLogViewer.tsx` — switched from `useMyAuditEvents` to `useAuditEvents` for full tenant/branch-scoped data
-
-### Validation (Current Branch State)
-- Remote CI: 5/5 checks pass (Static Analysis, Backend Tests, Frontend Tests, Docker Build, Vercel Preview)
-- Local: 83 backend suites / 1643 tests passing, 82 frontend files / 463 tests passing, lint 0 errors, tsc clean
-- Staging: NOT PROVISIONED
-
-### Committed Baseline
+- **`715b50f` — 3 Blocker Fixes:** Backend permission enforcement (audit.self/audit.export), pagination refetch (use-compliance.ts), admin audit source (AuditLogsPage/AuditLogViewer).
 - **`93c5fd6` — UsersPage lane:** Backend `AdminService.listUsers()`/`getUser()`, `GET /api/v1/admin/users` and `/:id`; frontend `UsersPage.tsx` wired to live API. 219 admin tests.
 - **`aa068f2` + `d731cab` — RolesPermissionsPage lane:** Backend `AdminService.listRoles()`/`listPermissions()`, `GET /api/v1/admin/roles` and `/permissions`; frontend `RolesPermissionsPage.tsx` wired to live API, role list from API, PermissionMatrix read-only with honest WIP notices. 223 admin tests. Circular `useCallback` dep fixed.
 - **`252fe42` — Branch Management lane:** Backend `branches/` module (controller, service, 15 tests), frontend `BranchesPage.tsx` wired to live API with honest WIP defaults for unsupported fields (director, doctors, nurses, beds, queue, latency). 15/15 backend tests pass.
 - **`e66dd6dc` — AdminExecutiveDashboard carryover:** Patient Volume Trend chart live via `HmsTrendChart` + `getAdminTrends`. Revenue Trend remains `HmsDataUnavailable` (honest). 2/2 frontend tests pass.
 
+### Done (This Session — Proactive Staging Repo-Prep Lane)
+Committed in `72bd168`:
+1. **`.github/workflows/deploy-staging.yml`** — 2-job staging deployment workflow (`docker-build` + `cd-deploy-staging` with `environment: Staging` and 11 `STAGING_*` secrets). No CI step (operator deploys green commits only). SSH secrets prefixed `STAGING_SSH_*` to prevent fallback to repo-level production credentials.
+2. **`docker-compose.staging.yml`** — 3-service topology (db, backend, frontend) from prod template with isolated volume (`postgres_staging_data`) and network (`hms_staging`); same env var names as prod.
+3. **`hms-backend/scripts/remote-deploy-staging.sh`** — Separate 59-line deploy script (all 6 references use `docker-compose.staging.yml`). Zero production risk. Health probe path preserved.
+4. **`docs/infrastructure/staging-provisioning-handoff.md`** — SSH secrets renamed to `STAGING_SSH_*`; 11 secrets now consistent with workflow env references.
+
+### Validation (Current Branch State)
+- Remote CI: 5/5 checks pass (Static Analysis, Backend Tests, Frontend Tests, Docker Build, Vercel Preview)
+- Local: 83 backend suites / 1643 tests passing, 82 frontend files / 463 tests passing, lint 0 errors, tsc clean
+- Staging: NOT PROVISIONED (external blocker)
+- Repo-side staging readiness: COMPLETE (4 files committed in `72bd168`)
+
 ### Carryover Risks
 **HIGH:**
-- No staging environment — only production SSH target exists in deploy.yml
+- Staging VM/host not provisioned — no VM, no Docker, no DNS, no PostgreSQL 15, no GitHub Staging environment, no STAGING_* secrets exist. All repo-side artifacts ready.
 
 **MEDIUM:**
 - Pre-existing spec/e2e type errors (173 in `hms-backend/test/`) — auth, billing, admin spec files
@@ -49,7 +51,7 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 
 **LOW:**
 - (Resolved) Chaos script health-probe path drift fixed in `b088259`; no stale references remain
-- Staging handoff doc has minor gaps (production env scoping, secret naming convention, workflow file surface) — documented in audit, corrected in this pass
+- (Resolved) Staging handoff doc gaps corrected in this session — SSH secret isolation, secret naming convention, workflow file surface
 - Tree is clean
 
 ## Key Decisions
@@ -67,6 +69,9 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 - **PATH B (stop product work, staging is next blocker)** determined: remaining 4 admin pages (Tenants, Security, Reports, Settings) require full new backend modules — no valuable local-only lane remains
 - **Branch Management module** created as standalone `hms-backend/src/branches/` module; frontend `BranchesPage.tsx` uses shared `admin.service.ts`
 - **AdminExecutiveDashboard carryover** was real and worth finishing — all dependencies existed (`HmsTrendChart`, `getAdminTrends`, `GET /v1/dashboard/admin/trends`)
+- **Separate staging deploy script over parameterization**: Zero risk to production path. Duplication of 59-line script is acceptable for isolation.
+- **STAGING_SSH_* naming over shared SSH_HOST**: Eliminates GHA fallback risk — if Staging environment is missing SSH secrets, workflow fails immediately instead of silently targeting production.
+- **Same env var names as prod in compose files**: Containers expect `DB_USER`, `DATABASE_URL`, `JWT_SECRET` etc.; staging workflow provides values from `STAGING_*` secrets.
 
 ## Next Steps
 1. **Provision staging environment** — see `docs/infrastructure/staging-provisioning-handoff.md` for exact requirements
@@ -100,3 +105,9 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 - `hms-frontend/src/pages/admin/BranchesPage.tsx` — wired to live API, honest WIP defaults
 - `hms-frontend/src/pages/admin/UsersPage.tsx` — wired to live API, loading/empty/error states
 - `hms-frontend/src/services/admin.service.ts` — shared admin API service
+
+### This Session (Proactive Staging Repo-Prep Lane — Commit `72bd168`)
+- `.github/workflows/deploy-staging.yml` — **NEW**: 2-job staging deployment workflow
+- `docker-compose.staging.yml` — **NEW**: 3-service staging compose with isolated volume/network
+- `hms-backend/scripts/remote-deploy-staging.sh` — **NEW**: Staging deploy script (all staging.yml references)
+- `docs/infrastructure/staging-provisioning-handoff.md` — **MODIFIED**: SSH secrets renamed to STAGING_SSH_*
