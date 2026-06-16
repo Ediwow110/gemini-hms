@@ -68,6 +68,18 @@ export class AdminController {
     return this.adminService.getUser(actor, id);
   }
 
+  @Get('roles')
+  @RequirePermissions('admin.health.view')
+  async listRoles(@GetUser() actor: RequestUser) {
+    return this.adminService.listRoles(actor);
+  }
+
+  @Get('permissions')
+  @RequirePermissions('admin.health.view')
+  async listPermissions(@GetUser() actor: RequestUser) {
+    return this.adminService.listPermissions(actor);
+  }
+
   @Get('metrics')
   @RequirePermissions('admin.metrics.view')
   getMetrics() {

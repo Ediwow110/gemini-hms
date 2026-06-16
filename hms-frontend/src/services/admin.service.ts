@@ -34,6 +34,28 @@ export interface AdminUserListResponse {
   limit: number;
 }
 
+export interface AdminRolePermissionSummary {
+  id: string;
+  name: string;
+  scope: string | null;
+  riskLevel: string;
+}
+
+export interface AdminRoleListItem {
+  id: string;
+  name: string;
+  status: string;
+  isSystem: boolean;
+  permissions: AdminRolePermissionSummary[];
+}
+
+export interface AdminPermissionListItem {
+  id: string;
+  name: string;
+  scope: string | null;
+  riskLevel: string;
+}
+
 export interface AdminUserListParams {
   search?: string;
   status?: string;
@@ -56,6 +78,16 @@ export const adminService = {
 
   async getUser(id: string): Promise<AdminUserItem> {
     const response = await apiClient.get(`/v1/admin/users/${id}`);
+    return response.data;
+  },
+
+  async listRoles(): Promise<AdminRoleListItem[]> {
+    const response = await apiClient.get('/v1/admin/roles');
+    return response.data;
+  },
+
+  async listPermissions(): Promise<AdminPermissionListItem[]> {
+    const response = await apiClient.get('/v1/admin/permissions');
     return response.data;
   },
 };

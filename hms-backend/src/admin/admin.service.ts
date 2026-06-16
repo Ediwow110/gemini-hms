@@ -294,6 +294,26 @@ export interface PaginatedResult<T> {
   limit: number;
 }
 
+export interface AdminRoleListItem {
+  id: string;
+  name: string;
+  status: string;
+  isSystem: boolean;
+  permissions: Array<{
+    id: string;
+    name: string;
+    scope: string | null;
+    riskLevel: string;
+  }>;
+}
+
+export interface AdminPermissionListItem {
+  id: string;
+  name: string;
+  scope: string | null;
+  riskLevel: string;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -4049,5 +4069,52 @@ export class AdminService {
         isActive: ub.isActive,
       })),
     };
+  }
+
+  async listRoles(actor: RequestUser): Promise<AdminRoleListItem[]> {
+    const roles = await this.prisma.role.findMany({
+      where: {
+        tenantId: actor.tenantId,
+        archivedAt: null,
+      },
+      include: {
+        rolePermissions: {
+          include: {
+            permission: {
+              select: {
+                id: true,
+                name: true,
+                scope: true,
+                riskLevel: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return roles.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: r.status,
+      isSystem: r.isSystem,
+      permissions: r.rolePermissions.map((rp) => rp.permission),
+    }));
+  }
+
+  async listPermissions(actor: RequestUser): Promise<AdminPermissionListItem[]> {
+    const permissions = await this.prisma.permission.findMany({
+      where: { tenantId: actor.tenantId },
+      select: {
+        id: true,
+        name: true,
+        scope: true,
+        riskLevel: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return permissions;
   }
 }

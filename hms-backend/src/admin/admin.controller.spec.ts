@@ -33,6 +33,8 @@ describe('AdminController', () => {
     adminService = {
       listUsers: jest.fn(),
       getUser: jest.fn(),
+      listRoles: jest.fn(),
+      listPermissions: jest.fn(),
       createUser: jest.fn(),
       updateUser: jest.fn(),
       createCustomRole: jest.fn(),
@@ -48,15 +50,15 @@ describe('AdminController', () => {
       requestPrivilegedRoleRevocation: jest.fn(),
       approvePrivilegedRoleChange: jest.fn(),
       rejectPrivilegedRoleChange: jest.fn(),
+      requestPrivilegedRolePermissionGrant: jest.fn(),
+      requestPrivilegedRolePermissionRevoke: jest.fn(),
+      approvePrivilegedRolePermissionChange: jest.fn(),
+      rejectPrivilegedRolePermissionChange: jest.fn(),
       requestPrivilegedUserDeactivation: jest.fn(),
       requestPrivilegedUserActivation: jest.fn(),
       requestPrivilegedUserProfileUpdate: jest.fn(),
       approvePrivilegedUserChange: jest.fn(),
       rejectPrivilegedUserChange: jest.fn(),
-      requestPrivilegedRolePermissionGrant: jest.fn(),
-      requestPrivilegedRolePermissionRevoke: jest.fn(),
-      approvePrivilegedRolePermissionChange: jest.fn(),
-      rejectPrivilegedRolePermissionChange: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -793,6 +795,56 @@ describe('AdminController', () => {
       await controller.getUser(actor, 'user-id');
 
       expect(adminService.getUser).toHaveBeenCalledWith(actor, 'user-id');
+    });
+  });
+
+  describe('Role / Permission Query Endpoints', () => {
+    it('listRoles endpoint requires admin.health.view metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'listRoles',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+
+      expect(permissions).toEqual({
+        mode: 'any',
+        permissions: ['admin.health.view'],
+      });
+    });
+
+    it('listRoles calls adminService.listRoles', async () => {
+      adminService.listRoles.mockResolvedValue([]);
+
+      await controller.listRoles(actor);
+
+      expect(adminService.listRoles).toHaveBeenCalledWith(actor);
+    });
+
+    it('listPermissions endpoint requires admin.health.view metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'listPermissions',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+
+      expect(permissions).toEqual({
+        mode: 'any',
+        permissions: ['admin.health.view'],
+      });
+    });
+
+    it('listPermissions calls adminService.listPermissions', async () => {
+      adminService.listPermissions.mockResolvedValue([]);
+
+      await controller.listPermissions(actor);
+
+      expect(adminService.listPermissions).toHaveBeenCalledWith(actor);
     });
   });
 

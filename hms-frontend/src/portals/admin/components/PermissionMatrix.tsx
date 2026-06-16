@@ -72,7 +72,7 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ selectedRole
     }
   });
 
-  const isReadOnly = selectedRole === 'Super Admin';
+  const isReadOnly = true;
 
   const handleToggle = (moduleKey: string, field: keyof ModulePermission) => {
     if (isReadOnly) return;
@@ -121,7 +121,7 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ selectedRole
               RBAC Matrix: {selectedRole}
             </h3>
             <p className="text-[10px] text-slate-400 font-semibold mt-0.5 uppercase tracking-wider">
-              {isReadOnly ? 'Global System Override Enabled' : 'Custom Sandbox Scope Map'}
+              Read-Only Display — Mutation Wiring Deferred
             </p>
           </div>
           <button 
@@ -191,9 +191,9 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ selectedRole
         <div className="p-4 bg-amber-50 border border-amber-250 rounded-2xl flex gap-3 text-xs text-amber-800 animate-scale-in">
           <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5 animate-pulse" />
           <div>
-            <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Demonstration Sandbox</h5>
+            <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Permission mutations not yet wired</h5>
             <p className="font-medium mt-0.5">
-              The updated access matrix layout for <strong className="text-slate-900">{selectedRole}</strong> has been temporarily applied in-memory. No mutations have been persisted to the HMS backend API, and no database or Prisma models were modified.
+              Backend role-permission mutation endpoints exist (<code className="font-mono text-[11px]">POST /api/v1/admin/roles/:roleId/permissions</code>) but this UI is read-only. No data was sent. Role names are sourced from live API; the permission matrix below is illustrative.
             </p>
           </div>
         </div>
