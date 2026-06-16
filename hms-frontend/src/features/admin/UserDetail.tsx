@@ -21,6 +21,7 @@ export const UserDetail = () => {
     mfaEnabled: boolean;
     deactivatedAt: string | null;
     lockedUntil: string | null;
+    createdAt: string;
     roles: { id: string; name: string; status: string }[];
     branches: { id: string; name: string }[];
   } | null>(null);
@@ -45,6 +46,7 @@ export const UserDetail = () => {
           mfaEnabled: data.mfaEnabled,
           deactivatedAt: data.deactivatedAt,
           lockedUntil: data.lockedUntil,
+          createdAt: data.createdAt,
           roles: data.roles.map((r) => ({ id: r.id, name: r.name, status: r.status })),
           branches: data.branches.map((b) => ({ id: b.id, name: b.name })),
         });
@@ -180,7 +182,7 @@ export const UserDetail = () => {
               </div>
               <div className="space-y-1">
                 <p className="text-xs font-medium text-slate-500 uppercase">Created</p>
-                <p className="text-sm font-medium text-slate-900">{new Date(apiUser.id).toLocaleDateString()}</p>
+                <p className="text-sm font-medium text-slate-900">{new Date(apiUser.createdAt).toLocaleDateString()}</p>
               </div>
             </div>
           </div>
