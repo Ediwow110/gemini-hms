@@ -69,6 +69,8 @@ Create a GitHub environment named `Staging` with:
 - **Wait timer:** None (auto-deploy on push to main)
 - **Deployment branches:** `main` (auto-deploy) or a dedicated `staging` branch
 
+> **Note:** The existing `deploy.yml` `cd-deploy` job does not use `environment: Production` — production secrets are currently at the repository level. While this is out of scope for the staging pass, consider creating a `Production` environment and migrating production secrets to it for parity and defense-in-depth.
+
 ### 4.2 Required Secrets (Environment-Level)
 
 Add these to the `Staging` environment:
@@ -93,7 +95,7 @@ Add these to the `Staging` environment:
 |------|-------|----------------|-------|
 | **CI** | Repository-level | `CI_DATABASE_URL`, `CI_JWT_SECRET` | Test-only values, used in CI pipeline |
 | **Staging** | Environment `Staging` | `STAGING_DATABASE_URL`, `STAGING_JWT_SECRET` | Staging-only values, must differ from CI and prod |
-| **Production** | Environment `Production` | `DATABASE_URL`, `JWT_SECRET`, `SSH_HOST` | Production values, highest sensitivity |
+| **Production** | Environment `Production` | `DATABASE_URL`, `JWT_SECRET`, `SSH_HOST` | Production values, highest sensitivity. Actual workflow naming may differ (e.g., `deploy.yml` uses `PROD_DATABASE_URL`, `PROD_JWT_SECRET`). |
 
 **Rules:**
 - Never reuse CI secrets for staging
@@ -238,7 +240,10 @@ Once staging is deployed, execute these checks:
 | File | Current State | Required Change |
 |------|---------------|-----------------|
 | `AGENTS.md` | Mentions missing staging | Update after staging provisioned |
-| `.github/workflows/deploy.yml` | Production-only | Add staging job OR create `deploy-staging.yml` |
+| `.github/workflows/deploy.yml` | Production-only (`workflow_dispatch`) | Add staging job OR create `deploy-staging.yml` |
+| `.github/workflows/deploy-gate.yml` | Manual pre-deploy validation gate | Consider gating staging deploys through this or a parallel gate |
+| `.github/workflows/docker-build.yml` | Manual Docker build (GHCR push stubbed) | Consolidate or remove if staging workflow supersedes it |
+| `.github/workflows/ci.yml` | Push/PR CI (4 jobs) | Reusable — staging workflow should reference these jobs |
 | (new) `docker-compose.staging.yml` | Does not exist | Create from `docker-compose.prod.yml` template with staging-specific env vars |
 | `hms-backend/scripts/remote-deploy.sh` | Production hardcoded | Either parameterize with `ENVIRONMENT` arg or copy to `remote-deploy-staging.sh` |
 

@@ -5,8 +5,8 @@
 
 # Session State
 ## Goal
-- The production-readiness remediation lane was merged to `main` via PR #226. All 42 commits are merged, CI is green (5/5 checks pass), and local repo is synced.
-- Staging environment is NOT YET PROVISIONED — that is the current blocker.
+- The production-readiness remediation lane and 2 subsequent admin lanes are committed (42 commits + `252fe42` + `e66dd6dc`). CI green, local 1643 + 463 tests passing.
+- Staging provisioning is the next blocker. Docs truth-correction pass complete.
 
 ## Constraints & Preferences
 - Work on `main` unless branching off for a new task
@@ -27,14 +27,16 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 2. **Pagination refetch**: `use-compliance.ts` — removed stale `paramsRef`+`useCallback([],[])` pattern; hooks now re-trigger on param change via serialized `paramsKey` dependency
 3. **Admin audit source**: `AuditLogsPage.tsx`, `AuditLogViewer.tsx` — switched from `useMyAuditEvents` to `useAuditEvents` for full tenant/branch-scoped data
 
-### Validation (Merged State — PR #226)
+### Validation (Current Branch State)
 - Remote CI: 5/5 checks pass (Static Analysis, Backend Tests, Frontend Tests, Docker Build, Vercel Preview)
-- Local: 80 suites / 1614 tests passing, lint 0 errors, tsc clean
+- Local: 83 backend suites / 1643 tests passing, 82 frontend files / 463 tests passing, lint 0 errors, tsc clean
 - Staging: NOT PROVISIONED
 
 ### Committed Baseline
 - **`93c5fd6` — UsersPage lane:** Backend `AdminService.listUsers()`/`getUser()`, `GET /api/v1/admin/users` and `/:id`; frontend `UsersPage.tsx` wired to live API. 219 admin tests.
 - **`aa068f2` + `d731cab` — RolesPermissionsPage lane:** Backend `AdminService.listRoles()`/`listPermissions()`, `GET /api/v1/admin/roles` and `/permissions`; frontend `RolesPermissionsPage.tsx` wired to live API, role list from API, PermissionMatrix read-only with honest WIP notices. 223 admin tests. Circular `useCallback` dep fixed.
+- **`252fe42` — Branch Management lane:** Backend `branches/` module (controller, service, 15 tests), frontend `BranchesPage.tsx` wired to live API with honest WIP defaults for unsupported fields (director, doctors, nurses, beds, queue, latency). 15/15 backend tests pass.
+- **`e66dd6dc` — AdminExecutiveDashboard carryover:** Patient Volume Trend chart live via `HmsTrendChart` + `getAdminTrends`. Revenue Trend remains `HmsDataUnavailable` (honest). 2/2 frontend tests pass.
 
 ### Carryover Risks
 **HIGH:**
@@ -47,6 +49,7 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 
 **LOW:**
 - (Resolved) Chaos script health-probe path drift fixed in `b088259`; no stale references remain
+- Staging handoff doc has minor gaps (production env scoping, secret naming convention, workflow file surface) — documented in audit, corrected in this pass
 - Tree is clean
 
 ## Key Decisions
@@ -61,6 +64,9 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 - Excluded `passwordHash` and `mfaSecret` from admin user list/detail responses
 - Tenant-scoped by `actor.tenantId` automatically; branch-scoped admins filtered to their branch
 - Mapped backend `AdminUserItem` to frontend `UserItem` shape in UsersPage (surfacing real data where available, honest defaults for unavailable fields like `lastLogin`)
+- **PATH B (stop product work, staging is next blocker)** determined: remaining 4 admin pages (Tenants, Security, Reports, Settings) require full new backend modules — no valuable local-only lane remains
+- **Branch Management module** created as standalone `hms-backend/src/branches/` module; frontend `BranchesPage.tsx` uses shared `admin.service.ts`
+- **AdminExecutiveDashboard carryover** was real and worth finishing — all dependencies existed (`HmsTrendChart`, `getAdminTrends`, `GET /v1/dashboard/admin/trends`)
 
 ## Next Steps
 1. **Provision staging environment** — see `docs/infrastructure/staging-provisioning-handoff.md` for exact requirements
@@ -72,7 +78,7 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 - **42 commits merged** via PR #226. Local repo at parity with `origin/main`. Current work on branch `remediation/production-readiness-lane-2`.
 - **Backend `AdminModule`** (`admin.controller.ts`, `admin.service.ts`, `admin.module.ts`) now has GET `/api/v1/admin/users` and `/:id` endpoints in addition to existing mutation endpoints.
 - **Frontend `UsersPage`** now calls live API via `admin.service.ts`; retains honest WIP notices for mutation actions.
-- **Other 6 admin pages** still on mock/hardcoded data: AdminExecutiveDashboard, BranchesPage, TenantsPage, SecurityCenterPage, ReportsAnalyticsPage, SystemSettingsPage (not in scope for this lane).
+- **Other 4 admin pages** still on mock/hardcoded data: TenantsPage, SecurityCenterPage, ReportsAnalyticsPage, SystemSettingsPage (not in scope for this lane).
 - **Audit event keys**: 70+ across CLINICAL, FINANCIAL, ADMIN, SECURITY, PHARMACY, PRESCRIPTION, LAB, INVENTORY
 - **Permissions**: `audit.view`, `audit.self`, `audit.export` for audit module; `admin.health.view` for user read endpoints
 - **Roles added**: `Compliance Officer` (all 3 audit permissions), `IT Support` (audit.view + audit.self)
@@ -80,11 +86,17 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 - **Retention**: 6-class (FINANCIAL 10y, CLINICAL 10y, ADMIN 3y, SECURITY 5y, EXPORT 1y, TRANSIENT 90d)
 
 ## Relevant Files
-### This Session (Uncommitted)
-- `hms-backend/src/admin/admin.controller.ts` — GET `/api/v1/admin/users` and `/:id`
-- `hms-backend/src/admin/admin.service.ts` — `listUsers()`, `getUser()`, pagination, filters
-- `hms-backend/src/admin/admin.controller.spec.ts` — 5 new test cases
-- `hms-frontend/src/services/admin.service.ts` — API service (untracked)
-- `hms-frontend/src/portals/admin/UsersPage.tsx` — live API wiring, loading/empty/error states
+### This Session (Docs Truth-Correction)
+- `docs/infrastructure/staging-provisioning-handoff.md` — corrected gaps (production env scoping, secret naming, workflow file surface)
+- `docs/superpowers/plans/2026-06-16-admin-branch-management-backend-module.md` — plan doc (intentional, untracked)
 - `docs/superpowers/plans/2026-06-16-admin-governance-backend-roadmap.md` — roadmap doc (intentional, untracked)
 - `AGENTS.md` — this session state file
+
+### Committed Baseline (Prior Sessions)
+- `hms-backend/src/branches/` — Branch Management module (controller, service, module, spec)
+- `hms-backend/src/admin/admin.controller.ts` — GET `/api/v1/admin/users` and `/:id`
+- `hms-backend/src/admin/admin.service.ts` — `listUsers()`, `getUser()`, pagination, filters
+- `hms-frontend/src/pages/admin/AdminExecutiveDashboard.tsx` — Patient Volume Trend chart live
+- `hms-frontend/src/pages/admin/BranchesPage.tsx` — wired to live API, honest WIP defaults
+- `hms-frontend/src/pages/admin/UsersPage.tsx` — wired to live API, loading/empty/error states
+- `hms-frontend/src/services/admin.service.ts` — shared admin API service
