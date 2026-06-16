@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Info } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 interface ModulePermission {
   view: boolean;
@@ -26,7 +26,6 @@ const MODULES = [
 ];
 
 export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ selectedRole }) => {
-  const [showSaveToast, setShowSaveToast] = useState(false);
   const [matrixState, setMatrixState] = useState<Record<string, Record<string, ModulePermission>>>({
     'Super Admin': {
       emr: { view: true, create: true, edit: true, delete: true, approve: true, export: true, tenantScope: true, branchScope: false, mfaRequired: true },
@@ -104,13 +103,6 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ selectedRole
     });
   };
 
-  const handleSave = () => {
-    setShowSaveToast(true);
-    setTimeout(() => {
-      setShowSaveToast(false);
-    }, 5000);
-  };
-
   return (
     <div className="space-y-6">
       <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
@@ -124,9 +116,13 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ selectedRole
               Read-Only Display — Mutation Wiring Deferred
             </p>
           </div>
-          <button 
-            onClick={handleSave}
-            className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-1.5 px-4 rounded-xl shadow-md transition-all cursor-pointer"
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            data-testid="permissionmatrix-save-button"
+            title="Permission mutations are not yet wired. The role-permission matrix is read-only in this UI."
+            className="btn bg-slate-200 text-slate-500 font-bold text-xs py-1.5 px-4 rounded-xl cursor-not-allowed opacity-60"
           >
             Save Role Permissions
           </button>
@@ -187,17 +183,6 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ selectedRole
         </div>
       </div>
 
-      {showSaveToast && (
-        <div className="p-4 bg-amber-50 border border-amber-250 rounded-2xl flex gap-3 text-xs text-amber-800 animate-scale-in">
-          <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5 animate-pulse" />
-          <div>
-            <h5 className="font-extrabold uppercase text-[10px] tracking-wider">Permission mutations not yet wired</h5>
-            <p className="font-medium mt-0.5">
-              Backend role-permission mutation endpoints exist (<code className="font-mono text-[11px]">POST /api/v1/admin/roles/:roleId/permissions</code>) but this UI is read-only. No data was sent. Role names are sourced from live API; the permission matrix below is illustrative.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
