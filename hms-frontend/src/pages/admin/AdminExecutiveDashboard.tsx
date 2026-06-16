@@ -35,6 +35,7 @@ export const AdminExecutiveDashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<AdminDashboardAlertsResponse | null>(null);
   const [topLists, setTopLists] = useState<AdminDashboardTopListsResponse | null>(null);
   const [trends, setTrends] = useState<TrendPoint[] | null>(null);
+  const [revenueTrends, setRevenueTrends] = useState<TrendPoint[] | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -42,17 +43,19 @@ export const AdminExecutiveDashboard: React.FC = () => {
     try {
       const filters = { dateRange, branch: selectedBranch };
 
-      const [summaryRes, alertsRes, topListsRes, trendsRes] = await Promise.all([
+      const [summaryRes, alertsRes, topListsRes, trendsRes, revTrendsRes] = await Promise.all([
         dashboardService.getAdminSummary(filters),
         dashboardService.getAdminAlerts(),
         dashboardService.getAdminTopLists(),
         dashboardService.getAdminTrends(filters),
+        dashboardService.getAdminTrends({ ...filters, dimension: 'revenue' }),
       ]);
 
       setSummary(summaryRes);
       setAlerts(alertsRes);
       setTopLists(topListsRes);
       setTrends(trendsRes);
+      setRevenueTrends(revTrendsRes);
       setIsUnavailable(false);
       setLastUpdated(new Date());
     } catch (err) {
@@ -387,10 +390,38 @@ export const AdminExecutiveDashboard: React.FC = () => {
           </div>
 
           <div className="col-span-12 xl:col-span-6">
-            <HmsDataUnavailable
-              sectionName="Revenue Trend"
-              expectedApi="/v1/dashboard/admin/trends (revenue dimension pending)"
-              expectedPhase="Phase 2 — requires revenue table query"
+            <HmsTrendChart
+              title="Revenue Trend"
+              description="Daily revenue aggregation over the selected period"
+              chart={
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueTrends || []}>
+                    <defs>
+                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      stroke="#94a3b8"
+                      tickFormatter={(val) => `₱${val.toLocaleString()}`}
+                    />
+                    <Tooltip formatter={(val: number) => [`₱${val.toLocaleString()}`, 'Revenue']} />
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      fill="url(#revenueGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              }
+              loading={loading}
+              empty={!revenueTrends || revenueTrends.length === 0}
             />
           </div>
         </div>
