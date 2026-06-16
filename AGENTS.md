@@ -32,14 +32,9 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 - Local: 80 suites / 1614 tests passing, lint 0 errors, tsc clean
 - Staging: NOT PROVISIONED
 
-### This Session — Committed (`93c5fd6`)
-Branch: `remediation/production-readiness-lane-2`. Tree clean.
-
-**What was done:**
-- Backend: `AdminService.listUsers()`/`getUser()` with tenant scoping, branch isolation, search/status/branchId filters, pagination; `AdminController` GET `/api/v1/admin/users` and `/:id` (guard: `admin.health.view`); 5 new spec tests; 219 admin tests pass
-- Frontend: `admin.service.ts` created; `UsersPage.tsx` rewired from mock data to live API (loading skeleton, error+retry, empty state, search + status filter); mutation actions remain honest WIP/blocked notices
-- Accepted via Senior Review (ACCEPT WITH NITS — 3 minor nits noted)
-- lint 0 errors, tsc clean, `git diff --check` clean
+### Committed Baseline
+- **`93c5fd6` — UsersPage lane:** Backend `AdminService.listUsers()`/`getUser()`, `GET /api/v1/admin/users` and `/:id`; frontend `UsersPage.tsx` wired to live API. 219 admin tests.
+- **`aa068f2` + `d731cab` — RolesPermissionsPage lane:** Backend `AdminService.listRoles()`/`listPermissions()`, `GET /api/v1/admin/roles` and `/permissions`; frontend `RolesPermissionsPage.tsx` wired to live API, role list from API, PermissionMatrix read-only with honest WIP notices. 223 admin tests. Circular `useCallback` dep fixed.
 
 ### Carryover Risks
 **HIGH:**
@@ -71,12 +66,13 @@ Branch: `remediation/production-readiness-lane-2`. Tree clean.
 1. **Provision staging environment** — see `docs/infrastructure/staging-provisioning-handoff.md` for exact requirements
 2. After staging is healthy → deploy and run E2E / integration smoke tests against staging
 3. After staging validated → trigger production deploy via `deploy.yml` (manual workflow_dispatch)
+4. **(Admin lane queue):** Next unlockable pages — AdminExecutiveDashboard (dashboard missing endpoints), then BranchesPage/TenantsPage (new backend modules)
 
 ## Critical Context
 - **42 commits merged** via PR #226. Local repo at parity with `origin/main`. Current work on branch `remediation/production-readiness-lane-2`.
 - **Backend `AdminModule`** (`admin.controller.ts`, `admin.service.ts`, `admin.module.ts`) now has GET `/api/v1/admin/users` and `/:id` endpoints in addition to existing mutation endpoints.
 - **Frontend `UsersPage`** now calls live API via `admin.service.ts`; retains honest WIP notices for mutation actions.
-- **Other 6 admin pages** still on mock/hardcoded data: BranchForm, SettingsPage, TenantNetworkPage, CreateUserForm (not in lane scope).
+- **Other 6 admin pages** still on mock/hardcoded data: AdminExecutiveDashboard, BranchesPage, TenantsPage, SecurityCenterPage, ReportsAnalyticsPage, SystemSettingsPage (not in scope for this lane).
 - **Audit event keys**: 70+ across CLINICAL, FINANCIAL, ADMIN, SECURITY, PHARMACY, PRESCRIPTION, LAB, INVENTORY
 - **Permissions**: `audit.view`, `audit.self`, `audit.export` for audit module; `admin.health.view` for user read endpoints
 - **Roles added**: `Compliance Officer` (all 3 audit permissions), `IT Support` (audit.view + audit.self)
