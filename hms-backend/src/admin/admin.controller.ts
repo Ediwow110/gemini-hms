@@ -164,6 +164,26 @@ export class AdminController {
     return this.adminService.activateUser(actor, targetUserId, dto.reason);
   }
 
+  @Post('users/:id/force-logout')
+  @RequirePermissions('admin.role.change')
+  async forceLogout(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.forceLogout(actor, targetUserId, dto.reason);
+  }
+
+  @Post('users/:id/reset-password')
+  @RequirePermissions('admin.role.change')
+  async resetPassword(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.resetPassword(actor, targetUserId, dto.reason);
+  }
+
   @Post('users/:id/roles')
   @RequirePermissions('admin.role.change')
   async assignUserRole(
