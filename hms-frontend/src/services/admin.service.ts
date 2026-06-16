@@ -64,6 +64,21 @@ export interface AdminUserListParams {
   limit?: number;
 }
 
+export interface AdminBranchItem {
+  id: string;
+  name: string;
+  code: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminBranchListResponse {
+  data: AdminBranchItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export const adminService = {
   async listUsers(params?: AdminUserListParams): Promise<AdminUserListResponse> {
     const queryParams: Record<string, string> = {};
@@ -88,6 +103,20 @@ export const adminService = {
 
   async listPermissions(): Promise<AdminPermissionListItem[]> {
     const response = await apiClient.get('/v1/admin/permissions');
+    return response.data;
+  },
+
+  async listBranches(params?: { search?: string; page?: number; limit?: number }): Promise<AdminBranchListResponse> {
+    const queryParams: Record<string, string> = {};
+    if (params?.search) queryParams.search = params.search;
+    if (params?.page) queryParams.page = String(params.page);
+    if (params?.limit) queryParams.limit = String(params.limit);
+    const response = await apiClient.get('/v1/admin/branches', { params: queryParams });
+    return response.data;
+  },
+
+  async getBranch(id: string): Promise<AdminBranchItem> {
+    const response = await apiClient.get(`/v1/admin/branches/${id}`);
     return response.data;
   },
 };

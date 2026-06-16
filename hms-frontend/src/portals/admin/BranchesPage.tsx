@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
 import { AdminShellNotice } from './components/AdminShellNotice';
 import { BranchActivityPanel } from './components/BranchActivityPanel';
 import { Building, Plus, Search, Filter } from 'lucide-react';
-import { StatusBadge } from '../../components/feedback/StatusBadge';
+import { adminService, type AdminBranchItem } from '../../services/admin.service';
 
 interface BranchItem {
   id: string;
   name: string;
+  code: string;
   tenant: string;
   status: 'ACTIVE' | 'MAINTENANCE' | 'OFFLINE';
   director: string;
@@ -20,62 +21,51 @@ interface BranchItem {
   encountersToday: number;
 }
 
+function mapToBranchItem(apiItem: AdminBranchItem): BranchItem {
+  return {
+    id: apiItem.id,
+    name: apiItem.name,
+    code: apiItem.code,
+    tenant: '\u2014',
+    status: 'ACTIVE' as const,
+    director: '\u2014',
+    doctors: 0,
+    nurses: 0,
+    beds: 0,
+    activeQueue: 0,
+    latency: 0,
+    encountersToday: 0,
+  };
+}
+
 export const BranchesPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'MAINTENANCE' | 'OFFLINE'>('ALL');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [branches, setBranches] = useState<BranchItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchBranches = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await adminService.listBranches({ search: search || undefined });
+      setBranches(response.data.map(mapToBranchItem));
+    } catch {
+      setError('Failed to load branches. Using API service.');
+    } finally {
+      setLoading(false);
+    }
+  }, [search]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+    fetchBranches();
+  }, [fetchBranches]);
 
-  const mockBranches: BranchItem[] = [
-    {
-      id: "BR-101",
-      name: "St. Jude - Metro Manila",
-      tenant: "St. Jude Hospital Network",
-      status: "ACTIVE",
-      director: "Dr. Sarah Almeda",
-      doctors: 18,
-      nurses: 34,
-      beds: 120,
-      activeQueue: 14,
-      latency: 42,
-      encountersToday: 68
-    },
-    {
-      id: "BR-102",
-      name: "St. Jude - Cebu City",
-      tenant: "St. Jude Hospital Network",
-      status: "ACTIVE",
-      director: "Dr. Jose Rizal",
-      doctors: 10,
-      nurses: 15,
-      beds: 60,
-      activeQueue: 4,
-      latency: 58,
-      encountersToday: 24
-    },
-    {
-      id: "BR-103",
-      name: "MediClinics - Singapore",
-      tenant: "MediClinics Group",
-      status: "MAINTENANCE",
-      director: "Dr. Lee Kuan Yew",
-      doctors: 6,
-      nurses: 12,
-      beds: 30,
-      activeQueue: 0,
-      latency: 185,
-      encountersToday: 8
-    }
-  ];
-
-  const filteredBranches = mockBranches.filter(b => {
+  const filteredBranches = branches.filter(b => {
     const matchesSearch = b.name.toLowerCase().includes(search.toLowerCase()) ||
-      b.tenant.toLowerCase().includes(search.toLowerCase());
+      b.code.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || b.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -91,14 +81,14 @@ export const BranchesPage: React.FC = () => {
 
   return (
     <HmsDashboardShell widthTier="full"
-      footer={<HmsAuditFooter dataSource="Mock branch data (sandbox)" />}
+      footer={<HmsAuditFooter dataSource="Live branch API" />}
     >
       <AdminShellNotice />
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <HmsPageHeader
           title="Branch Directory"
           description="Manage and trace physical hospital networks, capacities, and network latency thresholds."
-          badge="Sandbox"
+          badge="Beta"
         />
         <button 
           onClick={() => setShowCreateModal(true)}
@@ -109,7 +99,7 @@ export const BranchesPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {mockBranches.map((b) => (
+        {branches.slice(0, 3).map((b) => (
           <BranchActivityPanel key={b.id} branch={b} />
         ))}
       </div>
@@ -119,7 +109,7 @@ export const BranchesPage: React.FC = () => {
           <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
           <input 
             type="text"
-            placeholder="Search branch name, parent tenant..."
+            placeholder="Search branch name, code..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -140,7 +130,11 @@ export const BranchesPage: React.FC = () => {
         </div>
       </div>
 
-      {filteredBranches.length === 0 ? (
+      {error ? (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-medium">
+          {error}
+        </div>
+      ) : filteredBranches.length === 0 ? (
         <HmsEmptyState
           title="No matching branches"
           description="Try adjusting your search query."
@@ -153,6 +147,7 @@ export const BranchesPage: React.FC = () => {
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Branch Details</th>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Code</th>
                   <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Tenant</th>
                   <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Beds Capacity</th>
                   <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Clinical Staff</th>
@@ -169,22 +164,25 @@ export const BranchesPage: React.FC = () => {
                         <p className="text-[10px] text-slate-400 font-mono mt-0.5">Director: {b.director} | ID: {b.id}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-semibold text-slate-600">{b.tenant}</td>
-                    <td className="px-6 py-4 text-center font-bold text-slate-700">{b.beds}</td>
-                    <td className="px-6 py-4 text-slate-600 font-medium">
-                      {b.doctors} Doctors / {b.nurses} Nurses
+                    <td className="px-6 py-4 font-mono font-bold text-slate-600">{b.code}</td>
+                    <td className="px-6 py-4 font-semibold text-slate-400 italic">{b.tenant}</td>
+                    <td className="px-6 py-4 text-center font-bold text-slate-400">{b.beds || '\u2014'}</td>
+                    <td className="px-6 py-4 text-slate-400 font-medium">
+                      {b.doctors > 0 ? `${b.doctors} Doctors / ${b.nurses} Nurses` : '\u2014'}
                     </td>
-                    <td className="px-6 py-4 font-mono font-bold text-slate-700">{b.latency}ms</td>
+                    <td className="px-6 py-4 font-mono font-bold text-slate-400">{b.latency > 0 ? `${b.latency}ms` : '\u2014'}</td>
                     <td className="px-6 py-4">
-                      <StatusBadge 
-                        status={b.status} 
-                        type={b.status === 'ACTIVE' ? 'success' : b.status === 'MAINTENANCE' ? 'warning' : 'danger'} 
-                      />
+                      <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-1 rounded-full font-bold border border-amber-200">
+                        WIP
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="px-6 py-2 text-[10px] text-slate-400 bg-slate-50 border-t border-slate-100 italic">
+            Staff, capacity, latency, and SLA data not yet available from backend. Branch API fields are limited to id, name, code.
           </div>
         </div>
       )}
@@ -200,12 +198,12 @@ export const BranchesPage: React.FC = () => {
                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider select-none">
                   Provision Branch
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Mock governance sandbox execution</p>
+                <p className="text-xs text-slate-400 mt-0.5">Not yet implemented</p>
               </div>
             </div>
             <div className="space-y-3 text-xs text-slate-600 leading-relaxed border-t border-b border-slate-100 py-4">
               <p className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 font-medium">
-                This triggers a simulated branch provisioning template. Configuration mappings, bed counts, and clinical routing rules are evaluated in local memory. No database modifications are committed.
+                Branch provisioning is a WIP feature. The backend does not expose a POST endpoint yet.
               </p>
             </div>
             <div className="mt-5 flex gap-2">

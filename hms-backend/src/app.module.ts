@@ -41,6 +41,7 @@ import { ReplicationModule } from './replication/replication.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { NursingModule } from './nursing/nursing.module';
 import { ItSupportModule } from './it-support/it-support.module';
+import { BranchesModule } from './branches/branches.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MfaGuard } from './auth/guards/mfa.guard';
 import { TenantGuard } from './auth/guards/tenant.guard';
@@ -92,6 +93,7 @@ import { AuditContextMiddleware } from './audit/audit-context.middleware';
     MarketplaceModule,
     NursingModule,
     ItSupportModule,
+    BranchesModule,
   ],
   controllers: [AppController],
   providers: [
