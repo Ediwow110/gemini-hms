@@ -9,11 +9,13 @@ import {
   HmsDrilldownTable,
   HmsSlaPanel,
   HmsQuickActions,
+  HmsTrendChart,
   HmsDataUnavailable,
   HmsLoadingSkeleton,
 } from '../../components/hms-dashboard';
 import { dashboardService } from '../../services/dashboard.service';
-import type { DateRange, AdminDashboardSummary, AdminDashboardAlertsResponse, AdminDashboardTopListsResponse } from '../../types/analytics';
+import type { DateRange, AdminDashboardSummary, AdminDashboardAlertsResponse, AdminDashboardTopListsResponse, TrendPoint } from '../../types/analytics';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const INITIAL_DATE_RANGE: DateRange = {
   from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -32,6 +34,7 @@ export const AdminExecutiveDashboard: React.FC = () => {
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
   const [alerts, setAlerts] = useState<AdminDashboardAlertsResponse | null>(null);
   const [topLists, setTopLists] = useState<AdminDashboardTopListsResponse | null>(null);
+  const [trends, setTrends] = useState<TrendPoint[] | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -39,15 +42,17 @@ export const AdminExecutiveDashboard: React.FC = () => {
     try {
       const filters = { dateRange, branch: selectedBranch };
 
-      const [summaryRes, alertsRes, topListsRes] = await Promise.all([
+      const [summaryRes, alertsRes, topListsRes, trendsRes] = await Promise.all([
         dashboardService.getAdminSummary(filters),
         dashboardService.getAdminAlerts(),
         dashboardService.getAdminTopLists(),
+        dashboardService.getAdminTrends(filters),
       ]);
 
       setSummary(summaryRes);
       setAlerts(alertsRes);
       setTopLists(topListsRes);
+      setTrends(trendsRes);
       setIsUnavailable(false);
       setLastUpdated(new Date());
     } catch (err) {
@@ -55,6 +60,7 @@ export const AdminExecutiveDashboard: React.FC = () => {
       setSummary(null);
       setAlerts(null);
       setTopLists(null);
+      setTrends(null);
       setIsUnavailable(true);
       setLastUpdated(new Date());
     } finally {
@@ -349,18 +355,42 @@ export const AdminExecutiveDashboard: React.FC = () => {
 
           {/* Bottom Supporting Row: Trends (Full-Width / L Cards) */}
           <div className="col-span-12 xl:col-span-6">
-            <HmsDataUnavailable
-              sectionName="Patient Volume Trend"
-              expectedApi="/api/v1/dashboard/admin/trends"
-              expectedPhase="Phase 2"
+            <HmsTrendChart
+              title="Patient Volume Trend"
+              description="Daily encounter volume over the selected period"
+              chart={
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trends || []}>
+                    <defs>
+                      <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                    <Tooltip />
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      fill="url(#volumeGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              }
+              loading={loading}
+              empty={!trends || trends.length === 0}
             />
           </div>
 
           <div className="col-span-12 xl:col-span-6">
             <HmsDataUnavailable
               sectionName="Revenue Trend"
-              expectedApi="/api/v1/dashboard/admin/trends"
-              expectedPhase="Phase 2"
+              expectedApi="/v1/dashboard/admin/trends (revenue dimension pending)"
+              expectedPhase="Phase 2 — requires revenue table query"
             />
           </div>
         </div>
