@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../components/hms-dashboard';
@@ -63,7 +64,7 @@ export const SuperAdminDashboard: React.FC = () => {
             <button type="button" onClick={() => window.location.reload()} aria-label="Refresh platform command center" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">
               <RefreshCw className="h-4 w-4" aria-hidden="true" /> Refresh
             </button>
-            <a href="/admin/reports" className="inline-flex min-h-11 items-center rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white hover:bg-indigo-700">View Reports</a>
+            <Link to="/admin/reports" className="inline-flex min-h-11 items-center rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white hover:bg-indigo-700">View Reports</Link>
           </div>
         )}
       />

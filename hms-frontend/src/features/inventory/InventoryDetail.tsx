@@ -1,98 +1,41 @@
-import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/page-header";
-import { Link } from "react-router-dom";
-import { ReasonModal } from "../../components/ui/approval-modals";
-
-const MOCK_ITEM = { 
-  id: "S001", name: "CBC Reagent", cat: "Lab", branch: "Main", batch: "B2026-01", qty: 5, reorder: 10, expiry: "2026-12-31", status: "Low", supplier: "MedSupply Co" 
-};
+import { AlertTriangle, FlaskConical } from "lucide-react";
 
 export const InventoryDetail = () => {
-  const [showAdj, setShowAdj] = useState(false);
+  const { id } = useParams();
 
   const breadcrumbs = [
     { label: "Inventory", to: "/inventory" },
-    { label: MOCK_ITEM.name, current: true }
+    { label: id ? `Item ${id.slice(0, 8)}` : "Unknown Item", current: true }
   ];
 
   return (
     <div className="space-y-6 pb-12">
       <PageHeader 
-        title={MOCK_ITEM.name} 
-        description={`Code: ${MOCK_ITEM.id} • Branch: ${MOCK_ITEM.branch}`} 
+        title={id ? `Item ${id.slice(0, 8)}` : "Inventory Item"}
+        description="Detail view for inventory item."
         backFallback="/inventory"
         backLabel="Back to Inventory"
         breadcrumbs={breadcrumbs}
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="card p-6">
-            <h3 className="font-bold text-slate-900 mb-4">Stock Ledger</h3>
-            <div className="overflow-hidden rounded-lg border border-slate-200">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3">Date</th>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">Qty</th>
-                    <th className="px-4 py-3">User</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  <tr className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 text-slate-600">2026-05-09 09:00</td>
-                    <td className="px-4 py-3 text-slate-700">Receive</td>
-                    <td className="px-4 py-3 text-emerald-600 font-medium">+20</td>
-                    <td className="px-4 py-3 text-slate-600">Admin</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="card p-6 h-fit space-y-4">
-            <h3 className="font-bold text-slate-900 border-b pb-4">Actions</h3>
-            <div className="grid grid-cols-1 gap-3">
-              <button 
-                onClick={() => setShowAdj(true)} 
-                className="btn btn-warning w-full"
-              >
-                Adjust Stock
-              </button>
-              <Link to="/inventory/receiving" className="btn btn-secondary w-full justify-center">
-                Receive Stock
-              </Link>
-            </div>
-          </div>
-
-          <div className="card p-6">
-            <h3 className="font-bold text-slate-900 mb-4">Item Details</h3>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-slate-500 uppercase">Category</p>
-                <p className="text-sm font-medium text-slate-900">{MOCK_ITEM.cat}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-slate-500 uppercase">Batch</p>
-                <p className="text-sm font-medium text-slate-900">{MOCK_ITEM.batch}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-slate-500 uppercase">Expiry Date</p>
-                <p className="text-sm font-medium text-slate-900">{MOCK_ITEM.expiry}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-slate-500 uppercase">Supplier</p>
-                <p className="text-sm font-medium text-slate-900">{MOCK_ITEM.supplier}</p>
-              </div>
-            </div>
+      <div className="card p-6 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-amber-900">
+          <p className="font-bold mb-1">Inventory item detail endpoint not yet available.</p>
+          <p>
+            The backend exposes catalog listing (<code className="font-mono text-[11px]">GET /api/v1/inventory/catalog</code>),
+            stock logs, low-stock alerts, and mutation endpoints, but no single-item
+            detail endpoint (<code className="font-mono text-[11px]">GET /api/v1/inventory/items/:id</code>).
+            This detail page will be wired once the backend endpoint is added.
+          </p>
+          <div className="mt-3 flex items-center gap-2 text-xs text-amber-700">
+            <FlaskConical className="h-4 w-4" />
+            <span>No mock data is being displayed. Item identity is preserved in the URL but the detail cannot be rendered yet.</span>
           </div>
         </div>
       </div>
-
-      <ReasonModal isOpen={showAdj} title="Adjust Stock" guidance="Enter adjustment reason (Required)" onConfirm={() => setShowAdj(false)} onClose={() => setShowAdj(false)} />
     </div>
   );
 };

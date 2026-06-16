@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../components/hms-dashboard';
 import { AdminShellNotice } from './components/AdminShellNotice';
-import { Settings, ShieldCheck, Mail, ShieldAlert, Sliders } from 'lucide-react';
+import { ShieldCheck, Mail, ShieldAlert, Sliders, AlertTriangle } from 'lucide-react';
 
 export const SystemSettingsPage: React.FC = () => {
-  const [showToast, setShowToast] = useState(false);
   const [mfaEnforce, setMfaEnforce] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState('60');
   const [loading, setLoading] = useState(true);
@@ -14,14 +13,6 @@ export const SystemSettingsPage: React.FC = () => {
     const timer = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    setShowToast(true);
-    setTimeout(() => {
-      setShowToast(false);
-    }, 4000);
-  };
 
   if (loading) {
     return (
@@ -42,7 +33,21 @@ export const SystemSettingsPage: React.FC = () => {
         badge="Sandbox"
       />
 
-      <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div
+        className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex gap-2.5 text-xs text-amber-800"
+      >
+        <AlertTriangle className="h-4.5 w-4.5 text-amber-600 mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="font-bold text-[10px] uppercase tracking-wider">Sandbox Only — No Persistence</p>
+          <p className="mt-0.5 leading-relaxed">
+            These settings are displayed for interface review only. No backend
+            configuration API exists yet. Changes made here affect only the
+            current session and are discarded on navigation.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-5">
             <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase border-b border-slate-100 pb-3 flex items-center gap-2">
@@ -53,11 +58,15 @@ export const SystemSettingsPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700">Minimum Password Length</label>
-                <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                <select
+                  disabled
+                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-semibold opacity-60 cursor-not-allowed"
+                >
                   <option value="8">8 Characters</option>
                   <option value="12">12 Characters</option>
                   <option value="16">16 Characters</option>
                 </select>
+                <p className="text-[10px] text-slate-400">No backend endpoint to persist this value.</p>
               </div>
 
               <div className="space-y-1.5">
@@ -68,6 +77,7 @@ export const SystemSettingsPage: React.FC = () => {
                   onChange={(e) => setSessionTimeout(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
+                <p className="text-[10px] text-slate-400">Session-local only. Not persisted.</p>
               </div>
 
               <div className="md:col-span-2 flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/60 mt-2">
@@ -96,25 +106,31 @@ export const SystemSettingsPage: React.FC = () => {
                 <label className="font-bold text-slate-700">SMTP Host Server</label>
                 <input 
                   type="text"
-                  placeholder="smtp.hms-core.local"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  value="smtp.hms-core.local"
+                  disabled
+                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-semibold opacity-60 cursor-not-allowed"
                 />
+                <p className="text-[10px] text-slate-400">No backend endpoint to persist this value.</p>
               </div>
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-700">SMTP Port</label>
                 <input 
                   type="number"
-                  placeholder="587"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  value="587"
+                  disabled
+                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-semibold opacity-60 cursor-not-allowed"
                 />
+                <p className="text-[10px] text-slate-400">No backend endpoint to persist this value.</p>
               </div>
               <div className="space-y-1.5 md:col-span-2">
                 <label className="font-bold text-slate-700">Sender Address Mask</label>
                 <input 
                   type="email"
-                  placeholder="noreply@hms-core.local"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  value="noreply@hms-core.local"
+                  disabled
+                  className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl font-semibold opacity-60 cursor-not-allowed"
                 />
+                <p className="text-[10px] text-slate-400">No backend endpoint to persist this value.</p>
               </div>
             </div>
           </div>
@@ -128,14 +144,17 @@ export const SystemSettingsPage: React.FC = () => {
             </h3>
 
             <p className="text-xs text-slate-400 font-semibold leading-relaxed">
-              Global variables can be modified or updated in-memory for testing. Click save to temporarily register updates inside the sandbox.
+              Configuration values displayed here are sandbox defaults. No backend
+              config API exists. To adjust real system settings, deploy infrastructure
+              configuration or environment variable changes through the operations pipeline.
             </p>
 
             <button 
-              type="submit"
-              className="w-full btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-colors"
+              type="button"
+              disabled
+              className="w-full btn bg-slate-200 text-slate-400 font-bold py-2.5 rounded-xl cursor-not-allowed"
             >
-              Save Configuration Settings
+              Save Configuration Settings (Unavailable)
             </button>
           </div>
 
@@ -145,23 +164,13 @@ export const SystemSettingsPage: React.FC = () => {
               Security Policy Bounds
             </h4>
             <p className="text-slate-500">
-              Settings altered here affect the simulated application behaviors temporarily. To maintain compliance, the application is restricted from writing directly to environment files or configuration databases.
+              Settings altered here affect session-local state only. The application
+              has no backend configuration API. Persisting system settings requires
+              infrastructure deployment through the operations pipeline.
             </p>
           </div>
         </div>
-      </form>
-
-      {showToast && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex gap-3 text-xs text-amber-800 animate-scale-in">
-          <Settings className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5 animate-pulse" />
-          <div>
-            <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Demonstration Sandbox</h5>
-            <p className="font-medium mt-0.5">
-              Global system parameters updated in sandbox memory. No adjustments have been persisted.
-            </p>
-          </div>
-        </div>
-      )}
+      </div>
     </HmsDashboardShell>
   );
 };

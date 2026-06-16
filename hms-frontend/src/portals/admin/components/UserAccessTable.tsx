@@ -66,9 +66,16 @@ function outcomeCopy(
   };
 }
 
+interface OutcomeData {
+  type: ActionType;
+  userName: string;
+  userStatus: 'Active' | 'Suspended' | 'Locked' | undefined;
+  reason: string;
+}
+
 export const UserAccessTable: React.FC<UserAccessTableProps> = ({ users }) => {
   const [activeDialog, setActiveDialog] = useState<{ type: ActionType; user: UserItem } | null>(null);
-  const [lastReason, setLastReason] = useState<string>('');
+  const [outcome, setOutcome] = useState<OutcomeData | null>(null);
 
   const handleActionClick = (type: ActionType, user: UserItem) => {
     setActiveDialog({ type, user });
@@ -76,7 +83,7 @@ export const UserAccessTable: React.FC<UserAccessTableProps> = ({ users }) => {
 
   const handleClose = () => {
     setActiveDialog(null);
-    setLastReason('');
+    setOutcome(null);
   };
 
   const modalTitle = (() => {
@@ -166,58 +173,62 @@ export const UserAccessTable: React.FC<UserAccessTableProps> = ({ users }) => {
         </div>
       </div>
 
+      {activeDialog && !outcome && (
+        <div
+          data-testid="useraccess-sandbox-notice"
+          className="fixed bottom-6 right-6 z-[60] max-w-sm p-3 rounded-xl border bg-slate-50 border-slate-200 text-slate-600 text-xs leading-relaxed shadow-2xl"
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+            <p>
+              Privileged actions in this UI are not yet wired to a backend mutation.
+              Backend support exists for role assignment / revocation and activate /
+              deactivate (<code className="font-mono text-[11px]">admin.controller.ts</code>),
+              but not for admin MFA reset. No change will be persisted from this dialog;
+              the reason is recorded only in this client-side session.
+            </p>
+          </div>
+        </div>
+      )}
+
       {activeDialog && (() => {
         const { type, user } = activeDialog;
-        const outcome = actionOutcome(type);
-        const copy = outcomeCopy(type, user.name, lastReason, user.status);
+        return (
+          <ReasonModal
+            key={`${type}-${user.id}`}
+            isOpen
+            title={modalTitle}
+            guidance={`Specify a valid administrative audit reason for performing the "${type}" action on ${user.name}.`}
+            onConfirm={(reason) => {
+              setOutcome({ type, userName: user.name, userStatus: user.status, reason });
+              setActiveDialog(null);
+            }}
+            onClose={handleClose}
+          />
+        );
+      })()}
+
+      {outcome && (() => {
+        const label = actionOutcome(outcome.type);
+        const copy = outcomeCopy(outcome.type, outcome.userName, outcome.reason, outcome.userStatus);
         const toneClass = copy.tone === 'rose'
           ? 'bg-rose-50 border-rose-200 text-rose-800'
           : 'bg-amber-50 border-amber-200 text-amber-800';
         const Icon = copy.icon;
         return (
-          <>
-            <ReasonModal
-              key={`${type}-${user.id}`}
-              isOpen
-              title={modalTitle}
-              guidance={`Specify a valid administrative audit reason for performing the "${type}" action on ${user.name}.`}
-              onConfirm={(reason) => {
-                setLastReason(reason);
-              }}
-              onClose={handleClose}
-            />
-            {lastReason ? (
-              <div
-                data-testid="useraccess-outcome"
-                data-outcome={outcome}
-                className={`fixed bottom-6 right-6 z-[60] max-w-sm p-3 rounded-xl border text-xs leading-relaxed shadow-2xl ${toneClass}`}
-              >
-                <div className="flex items-start gap-2">
-                  {Icon}
-                  <div>
-                    <p className="font-bold mb-1">{copy.title}</p>
-                    <p>{copy.body}</p>
-                  </div>
-                </div>
+          <div
+            data-testid="useraccess-outcome"
+            data-outcome={label}
+            className={`fixed bottom-6 right-6 z-[60] max-w-sm p-3 rounded-xl border text-xs leading-relaxed shadow-2xl ${toneClass}`}
+          >
+            <div className="flex items-start gap-2">
+              {Icon}
+              <div>
+                <p className="font-bold mb-1">{copy.title}</p>
+                <p>{copy.body}</p>
               </div>
-            ) : (
-              <div
-                data-testid="useraccess-sandbox-notice"
-                className="fixed bottom-6 right-6 z-[60] max-w-sm p-3 rounded-xl border bg-slate-50 border-slate-200 text-slate-600 text-xs leading-relaxed shadow-2xl"
-              >
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                  <p>
-                    Privileged actions in this UI are not yet wired to a backend mutation.
-                    Backend support exists for role assignment / revocation and activate /
-                    deactivate (<code className="font-mono text-[11px]">admin.controller.ts</code>),
-                    but not for admin MFA reset. No change will be persisted from this dialog;
-                    the reason is recorded only in this client-side session.
-                  </p>
-                </div>
-              </div>
-            )}
-          </>
+            </div>
+          </div>
         );
       })()}
     </div>

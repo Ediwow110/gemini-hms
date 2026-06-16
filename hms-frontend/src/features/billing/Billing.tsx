@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { AlertTriangle, CreditCard, Receipt } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
 import { useAuth } from '../../hooks/use-user';
@@ -45,8 +45,8 @@ export const Billing = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <a
-          href="/billing/dashboard"
+        <Link
+          to="/billing/dashboard"
           className="card p-5 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 hover:shadow-sm transition-all"
           data-testid="link-billing-dashboard"
         >
@@ -63,11 +63,11 @@ export const Billing = () => {
               </p>
             </div>
           </div>
-        </a>
+        </Link>
 
         {isCashierOrFinance && (
-          <a
-            href="/cashier/billing"
+          <Link
+            to="/cashier/billing"
             className="card p-5 bg-white border border-slate-200 rounded-2xl hover:border-emerald-300 hover:shadow-sm transition-all"
             data-testid="link-cashier-billing"
           >
@@ -83,7 +83,7 @@ export const Billing = () => {
                 </p>
               </div>
             </div>
-          </a>
+          </Link>
         )}
       </div>
 

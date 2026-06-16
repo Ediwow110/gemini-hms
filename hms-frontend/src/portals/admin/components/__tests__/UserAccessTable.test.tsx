@@ -109,6 +109,26 @@ describe('UserAccessTable privileged-action honesty tests', () => {
     expect(notice.textContent || '').not.toMatch(/Audit Action Logged/i);
   });
 
+  it('closes the ReasonModal after confirm but keeps the outcome banner visible', () => {
+    render(<UserAccessTable users={[sampleUser]} />);
+
+    // Open modal
+    fireEvent.click(screen.getByTitle('Edit Roles & Scopes'));
+    expect(screen.getByText('Edit User Roles & Scopes')).toBeInTheDocument();
+
+    // Confirm with a reason
+    fireEvent.change(screen.getByPlaceholderText('Enter your reason...'), { target: { value: 'Quarterly review' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+
+    // Modal must be closed (no title rendered)
+    expect(screen.queryByText('Edit User Roles & Scopes')).not.toBeInTheDocument();
+
+    // Outcome banner must still be visible
+    const outcome = screen.getByTestId('useraccess-outcome');
+    expect(outcome).toBeInTheDocument();
+    expect(outcome.textContent || '').toMatch(/NOT persisted/i);
+  });
+
   it('renders a per-action honest outcome after edit_role confirmation (pending_wiring)', () => {
     render(<UserAccessTable users={[sampleUser]} />);
     fireEvent.click(screen.getByTitle('Edit Roles & Scopes'));
