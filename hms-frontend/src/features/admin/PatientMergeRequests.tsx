@@ -43,61 +43,16 @@ export const PatientMergeRequests = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchMergeRequests = async () => {
     try {
       const res = await apiClient.get("/v1/admin/patient-merges");
       setRequests(res.data || []);
-    } catch {
-      // Fallback premium mocks
-      const mockList: MergeRequest[] = [
-        {
-          id: "MRG-401",
-          sourceId: "PAT-088",
-          targetId: "PAT-002",
-          status: "PENDING",
-          risk: "HIGH",
-          requestedBy: "Nurse Kelly",
-          createdAt: "2026-05-17 09:12 AM",
-          sourcePatient: {
-            patientNumber: "P-2026-088",
-            firstName: "Jannette",
-            lastName: "Smythe",
-            dob: "1982-08-14"
-          },
-          targetPatient: {
-            patientNumber: "P-2026-002",
-            firstName: "Jane",
-            lastName: "Smith",
-            dob: "1982-08-14"
-          }
-        },
-        {
-          id: "MRG-402",
-          sourceId: "PAT-112",
-          targetId: "PAT-044",
-          status: "PENDING",
-          risk: "HIGH",
-          requestedBy: "Dr. Gregory",
-          createdAt: "2026-05-16 11:45 AM",
-          sourcePatient: {
-            patientNumber: "P-2026-112",
-            firstName: "Robert",
-            lastName: "Chase",
-            dob: "1979-05-20"
-          },
-          targetPatient: {
-            patientNumber: "P-2026-044",
-            firstName: "Rob",
-            lastName: "Chace",
-            dob: "1979-05-18"
-          }
-        }
-      ];
-      setRequests(mockList);
-      if (mockList.length > 0) {
-        setSelectedRequest(mockList[0]);
-      }
+      setFetchError(null);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setFetchError(error.response?.data?.message || "Failed to fetch merge requests.");
     }
   };
 
@@ -117,16 +72,18 @@ export const PatientMergeRequests = () => {
       await apiClient.post(`/v1/admin/patient-merges/${selectedRequest.id}/execute`, {
         tenantId: user?.tenantId
       });
-    } catch {
-      // Mock local fallback
+      setRequests(requests.filter(r => r.id !== selectedRequest.id));
+      alert("Merge executed successfully!");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || "Failed to execute merge.");
+    } finally {
+      setIsProcessing(false);
+      setShowConfirmModal(false);
+      setSelectedRequest(null);
     }
-
-    setRequests(requests.filter(r => r.id !== selectedRequest.id));
-    alert("Merge executed successfully! All records (encounters, bills, LIS) cascadingly re-routed to destination chart.");
-    setIsProcessing(false);
-    setShowConfirmModal(false);
-    setSelectedRequest(null);
   };
+
 
   const handleRejectMerge = async () => {
     if (!selectedRequest) return;
@@ -135,15 +92,17 @@ export const PatientMergeRequests = () => {
       await apiClient.post(`/v1/admin/patient-merges/${selectedRequest.id}/reject`, {
         tenantId: user?.tenantId
       });
-    } catch {
-      // Mock local fallback
+      setRequests(requests.filter(r => r.id !== selectedRequest.id));
+      alert("Merge request rejected successfully.");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || "Failed to reject merge request.");
+    } finally {
+      setIsProcessing(false);
+      setSelectedRequest(null);
     }
-
-    setRequests(requests.filter(r => r.id !== selectedRequest.id));
-    alert("Merge request rejected successfully.");
-    setIsProcessing(false);
-    setSelectedRequest(null);
   };
+
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -157,9 +116,24 @@ export const PatientMergeRequests = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Pane: Pending Queue */}
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+         
+         {/* Global Read-Only Notice */}
+         <div className="lg:col-span-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
+           <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+           <span>This module is currently in read-only mode. Merge execution and rejection are not yet available in the live environment.</span>
+         </div>
+
+         {/* Error Notice */}
+         {fetchError && (
+           <div className="lg:col-span-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
+             <ShieldAlert className="h-4 w-4 text-rose-600 flex-shrink-0" />
+             <span>{fetchError}</span>
+           </div>
+         )}
+
+         {/* Left Pane: Pending Queue */}
+
         <div className="card p-5 space-y-4 h-fit">
           <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase flex items-center gap-2 border-b pb-3 border-slate-100">
             <GitMerge className="h-4.5 w-4.5 text-indigo-500" />
@@ -260,23 +234,25 @@ export const PatientMergeRequests = () => {
 
               {/* ACTION LINKS */}
               <div className="flex justify-between items-center border-t border-slate-100 pt-6 mt-6">
-                <button
-                  onClick={handleRejectMerge}
-                  disabled={isProcessing}
-                  className="btn bg-rose-50 hover:bg-rose-100/60 text-rose-600 text-xs px-4 py-2 border border-rose-200 flex items-center gap-1.5 font-bold"
-                >
-                  <XCircle className="h-4 w-4" />
-                  Reject Merge Request
-                </button>
+                 <button
+                   onClick={handleRejectMerge}
+                   disabled={isProcessing || true}
+                   className="btn bg-rose-50 hover:bg-rose-100/60 text-rose-600 text-xs px-4 py-2 border border-rose-200 flex items-center gap-1.5 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                 >
+                   <XCircle className="h-4 w-4" />
+                   Reject Merge (WIP)
+                 </button>
 
-                <button
-                  onClick={handleOpenConfirm}
-                  disabled={isProcessing}
-                  className="btn bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Authorize & Execute Merge
-                </button>
+
+                 <button
+                   onClick={handleOpenConfirm}
+                   disabled={isProcessing || true}
+                   className="btn bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                 >
+                   <CheckCircle2 className="h-4 w-4" />
+                   Execute Merge (WIP)
+                 </button>
+
               </div>
             </div>
           ) : (
