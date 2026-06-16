@@ -64,6 +64,7 @@ export interface ScopeFilter {
   region?: string;
   reportType?: string;
   status?: string;
+  dimension?: 'volume' | 'revenue';
 }
 
 export interface AdminDashboardSummary {

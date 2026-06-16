@@ -25,6 +25,7 @@ export const dashboardService: DashboardService = {
 
   async getAdminTrends(filters) {
     const params = this.buildQueryParams(filters);
+    if (filters.dimension) params.dimension = filters.dimension;
     const response = await apiClient.get('/v1/dashboard/admin/trends', { params });
     return response.data;
   },
