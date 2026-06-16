@@ -11,6 +11,8 @@ export const UserDetail = () => {
   const { id } = useParams();
   const [modals, setModals] = useState({ reset: false, forceLogout: false, suspend: false, changeRole: false });
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [apiUser, setApiUser] = useState<{
     id: string;
@@ -60,6 +62,36 @@ export const UserDetail = () => {
       });
     return () => { active = false; };
   }, [id]);
+
+  const handleForceLogout = async (reason: string) => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      await adminService.forceLogout(id, reason);
+      alert("User has been forcibly logged out.");
+      setModals({...modals, forceLogout: false});
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || 'Failed to force logout user');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (reason: string) => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      const res = await adminService.resetPassword(id, reason);
+      setTempPassword(res.tempPassword);
+      setModals({...modals, reset: false});
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      alert(error.response?.data?.message || 'Failed to reset password');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const handleSuspend = async (reason: string) => {
     if (!id) return;
@@ -190,23 +222,25 @@ export const UserDetail = () => {
             </div>
             <div className="grid grid-cols-1 gap-3">
               <button
-                disabled
-                className="btn btn-secondary w-full flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
+                onClick={() => setModals({...modals, reset: true})}
+                className="btn btn-secondary w-full flex items-center justify-center gap-2"
+                disabled={actionLoading || suspendLoading}
               >
                 <KeyRound className="h-4 w-4" />
-                Reset Password (WIP)
+                Reset Password
               </button>
               <button
-                disabled
-                className="btn btn-secondary w-full flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
+                onClick={() => setModals({...modals, forceLogout: true})}
+                className="btn btn-secondary w-full flex items-center justify-center gap-2"
+                disabled={actionLoading || suspendLoading}
               >
                 <LogOut className="h-4 w-4" />
-                Force Logout (WIP)
+                Force Logout
               </button>
               <button
                 onClick={() => setModals({...modals, suspend: true})}
                 className={`btn btn-danger w-full flex items-center justify-center gap-2 ${suspendLoading ? 'opacity-50 cursor-wait' : ''}`}
-                disabled={suspendLoading}
+                disabled={actionLoading || suspendLoading}
               >
                 <UserX className="h-4 w-4" />
                 {suspendLoading ? 'Processing...' : suspendButtonLabel}
@@ -216,15 +250,36 @@ export const UserDetail = () => {
         </div>
       </div>
 
-      <ConfirmationModal
+      {tempPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Password Reset Successful</h3>
+            <p className="text-sm text-slate-600 mb-4">Please provide this temporary password securely to the user. It will not be shown again.</p>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 font-mono text-center text-lg mb-6">
+              {tempPassword}
+            </div>
+            <div className="flex justify-end">
+              <button onClick={() => setTempPassword(null)} className="btn btn-primary">Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ReasonModal
         isOpen={modals.reset}
         title="Reset Password"
-        warning="This will trigger a password reset email."
-        onConfirm={() => setModals({...modals, reset: false})}
+        guidance={`Reason for password reset required. Minimum 8 characters.`}
+        onConfirm={handleResetPassword}
         onClose={() => setModals({...modals, reset: false})}
-      >
-        Confirm password reset for {displayName}?
-      </ConfirmationModal>
+      />
+
+      <ReasonModal
+        isOpen={modals.forceLogout}
+        title="Force Logout"
+        guidance={`Reason for forcing logout required. Minimum 8 characters.`}
+        onConfirm={handleForceLogout}
+        onClose={() => setModals({...modals, forceLogout: false})}
+      />
 
       <ReasonModal
         isOpen={modals.suspend}
