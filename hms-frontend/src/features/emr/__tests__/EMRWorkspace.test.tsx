@@ -131,7 +131,7 @@ describe('EMRWorkspace Honesty Tests', () => {
     });
   });
 
-  it('shows truthful alert for SOAP notes caching', async () => {
+  it('does NOT render the dead "Cache Notes" button (misleading save flow)', async () => {
     renderWithAuth(<EMRWorkspace />);
     const patientBtn = await screen.findByText(/John Doe/i);
     fireEvent.click(patientBtn);
@@ -139,9 +139,9 @@ describe('EMRWorkspace Honesty Tests', () => {
     // Switch to SOAP tab
     fireEvent.click(screen.getByText(/SOAP Notes/i));
 
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    fireEvent.click(screen.getByText(/Cache Notes/i));
-
-    expect(alertSpy).toHaveBeenCalledWith("Notes updated in local workspace. Please finalize the encounter to persist changes to the database.");
+    // The "Cache Notes" button is dead: it does nothing (notes are already in
+    // local state from typing) but its alert claims "Notes updated in local
+    // workspace" — a misleading save flow. It must not be rendered.
+    expect(screen.queryByRole('button', { name: /cache notes/i })).not.toBeInTheDocument();
   });
 });

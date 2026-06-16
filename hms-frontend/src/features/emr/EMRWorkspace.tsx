@@ -513,14 +513,6 @@ export const EMRWorkspace = () => {
                       />
                     </div>
                   </div>
-                     {!isLocked && (
-                       <button 
-                         onClick={() => alert("Notes updated in local workspace. Please finalize the encounter to persist changes to the database.")} 
-                         className="btn btn-primary text-xs py-2 bg-indigo-600 text-white"
-                       >
-                         Cache Notes
-                       </button>
-                     )}
 
                 </div>
               )}
