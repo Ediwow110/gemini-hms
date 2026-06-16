@@ -32,22 +32,14 @@ Three verified critical blockers were fixed and committed in `715b50f`:
 - Local: 80 suites / 1614 tests passing, lint 0 errors, tsc clean
 - Staging: NOT PROVISIONED
 
-### This Session — Uncommitted (Tree Dirty)
-Target branch: `remediation/production-readiness-lane-2` (exists locally from prior work).
+### This Session — Committed (`93c5fd6`)
+Branch: `remediation/production-readiness-lane-2`. Tree clean.
 
-**Phase 1 — Backend read surface (complete):**
-- `AdminService.listUsers()` / `getUser()` — tenant-scoped, branch-isolated, search/status/branchId filters, pagination
-- `GET /api/v1/admin/users` and `GET /api/v1/admin/users/:id` in `AdminController` (guard: `admin.health.view`)
-- 5 new controller spec tests
-- 219 tests pass (214 existing + 5 new)
-- Fields excluded from response: `passwordHash`, `mfaSecret`
-
-**Phase 2 — Frontend wiring (complete):**
-- Created `hms-frontend/src/services/admin.service.ts` — `listUsers()` / `getUser()` via apiClient
-- Rewired `UsersPage.tsx` to call live API; replaced `setTimeout` mock + hardcoded data
-- Retained existing `UserAccessTable`/`ReasonModal` with honest WIP/blocked notices for mutation actions
-- Loading skeleton, error+retry, empty state, search/status filter all functional
-- lint 0 errors, tsc clean
+**What was done:**
+- Backend: `AdminService.listUsers()`/`getUser()` with tenant scoping, branch isolation, search/status/branchId filters, pagination; `AdminController` GET `/api/v1/admin/users` and `/:id` (guard: `admin.health.view`); 5 new spec tests; 219 admin tests pass
+- Frontend: `admin.service.ts` created; `UsersPage.tsx` rewired from mock data to live API (loading skeleton, error+retry, empty state, search + status filter); mutation actions remain honest WIP/blocked notices
+- Accepted via Senior Review (ACCEPT WITH NITS — 3 minor nits noted)
+- lint 0 errors, tsc clean, `git diff --check` clean
 
 ### Carryover Risks
 **HIGH:**
@@ -60,7 +52,7 @@ Target branch: `remediation/production-readiness-lane-2` (exists locally from pr
 
 **LOW:**
 - (Resolved) Chaos script health-probe path drift fixed in `b088259`; no stale references remain
-- (Resolved) Working tree has uncommitted changes (5 modified + 2 untracked)
+- Tree is clean
 
 ## Key Decisions
 - Reuse existing `AuditLog` model and `AuditService.log()` throughout
@@ -76,11 +68,9 @@ Target branch: `remediation/production-readiness-lane-2` (exists locally from pr
 - Mapped backend `AdminUserItem` to frontend `UserItem` shape in UsersPage (surfacing real data where available, honest defaults for unavailable fields like `lastLogin`)
 
 ## Next Steps
-1. **Complete Phase 3 (Silent Bug Sweep)**: Check route-path mismatch, response-shape mismatch, stale fake action buttons, sensitive field leakage, branch/tenant leakage
-2. **Complete Phase 4 (Validation)**: Full lint, typecheck, targeted backend test run, `git diff --check` — then verify backend and frontend
-3. **Complete Phase 5 (Senior Review)**: Load `senior-engineering-reviewer` skill for adversarial audit
-4. **Complete Phase 6**: Squash-commit locally to `remediation/production-readiness-lane-2` with descriptive message
-5. **Provision staging environment** — see `docs/infrastructure/staging-provisioning-handoff.md` for exact requirements
+1. **Provision staging environment** — see `docs/infrastructure/staging-provisioning-handoff.md` for exact requirements
+2. After staging is healthy → deploy and run E2E / integration smoke tests against staging
+3. After staging validated → trigger production deploy via `deploy.yml` (manual workflow_dispatch)
 
 ## Critical Context
 - **42 commits merged** via PR #226. Local repo at parity with `origin/main`. Current work on branch `remediation/production-readiness-lane-2`.
