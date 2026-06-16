@@ -1,55 +1,149 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  HmsDashboardShell, 
-  HmsToolbar, 
-  HmsAuditFooter, 
-  HmsBalanceSheet
+import {
+  HmsDashboardShell,
+  HmsToolbar,
+  HmsAuditFooter,
+  HmsBalanceSheet,
 } from '../../components/hms-dashboard';
 import { HmsPageHeader, HmsFormContainer } from '../../components/hms-page';
 import { CheckCircle, AlertTriangle, ArrowLeft, ClipboardList, Wallet, ShieldAlert } from 'lucide-react';
 import { useUser } from '../../hooks/use-user';
+import { useActiveSession } from '../../hooks/use-billing';
+import { safeMoney } from '../../lib/safe-money';
 
 export const DailyReconciliationPage = () => {
   const navigate = useNavigate();
   const user = useUser();
-  
-  // Starting float & expected collections
-  const startingCash = 5000;
-  const [collections] = useState({
-    cash: 18450,
-    card: 5120,
-    online: 850,
-    hmo: 15400,
-  });
+  const { session, loading, error, closeSession } = useActiveSession();
 
-  const [actualCash, setActualCash] = useState<number>(23450);
+  const [actualCash, setActualCash] = useState<string>('');
   const [remarks, setRemarks] = useState<string>('');
+  const [submitError, setSubmitError] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const totalCollections = collections.cash + collections.card + collections.online + collections.hmo;
-  const expectedCashTotal = startingCash + collections.cash;
-  const variance = actualCash - expectedCashTotal;
+  // ── Real per-method payment totals from live session ──────────────────────
+  const cashPayments = session?.payments
+    ?.filter((p) => p.paymentMethod === 'CASH' && p.status === 'POSTED')
+    ?.reduce((sum, p) => {
+      const refunds = p.reversals
+        ?.filter((r) => r.type === 'REFUND')
+        ?.reduce((rSum, r) => rSum + safeMoney(r.amount), 0) || 0;
+      return sum + safeMoney(p.amount) - refunds;
+    }, 0) || 0;
 
-  const handleSubmitClosing = (e: React.FormEvent) => {
+  const cardPayments = session?.payments
+    ?.filter((p) => p.paymentMethod === 'CARD' && p.status === 'POSTED')
+    ?.reduce((sum, p) => sum + safeMoney(p.amount), 0) || 0;
+
+  const onlinePayments = session?.payments
+    ?.filter((p) => p.paymentMethod === 'ONLINE' && p.status === 'POSTED')
+    ?.reduce((sum, p) => sum + safeMoney(p.amount), 0) || 0;
+
+  const hmoPayments = session?.payments
+    ?.filter((p) => p.paymentMethod === 'HMO' && p.status === 'POSTED')
+    ?.reduce((sum, p) => sum + safeMoney(p.amount), 0) || 0;
+
+  const totalCollections = cashPayments + cardPayments + onlinePayments + hmoPayments;
+  const openingBalance = safeMoney(session?.openingBalance);
+  const expectedCashTotal = openingBalance + cashPayments;
+
+  const actualCashNum = parseFloat(actualCash) || 0;
+  const variance = actualCashNum - expectedCashTotal;
+
+  // ── Submit: calls real backend closeSession ───────────────────────────────
+  const handleSubmitClosing = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
 
-    if (variance !== 0 && !remarks.trim()) {
-      alert('Error: Discrepancy remarks are strictly required for variance approvals.');
+    if (!session) return;
+
+    if (isNaN(parseFloat(actualCash))) {
+      setSubmitError('Please enter a valid actual cash count.');
       return;
     }
 
-    alert(`Shift drawer session reconciled successfully.\nVariance: ₱${variance.toFixed(2)}\nRemarks logged in audit history.`);
-    navigate('/cashier');
+    if (variance !== 0 && !remarks.trim()) {
+      setSubmitError('Discrepancy remarks are strictly required for variance approvals.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await closeSession(session.id, {
+        actualClosingBalance: actualCashNum,
+        remarks: remarks.trim() || undefined,
+      });
+      // Session is now closed — redirect to cashier dashboard
+      navigate('/cashier');
+    } catch (err) {
+      setSubmitError((err as Error).message || 'Failed to submit reconciliation');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
+  // ── Loading state ────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="p-8 text-center bg-white border border-slate-200 rounded-lg shadow-sm space-y-3 max-w-sm mx-auto mt-12 animate-fade-in">
+        <div className="animate-spin mx-auto w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full" />
+        <p className="text-xs text-slate-500 font-medium tracking-wide animate-pulse font-sans">Loading session data…</p>
+      </div>
+    );
+  }
+
+  // ── No active session ────────────────────────────────────────────────────
+  if (!session) {
+    return (
+      <HmsDashboardShell
+        toolbar={
+          <HmsToolbar
+            branchName={user?.branchId ? `Branch ID: ${user.branchId}` : 'Main Clinic'}
+            role={user?.roles?.join(', ')}
+          >
+            <button
+              onClick={() => navigate('/cashier')}
+              className="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-all"
+            >
+              <ArrowLeft className="h-3 w-3" /> Back to Cashier
+            </button>
+          </HmsToolbar>
+        }
+        footer={<HmsAuditFooter dataSource="Cash Drawer Console API" />}
+      >
+        <HmsPageHeader
+          title="Daily Cashier Reconciliation"
+          description="Count physical cash-on-hand drawer balances and compare collections with POS payment ledger values before shift close."
+          badge="Financial Audit"
+          onBack={() => navigate('/cashier')}
+        />
+        <div className="p-6 bg-slate-50 border border-slate-200 rounded-lg text-center max-w-md mx-auto animate-fade-in">
+          <Wallet className="h-8 w-8 text-slate-400 mx-auto mb-3" />
+          <h4 className="text-sm font-bold text-slate-700 font-sans">No Active Session</h4>
+          <p className="text-xs text-slate-500 mt-1 font-sans">
+            Open a cashier drawer session from the Session Console before reconciling.
+          </p>
+          <button
+            onClick={() => navigate('/cashier/session')}
+            className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors font-sans"
+          >
+            Go to Session Console
+          </button>
+        </div>
+      </HmsDashboardShell>
+    );
+  }
+
+  // ── Main reconciliation form (live data) ──────────────────────────────────
   return (
     <HmsDashboardShell
       toolbar={
-        <HmsToolbar 
+        <HmsToolbar
           branchName={user?.branchId ? `Branch ID: ${user.branchId}` : 'Main Clinic'}
           role={user?.roles?.join(', ')}
         >
-          <button 
+          <button
             onClick={() => navigate('/cashier')}
             className="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-all"
           >
@@ -57,63 +151,62 @@ export const DailyReconciliationPage = () => {
           </button>
         </HmsToolbar>
       }
-      footer={<HmsAuditFooter dataSource="Simulation Workflow Engine" />}
+      footer={<HmsAuditFooter dataSource="Cash Drawer Console API" />}
     >
-      <HmsPageHeader 
-        title="Daily Cashier Reconciliation" 
+      <HmsPageHeader
+        title="Daily Cashier Reconciliation"
         description="Count physical cash-on-hand drawer balances and compare collections with POS payment ledger values before shift close."
         badge="Financial Audit"
         onBack={() => navigate('/cashier')}
       />
 
-      {/* WIP Banner */}
-      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2.5 text-[12px] text-amber-800 animate-fade-in">
-        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-        <div>
-          <h5 className="font-bold uppercase text-[10px] tracking-wider font-sans">Daily Reconciliation (WIP — Simulated Data)</h5>
-          <p className="font-medium font-sans">
-            Collections, drawer balance, and gateway payment data (QRPH) are hardcoded mock values. End-of-day reconciliation, variance logging, and shift audit posting are not wired to the backend. This page requires a real data source integration.
-          </p>
+      {error && (
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex gap-2.5 text-[12px] text-rose-800 font-medium font-sans">
+          <AlertTriangle className="h-4 w-4 text-rose-600 mt-0.5 shrink-0" />
+          {error}
         </div>
-      </div>
+      )}
 
       <form onSubmit={handleSubmitClosing} className="space-y-4">
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          
+
           <HmsBalanceSheet title="Method Collections" icon={<ClipboardList className="h-3.5 w-3.5" />}>
-            <HmsBalanceSheet.Item label="Cash Collections" value={collections.cash} />
-            <HmsBalanceSheet.Item label="Card Payments" value={collections.card} />
-            <HmsBalanceSheet.Item label="Digital / E-Wallet" value={collections.online} />
-            <HmsBalanceSheet.Item label="HMO Allocations" value={collections.hmo} />
+            <HmsBalanceSheet.Item label="Cash Collections" value={cashPayments} />
+            <HmsBalanceSheet.Item label="Card Payments" value={cardPayments} />
+            <HmsBalanceSheet.Item label="Digital / E-Wallet" value={onlinePayments} />
+            <HmsBalanceSheet.Item label="HMO Allocations" value={hmoPayments} />
             <div className="pt-2">
               <HmsBalanceSheet.Item label="Total Payments" value={totalCollections} variant="highlight" />
             </div>
           </HmsBalanceSheet>
 
           <HmsBalanceSheet title="Drawer Balance" icon={<Wallet className="h-3.5 w-3.5" />}>
-            <HmsBalanceSheet.Item label="Opening Float" value={startingCash} />
+            <HmsBalanceSheet.Item label="Opening Float" value={openingBalance} />
             <HmsBalanceSheet.Item label="Expected Cash Total" value={expectedCashTotal} />
-            
+
             <div className="space-y-1 mt-3">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block font-sans">Actual Counted Cash</label>
               <input
                 type="number"
                 value={actualCash || ''}
-                onChange={(e) => setActualCash(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setActualCash(e.target.value)}
                 placeholder="0.00"
                 className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 step="0.01"
+                required
               />
             </div>
 
-            <div className="pt-2 mt-2 border-t border-slate-100">
-              <HmsBalanceSheet.Item 
-                label="Reconciliation Variance" 
-                value={variance} 
-                variant={variance === 0 ? 'success' : 'critical'} 
-              />
-            </div>
+            {actualCash !== '' && (
+              <div className="pt-2 mt-2 border-t border-slate-100">
+                <HmsBalanceSheet.Item
+                  label="Reconciliation Variance"
+                  value={variance}
+                  variant={variance === 0 ? 'success' : 'critical'}
+                />
+              </div>
+            )}
           </HmsBalanceSheet>
 
           <HmsFormContainer
@@ -133,7 +226,7 @@ export const DailyReconciliationPage = () => {
               />
             </div>
 
-            {variance === 0 ? (
+            {actualCash !== '' && (variance === 0 ? (
               <div className="p-2 bg-emerald-50 border border-emerald-100 rounded text-emerald-700 font-bold text-[10px] flex items-center gap-1.5 font-sans">
                 <CheckCircle className="h-3.5 w-3.5" />
                 Balanced Ledger
@@ -143,10 +236,17 @@ export const DailyReconciliationPage = () => {
                 <ShieldAlert className="h-3.5 w-3.5" />
                 Audit Required
               </div>
-            )}
+            ))}
           </HmsFormContainer>
 
         </div>
+
+        {submitError && (
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex gap-2.5 text-[12px] text-rose-800 font-medium font-sans">
+            <AlertTriangle className="h-4 w-4 text-rose-600 mt-0.5 shrink-0" />
+            {submitError}
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <button
@@ -154,14 +254,24 @@ export const DailyReconciliationPage = () => {
             onClick={() => navigate('/cashier')}
             className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-650 font-bold text-[12px] rounded-lg transition-all font-sans"
           >
-            Cancel Draft
+            Cancel
           </button>
-          
+
           <button
             type="submit"
-            className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[12px] rounded-lg shadow-sm flex items-center gap-1.5 transition-all font-sans"
+            disabled={isSubmitting || actualCash === ''}
+            className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-[12px] rounded-lg shadow-sm flex items-center gap-1.5 transition-all font-sans"
           >
-            <CheckCircle className="h-4 w-4" /> Submit Reconciled Shift
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                Submitting…
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4" /> Submit Reconciled Shift
+              </>
+            )}
           </button>
         </div>
 
