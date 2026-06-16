@@ -409,7 +409,13 @@ export const AdminExecutiveDashboard: React.FC = () => {
                       stroke="#94a3b8"
                       tickFormatter={(val) => `₱${val.toLocaleString()}`}
                     />
-                    <Tooltip formatter={(val: number) => [`₱${val.toLocaleString()}`, 'Revenue']} />
+                    <Tooltip
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      formatter={(val: any) => [
+                        `₱${Number(Array.isArray(val) ? val[0] : (val || 0)).toLocaleString()}`,
+                        'Revenue',
+                      ]}
+                    />
                     <Area
                       type="monotone"
                       dataKey="value"
