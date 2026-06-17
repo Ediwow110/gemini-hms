@@ -51,6 +51,29 @@ Committed in `72bd168`:
 - `e455acfa` — `fix(settings+notifications): add body-level sandbox notice + audit footer to 7-page family`
 - `bcb6548e` — `fix(hr-portal+doctor-timeline): replace pop-culture employee/provider placeholders with neutral sandbox identifiers` (11 files, +60/-50). 9 HR portal files + 2 doctor portal files. HRDashboard alert count derived from data. Sandbox notices added where missing.
 
+### Done (This Session — Honest Stop / Staging Hand-Off Decision)
+**No new commits this session.**
+
+**Reviewer's PHASE 1 audit finding:** No valuable local production-readiness lane remains on `remediation/production-readiness-lane-2`. The repo-side work has converged:
+
+- All 32 useMutation hooks have `onSuccess` invalidation (verified across `use-billing.ts`, `use-clinical-workflow.ts`, `use-doctor.ts`, `use-field-service.ts`, `use-inventory.ts`, `use-lab.ts`, `use-pharmacy.ts`).
+- All major live paths (inventory, pharmacy, lab, billing, clinical-workflow, EMR, encounters, patients, marketplace listings, logistics/field-service jobs, audit) are correctly wired to live backend endpoints with proper query-key invalidation.
+- Pop-culture name cleanup is fully closed: 15 frontend files are pop-culture-free; `grep` returns 0 hits in non-test source.
+- Backend `tsc --noEmit` is genuinely clean (0 errors, post-`d36d67e6`).
+- All 3 staging artifacts present (deploy-staging.yml, docker-compose.staging.yml, remote-deploy-staging.sh) and consistent with the handoff doc.
+- No frontend caller exists for the stubbed `generateSignedUrl` / `transmitPrescription` / notification-provider endpoints (all throw `NotImplementedException` in production).
+
+**The only remaining items are external blockers or explicitly out-of-scope:**
+- HIGH: Staging VM/host not provisioned (no VM, no Docker, no DNS, no PostgreSQL 15, no GitHub Staging environment, no `STAGING_*` secrets). Per `docs/infrastructure/staging-provisioning-handoff.md`, this is the external blocker.
+- MEDIUM: 173 pre-existing spec/e2e tsc errors in `hms-backend/test/` (not in default `tsc --noEmit`; out of scope for a single-error lane).
+- MEDIUM: Stale untracked snapshot files (`audit-baseline.txt`, `handoff-verify.txt` show 1690 tests; current is 1695).
+- LOW: 4 admin mutation forms (AdminCreateUserForm, AdminBranchForm, AdminTenantNetworkPage, AdminSettingsPage) on backend-blocked pages; "feature expansion" is out of scope.
+
+**Rejected as a lane (would be manufacturing work):**
+- IntegrationShellNotice says "live-wired to the HMS backend" but the backend has no `*integration*` controller and `integration.service.ts` calls 7 endpoints that all return 404. However, the affected pages all carry a "Sandbox" badge, have explicit `Failed to load approvals.` / `Unauthorized to view approvals.` error states, and the Cross-Domain Bridge Health card shows "Not available". The shell notice text correction is a one-line polish change on a sandbox-flagged portal that is already honestly disclosed in 3 other ways. Per the user's standing rules ("test-fixture-only polish unless it closes a real report overclaim", "honest WIP/sandbox pages"), this is not a high-value lane.
+
+**Decision:** Stop local product work. Hand off to Platform/DevOps for staging provisioning. Repo-side staging readiness is COMPLETE (4 files in `72bd168`). The remaining work is external: VM provisioning, DNS, PostgreSQL 15, GitHub Staging environment, `STAGING_*` secrets. No code change unblocks this.
+
 ### Done (This Session — Pop-Culture Name Cleanup Extension Lane, Commit `6a598704`)
 **Trigger:** bcb6548e (3 commits prior) replaced pop-culture names in 9 HR + 2 doctor portal files, but missed 4 files that still contained the same House M.D. + Hill House + Frankenstein characters.
 
@@ -155,7 +178,7 @@ Committed in `72bd168`:
 5. **(Admin lane queue — mostly closed.)** 4 admin pages (Tenants, Security, Reports, Settings) honest-stubbed in `b5df7498`. SuperAdminDashboard honest-stubbed in `0eebbe68`. UsersPage, RolesPermissionsPage, BranchesPage, AuditLogsPage all live-wired. Remaining admin surfaces: AdminCreateUserForm, AdminBranchForm, AdminTenantNetworkPage, AdminSettingsPage (mutation forms still on hardcoded data).
 
 ## Critical Context
-- **43 prior commits + 10 honest-UX mega-lane commits + 2 this session = 55 commits on `remediation/production-readiness-lane-2`. Local repo at parity with `origin/main`.
+- **43 prior commits + 10 honest-UX mega-lane commits + 4 prior sessions in this lane = 55 commits on `remediation/production-readiness-lane-2`. Local repo at parity with `origin/main`. This session: no new commits — honest stop / staging hand-off.
 - **`6a598704` (this session):** Pop-culture name cleanup extended to 4 remaining honestly-stubbed files: `DoctorEMRPage.tsx`, `EMRWorkspace.tsx`, `PurchaseRequestsPage.tsx`, `PatientMessagesPage.tsx`. 3 new regression tests added. The bcb6548e lane intent is now fully executed.
 - **`d36d67e6` (this session):** Backend `tsc --noEmit` is now genuinely clean. The 1 pre-existing error from `21916ccf` is fixed. Future commits can claim "tsc clean" without caveat.
 - **`bcb6548e` (prior session, end of mega-lane):** 9 HR + 2 doctor portal files. Sandbox identifiers (`Employee 001..010`, `Provider 001..003`) replace TV/movie character names. HRDashboard alert count derived from data. DoctorClinicalTimeline sandbox notice added.
