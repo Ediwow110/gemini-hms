@@ -64,27 +64,27 @@ export const IntegrationDashboard: React.FC = () => {
               <CrossDomainContextCard title="Notifications Pending" value={notifications?.length.toString() || "0"} source="All Portals" icon={Bell} color="bg-indigo-50 text-indigo-600" isMock={notifications?.[0]?.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Approvals Pending" value={approvals?.length.toString() || "0"} source="Cross-Domain" icon={ShieldCheck} color="bg-emerald-50 text-emerald-600" isMock={approvals?.[0]?.isMock || true} />
+              <CrossDomainContextCard title="Approvals Pending" value={approvals?.length.toString() || "0"} source="Cross-Domain" icon={ShieldCheck} color="bg-emerald-50 text-emerald-600" isMock={approvals?.[0]?.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
               <CrossDomainContextCard title="Activity Events" value={audits?.length.toString() || "0"} source="Audit Trail" icon={AlertTriangle} color="bg-rose-50 text-rose-600" isMock={audits?.[0]?.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Patient Timeline Events" value="28" source="Clinical" icon={Users} color="bg-blue-50 text-blue-600" isMock />
+              <CrossDomainContextCard title="Patient Timeline Events" value="—" source="Clinical" icon={Users} color="bg-blue-50 text-blue-600" isMock />
             </div>
 
             {/* KPI Metrics Row 2 */}
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Asset Timeline Events" value="15" source="Marketplace" icon={Package} color="bg-violet-50 text-violet-600" isMock />
+              <CrossDomainContextCard title="Asset Timeline Events" value="—" source="Marketplace" icon={Package} color="bg-violet-50 text-violet-600" isMock />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
               <CrossDomainContextCard title="Reconciliation Issues" value={issues?.length.toString() || "0"} source="Finance" icon={TrendingUp} color="bg-amber-50 text-amber-600" isMock={issues?.[0]?.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Recent Cross Activity" value="47" source="All" icon={Activity} color="bg-indigo-50 text-indigo-600" isMock />
+              <CrossDomainContextCard title="Recent Cross Activity" value="—" source="All" icon={Activity} color="bg-indigo-50 text-indigo-600" isMock />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Integration Health" value="98.2%" source="System" icon={TrendingUp} color="bg-emerald-50 text-emerald-600" isMock />
+              <CrossDomainContextCard title="Integration Health" value="—" source="System" icon={TrendingUp} color="bg-emerald-50 text-emerald-600" isMock />
             </div>
           </>
         )}

@@ -21,23 +21,34 @@ export const ActivityAuditContextPage: React.FC = () => {
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-indigo-500" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Events (24h) (Mock)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Events (24h)</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">142</p>
+            <p className="text-2xl font-black text-slate-900">
+              {/* Derived from live data: using total events as a proxy for 24h since global aggregate API is unavailable */}
+              {/* In a real scenario, this would be a separate endpoint */}
+              {/*- a simple proxy for now: just use a placeholder since the API doesn't provide a 24h count */}
+              —
+            </p>
           </div>
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-rose-500" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">High Risk (Mock)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">High Risk</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">3</p>
+            <p className="text-2xl font-black text-slate-900">
+              {/* Not yet available from API as an aggregate count */}
+              —
+            </p>
           </div>
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-emerald-500" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Compliance Events (Mock)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Compliance Events</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">28</p>
+            <p className="text-2xl font-black text-slate-900">
+              {/* Not yet available from API as an aggregate count */}
+              —
+            </p>
           </div>
         </div>
 

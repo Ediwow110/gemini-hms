@@ -8,9 +8,9 @@ export const IntegrationShellNotice: React.FC = () => {
         <ShieldAlert className="h-5 w-5 text-amber-600" />
       </div>
       <div>
-        <h4 className="text-sm font-black text-amber-900 tracking-tight">Integration Bridges Sandbox</h4>
+        <h4 className="text-sm font-black text-amber-900 tracking-tight">Integration Bridges — Mixed Availability</h4>
         <p className="text-xs text-amber-700 font-medium leading-relaxed mt-0.5">
-          This integration portal is a <strong>functional prototype shell</strong>. Notifications, approvals, search results, timelines, reconciliation, and audit events are mock-generated for demonstration purposes. No real cross-domain aggregation, notification delivery, approval mutation, search indexing, or audit mutation is performed in this phase.
+          This portal is in a transitional state. <span className="font-bold">Billing approvals and basic event listings are live-wired to the HMS backend.</span> However, advanced cross-domain aggregation, global search indexing, and automated reconciliation remain functional prototypes. Please refer to individual page badges for the current state of specific features.
         </p>
       </div>
     </div>

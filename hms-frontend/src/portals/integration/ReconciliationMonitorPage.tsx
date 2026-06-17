@@ -22,23 +22,27 @@ export const ReconciliationMonitorPage: React.FC = () => {
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-rose-500" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Open Issues (Mock)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Open Issues</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">2</p>
+            <p className="text-2xl font-black text-slate-900">{issues?.length || 0}</p>
           </div>
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-amber-500" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Under Review (Mock)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Under Review</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">1</p>
+            <p className="text-2xl font-black text-slate-900">
+              {issues?.filter(i => i.status === 'UNDER_REVIEW').length || 0}
+            </p>
           </div>
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-emerald-500" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resolved (Mock)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resolved</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">14</p>
+            <p className="text-2xl font-black text-slate-900">
+              {issues?.filter(i => i.status === 'RESOLVED').length || 0}
+            </p>
           </div>
         </div>
 
