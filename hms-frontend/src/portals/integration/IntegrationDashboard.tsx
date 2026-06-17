@@ -16,7 +16,7 @@ import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../com
 
 export const IntegrationDashboard: React.FC = () => {
   const { data: notifications, isLoading: notifLoading } = useIntegrationNotifications();
-  const { data: approvals, isLoading: apprLoading } = useIntegrationApprovals();
+  const { data: approvals, isLoading: apprLoading, error: apprError } = useIntegrationApprovals();
   const { data: audits, isLoading: auditLoading } = useIntegrationActivityAudit();
   const { data: issues, isLoading: recLoading } = useIntegrationReconciliation();
 
@@ -92,7 +92,7 @@ export const IntegrationDashboard: React.FC = () => {
         {/* Primary Work Row: Notifications & Approvals (XL Card) + Cross-Domain Health (L Card) */}
         <div className="col-span-12 xl:col-span-8 space-y-6">
           <NotificationInbox />
-          <ApprovalQueuePanel />
+          <ApprovalQueuePanel approvals={approvals} isLoading={apprLoading} error={apprError} />
         </div>
 
         <div className="col-span-12 xl:col-span-4 flex flex-col">

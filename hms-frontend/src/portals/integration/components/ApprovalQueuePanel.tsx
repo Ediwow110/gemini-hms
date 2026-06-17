@@ -1,10 +1,51 @@
 import React from 'react';
 import { ShieldCheck, AlertTriangle, ArrowRight } from 'lucide-react';
+import { ApprovalRequestDto } from '../../../services/integration.service';
+import { 
+  useApproveVoid, 
+  useRejectVoid, 
+  useApproveRefund, 
+  useRejectRefund 
+} from '../../../hooks/use-billing';
 
-import { useIntegrationApprovals } from '../../../hooks/use-integration';
+interface ApprovalQueuePanelProps {
+  approvals: ApprovalRequestDto[] | undefined;
+  isLoading: boolean;
+  error: unknown;
+}
 
-export const ApprovalQueuePanel: React.FC = () => {
-  const { data: approvals, isLoading, error } = useIntegrationApprovals();
+export const ApprovalQueuePanel: React.FC<ApprovalQueuePanelProps> = ({ approvals, isLoading, error }) => {
+  const { approveVoid, loading: avLoading } = useApproveVoid();
+  const { rejectVoid, loading: rvLoading } = useRejectVoid();
+  const { approveRefund, loading: arLoading } = useApproveRefund();
+  const { rejectRefund, loading: rrLoading } = useRejectRefund();
+
+  const handleAction = async (a: ApprovalRequestDto, action: 'APPROVE' | 'REJECT') => {
+    if (a.sourceDomain !== 'billing') {
+      alert(`Live approval for domain "${a.sourceDomain}" is not yet implemented. This is currently a shell.`);
+      return;
+    }
+
+    const isRefund = a.recordType.toLowerCase().includes('refund') || a.title?.toLowerCase().includes('refund');
+    const remarks = window.prompt(`Enter remarks for ${action === 'APPROVE' ? 'approving' : 'rejecting'} this ${isRefund ? 'refund' : 'void'} request:`) || '';
+
+    try {
+      if (action === 'APPROVE') {
+        if (isRefund) await approveRefund(a.id, remarks);
+        else await approveVoid(a.id, remarks);
+      } else {
+        if (isRefund) await rejectRefund(a.id, remarks);
+        else await rejectVoid(a.id, remarks);
+      }
+      alert(`Successfully ${action === 'APPROVE' ? 'approved' : 'rejected'} the request.`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      alert(`Failed to ${action === 'APPROVE' ? 'approve' : 'reject'} request: ${message}`);
+    }
+  };
+
+  const isPendingAction = avLoading || rvLoading || arLoading || rrLoading;
+
   return (
     <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
       <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
@@ -59,8 +100,20 @@ export const ApprovalQueuePanel: React.FC = () => {
                 {a.status.replace('_', ' ')}
               </span>
               <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-[10px] font-black uppercase">Approve (Shell)</button>
-                <button className="px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 rounded-lg text-[10px] font-black uppercase">Reject (Shell)</button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleAction(a, 'APPROVE'); }}
+                  disabled={isPendingAction}
+                  className="px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-[10px] font-black uppercase disabled:opacity-50"
+                >
+                  Approve
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleAction(a, 'REJECT'); }}
+                  disabled={isPendingAction}
+                  className="px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 rounded-lg text-[10px] font-black uppercase disabled:opacity-50"
+                >
+                  Reject
+                </button>
               </div>
               <ArrowRight className="h-5 w-5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
             </div>
