@@ -7,8 +7,15 @@ export class NumberingService {
 
   /**
    * Generates a sequential unique number for a given entity type.
+   *
    * Atomic increments prevent race conditions.
    * Supports optional transaction client to maintain transaction atomicity with caller.
+   *
+   * The unique constraint (tenantId, branchId, entityType) permits a NULL branchId
+   * at the database level (PostgreSQL treats NULLs as distinct in unique indexes),
+   * but Prisma's generated compound-unique input type requires all fields to be
+   * non-null. We therefore use a findFirst + create/update pattern instead of
+   * upsert, with a P2002 retry to handle the concurrent-create race window.
    */
   async generateNumber(
     tenantId: string,
@@ -31,44 +38,69 @@ export class NumberingService {
     };
     const safeBranchId = branchId || null;
 
-    const logic = async (db: any) => {
-      // Use upsert to atomically create-or-increment, avoiding race conditions
-      // on the findFirst + create path. The unique constraint on
-      // (tenantId, branchId, entityType) ensures only one sequence exists.
-      const sequence = await db.numberingSequence.upsert({
+    const formatNumber = (currentVal: number): string => {
+      const paddedValue = String(currentVal).padStart(config.padding, '0');
+      return `${config.prefix}${paddedValue}`;
+    };
+
+    const logic = async (db: any): Promise<string> => {
+      const existing = await db.numberingSequence.findFirst({
         where: {
-          tenantId_branchId_entityType: {
+          tenantId,
+          branchId: safeBranchId,
+          entityType,
+        },
+        select: { id: true, currentVal: true },
+      });
+
+      if (existing) {
+        const updated = await db.numberingSequence.update({
+          where: { id: existing.id },
+          data: { currentVal: { increment: 1 } },
+          select: { currentVal: true },
+        });
+        return formatNumber(updated.currentVal);
+      }
+
+      try {
+        const created = await db.numberingSequence.create({
+          data: {
+            tenantId,
+            branchId: safeBranchId,
+            entityType,
+            prefix: config.prefix,
+            currentVal: 1,
+            padding: config.padding,
+          },
+          select: { currentVal: true },
+        });
+        return formatNumber(created.currentVal);
+      } catch (e: any) {
+        if (e?.code !== 'P2002') throw e;
+
+        const concurrent = await db.numberingSequence.findFirst({
+          where: {
             tenantId,
             branchId: safeBranchId,
             entityType,
           },
-        },
-        update: {
-          currentVal: { increment: 1 },
-        },
-        create: {
-          tenantId,
-          branchId: safeBranchId,
-          entityType,
-          prefix: config.prefix,
-          currentVal: 1,
-          padding: config.padding,
-        },
-      });
+          select: { id: true },
+        });
+        if (!concurrent) throw e;
 
-      const paddedValue = String(sequence.currentVal).padStart(
-        sequence.padding,
-        '0',
-      );
-      return `${sequence.prefix}${paddedValue}`;
+        const updated = await db.numberingSequence.update({
+          where: { id: concurrent.id },
+          data: { currentVal: { increment: 1 } },
+          select: { currentVal: true },
+        });
+        return formatNumber(updated.currentVal);
+      }
     };
 
-    // If a transaction client is provided, use it directly
     if (tx) {
       return logic(tx);
     }
 
-    // Otherwise, start a new transaction
     return this.prisma.$transaction(async (newTx) => {
       return logic(newTx);
     });
