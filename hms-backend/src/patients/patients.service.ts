@@ -74,7 +74,7 @@ export class PatientsService {
   }
 
   async findAll(tenantId: string, search?: string) {
-    const where: Prisma.PatientWhereInput = { tenantId };
+    const where: Prisma.PatientWhereInput = { tenantId, archivedAt: null };
 
     if (search) {
       const searchLower = search.toLowerCase();
@@ -94,7 +94,7 @@ export class PatientsService {
 
   async findOne(tenantId: string, id: string) {
     const patient = await this.prisma.patient.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, archivedAt: null },
     });
 
     if (!patient) {
@@ -120,7 +120,7 @@ export class PatientsService {
     return this.prisma.$transaction(async (tx) => {
       try {
         const updateResult = await tx.patient.updateMany({
-          where: { id, tenantId },
+          where: { id, tenantId, archivedAt: null },
           data: {
             ...dto,
             dob: dto.dob ? new Date(dto.dob) : undefined,
@@ -141,7 +141,7 @@ export class PatientsService {
       }
 
       const updated = await tx.patient.findFirst({
-        where: { id, tenantId },
+        where: { id, tenantId, archivedAt: null },
       });
 
       if (!updated) {

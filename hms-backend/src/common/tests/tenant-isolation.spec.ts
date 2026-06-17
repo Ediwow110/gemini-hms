@@ -54,7 +54,13 @@ describe('Tenant Isolation — PatientsService', () => {
       NotFoundException,
     );
     expect(prisma.patient.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'any-id', tenantId: TENANT_A } }),
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'any-id',
+          tenantId: TENANT_A,
+          archivedAt: null,
+        }),
+      }),
     );
   });
 
@@ -88,7 +94,13 @@ describe('Tenant Isolation — PatientsService', () => {
     });
     expect(result).toBeDefined();
     expect(prisma.patient.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'p1', tenantId: TENANT_A } }),
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'p1',
+          tenantId: TENANT_A,
+          archivedAt: null,
+        }),
+      }),
     );
   });
 });
