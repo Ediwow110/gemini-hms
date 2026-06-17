@@ -19,4 +19,15 @@ export const inventoryService = {
     const response = await apiClient.get('/v1/inventory/catalog');
     return response.data;
   },
+
+  receiveStock: async (
+    itemId: string,
+    payload: { quantity: number; supplierName?: string; remarks?: string },
+  ): Promise<unknown> => {
+    const response = await apiClient.post(
+      `/v1/inventory/items/${itemId}/receive`,
+      payload,
+    );
+    return response.data;
+  },
 };

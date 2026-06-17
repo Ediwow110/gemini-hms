@@ -44,7 +44,10 @@ export function maskPhone(phone: string): string {
 }
 
 // ---------------------------------------------------------
-// Mock Providers
+// Mock Providers — explicitly local-dev / sandbox only.
+// These are isolated by name; the factory refuses to use them
+// in NODE_ENV=production. Do not rely on these for real
+// notification delivery.
 // ---------------------------------------------------------
 
 export class MockEmailProvider implements EmailProvider {
@@ -72,7 +75,11 @@ export class FailingMockEmailProvider implements EmailProvider {
 }
 
 // ---------------------------------------------------------
-// Real Providers (Placeholders)
+// Real Providers — honest, gated stubs.
+// These provider classes are reserved for the real external
+// integrations. Until the real HTTP / SDK calls are wired, each
+// provider throws an explicit "not implemented" error so the
+// production API never reports a fake delivery success.
 // ---------------------------------------------------------
 
 export class MailrelayProvider implements EmailProvider {
@@ -93,12 +100,12 @@ export class MailrelayProvider implements EmailProvider {
       );
     }
   }
-  async sendEmail(payload: EmailPayload) {
-    // In future: Actual mailrelay integration logic
-    console.log(
-      `[MailrelayProvider] Sending email to ${maskEmail(payload.to)}`,
+  async sendEmail(_payload: EmailPayload): Promise<never> {
+    throw new InternalServerErrorException(
+      'Mailrelay email delivery is not yet implemented in this release. ' +
+        'Wire the real Mailrelay HTTP/SMTP integration before relying on this ' +
+        'provider for clinical notifications.',
     );
-    return { success: true, messageId: `mailrelay-${Date.now()}` };
   }
 }
 
@@ -113,9 +120,12 @@ export class SesProvider implements EmailProvider {
       throw new InternalServerErrorException('SES_SENDER_EMAIL is missing');
     }
   }
-  async sendEmail(payload: EmailPayload) {
-    console.log(`[SesProvider] Sending email to ${maskEmail(payload.to)}`);
-    return { success: true, messageId: `ses-${Date.now()}` };
+  async sendEmail(_payload: EmailPayload): Promise<never> {
+    throw new InternalServerErrorException(
+      'AWS SES email delivery is not yet implemented in this release. ' +
+        'Wire the real AWS SES SDK call before relying on this provider for ' +
+        'clinical notifications.',
+    );
   }
 }
 
@@ -125,9 +135,12 @@ export class SemaphoreProvider implements SmsProvider {
       throw new InternalServerErrorException('SEMAPHORE_API_KEY is missing');
     }
   }
-  async sendSms(payload: SmsPayload) {
-    console.log(`[SemaphoreProvider] Sending SMS to ${maskPhone(payload.to)}`);
-    return { success: true, messageId: `semaphore-${Date.now()}` };
+  async sendSms(_payload: SmsPayload): Promise<never> {
+    throw new InternalServerErrorException(
+      'Semaphore SMS delivery is not yet implemented in this release. ' +
+        'Wire the real Semaphore HTTP call before relying on this provider ' +
+        'for clinical notifications.',
+    );
   }
 }
 
@@ -146,8 +159,16 @@ export class NotificationProviderFactory {
       return new SesProvider();
     }
 
-    // Fail-safe: only allow mock in dev/test, though we permit it explicitly via env config here.
     if (providerStr === 'mock') {
+      // Reject the mock provider in production. The mock is intentionally
+      // a local-dev / sandbox stand-in and must not silently mark real
+      // clinical notifications as SENT in a live environment.
+      if (process.env.NODE_ENV === 'production') {
+        throw new InternalServerErrorException(
+          'EMAIL_PROVIDER=mock is not allowed in NODE_ENV=production. ' +
+            'Configure a real provider (mailrelay, ses) before going live.',
+        );
+      }
       return new MockEmailProvider();
     }
 
@@ -164,6 +185,12 @@ export class NotificationProviderFactory {
     }
 
     if (providerStr === 'mock') {
+      if (process.env.NODE_ENV === 'production') {
+        throw new InternalServerErrorException(
+          'SMS_PROVIDER=mock is not allowed in NODE_ENV=production. ' +
+            'Configure a real provider (semaphore) before going live.',
+        );
+      }
       return new MockSmsProvider();
     }
 

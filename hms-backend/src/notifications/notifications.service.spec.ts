@@ -185,6 +185,22 @@ describe('Provider Validation', () => {
     expect(provider).toBeInstanceOf(MockEmailProvider);
   });
 
+  it('rejects mock provider in production (no fake success in live envs)', () => {
+    process.env.EMAIL_PROVIDER = 'mock';
+    process.env.NODE_ENV = 'production';
+    expect(() => {
+      NotificationProviderFactory.createEmailProvider();
+    }).toThrow('EMAIL_PROVIDER=mock is not allowed in NODE_ENV=production');
+  });
+
+  it('rejects mock SMS provider in production', () => {
+    process.env.SMS_PROVIDER = 'mock';
+    process.env.NODE_ENV = 'production';
+    expect(() => {
+      NotificationProviderFactory.createSmsProvider();
+    }).toThrow('SMS_PROVIDER=mock is not allowed in NODE_ENV=production');
+  });
+
   it('fails if mailrelay is missing credentials', () => {
     process.env.EMAIL_PROVIDER = 'mailrelay';
     delete process.env.MAILRELAY_API_KEY;
@@ -200,6 +216,44 @@ describe('Provider Validation', () => {
     expect(() => {
       NotificationProviderFactory.createEmailProvider();
     }).toThrow('AWS_REGION is missing for SES provider');
+  });
+
+  it('MailrelayProvider.sendEmail throws honest "not implemented" instead of fake success', async () => {
+    process.env.EMAIL_PROVIDER = 'mailrelay';
+    process.env.MAILRELAY_API_KEY = 'test-key';
+    process.env.MAILRELAY_SENDER_EMAIL = 'noreply@hms.local';
+    process.env.MAILRELAY_SENDER_NAME = 'HMS';
+    const provider = NotificationProviderFactory.createEmailProvider();
+    await expect(
+      provider.sendEmail({
+        to: 'patient@hms.local',
+        subject: 'Test',
+        body: 'Hello',
+      }),
+    ).rejects.toThrow('Mailrelay email delivery is not yet implemented');
+  });
+
+  it('SesProvider.sendEmail throws honest "not implemented" instead of fake success', async () => {
+    process.env.EMAIL_PROVIDER = 'ses';
+    process.env.AWS_REGION = 'ap-southeast-1';
+    process.env.SES_SENDER_EMAIL = 'noreply@hms.local';
+    const provider = NotificationProviderFactory.createEmailProvider();
+    await expect(
+      provider.sendEmail({
+        to: 'patient@hms.local',
+        subject: 'Test',
+        body: 'Hello',
+      }),
+    ).rejects.toThrow('AWS SES email delivery is not yet implemented');
+  });
+
+  it('SemaphoreProvider.sendSms throws honest "not implemented" instead of fake success', async () => {
+    process.env.SMS_PROVIDER = 'semaphore';
+    process.env.SEMAPHORE_API_KEY = 'test-key';
+    const provider = NotificationProviderFactory.createSmsProvider();
+    await expect(
+      provider.sendSms({ to: '+639171234567', body: 'Test' }),
+    ).rejects.toThrow('Semaphore SMS delivery is not yet implemented');
   });
 });
 

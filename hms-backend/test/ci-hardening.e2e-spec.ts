@@ -13,8 +13,11 @@ describe('CI/CD Hardening (e2e)', () => {
         stdio: 'pipe',
       });
     } catch (error: any) {
-      const output = (error.stdout?.toString() || '') + (error.stderr?.toString() || '') + (error.message || '');
-      const isNetworkOrCertError = 
+      const output =
+        (error.stdout?.toString() || '') +
+        (error.stderr?.toString() || '') +
+        (error.message || '');
+      const isNetworkOrCertError =
         output.includes('unable to verify the first certificate') ||
         output.includes('ENOTFOUND') ||
         output.includes('EAI_AGAIN') ||
@@ -22,7 +25,9 @@ describe('CI/CD Hardening (e2e)', () => {
         output.includes('request to https://registry.npmjs.org/ ... failed');
 
       if (isNetworkOrCertError) {
-        console.warn('Skipping npm audit check: network connection or certificate error detected.');
+        console.warn(
+          'Skipping npm audit check: network connection or certificate error detected.',
+        );
         auditPassed = true;
       } else {
         auditPassed = false;

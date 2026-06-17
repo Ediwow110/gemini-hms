@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotImplementedException } from '@nestjs/common';
 import { StorageService } from './storage.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -36,17 +37,10 @@ describe('StorageService', () => {
     audit = module.get<AuditService>(AuditService);
   });
 
-  it('should generate a signed URL with expiry', async () => {
-    const url = await service.generateSignedUrl(
-      'test-file.pdf',
-      'user-1',
-      'tenant-1',
-      3600,
-    );
-
-    expect(url).toContain('test-file.pdf');
-    expect(url).toContain('sig=');
-    expect(url).toContain('exp=');
+  it('throws NotImplementedException for generateSignedUrl (no fake URL is returned)', async () => {
+    await expect(
+      service.generateSignedUrl('test-file.pdf', 'user-1', 'tenant-1', 3600),
+    ).rejects.toThrow(NotImplementedException);
   });
 
   it('should log download event', async () => {

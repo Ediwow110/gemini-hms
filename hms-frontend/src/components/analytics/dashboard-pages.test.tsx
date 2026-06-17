@@ -60,12 +60,16 @@ describe('dashboard intelligence pages', () => {
     expect(screen.getByText('Tenant health drilldown table')).toBeInTheDocument();
   });
 
-  it('ReportsAnalyticsPage uses disabled WIP export instead of fake export toast', () => {
+  it('ReportsAnalyticsPage is an honest "not yet implemented" stub (no fake export button, no fake data)', () => {
     renderPage(<ReportsAnalyticsPage />);
-    act(() => { vi.advanceTimersByTime(800); });
     expect(screen.getByText('System Reports & Performance Analytics')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Export operations summary WIP/i })).toBeDisabled();
+    expect(screen.getByText(/Not yet implemented in this release/i)).toBeInTheDocument();
+    // No fake export button (the old disabled "Export operations summary WIP" is gone)
+    expect(screen.queryByRole('button', { name: /Export operations summary WIP/i })).not.toBeInTheDocument();
+    // No fake "Generating simulated report bundle" toast
     expect(screen.queryByText(/Generating simulated report bundle/i)).not.toBeInTheDocument();
+    // No mock-data footer
+    expect(screen.queryByText(/Mock analytics \(sandbox\)/i)).not.toBeInTheDocument();
   });
 
   it('HRDashboard renders workforce analytics components', () => {
