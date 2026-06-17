@@ -5,10 +5,10 @@ import { Calendar, Plus } from 'lucide-react';
 
 export const LeaveManagementPage: React.FC = () => {
   const mockRequests: LeaveRequest[] = [
-    { id: 'LR-001', employeeName: 'James Wilson', type: 'ANNUAL', startDate: '2026-05-25', endDate: '2026-06-05', days: 10, status: 'PENDING' },
-    { id: 'LR-002', employeeName: 'Lisa Cuddy', type: 'EMERGENCY', startDate: '2026-05-21', endDate: '2026-05-23', days: 2, status: 'PENDING' },
-    { id: 'LR-003', employeeName: 'Robert Chase', type: 'SICK', startDate: '2026-05-18', endDate: '2026-05-20', days: 3, status: 'APPROVED' },
-    { id: 'LR-004', employeeName: 'Allison Cameron', type: 'ANNUAL', startDate: '2026-06-10', endDate: '2026-06-15', days: 5, status: 'PENDING' },
+    { id: 'LR-001', employeeName: 'Employee 004', type: 'ANNUAL', startDate: '2026-05-25', endDate: '2026-06-05', days: 10, status: 'PENDING' },
+    { id: 'LR-002', employeeName: 'Employee 005', type: 'EMERGENCY', startDate: '2026-05-21', endDate: '2026-05-23', days: 2, status: 'PENDING' },
+    { id: 'LR-003', employeeName: 'Employee 007', type: 'SICK', startDate: '2026-05-18', endDate: '2026-05-20', days: 3, status: 'APPROVED' },
+    { id: 'LR-004', employeeName: 'Employee 008', type: 'ANNUAL', startDate: '2026-06-10', endDate: '2026-06-15', days: 5, status: 'PENDING' },
   ];
 
   return (

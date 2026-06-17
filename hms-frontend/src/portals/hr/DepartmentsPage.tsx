@@ -4,12 +4,12 @@ import HRScopeFilter from './components/HRScopeFilter';
 
 export const DepartmentsPage: React.FC = () => {
   const mockDepartments = [
-    { id: '1', name: 'Clinical Medicine', head: 'Dr. Gregory House', staffCount: 42, branch: 'St. Jude Metro' },
-    { id: '2', name: 'Nursing & Patient Care', head: 'Nurse Judy Hopps', staffCount: 120, branch: 'St. Jude Metro' },
-    { id: '3', name: 'Administration', head: 'Lisa Cuddy', staffCount: 15, branch: 'St. Jude Metro' },
-    { id: '4', name: 'Legal & Compliance', head: 'Charles McGill', staffCount: 4, branch: 'St. Jude North' },
-    { id: '5', name: 'Pharmacy', head: 'Ryan Ong', staffCount: 8, branch: 'St. Jude Metro' },
-    { id: '6', name: 'Radiology', head: 'Ana Cruz', staffCount: 12, branch: 'St. Jude North' },
+    { id: '1', name: 'Clinical Medicine', head: 'Employee 001', staffCount: 42, branch: 'St. Jude Metro' },
+    { id: '2', name: 'Nursing & Patient Care', head: 'Employee 002', staffCount: 120, branch: 'St. Jude Metro' },
+    { id: '3', name: 'Administration', head: 'Employee 005', staffCount: 15, branch: 'St. Jude Metro' },
+    { id: '4', name: 'Legal & Compliance', head: 'Employee 003', staffCount: 4, branch: 'St. Jude North' },
+    { id: '5', name: 'Pharmacy', head: 'Employee 009', staffCount: 8, branch: 'St. Jude Metro' },
+    { id: '6', name: 'Radiology', head: 'Employee 010', staffCount: 12, branch: 'St. Jude North' },
   ];
 
   return (

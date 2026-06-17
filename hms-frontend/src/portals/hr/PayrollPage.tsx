@@ -65,7 +65,7 @@ export const PayrollPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-50">
               <tr className="hover:bg-slate-50/50 transition-colors">
-                <td className="py-3 pl-2 font-bold text-slate-800">Dr. Gregory House</td>
+                <td className="py-3 pl-2 font-bold text-slate-800">Employee 001</td>
                 <td className="py-3 text-slate-600">₱140,000.00</td>
                 <td className="py-3 text-rose-500">-₱15,000.00</td>
                 <td className="py-3 font-black text-slate-900">₱125,000.00</td>
@@ -74,7 +74,7 @@ export const PayrollPage: React.FC = () => {
                 </td>
               </tr>
               <tr className="hover:bg-slate-50/50 transition-colors">
-                <td className="py-3 pl-2 font-bold text-slate-800">Nurse Judy Hopps</td>
+                <td className="py-3 pl-2 font-bold text-slate-800">Employee 002</td>
                 <td className="py-3 text-slate-600">₱55,000.00</td>
                 <td className="py-3 text-rose-500">-₱7,000.00</td>
                 <td className="py-3 font-black text-slate-900">₱48,000.00</td>

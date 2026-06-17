@@ -24,26 +24,31 @@ import {
 } from '../../components/hms-dashboard';
 
 const mockEmployees: Employee[] = [
-  { id: '1', name: 'Dr. Gregory House', email: 'g.house@stjude.org', role: 'Chief Diagnostician', department: 'Clinical', branch: 'St. Jude Metro', status: 'ACTIVE', joinedAt: '2024-01-15' },
-  { id: '2', name: 'Nurse Judy Hopps', email: 'j.hopps@stjude.org', role: 'Head Nurse', department: 'Nursing', branch: 'St. Jude Metro', status: 'ACTIVE', joinedAt: '2024-03-22' },
-  { id: '3', name: 'Charles McGill', email: 'c.mcgill@stjude.org', role: 'Legal Counsel', department: 'Admin', branch: 'St. Jude North', status: 'TERMINATED', joinedAt: '2023-11-05' },
-  { id: '4', name: 'James Wilson', email: 'j.wilson@stjude.org', role: 'Oncology Head', department: 'Clinical', branch: 'St. Jude Metro', status: 'ON_LEAVE', joinedAt: '2024-02-10' },
+  { id: '1', name: 'Employee 001', email: 'employee001@sandbox.local', role: 'Chief Diagnostician', department: 'Clinical', branch: 'St. Jude Metro', status: 'ACTIVE', joinedAt: '2024-01-15' },
+  { id: '2', name: 'Employee 002', email: 'employee002@sandbox.local', role: 'Head Nurse', department: 'Nursing', branch: 'St. Jude Metro', status: 'ACTIVE', joinedAt: '2024-03-22' },
+  { id: '3', name: 'Employee 003', email: 'employee003@sandbox.local', role: 'Legal Counsel', department: 'Admin', branch: 'St. Jude North', status: 'TERMINATED', joinedAt: '2023-11-05' },
+  { id: '4', name: 'Employee 004', email: 'employee004@sandbox.local', role: 'Oncology Head', department: 'Clinical', branch: 'St. Jude Metro', status: 'ON_LEAVE', joinedAt: '2024-02-10' },
 ];
 
 const mockLeaveRequests: LeaveRequest[] = [
-  { id: 'LR-001', employeeName: 'James Wilson', type: 'ANNUAL', startDate: '2026-05-25', endDate: '2026-06-05', days: 10, status: 'PENDING' },
-  { id: 'LR-002', employeeName: 'Lisa Cuddy', type: 'EMERGENCY', startDate: '2026-05-21', endDate: '2026-05-23', days: 2, status: 'PENDING' },
+  { id: 'LR-001', employeeName: 'Employee 004', type: 'ANNUAL', startDate: '2026-05-25', endDate: '2026-06-05', days: 10, status: 'PENDING' },
+  { id: 'LR-002', employeeName: 'Employee 005', type: 'EMERGENCY', startDate: '2026-05-21', endDate: '2026-05-23', days: 2, status: 'PENDING' },
 ];
 
 const mockLicenses: License[] = [
-  { id: 'LIC-001', employeeName: 'Dr. Gregory House', type: 'Medical Board License', expiryDate: '2026-06-15', daysRemaining: 25, status: 'EXPIRING' },
-  { id: 'LIC-002', employeeName: 'Nurse Judy Hopps', type: 'Nursing License', expiryDate: '2026-08-30', daysRemaining: 101, status: 'VALID' },
+  { id: 'LIC-001', employeeName: 'Employee 001', type: 'Medical Board License', expiryDate: '2026-06-15', daysRemaining: 25, status: 'EXPIRING' },
+  { id: 'LIC-002', employeeName: 'Employee 002', type: 'Nursing License', expiryDate: '2026-08-30', daysRemaining: 101, status: 'VALID' },
 ];
 
 export const HRDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState<DateRange>(defaultDateRange);
   const [department, setDepartment] = useState('all');
+
+  const expiringLicensesCount = mockLicenses.filter(l => l.status === 'EXPIRING').length;
+  const expiringDescription = expiringLicensesCount > 0
+    ? `${expiringLicensesCount} provider credentials expire within 30 days. Action is required to avoid scheduling blocks.`
+    : 'No provider credentials are currently flagged as expiring. The sandbox roster is illustrative.';
 
   return (
     <HmsDashboardShell widthTier="full"
@@ -66,8 +71,8 @@ export const HRDashboard: React.FC = () => {
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-rose-600 flex-shrink-0" />
             <div>
-              <span className="text-[12px] font-bold text-rose-900 block">LICENSE COMPLIANCE NOTICE: 14 EXPIRING CLINICAL LICENSES</span>
-              <span className="text-[10px] text-rose-700 font-semibold block mt-0.5">Fourteen provider credentials expire within 30 days. Action is required to avoid scheduling blocks.</span>
+              <span className="text-[12px] font-bold text-rose-900 block">LICENSE COMPLIANCE NOTICE: {expiringLicensesCount} EXPIRING CLINICAL LICENSES</span>
+              <span className="text-[10px] text-rose-700 font-semibold block mt-0.5">{expiringDescription}</span>
             </div>
           </div>
           <button

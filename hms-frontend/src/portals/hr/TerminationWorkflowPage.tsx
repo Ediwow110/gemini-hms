@@ -65,7 +65,7 @@ export const TerminationWorkflowPage: React.FC = () => {
         </div>
 
         <div>
-          <TerminationChecklist employeeName="Charles McGill" items={mockChecklist} />
+          <TerminationChecklist employeeName="Employee 003" items={mockChecklist} />
         </div>
       </div>
     </div>

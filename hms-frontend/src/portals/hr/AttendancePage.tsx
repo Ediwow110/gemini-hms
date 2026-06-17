@@ -5,12 +5,12 @@ import { ReportExportButton } from '../../components/analytics';
 
 export const AttendancePage: React.FC = () => {
   const mockRecords: AttendanceRecord[] = [
-    { id: '1', employeeName: 'Dr. Gregory House', checkIn: '08:12', status: 'PRESENT' },
-    { id: '2', employeeName: 'Nurse Judy Hopps', checkIn: '07:45', status: 'PRESENT' },
-    { id: '3', employeeName: 'Eric Foreman', checkIn: '09:05', status: 'LATE' },
-    { id: '4', employeeName: 'James Wilson', checkIn: '--:--', status: 'ON_LEAVE' },
-    { id: '5', employeeName: 'Lisa Cuddy', checkIn: '08:30', status: 'PRESENT' },
-    { id: '6', employeeName: 'Robert Chase', checkIn: '--:--', status: 'ABSENT' },
+    { id: '1', employeeName: 'Employee 001', checkIn: '08:12', status: 'PRESENT' },
+    { id: '2', employeeName: 'Employee 002', checkIn: '07:45', status: 'PRESENT' },
+    { id: '3', employeeName: 'Employee 006', checkIn: '09:05', status: 'LATE' },
+    { id: '4', employeeName: 'Employee 004', checkIn: '--:--', status: 'ON_LEAVE' },
+    { id: '5', employeeName: 'Employee 005', checkIn: '08:30', status: 'PRESENT' },
+    { id: '6', employeeName: 'Employee 007', checkIn: '--:--', status: 'ABSENT' },
   ];
 
   return (
