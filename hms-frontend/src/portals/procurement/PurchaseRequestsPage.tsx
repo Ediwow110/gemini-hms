@@ -7,10 +7,10 @@ import { HmsPageHeader } from '../../components/hms-page';
 
 export const PurchaseRequestsPage: React.FC = () => {
   const mockRequests: PurchaseRequest[] = [
-    { id: 'PR-1001', item: 'CBC Reagents (Bulk)', category: 'Laboratory', requestedBy: 'Dr. House', branch: 'St. Jude Metro', priority: 'URGENT', status: 'PENDING', date: '2026-05-21' },
-    { id: 'PR-1002', item: 'Latex Gloves (Medium)', category: 'Consumables', requestedBy: 'Nurse Hopps', branch: 'St. Jude Metro', priority: 'NORMAL', status: 'PENDING', date: '2026-05-20' },
+    { id: 'PR-1001', item: 'CBC Reagents (Bulk)', category: 'Laboratory', requestedBy: 'Requester 001', branch: 'St. Jude Metro', priority: 'URGENT', status: 'PENDING', date: '2026-05-21' },
+    { id: 'PR-1002', item: 'Latex Gloves (Medium)', category: 'Consumables', requestedBy: 'Requester 002', branch: 'St. Jude Metro', priority: 'NORMAL', status: 'PENDING', date: '2026-05-20' },
     { id: 'PR-1003', item: 'MRI Cooling Helium', category: 'Maintenance', requestedBy: 'Engr. Smith', branch: 'St. Jude North', priority: 'URGENT', status: 'PENDING', date: '2026-05-21' },
-    { id: 'PR-1004', item: 'Surgical Gowns (L)', category: 'Theatre', requestedBy: 'Dr. Chase', branch: 'St. Jude Metro', priority: 'NORMAL', status: 'PENDING', date: '2026-05-19' },
+    { id: 'PR-1004', item: 'Surgical Gowns (L)', category: 'Theatre', requestedBy: 'Requester 003', branch: 'St. Jude Metro', priority: 'NORMAL', status: 'PENDING', date: '2026-05-19' },
     { id: 'PR-1005', item: 'Defibrillator Pads', category: 'Emergency', requestedBy: 'Nurse Wilson', branch: 'St. Jude Metro', priority: 'URGENT', status: 'APPROVED', date: '2026-05-18' },
   ];
 

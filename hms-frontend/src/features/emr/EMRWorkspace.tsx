@@ -107,8 +107,8 @@ export const EMRWorkspace = () => {
             patient: {
               id: "P-101",
               patientNumber: "P-2026-001",
-              firstName: "Eleanor",
-              lastName: "Vance",
+              firstName: "Patient",
+              lastName: "001",
               dob: "1988-11-24",
               allergies: "Penicillin, Strawberries"
             }
@@ -120,8 +120,8 @@ export const EMRWorkspace = () => {
             patient: {
               id: "P-102",
               patientNumber: "P-2026-002",
-              firstName: "Arthur",
-              lastName: "Pendleton",
+              firstName: "Patient",
+              lastName: "002",
               dob: "1965-04-12",
               allergies: "None"
             }

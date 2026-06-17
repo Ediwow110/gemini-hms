@@ -17,8 +17,8 @@ import axios from 'axios';
 const mockPatientDb: Record<string, PatientSafetyInfo> = {
   'P-101': {
     id: 'P-101',
-    firstName: 'Eleanor',
-    lastName: 'Vance',
+    firstName: 'Patient',
+    lastName: '001',
     mrn: 'MRN-2026-0091',
     dob: '1988-11-24',
     gender: 'Female',
@@ -30,8 +30,8 @@ const mockPatientDb: Record<string, PatientSafetyInfo> = {
   },
   'P-102': {
     id: 'P-102',
-    firstName: 'Arthur',
-    lastName: 'Pendleton',
+    firstName: 'Patient',
+    lastName: '002',
     mrn: 'MRN-2026-0042',
     dob: '1965-04-12',
     gender: 'Male',
@@ -43,8 +43,8 @@ const mockPatientDb: Record<string, PatientSafetyInfo> = {
   },
   'P-103': {
     id: 'P-103',
-    firstName: 'Victor',
-    lastName: 'Frankenstein',
+    firstName: 'Patient',
+    lastName: '003',
     mrn: 'MRN-2026-0810',
     dob: '1996-08-18',
     gender: 'Male',
@@ -96,8 +96,8 @@ export const DoctorEMRPage = () => {
         if (!p) {
           p = {
             id: patientId,
-            firstName: patientId === 'patient-1' ? 'Eleanor' : 'Test',
-            lastName: patientId === 'patient-1' ? 'Vance' : 'Patient',
+            firstName: patientId === 'patient-1' ? 'Patient' : 'Test',
+            lastName: patientId === 'patient-1' ? '001' : 'Patient',
             mrn: 'MRN-2026-9999',
             dob: '1990-01-01',
             gender: 'Female',
