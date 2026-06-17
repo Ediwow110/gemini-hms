@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 import { HrModule } from '../src/hr/hr.module';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { NumberingModule } from '../src/numbering/numbering.module';
 import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
@@ -37,6 +38,7 @@ describe('HR Management E2E', () => {
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
         PrismaModule,
+        NumberingModule,
         HrModule,
       ],
     })
