@@ -43,42 +43,9 @@ export const ClinicalOperationsDashboard: React.FC = () => {
         setIsDemoData(false);
         setLastUpdated(new Date());
       } catch (err) {
-        console.warn('Failed to load clinical operations data from backend, falling back to mock data:', err);
-        setData({
-          kpis: [
-            { title: 'Active Patients', value: 48, description: 'Currently in clinic (Demo)', severity: 'info' },
-            { title: 'Pending Triage', value: 3, description: 'Awaiting initial assessment (Demo)', severity: 'success' },
-            { title: 'Waiting for Doctor', value: 12, description: 'Ready for consultation (Demo)', severity: 'critical' },
-            { title: 'Nursing Tasks', value: 15, description: 'Open clinical actions (Demo)', severity: 'info' },
-          ],
-          alerts: [
-            { id: 'alert-1', title: 'Urgent Nursing Task', message: 'Administer IV meds - Patient: Demo Patient A', severity: 'critical' },
-            { id: 'alert-2', title: 'Emergency Patient', message: 'Patient Demo Patient B in Urgent Care queue', severity: 'critical' },
-          ],
-          flowDistribution: [
-            { label: 'Triage', value: 3 },
-            { label: 'Waiting', value: 12 },
-            { label: 'In Consultation', value: 18 },
-            { label: 'Completed', value: 15 },
-          ],
-          workloadDistribution: [
-            { label: 'General Practice', value: 40 },
-            { label: 'Pediatrics', value: 25 },
-            { label: 'Internal Medicine', value: 20 },
-            { label: 'Urgent Care', value: 15 },
-          ],
-          topDepartments: [
-            { id: 'd1', label: 'Emergency', value: 'High', trend: '↑' },
-            { id: 'd2', label: 'Pediatrics', value: 'Medium', trend: '→' },
-            { id: 'd3', label: 'General', value: 'Medium', trend: '↓' },
-          ],
-          pendingQueue: [
-            { id: 'q-1', queueNumber: 'Q-001', patientName: 'Demo Patient A', category: 'URGENT', serviceType: 'Consultation', waitTimeMinutes: 22, status: 'WAITING' },
-            { id: 'q-2', queueNumber: 'Q-002', patientName: 'Demo Patient B', category: 'EMERGENCY', serviceType: 'Triage', waitTimeMinutes: 5, status: 'TRIAGE' },
-          ] as unknown as ClinicalWorkQueueDto[],
-        });
-        setIsDemoData(true);
-        setLastUpdated(new Date());
+        console.warn('Failed to load clinical operations data from backend:', err);
+        setData(null);
+        setError('Unable to load clinical operations data. Please retry.');
       } finally {
         setLoading(false);
       }
