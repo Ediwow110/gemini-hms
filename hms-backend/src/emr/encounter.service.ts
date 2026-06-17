@@ -105,6 +105,7 @@ export class EncounterService {
         id,
         tenantId,
         branchId,
+        archivedAt: null,
       },
       include: {
         patient: {
@@ -139,6 +140,7 @@ export class EncounterService {
         id,
         tenantId,
         branchId,
+        archivedAt: null,
       },
     });
 
@@ -175,8 +177,8 @@ export class EncounterService {
           branchId,
         );
 
-        const updated = await tx.encounter.update({
-          where: { id },
+        const updateResult = await tx.encounter.updateMany({
+          where: { id, tenantId, branchId, archivedAt: null },
           data: {
             status,
             endedAt:
@@ -187,6 +189,18 @@ export class EncounterService {
             updatedBy: userId,
           },
         });
+
+        if (updateResult.count === 0) {
+          throw new NotFoundException('Encounter not found');
+        }
+
+        const updated = await tx.encounter.findFirst({
+          where: { id, tenantId, branchId, archivedAt: null },
+        });
+
+        if (!updated) {
+          throw new NotFoundException('Encounter not found');
+        }
 
         await this.audit.log(
           {
