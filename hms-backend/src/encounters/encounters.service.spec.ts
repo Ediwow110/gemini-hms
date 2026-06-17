@@ -25,6 +25,7 @@ describe('EncountersService', () => {
         findMany: jest.fn(),
         findFirst: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
       $transaction: jest.fn((callback) => callback(prisma)),
     };
@@ -106,7 +107,11 @@ describe('EncountersService', () => {
       expect(result).toEqual(encounters);
       expect(prisma.encounter.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ tenantId, branchId }),
+          where: expect.objectContaining({
+            tenantId,
+            branchId,
+            archivedAt: null,
+          }),
         }),
       );
     });
@@ -124,7 +129,12 @@ describe('EncountersService', () => {
 
       expect(prisma.encounter.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'enc-1', tenantId, branchId },
+          where: {
+            id: 'enc-1',
+            tenantId,
+            branchId,
+            archivedAt: null,
+          },
         }),
       );
     });
@@ -135,6 +145,24 @@ describe('EncountersService', () => {
       await expect(
         service.findOne(tenantId, 'enc-1', branchId),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('excludes archived encounters from operational reads', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.findOne(tenantId, 'enc-1', branchId),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.encounter.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: 'enc-1',
+          tenantId,
+          branchId,
+          archivedAt: null,
+        },
+        include: expect.any(Object),
+      });
     });
   });
 
@@ -152,8 +180,10 @@ describe('EncountersService', () => {
         status: EncounterStatus.FINISHED,
       };
 
-      prisma.encounter.findFirst.mockResolvedValue(existingEncounter);
-      prisma.encounter.update.mockResolvedValue(updatedEncounter);
+      prisma.encounter.findFirst
+        .mockResolvedValueOnce(existingEncounter)
+        .mockResolvedValueOnce(updatedEncounter);
+      prisma.encounter.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.update(
         tenantId,
@@ -168,16 +198,65 @@ describe('EncountersService', () => {
       expect(result.status).toBe(EncounterStatus.FINISHED);
       expect(prisma.encounter.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: encounterId, tenantId, branchId },
+          where: {
+            id: encounterId,
+            tenantId,
+            branchId,
+            archivedAt: null,
+          },
         }),
       );
-      expect(prisma.encounter.update).toHaveBeenCalledWith(
+      expect(prisma.encounter.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
+          where: {
+            id: encounterId,
+            tenantId,
+            branchId,
+            archivedAt: null,
+          },
           data: expect.objectContaining({
             endedAt: expect.any(Date),
           }),
         }),
       );
+    });
+
+    it('rejects update on archived encounter (findOne throws NotFound)', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.update(
+          tenantId,
+          userId,
+          'enc-1',
+          { status: EncounterStatus.FINISHED },
+          branchId,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.encounter.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects update on archived encounter (updateMany count zero fails closed)', async () => {
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: 'enc-1',
+        tenantId,
+        branchId,
+        status: EncounterStatus.IN_PROGRESS,
+      });
+      prisma.encounter.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.update(
+          tenantId,
+          userId,
+          'enc-1',
+          { status: EncounterStatus.FINISHED },
+          branchId,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(audit.log).not.toHaveBeenCalled();
     });
   });
 });

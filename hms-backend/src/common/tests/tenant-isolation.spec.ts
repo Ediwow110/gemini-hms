@@ -705,7 +705,13 @@ describe('Tenant Isolation — EncountersService', () => {
       NotFoundException,
     );
     expect(prisma.encounter.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'enc-b', tenantId: TENANT_A } }),
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'enc-b',
+          tenantId: TENANT_A,
+          archivedAt: null,
+        }),
+      }),
     );
   });
 });
