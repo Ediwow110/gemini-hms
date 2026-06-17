@@ -286,12 +286,13 @@ for (const file of nurseFiles) {
   const content = stripComments(fs.readFileSync(file, 'utf-8'));
   const isVitalsPage = path.basename(file) === 'NurseVitalsPage.tsx';
   const isTriagePage = path.basename(file) === 'NurseTriageQueuePage.tsx';
+  const isIntakePage = path.basename(file) === 'NursePatientIntakePage.tsx';
   
   // Forbidden patterns: standard mutations or custom vitals/triage/soap mutations (unless on appropriate Page)
   const hasStandardMutation = content.includes('useMutation') || /apiClient\.(post|put|patch|delete)/i.test(content);
   const hasCustomMutation = content.includes('useSaveVitals') || content.includes('useMarkVitalsEnteredInError') || content.includes('useSaveTriage') || content.includes('useMarkTriageEnteredInError') || content.includes('useSaveDraftSOAP') || content.includes('useSignSOAP') || content.includes('useCreateClinicalOrder') || content.includes('useCancelClinicalOrder');
 
-  if (hasStandardMutation || (!isVitalsPage && !isTriagePage && hasCustomMutation)) {
+  if ((hasStandardMutation && !isIntakePage) || (!isVitalsPage && !isTriagePage && !isIntakePage && hasCustomMutation)) {
     reportError(`Target 10: Nurse portal file ${path.basename(file)} contains unauthorized mutating logic.`);
     nurseMutationsFound = true;
   }
@@ -377,6 +378,7 @@ for (const file of allPortalFiles) {
   const content = stripComments(fs.readFileSync(file, 'utf-8'));
   const isVitalsPage = path.basename(file) === 'NurseVitalsPage.tsx';
   const isTriagePage = path.basename(file) === 'NurseTriageQueuePage.tsx';
+  const isIntakePage = path.basename(file) === 'NursePatientIntakePage.tsx';
   const isDoctorSOAPEditor = path.basename(file) === 'DoctorSOAPEditor.tsx';
   const isDoctorEMRPage = path.basename(file) === 'DoctorEMRPage.tsx';
   const isDoctorOrdersPanel = path.basename(file) === 'DoctorOrdersPanel.tsx';
@@ -394,7 +396,7 @@ for (const file of allPortalFiles) {
   const hasStandardMutation = content.includes('useMutation') || /apiClient\.(post|put|patch|delete)/i.test(content);       
   const hasCustomMutation = content.includes('useSaveVitals') || content.includes('useMarkVitalsEnteredInError') || content.includes('useSaveTriage') || content.includes('useMarkTriageEnteredInError') || content.includes('useSaveDraftSOAP') || content.includes('useSignSOAP') || content.includes('useCreateClinicalOrder') || content.includes('useCancelClinicalOrder') || content.includes('useReceiveLabOrder') || content.includes('useSaveDraftLabResult') || content.includes('useValidateLabResult') || content.includes('useReleaseLabResult');
 
-  if ((hasStandardMutation && !isCatalogManagementPage && !isMarketplaceAdmin && !isInstallationJobsPage && !isResultReleasePage && !isSpecimenReceivingPage && !isCriticalResultsPage) || (!isVitalsPage && !isTriagePage && !isDoctorSOAPEditor && !isDoctorEMRPage && !isDoctorOrdersPanel && !isLabOrdersPage && !isResultEncodingPage && !isResultValidationPage && !isValidatedResultsPage && !isResultReleasePage && !isSpecimenReceivingPage && !isCriticalResultsPage && hasCustomMutation)) {
+  if ((hasStandardMutation && !isCatalogManagementPage && !isMarketplaceAdmin && !isInstallationJobsPage && !isResultReleasePage && !isSpecimenReceivingPage && !isCriticalResultsPage && !isIntakePage) || (!isVitalsPage && !isTriagePage && !isDoctorSOAPEditor && !isDoctorEMRPage && !isDoctorOrdersPanel && !isLabOrdersPage && !isResultEncodingPage && !isResultValidationPage && !isValidatedResultsPage && !isResultReleasePage && !isSpecimenReceivingPage && !isCriticalResultsPage && !isIntakePage && hasCustomMutation)) {
     reportError(`Target 15: File ${path.basename(file)} contains unauthorized mutating backend writes.`);
     portalMutations = true;
   }

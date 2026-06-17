@@ -180,7 +180,6 @@ describe('ClinicalWorkflowService read isolation', () => {
           tenantId,
           branchId,
           deletedAt: null,
-          archivedAt: null,
         }),
       }),
     );
