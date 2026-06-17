@@ -324,6 +324,15 @@ export const roleNavigation: NavGroupConfig[] = [
         zone: 'staff',
         isBranchScoped: true,
       },
+      {
+        label: 'Stock Receiving',
+        to: '/inventory/receiving',
+        icon: PackageCheck,
+        permission: PERMISSIONS.INVENTORY_RECEIVE,
+        allowedRoles: ['Super Admin', 'Branch Admin'],
+        zone: 'staff',
+        isBranchScoped: true,
+      },
     ],
   },
   {

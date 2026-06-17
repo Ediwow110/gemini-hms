@@ -34,9 +34,14 @@ Committed in `72bd168`:
 3. **`hms-backend/scripts/remote-deploy-staging.sh`** — Separate 59-line deploy script (all 6 references use `docker-compose.staging.yml`). Zero production risk. Health probe path preserved.
 4. **`docs/infrastructure/staging-provisioning-handoff.md`** — SSH secrets renamed to `STAGING_SSH_*`; 11 secrets now consistent with workflow env references.
 
+### Done (This Session — Inventory Sidebar Discoverability Carryover)
+1. **`hms-frontend/src/config/permissions.ts`** — Added `INVENTORY_RECEIVE` permission constant and mapped it to the `Branch Admin` role default permissions.
+2. **`hms-frontend/src/config/roleNavigation.ts`** — Added the `/inventory/receiving` ("Stock Receiving") entry to the "Inventory & Stock" sidebar group for users with `INVENTORY_RECEIVE` permission.
+3. **`hms-frontend/src/app/__tests__/RoleBasedSidebar.test.tsx`** — Added tests to verify correct sidebar display of "Stock Receiving" depending on role permission mappings (shown for Branch Admin, hidden for Pharmacist).
+
 ### Validation (Current Branch State)
 - Remote CI: 5/5 checks pass (Static Analysis, Backend Tests, Frontend Tests, Docker Build, Vercel Preview)
-- Local: 83 backend suites / 1643 tests passing, 82 frontend files / 463 tests passing, lint 0 errors, tsc clean
+- Local: 84 backend suites / 1660 tests passing, 87 frontend files / 506 tests passing, lint 0 errors, tsc clean
 - Staging: NOT PROVISIONED (external blocker)
 - Repo-side staging readiness: COMPLETE (4 files committed in `72bd168`)
 
