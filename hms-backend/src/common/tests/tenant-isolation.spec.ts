@@ -329,22 +329,24 @@ describe('Tenant Isolation — LabService', () => {
     ).rejects.toThrow(NotFoundException);
     expect(prisma.labResult.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           id: 'result-b',
           order: { tenantId: TENANT_A, branchId: BRANCH_A },
           deletedAt: null,
-        },
+          archivedAt: null,
+        }),
       }),
     );
   });
 
-  it('getPendingWorklist scopes by tenantId', async () => {
+  it('getPendingWorklist scopes by tenantId and excludes archived', async () => {
     prisma.labResult.findMany.mockResolvedValue([]);
     await service.getPendingWorklist(TENANT_A, BRANCH_A);
     expect(prisma.labResult.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           order: { tenantId: TENANT_A, branchId: BRANCH_A },
+          archivedAt: null,
         }),
       }),
     );

@@ -30,7 +30,12 @@ export class LabService {
 
   async findOne(tenantId: string, branchId: string, id: string) {
     const result = await this.prisma.labResult.findFirst({
-      where: { id, order: { tenantId, branchId }, deletedAt: null },
+      where: {
+        id,
+        order: { tenantId, branchId },
+        deletedAt: null,
+        archivedAt: null,
+      },
       include: { order: { include: { patient: true } } },
     });
 
@@ -50,7 +55,12 @@ export class LabService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.labResult.findFirst({
-        where: { id, order: { tenantId, branchId }, deletedAt: null },
+        where: {
+          id,
+          order: { tenantId, branchId },
+          deletedAt: null,
+          archivedAt: null,
+        },
       });
 
       if (!result) {
@@ -72,7 +82,12 @@ export class LabService {
       }
 
       const updateResult = await tx.labResult.updateMany({
-        where: { id, order: { tenantId, branchId }, version: result.version },
+        where: {
+          id,
+          order: { tenantId, branchId },
+          version: result.version,
+          archivedAt: null,
+        },
         data: {
           status: 'ENCODED',
           results: dto.results as any,
@@ -90,7 +105,7 @@ export class LabService {
       }
 
       const updated = await tx.labResult.findFirst({
-        where: { id, order: { tenantId, branchId } },
+        where: { id, order: { tenantId, branchId }, archivedAt: null },
       });
 
       await this.audit.log(
@@ -123,7 +138,12 @@ export class LabService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.labResult.findFirst({
-        where: { id, order: { tenantId, branchId }, deletedAt: null },
+        where: {
+          id,
+          order: { tenantId, branchId },
+          deletedAt: null,
+          archivedAt: null,
+        },
         include: { order: { include: { patient: true } } },
       });
 
@@ -145,7 +165,12 @@ export class LabService {
       }
 
       const updateResult = await tx.labResult.updateMany({
-        where: { id, order: { tenantId, branchId }, version: result.version },
+        where: {
+          id,
+          order: { tenantId, branchId },
+          version: result.version,
+          archivedAt: null,
+        },
         data: {
           status: 'APPROVED',
           approvedById: userId,
@@ -160,7 +185,7 @@ export class LabService {
       }
 
       const updated = await tx.labResult.findFirst({
-        where: { id, order: { tenantId, branchId } },
+        where: { id, order: { tenantId, branchId }, archivedAt: null },
       });
 
       await this.audit.log(
@@ -247,7 +272,7 @@ export class LabService {
       });
 
       const updateResult = await tx.labResult.updateMany({
-        where: { id, order: { tenantId, branchId } },
+        where: { id, order: { tenantId, branchId }, archivedAt: null },
         data: {
           status: 'AMENDED', // Resetting to allow re-encoding/re-approval
           lockedAt: null,
@@ -262,7 +287,7 @@ export class LabService {
       }
 
       const updated = await tx.labResult.findFirst({
-        where: { id, order: { tenantId, branchId } },
+        where: { id, order: { tenantId, branchId }, archivedAt: null },
       });
 
       if (!updated) {
@@ -295,7 +320,12 @@ export class LabService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.labResult.findFirst({
-        where: { id, order: { tenantId, branchId } },
+        where: {
+          id,
+          order: { tenantId, branchId },
+          deletedAt: null,
+          archivedAt: null,
+        },
         include: {
           order: {
             include: {
@@ -321,8 +351,8 @@ export class LabService {
         throw new BadRequestException('Result must be APPROVED before release');
       }
 
-      const released = await tx.labResult.update({
-        where: { id },
+      const updateResult = await tx.labResult.updateMany({
+        where: { id, order: { tenantId, branchId }, archivedAt: null },
         data: {
           status: 'RELEASED',
           lockedAt: new Date(),
@@ -330,6 +360,18 @@ export class LabService {
           releasedById: userId,
         },
       });
+
+      if (updateResult.count === 0) {
+        throw new NotFoundException('Lab result not found');
+      }
+
+      const released = await tx.labResult.findFirst({
+        where: { id, order: { tenantId, branchId }, archivedAt: null },
+      });
+
+      if (!released) {
+        throw new NotFoundException('Lab result not found');
+      }
 
       await tx.labResultSignature.create({
         data: {
@@ -394,6 +436,7 @@ export class LabService {
       where: {
         order: { tenantId, branchId },
         status: { in: ['PENDING_COLLECTION', 'ENCODED', 'APPROVED'] },
+        archivedAt: null,
       },
       include: {
         order: { include: { patient: true } },
@@ -443,6 +486,7 @@ export class LabService {
       where: {
         order: { tenantId, branchId, labSpecimen: null },
         status: 'PENDING_COLLECTION',
+        archivedAt: null,
       },
       include: {
         order: {
@@ -588,6 +632,7 @@ export class LabService {
       where: {
         order: { tenantId, branchId },
         status: 'APPROVED',
+        archivedAt: null,
       },
       include: {
         order: {
@@ -639,6 +684,7 @@ export class LabService {
     const whereClause: any = {
       isCritical: true,
       order: { tenantId, branchId },
+      archivedAt: null,
     };
 
     if (
@@ -706,7 +752,12 @@ export class LabService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.labResult.findFirst({
-        where: { id: resultId, order: { tenantId, branchId }, deletedAt: null },
+        where: {
+          id: resultId,
+          order: { tenantId, branchId },
+          deletedAt: null,
+          archivedAt: null,
+        },
         include: {
           order: {
             include: {
@@ -739,6 +790,7 @@ export class LabService {
           id: resultId,
           order: { tenantId, branchId },
           version: result.version,
+          archivedAt: null,
         },
         data: {
           isCritical: true,
@@ -803,7 +855,12 @@ export class LabService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.labResult.findFirst({
-        where: { id: resultId, order: { tenantId, branchId }, deletedAt: null },
+        where: {
+          id: resultId,
+          order: { tenantId, branchId },
+          deletedAt: null,
+          archivedAt: null,
+        },
       });
 
       if (!result) {
@@ -827,6 +884,7 @@ export class LabService {
           id: resultId,
           order: { tenantId, branchId },
           version: result.version,
+          archivedAt: null,
         },
         data: {
           criticalStatus: 'ACKNOWLEDGED',
@@ -875,7 +933,12 @@ export class LabService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.labResult.findFirst({
-        where: { id: resultId, order: { tenantId, branchId }, deletedAt: null },
+        where: {
+          id: resultId,
+          order: { tenantId, branchId },
+          deletedAt: null,
+          archivedAt: null,
+        },
       });
 
       if (!result) {
@@ -899,6 +962,7 @@ export class LabService {
           id: resultId,
           order: { tenantId, branchId },
           version: result.version,
+          archivedAt: null,
         },
         data: {
           criticalStatus: 'ESCALATED',
@@ -947,7 +1011,12 @@ export class LabService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const result = await tx.labResult.findFirst({
-        where: { id: resultId, order: { tenantId, branchId }, deletedAt: null },
+        where: {
+          id: resultId,
+          order: { tenantId, branchId },
+          deletedAt: null,
+          archivedAt: null,
+        },
       });
 
       if (!result) {
@@ -967,6 +1036,7 @@ export class LabService {
           id: resultId,
           order: { tenantId, branchId },
           version: result.version,
+          archivedAt: null,
         },
         data: {
           criticalStatus: 'RESOLVED',
