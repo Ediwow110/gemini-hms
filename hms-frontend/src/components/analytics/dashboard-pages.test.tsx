@@ -91,11 +91,19 @@ describe('dashboard intelligence pages', () => {
     expect(screen.getByText(/PR → RFQ → PO → Receiving funnel/i)).toBeInTheDocument();
   });
 
-  it('MarketplaceAdminDashboard renders governance metrics', () => {
+  it('MarketplaceAdminDashboard renders governance metrics with honest sandbox disclosure', () => {
     renderPage(<MarketplaceAdminDashboard />);
     expect(screen.getByText('Marketplace Governance Command Center')).toBeInTheDocument();
     expect(screen.getByText('Pending Suppliers')).toBeInTheDocument();
     expect(screen.getByText('Marketplace fraud/SLA insights')).toBeInTheDocument();
+    // Body-level sandbox notice is present
+    expect(screen.getByTestId('marketplace-admin-sandbox-notice')).toBeInTheDocument();
+    expect(screen.getByText(/Marketplace governance metrics, trend charts, and queue drilldown on this page are mock analytics/i)).toBeInTheDocument();
+    // Chart titles are explicitly suffixed with (mock)
+    expect(screen.getByText(/GMV trend \(mock\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Warranty claims trend \(mock\)/i)).toBeInTheDocument();
+    // Honest audit footer
+    expect(screen.getByText(/Mock marketplace analytics \(sandbox\)/i)).toBeInTheDocument();
   });
 
   it('ComplianceDashboard renders governance analytics and drilldown table', () => {
