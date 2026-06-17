@@ -186,10 +186,11 @@ describe('Tenant Isolation — BillingService', () => {
     ).rejects.toThrow(NotFoundException);
     expect(prisma.payment.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           id: 'p-b',
           cashierSession: { tenantId: TENANT_A, branchId: BRANCH_A },
-        },
+          archivedAt: null,
+        }),
       }),
     );
   });
@@ -209,7 +210,10 @@ describe('Tenant Isolation — BillingService', () => {
     await service.getInvoices(TENANT_A, BRANCH_A);
     expect(prisma.invoice.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { order: { tenantId: TENANT_A, branchId: BRANCH_A } },
+        where: expect.objectContaining({
+          order: { tenantId: TENANT_A, branchId: BRANCH_A },
+          archivedAt: null,
+        }),
       }),
     );
   });

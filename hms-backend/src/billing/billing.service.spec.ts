@@ -593,6 +593,7 @@ describe('BillingService Reversals', () => {
           where: {
             id: mockInvoiceId,
             order: { tenantId: mockTenantId, branchId: mockBranchId },
+            archivedAt: null,
           },
         }),
       );
@@ -1021,7 +1022,7 @@ describe('BillingService Reversals', () => {
       expect(prisma.invoice.updateMany).toHaveBeenCalled();
       // First payment.updateMany call is the lock (updatedAt); second is status→VOIDED
       expect(prisma.payment.updateMany).toHaveBeenNthCalledWith(1, {
-        where: { id: mockPaymentId, status: 'POSTED' },
+        where: { id: mockPaymentId, status: 'POSTED', archivedAt: null },
         data: { updatedAt: expect.any(Date) },
       });
       expect(prisma.payment.updateMany).toHaveBeenNthCalledWith(2, {
@@ -1032,6 +1033,7 @@ describe('BillingService Reversals', () => {
             tenantId: mockTenantId,
             branchId: mockBranchId,
           },
+          archivedAt: null,
         },
         data: { status: 'VOIDED' },
       });
@@ -1581,9 +1583,10 @@ describe('BillingService Reversals', () => {
       prisma.payment.create.mockResolvedValue({ id: 'pay-a' });
 
       // First call (lock) succeeds, but we mock balance update call failure
-      prisma.invoice.update.mockRejectedValue(
-        new Error('concurrent-row-lock-failed'),
-      );
+      // (second invoice.updateMany call returns count: 0 to trigger the fail-closed path)
+      prisma.invoice.updateMany
+        .mockResolvedValueOnce({ count: 1 }) // lock succeeds
+        .mockResolvedValueOnce({ count: 0 }); // balance update fails (e.g., archived)
 
       const dto = {
         invoiceId,
@@ -1594,7 +1597,7 @@ describe('BillingService Reversals', () => {
 
       await expect(
         service.postPayment(tenantId, userId, branchId, dto, 'idem-1'),
-      ).rejects.toThrow('Payment request failed before completion');
+      ).rejects.toThrow(ConflictException);
     });
 
     it('scopes invoice and audit on successful partial payment', async () => {
@@ -2762,7 +2765,7 @@ describe('BillingService Reversals', () => {
         expect(prisma.cashierLedgerEntry.create).toHaveBeenCalled();
         expect(ledgerService.postEntry).toHaveBeenCalled();
         // Invoice updated
-        expect(prisma.invoice.update).toHaveBeenCalled();
+        expect(prisma.invoice.updateMany).toHaveBeenCalled();
       });
     });
 
@@ -3229,7 +3232,10 @@ describe('BillingService Reversals', () => {
 
         expect(prisma.payment.findMany).toHaveBeenCalledWith(
           expect.objectContaining({
-            where: { cashierSession: { tenantId, branchId } },
+            where: expect.objectContaining({
+              cashierSession: { tenantId, branchId },
+              archivedAt: null,
+            }),
             take: 10,
             skip: 0,
           }),
@@ -3319,11 +3325,12 @@ describe('BillingService Reversals', () => {
       );
 
       expect(prisma.payment.findFirst).toHaveBeenCalledWith({
-        where: {
+        where: expect.objectContaining({
           id: mockPaymentId,
           tenantId: mockTenantId,
           branchId: mockBranchId,
-        },
+          archivedAt: null,
+        }),
       });
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -3349,11 +3356,12 @@ describe('BillingService Reversals', () => {
       ).rejects.toThrow(NotFoundException);
 
       expect(prisma.payment.findFirst).toHaveBeenCalledWith({
-        where: {
+        where: expect.objectContaining({
           id: mockPaymentId,
           tenantId: mockTenantId,
           branchId: 'other-branch-uuid',
-        },
+          archivedAt: null,
+        }),
       });
     });
 
@@ -3411,6 +3419,186 @@ describe('BillingService Reversals', () => {
         eventKey: 'RECEIPT_EXPORTED',
       });
       expect(audit.log).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('archived-record operational filtering', () => {
+    const mockArchivedPayment = {
+      id: mockPaymentId,
+      tenantId: mockTenantId,
+      branchId: mockBranchId,
+      status: 'POSTED',
+      amount: new Prisma.Decimal(100),
+      archivedAt: new Date('2026-01-01'),
+      cashierSession: { tenantId: mockTenantId, branchId: mockBranchId },
+    };
+
+    it('getInvoices excludes archived invoices (where.archivedAt is null)', async () => {
+      prisma.invoice.findMany = jest.fn().mockResolvedValue([]);
+
+      await service.getInvoices(mockTenantId, mockBranchId);
+
+      expect(prisma.invoice.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('getPaymentHistory excludes archived payments', async () => {
+      prisma.payment.findMany = jest.fn().mockResolvedValue([]);
+      prisma.payment.count = jest.fn().mockResolvedValue(0);
+
+      await service.getPaymentHistory(mockTenantId, mockBranchId);
+
+      expect(prisma.payment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            cashierSession: { tenantId: mockTenantId, branchId: mockBranchId },
+            archivedAt: null,
+          }),
+        }),
+      );
+      expect(prisma.payment.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            cashierSession: { tenantId: mockTenantId, branchId: mockBranchId },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('requestRefund rejects archived payment (findFirst returns null)', async () => {
+      prisma.payment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.requestRefund(mockTenantId, mockUserId, mockBranchId, {
+          paymentId: mockPaymentId,
+          amount: 50,
+          reason: 'valid reason',
+        }),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockPaymentId,
+            cashierSession: {
+              tenantId: mockTenantId,
+              branchId: mockBranchId,
+            },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('requestVoid rejects archived payment (findFirst returns null)', async () => {
+      prisma.payment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.requestVoid(mockTenantId, mockUserId, mockBranchId, {
+          paymentId: mockPaymentId,
+          reason: 'valid reason',
+        }),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockPaymentId,
+            cashierSession: {
+              tenantId: mockTenantId,
+              branchId: mockBranchId,
+            },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('confirmPayment rejects archived payment', async () => {
+      prisma.payment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.confirmPayment(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          mockPaymentId,
+          { gatewayProvider: 'QRPH' } as any,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockPaymentId,
+            cashierSession: {
+              tenantId: mockTenantId,
+              branchId: mockBranchId,
+            },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('failPayment rejects archived payment', async () => {
+      prisma.payment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.failPayment(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          mockPaymentId,
+          { failureReason: 'test' } as any,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockPaymentId,
+            cashierSession: {
+              tenantId: mockTenantId,
+              branchId: mockBranchId,
+            },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('expirePayment rejects archived payment', async () => {
+      prisma.payment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.expirePayment(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          mockPaymentId,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockPaymentId,
+            cashierSession: {
+              tenantId: mockTenantId,
+              branchId: mockBranchId,
+            },
+            archivedAt: null,
+          }),
+        }),
+      );
     });
   });
 });
