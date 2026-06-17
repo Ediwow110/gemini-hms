@@ -4239,4 +4239,72 @@ describe('AdminService', () => {
       expect(prisma.$queryRaw).toHaveBeenCalledTimes(3);
     });
   });
+
+  describe('resetPassword — temp password generation security', () => {
+    const makeUpdateResult = (tokenVersion: number) => ({
+      ...makeUser(),
+      tokenVersion,
+    });
+
+    beforeEach(() => {
+      // First findFirst call returns the original target; subsequent calls
+      // (after the password update) return the updated user with bumped
+      // tokenVersion.
+      let calls = 0;
+      prisma.user.findFirst.mockImplementation(async () => {
+        calls += 1;
+        return calls === 1 ? makeUser() : makeUpdateResult(2);
+      });
+      prisma.user.updateMany.mockResolvedValue({ count: 1 });
+    });
+
+    it('generates a temp password with at least 18 characters', async () => {
+      // The old implementation used 'Temp' + Math.random().toString(36).slice(-8) + '!',
+      // which produces 5-13 chars total (4 prefix + 0-8 random + 1 suffix).
+      // A secure temp password must be at least 18 chars.
+      const result = await service.resetPassword(
+        superAdminActor,
+        'target-id',
+        'valid reason for reset',
+      );
+
+      expect(result.tempPassword.length).toBeGreaterThanOrEqual(18);
+    });
+
+    it('generates a temp password using crypto-secure (base64url) alphabet, not base36', async () => {
+      // The old implementation used base36 (0-9, a-z). A secure implementation
+      // must use at least the base64url alphabet (0-9, a-z, A-Z, -, _) so that
+      // the cryptographic PRNG (e.g., crypto.randomBytes) can be expressed.
+      const result = await service.resetPassword(
+        superAdminActor,
+        'target-id',
+        'valid reason for reset',
+      );
+
+      // base36 lacks uppercase, '-', '_'. The secure password must contain
+      // at least one character outside the base36 alphabet.
+      const base36 = /^[0-9a-z]+$/;
+      const randomPart = result.tempPassword.slice(4, -1);
+      expect(base36.test(randomPart)).toBe(false);
+    });
+
+    it('generates unique temp passwords across many invocations', async () => {
+      // bcrypt at cost 10 is the dominant cost. 50 calls stays under the
+      // 5s jest timeout, while still being many times larger than the
+      // Math.random base36 output space (~36^8 = 2.8e12) of any practical
+      // collision. A 12-byte cryptographic random (16 base64url chars) has
+      // 96 bits of entropy and effectively zero collisions in this sample.
+      const N = 50;
+      const passwords = new Set<string>();
+      for (let i = 0; i < N; i++) {
+        const result = await service.resetPassword(
+          superAdminActor,
+          'target-id',
+          'valid reason for reset',
+        );
+        passwords.add(result.tempPassword);
+      }
+      expect(passwords.size).toBe(N);
+    });
+  });
 });

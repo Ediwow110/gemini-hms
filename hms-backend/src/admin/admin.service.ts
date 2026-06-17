@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -1285,8 +1286,14 @@ export class AdminService {
     const trimmedReason = this.validateReason(reason);
     this.assertActorCanTarget(actor, targetUserId);
 
-    // Generate a temporary password
-    const tempPassword = 'Temp' + Math.random().toString(36).slice(-8) + '!';
+    // Generate a cryptographically secure temporary password.
+    // 12 random bytes (96 bits of entropy) encoded as base64url = 16 chars.
+    // This matches the codebase's other security-sensitive generators
+    // (auth.service.ts uses crypto.randomUUID, mfa.service.ts uses
+    // crypto.randomBytes, auth.controller.ts uses crypto.randomBytes for
+    // CSRF tokens). Math.random is predictable and not suitable here.
+    const tempPassword =
+      'Temp' + crypto.randomBytes(12).toString('base64url') + '!';
     const passwordHash = await bcrypt.hash(tempPassword, 10);
 
     return this.prisma.$transaction(async (tx) => {
