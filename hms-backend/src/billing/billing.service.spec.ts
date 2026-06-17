@@ -3584,6 +3584,7 @@ describe('BillingService Reversals', () => {
           mockUserId,
           mockBranchId,
           mockPaymentId,
+          { reason: 'test' },
         ),
       ).rejects.toThrow(NotFoundException);
 
