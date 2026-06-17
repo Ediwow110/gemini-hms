@@ -1,5 +1,6 @@
 export const PERMISSIONS = {
   PATIENT_VIEW: 'patient.view',
+  PATIENT_CREATE: 'patient.create',
   QUEUE_VIEW: 'queue.view',
   QUEUE_MANAGE: 'queue.manage',
   LAB_RESULT_VIEW: 'lab.result.view',
@@ -12,6 +13,11 @@ export const PERMISSIONS = {
   ADMIN_ROLE_CHANGE: 'admin.role.change',
   REPORT_EXPORT: 'report.export',
   AUDIT_VIEW: 'audit.view',
+  AUDIT_SELF: 'audit.self',
+  AUDIT_EXPORT: 'audit.export',
+  COMPLIANCE_AUDIT_REVIEW: 'compliance.audit.review',
+  IT_SYSTEM_VIEW: 'it.system.view',
+  INTEGRATION_VIEW: 'integration.view',
   HR_MANAGE: 'hr.manage',
   PROCUREMENT_VIEW: 'procurement.view',
   PROCUREMENT_MANAGE: 'procurement.manage',
@@ -20,9 +26,6 @@ export const PERMISSIONS = {
   MARKETPLACE_SUPPLIER: 'marketplace.supplier',
   MARKETPLACE_ADMIN: 'marketplace.admin',
   FIELD_SERVICE_MANAGE: 'field_service.manage',
-  INTEGRATION_VIEW: 'integration.view',
-  AUDIT_SELF: 'audit.self',
-  AUDIT_EXPORT: 'audit.export',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
