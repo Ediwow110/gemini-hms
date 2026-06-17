@@ -178,12 +178,6 @@ export const FieldServiceDashboard: React.FC = () => {
             <OfflineSyncStatusCard />
           </div>
         </div>
-
-        <div className="flex justify-center mt-6">
-          <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-            Demo analytics preview — sample data for client walkthrough
-          </span>
-        </div>
       </div>
       <HmsAuditFooter />
     </HmsDashboardShell>
