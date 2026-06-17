@@ -35,23 +35,6 @@ export const IntegrationDashboard: React.FC = () => {
 
         <IntegrationShellNotice />
 
-      {/* Alert Strip: Integration Link Failures */}
-      <div className="rounded-xl border border-rose-200 bg-rose-50/50 px-4 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-rose-600 flex-shrink-0" />
-          <div>
-            <span className="text-[12px] font-bold text-rose-900 block">HL7 ADAPTER ALERT: CENTRAL LIS LINK DOWN</span>
-            <span className="text-[10px] text-rose-700 font-semibold block mt-0.5">Connection to central Lab Information System (LIS) timed out. Auto-failover is retrying the sync adapter.</span>
-          </div>
-        </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="text-[11px] font-bold text-rose-700 bg-rose-100 hover:bg-rose-200 border border-rose-300 rounded-md px-2.5 py-1 cursor-pointer transition-colors"
-        >
-          Force HL7 Reconnect
-        </button>
-      </div>
-
       <div className="grid grid-cols-12 gap-6">
         {isLoading ? (
           <div className="col-span-12">
@@ -89,25 +72,34 @@ export const IntegrationDashboard: React.FC = () => {
           </>
         )}
 
-        {/* Primary Work Row: Notifications & Approvals (XL Card) + Cross-Domain Health (L Card) */}
+        {/* Primary Work Row: Notifications & Approvals (XL Card) + Cross-Domain Health (Honest Unavailable Stub) */}
         <div className="col-span-12 xl:col-span-8 space-y-6">
           <NotificationInbox />
           <ApprovalQueuePanel approvals={approvals} isLoading={apprLoading} error={apprError} />
         </div>
 
         <div className="col-span-12 xl:col-span-4 flex flex-col">
-          <div className="bg-slate-900 rounded-[2rem] p-6 text-white space-y-6 shadow-xl flex-grow flex flex-col justify-between">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-slate-700 space-y-3 shadow-sm flex-grow flex flex-col justify-between">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cross-Domain Health (Mock)</p>
-              <p className="text-3xl font-black tracking-tight">98.2%</p>
-              <p className="text-[10px] text-emerald-400 font-bold uppercase mt-1">All bridges operational</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                Cross-Domain Bridge Health
+              </p>
+              <p className="text-xl font-extrabold text-slate-800 tracking-tight" data-testid="integration-health-value">
+                Not available
+              </p>
+              <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                Real bridge health not yet implemented
+              </p>
             </div>
-            <p className="text-xs text-slate-300 font-semibold leading-relaxed">
-              Standard secure routing pathways for FHIR resources and HL7 pipelines are active. Health monitoring detects zero frame loss in sync logs.
+            <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+              Live FHIR / HL7 bridge health monitoring is reserved for a future
+              release. The page-level shell notice describes what is currently
+              live. No health percentage is shown until the real provider
+              integration is wired and verified.
             </p>
             <button
               onClick={() => navigate('/integration/activity-audit')}
-              className="w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-2 cursor-pointer mt-4"
+              className="w-full py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-black text-slate-700 transition-colors flex items-center justify-center gap-2 cursor-pointer mt-4"
             >
               View Audit Trail <ArrowRight className="h-4 w-4" />
             </button>

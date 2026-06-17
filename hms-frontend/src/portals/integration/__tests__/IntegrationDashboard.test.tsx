@@ -23,7 +23,7 @@ const renderWithProviders = (ui: React.ReactElement) =>
     ),
   });
 
-describe('IntegrationDashboard Redesign', () => {
+describe('IntegrationDashboard — honest state (post-truth-gap fix)', () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
@@ -36,19 +36,56 @@ describe('IntegrationDashboard Redesign', () => {
 
     renderWithProviders(<IntegrationDashboard />);
     expect(screen.getByText('Integration Bridges Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Integration Bridges Sandbox')).toBeInTheDocument();
+    expect(screen.getByText(/Integration Bridges\s+[—-]\s+Mixed Availability/i)).toBeInTheDocument();
   });
 
-  it('renders dashboard with real data and HMS shell', () => {
+  it('does NOT render the hardcoded fake HL7 LIS alert banner', () => {
+    vi.mocked(useIntegrationNotifications).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationNotifications>);
+    vi.mocked(useIntegrationApprovals).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationApprovals>);
+    vi.mocked(useIntegrationActivityAudit).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationActivityAudit>);
+    vi.mocked(useIntegrationReconciliation).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationReconciliation>);
+
+    renderWithProviders(<IntegrationDashboard />);
+    expect(screen.queryByText(/HL7 ADAPTER ALERT/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/CENTRAL LIS LINK DOWN/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Force HL7 Reconnect/i })).not.toBeInTheDocument();
+  });
+
+  it('does NOT render the hardcoded fake "98.2%" health metric', () => {
+    vi.mocked(useIntegrationNotifications).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationNotifications>);
+    vi.mocked(useIntegrationApprovals).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationApprovals>);
+    vi.mocked(useIntegrationActivityAudit).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationActivityAudit>);
+    vi.mocked(useIntegrationReconciliation).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationReconciliation>);
+
+    renderWithProviders(<IntegrationDashboard />);
+    expect(screen.queryByText('98.2%')).not.toBeInTheDocument();
+    expect(screen.queryByText(/All bridges operational/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Cross-Domain Health \(Mock\)/i)).not.toBeInTheDocument();
+  });
+
+  it('renders an honest "Not available" stub for the Cross-Domain Bridge Health card', () => {
+    vi.mocked(useIntegrationNotifications).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationNotifications>);
+    vi.mocked(useIntegrationApprovals).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationApprovals>);
+    vi.mocked(useIntegrationActivityAudit).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationActivityAudit>);
+    vi.mocked(useIntegrationReconciliation).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationReconciliation>);
+
+    renderWithProviders(<IntegrationDashboard />);
+    const health = screen.getByTestId('integration-health-value');
+    expect(health.textContent).toMatch(/Not available/i);
+    expect(health.textContent).not.toMatch(/98\.2/);
+  });
+
+  it('preserves live sections: Notifications, Approvals, Quick Actions, View Audit Trail', () => {
     vi.mocked(useIntegrationNotifications).mockReturnValue({ data: [{ id: 'n1', isMock: false }], isLoading: false } as unknown as ReturnType<typeof useIntegrationNotifications>);
     vi.mocked(useIntegrationApprovals).mockReturnValue({ data: [{ id: 'a1', isMock: false, recordType: 'PATIENT_MERGE', riskLevel: 'MEDIUM', status: 'PENDING', sourceDomain: 'Clinical', requester: 'Dr. Smith' }], isLoading: false } as unknown as ReturnType<typeof useIntegrationApprovals>);
-    vi.mocked(useIntegrationActivityAudit).mockReturnValue({ data: [{ id: 'ad1', isMock: false, eventType: 'ORDER_UPDATED', risk: 'MEDIUM', actor: 'Admin', role: 'Super Admin', recordId: 'ord-1', tenantBranch: 'Tenant A / Branch 1', timestamp: new Date().toISOString() }], isLoading: false } as unknown as ReturnType<typeof useIntegrationActivityAudit>);
-    vi.mocked(useIntegrationReconciliation).mockReturnValue({ data: [{ id: 'r1', isMock: false, status: 'MATCHED', confidence: 0.95, sourceDomain: 'Lab', targetDomain: 'EHR', sourceRecordId: 'lab-1', targetRecordId: 'ehr-1', matchedAt: new Date().toISOString(), matchedBy: 'System' }], isLoading: false } as unknown as ReturnType<typeof useIntegrationReconciliation>);
+    vi.mocked(useIntegrationActivityAudit).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationActivityAudit>);
+    vi.mocked(useIntegrationReconciliation).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationReconciliation>);
 
     renderWithProviders(<IntegrationDashboard />);
     expect(screen.getByText('Integration Bridges Command Center')).toBeInTheDocument();
     expect(screen.getByText('Quick Actions')).toBeInTheDocument();
     expect(screen.getByText('Notifications')).toBeInTheDocument();
     expect(screen.getByText('Approvals')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /View Audit Trail/i })).toBeInTheDocument();
   });
 });
