@@ -304,7 +304,7 @@ async function main() {
       'patient.view', 'inventory.item.view', 'inventory.stock.dispense', 'pharmacy.stockmovement.view', 'queue.view'
     ],
     'Nurse': [
-      'patient.view', 'patient.update', 'encounter.view', 'encounter.update',
+      'patient.view', 'patient.create', 'patient.update', 'encounter.view', 'encounter.update',
       'inventory.item.view', 'queue.view', 'procurement.request.create',
       'nurse.task.view', 'nurse.task.update'
     ],
