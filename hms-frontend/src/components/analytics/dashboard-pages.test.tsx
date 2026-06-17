@@ -1,6 +1,6 @@
 import type React from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SuperAdminDashboard } from '../../portals/admin/SuperAdminDashboard';
 import { ReportsAnalyticsPage } from '../../portals/admin/ReportsAnalyticsPage';
@@ -51,13 +51,18 @@ describe('dashboard intelligence pages', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.runAllTimers(); vi.useRealTimers(); });
 
-  it('SuperAdminDashboard renders KPIs, charts, insights, and drilldown table', () => {
+  it('SuperAdminDashboard is an honest "not yet implemented" stub (no mock analytics, link to /admin/executive)', () => {
     renderPage(<SuperAdminDashboard />);
-    act(() => { vi.advanceTimersByTime(800); });
     expect(screen.getByText('Platform Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Total Tenants')).toBeInTheDocument();
-    expect(screen.getByText('Risk and operations insights')).toBeInTheDocument();
-    expect(screen.getByText('Tenant health drilldown table')).toBeInTheDocument();
+    expect(screen.getByText(/Not yet implemented in this release/i)).toBeInTheDocument();
+    // No mock analytics exposed
+    expect(screen.queryByText('Total Tenants')).not.toBeInTheDocument();
+    expect(screen.queryByText('Risk and operations insights')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tenant health drilldown table')).not.toBeInTheDocument();
+    // No mock footer
+    expect(screen.queryByText(/Mock analytics \(sandbox\)/i)).not.toBeInTheDocument();
+    // Honest pointer to the live page
+    expect(screen.getByText(/Open Live Admin Executive/i)).toBeInTheDocument();
   });
 
   it('ReportsAnalyticsPage is an honest "not yet implemented" stub (no fake export button, no fake data)', () => {
