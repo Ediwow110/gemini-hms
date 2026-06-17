@@ -51,6 +51,31 @@ Committed in `72bd168`:
 - `e455acfa` — `fix(settings+notifications): add body-level sandbox notice + audit footer to 7-page family`
 - `bcb6548e` — `fix(hr-portal+doctor-timeline): replace pop-culture employee/provider placeholders with neutral sandbox identifiers` (11 files, +60/-50). 9 HR portal files + 2 doctor portal files. HRDashboard alert count derived from data. Sandbox notices added where missing.
 
+### Done (This Session — Pop-Culture Name Cleanup Extension Lane, Commit `6a598704`)
+**Trigger:** bcb6548e (3 commits prior) replaced pop-culture names in 9 HR + 2 doctor portal files, but missed 4 files that still contained the same House M.D. + Hill House + Frankenstein characters.
+
+**Fix:** Replaced pop-culture names in 4 honestly-stubbed sandbox pages:
+- `hms-frontend/src/portals/doctor/DoctorEMRPage.tsx` — `mockPatientDb` Eleanor Vance / Arthur Pendleton / Victor Frankenstein → `Patient 001/002/003`; in-component fallback derivation also updated.
+- `hms-frontend/src/features/emr/EMRWorkspace.tsx` — fallbackQueue catch-block entries → `Patient 001/002`.
+- `hms-frontend/src/portals/procurement/PurchaseRequestsPage.tsx` — `Dr. House / Nurse Hopps / Dr. Chase` → `Requester 001/002/003` (generic placeholders like `Engr. Smith`, `Nurse Wilson` preserved).
+- `hms-frontend/src/portals/patient/PatientMessagesPage.tsx` — `Dr. House` (sender + preview) → `Provider 003`.
+
+**New regression tests** (mirror `NurseSpecimenCollectionPage.test.tsx:117` pattern):
+- `hms-frontend/src/portals/doctor/__tests__/DoctorEMRPage.test.tsx` (2 tests)
+- `hms-frontend/src/portals/procurement/__tests__/PurchaseRequestsPage.test.tsx` (2 tests)
+- `hms-frontend/src/portals/patient/__tests__/PatientMessagesPage.test.tsx` (2 tests)
+
+**Validation (this session):**
+- `cd hms-frontend && npx tsc --noEmit` → 0 errors
+- `cd hms-backend && npx tsc --noEmit` → 0 errors
+- `cd hms-frontend && npm run lint` → 0 errors, 2 pre-existing warnings
+- `cd hms-frontend && npm test` → 101 files / 586 tests pass (was 98/580, +3 files / +6 tests)
+- `cd hms-frontend && npx vitest run [3 new test files]` → 6/6 pass
+- `grep` for pop-culture names in non-test files → 0 matches
+- `git diff --check` → no whitespace errors
+
+**Out of scope:** backend, no live data wiring, no admin honest-stub expansion, no changes to generic placeholder names in other files (SessionsPage, ReleasedResultDetailPage, MarketplaceInstallationTrackingPage).
+
 ### Done (This Session — Pre-Existing tsc Error Fix Lane, Commit `d36d67e6`)
 **Trigger:** bcb6548e claimed "tsc clean" but `cd hms-backend && npx tsc --noEmit` reported 1 pre-existing error: `src/billing/billing.service.spec.ts(3582,17): error TS2554: Expected 5 arguments, but got 4.` The error was introduced in `21916ccf` (2026-06-17, prior session) when `BillingService.expirePayment` was extended to take a 5th `dto: ExpirePaymentDto` argument; that lane updated production code but missed this one test call.
 
@@ -76,10 +101,11 @@ Committed in `72bd168`:
 
 ### Validation (Current Branch State)
 - Remote CI: 5/5 checks pass (Static Analysis, Backend Tests, Frontend Tests, Docker Build, Vercel Preview)
-- Local: 84 backend suites / 1695 tests passing, 98 frontend files / 580 tests passing, lint 0 errors, **backend tsc --noEmit 0 errors** (post-`d36d67e6`), frontend tsc clean
+- Local: 84 backend suites / 1695 tests passing, **101 frontend files / 586 tests passing** (post-`6a598704`; was 98/580, +3 test files / +6 tests), lint 0 errors, **backend tsc --noEmit 0 errors** (post-`d36d67e6`), frontend tsc clean
 - Staging: NOT PROVISIONED (external blocker)
 - Repo-side staging readiness: COMPLETE (4 files committed in `72bd168`)
 - bcb6548e claim audit: 9/10 confirmed, 1 (`tsc clean`) corrected by `d36d67e6`
+- Pop-culture name cleanup: 9 HR + 2 doctor (in bcb6548e) + 4 honestly-stubbed (in `6a598704`) = **15 frontend files now pop-culture-free**; 0 pop-culture name hits in non-test frontend source
 - Backend tsc was previously false-claimed clean in bcb6548e; now genuinely clean (verified this session)
 
 ### Carryover Risks
@@ -129,7 +155,8 @@ Committed in `72bd168`:
 5. **(Admin lane queue — mostly closed.)** 4 admin pages (Tenants, Security, Reports, Settings) honest-stubbed in `b5df7498`. SuperAdminDashboard honest-stubbed in `0eebbe68`. UsersPage, RolesPermissionsPage, BranchesPage, AuditLogsPage all live-wired. Remaining admin surfaces: AdminCreateUserForm, AdminBranchForm, AdminTenantNetworkPage, AdminSettingsPage (mutation forms still on hardcoded data).
 
 ## Critical Context
-- **43 prior commits + 10 honest-UX mega-lane commits + 1 this session = 54 commits on `remediation/production-readiness-lane-2`. Local repo at parity with `origin/main`.
+- **43 prior commits + 10 honest-UX mega-lane commits + 2 this session = 55 commits on `remediation/production-readiness-lane-2`. Local repo at parity with `origin/main`.
+- **`6a598704` (this session):** Pop-culture name cleanup extended to 4 remaining honestly-stubbed files: `DoctorEMRPage.tsx`, `EMRWorkspace.tsx`, `PurchaseRequestsPage.tsx`, `PatientMessagesPage.tsx`. 3 new regression tests added. The bcb6548e lane intent is now fully executed.
 - **`d36d67e6` (this session):** Backend `tsc --noEmit` is now genuinely clean. The 1 pre-existing error from `21916ccf` is fixed. Future commits can claim "tsc clean" without caveat.
 - **`bcb6548e` (prior session, end of mega-lane):** 9 HR + 2 doctor portal files. Sandbox identifiers (`Employee 001..010`, `Provider 001..003`) replace TV/movie character names. HRDashboard alert count derived from data. DoctorClinicalTimeline sandbox notice added.
 - **`0eebbe68` (mega-lane):** SuperAdminDashboard honest stub; AdminShellNotice truthful (no more "all admin data is mock-generated").
@@ -144,6 +171,15 @@ Committed in `72bd168`:
 - **Retention**: 6-class (FINANCIAL 10y, CLINICAL 10y, ADMIN 3y, SECURITY 5y, EXPORT 1y, TRANSIENT 90d)
 
 ## Relevant Files
+### This Session (Pop-Culture Name Cleanup Extension — Commit `6a598704`)
+- `hms-frontend/src/portals/doctor/DoctorEMRPage.tsx` — 3 patients: Eleanor Vance / Arthur Pendleton / Victor Frankenstein → Patient 001/002/003
+- `hms-frontend/src/features/emr/EMRWorkspace.tsx` — fallbackQueue: Eleanor Vance / Arthur Pendleton → Patient 001/002
+- `hms-frontend/src/portals/procurement/PurchaseRequestsPage.tsx` — Dr. House / Nurse Hopps / Dr. Chase → Requester 001/002/003
+- `hms-frontend/src/portals/patient/PatientMessagesPage.tsx` — Dr. House (sender + preview) → Provider 003
+- `hms-frontend/src/portals/doctor/__tests__/DoctorEMRPage.test.tsx` — NEW regression test (2 tests)
+- `hms-frontend/src/portals/procurement/__tests__/PurchaseRequestsPage.test.tsx` — NEW regression test (2 tests)
+- `hms-frontend/src/portals/patient/__tests__/PatientMessagesPage.test.tsx` — NEW regression test (2 tests)
+
 ### This Session (Pre-Existing tsc Error Fix — Commit `d36d67e6`)
 - `hms-backend/src/billing/billing.service.spec.ts` — 1-line fix: added `{ reason: 'test' }` as 5th arg to `expirePayment` call in `expirePayment rejects archived payment` test. Production code untouched.
 
