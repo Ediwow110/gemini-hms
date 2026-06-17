@@ -99,6 +99,7 @@ describe('ClinicalWorkflowService read isolation', () => {
         tenantId,
         order: { patientId, branchId },
         status: { notIn: ['COMPLETED', 'RELEASED'] },
+        archivedAt: null,
       },
     });
   });
@@ -131,6 +132,7 @@ describe('ClinicalWorkflowService read isolation', () => {
         tenantId,
         order: { patientId },
         status: { notIn: ['COMPLETED', 'RELEASED'] },
+        archivedAt: null,
       },
     });
   });
@@ -173,12 +175,13 @@ describe('ClinicalWorkflowService read isolation', () => {
 
     expect(prisma.order.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           patientId,
           tenantId,
           branchId,
           deletedAt: null,
-        },
+          archivedAt: null,
+        }),
       }),
     );
   });
@@ -190,11 +193,12 @@ describe('ClinicalWorkflowService read isolation', () => {
 
     expect(prisma.labResult.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           tenantId,
           order: { patientId, branchId },
           deletedAt: null,
-        },
+          archivedAt: null,
+        }),
       }),
     );
   });
@@ -223,11 +227,12 @@ describe('ClinicalWorkflowService read isolation', () => {
 
     expect(prisma.invoice.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           tenantId,
           order: { patientId, branchId },
           deletedAt: null,
-        },
+          archivedAt: null,
+        }),
       }),
     );
   });

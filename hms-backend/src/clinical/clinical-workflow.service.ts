@@ -141,6 +141,7 @@ export class ClinicalWorkflowService {
               ? { order: { patientId, branchId } }
               : { order: { patientId } }),
             status: { notIn: ['COMPLETED', 'RELEASED'] },
+            archivedAt: null,
           },
         }),
       ]);
@@ -690,6 +691,7 @@ export class ClinicalWorkflowService {
       tenantId,
       order: branchId ? { patientId, branchId } : { patientId },
       deletedAt: null,
+      archivedAt: null,
     };
 
     // If patient or cashier, only see released results
@@ -762,6 +764,7 @@ export class ClinicalWorkflowService {
         tenantId,
         order: branchId ? { patientId, branchId } : { patientId },
         deletedAt: null,
+        archivedAt: null,
       },
       include: { order: true },
       orderBy: { createdAt: 'desc' },
@@ -807,6 +810,7 @@ export class ClinicalWorkflowService {
         tenantId,
         order: { branchId },
         status: { notIn: ['COMPLETED', 'RELEASED'] },
+        archivedAt: null,
       },
     });
 
@@ -819,6 +823,7 @@ export class ClinicalWorkflowService {
         branchId,
         status: 'FINISHED',
         encounteredAt: { gte: today },
+        archivedAt: null,
       },
     });
 
@@ -2281,8 +2286,8 @@ export class ClinicalWorkflowService {
       throw new ForbiddenException('access_denied: missing_branch_context');
     }
 
-    const labResult = await this.prisma.labResult.findUnique({
-      where: { orderId },
+    const labResult = await this.prisma.labResult.findFirst({
+      where: { orderId, archivedAt: null },
       include: {
         order: {
           include: {
@@ -2529,8 +2534,8 @@ export class ClinicalWorkflowService {
       throw new ForbiddenException('access_denied: missing_branch_context');
     }
 
-    const encounter = await this.prisma.encounter.findUnique({
-      where: { id: encounterId },
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, archivedAt: null },
     });
 
     if (!encounter) {

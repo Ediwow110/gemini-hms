@@ -108,6 +108,7 @@ export class PatientPortalService {
           patientId,
         },
         status: 'RELEASED',
+        archivedAt: null,
       },
       select: {
         id: true,
@@ -127,6 +128,7 @@ export class PatientPortalService {
           tenantId,
           patientId,
         },
+        archivedAt: null,
       },
       select: {
         id: true,
@@ -194,6 +196,7 @@ export class PatientPortalService {
         id: resultId,
         order: { tenantId, patientId },
         status: 'RELEASED',
+        archivedAt: null,
       },
       include: {
         order: {
@@ -244,6 +247,7 @@ export class PatientPortalService {
       where: {
         id: invoiceId,
         order: { tenantId, patientId },
+        archivedAt: null,
       },
       include: {
         payments: true,
@@ -343,8 +347,9 @@ export class PatientPortalService {
       where: {
         id: paymentId,
         tenantId,
-        invoice: { order: { patientId } },
+        invoice: { order: { patientId }, archivedAt: null },
         status: 'POSTED',
+        archivedAt: null,
       },
       include: {
         invoice: {

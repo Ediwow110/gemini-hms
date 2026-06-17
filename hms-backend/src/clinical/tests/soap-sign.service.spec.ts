@@ -103,7 +103,7 @@ describe('ClinicalWorkflowService.signSOAP', () => {
   beforeEach(async () => {
     prisma = {
       $transaction: jest.fn(async (cb: any) => cb(prisma)),
-      encounter: { findUnique: jest.fn() },
+      encounter: { findUnique: jest.fn(), findFirst: jest.fn() },
       clinicalNote: {
         findFirst: jest.fn(),
         update: jest.fn(),
@@ -559,7 +559,7 @@ describe('ClinicalWorkflowService.signSOAP', () => {
   // ======================================
   describe('getDraftSOAP Post-Sign State', () => {
     it('should return status SIGNED for locked notes in getDraftSOAP', async () => {
-      prisma.encounter.findUnique.mockResolvedValue(mockEncounter());
+      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
       prisma.clinicalNote.findFirst.mockResolvedValue(
         mockClinicalNote({ lockedAt: new Date(), lockedBy: userId }),
       );
@@ -576,7 +576,7 @@ describe('ClinicalWorkflowService.signSOAP', () => {
     });
 
     it('should return accessLabel Clinical SOAP Signed for signed notes', async () => {
-      prisma.encounter.findUnique.mockResolvedValue(mockEncounter());
+      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
       prisma.clinicalNote.findFirst.mockResolvedValue(
         mockClinicalNote({ lockedAt: new Date(), lockedBy: userId }),
       );
@@ -591,7 +591,7 @@ describe('ClinicalWorkflowService.signSOAP', () => {
     });
 
     it('should return status DRAFT and original accessLabel for unlocked notes', async () => {
-      prisma.encounter.findUnique.mockResolvedValue(mockEncounter());
+      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
       prisma.clinicalNote.findFirst.mockResolvedValue(mockClinicalNote());
 
       const result = await service.getDraftSOAP(

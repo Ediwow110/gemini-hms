@@ -104,6 +104,7 @@ export class EncounterService {
         id,
         tenantId,
         branchId,
+        archivedAt: null,
       },
       include: {
         patient: true,
@@ -144,6 +145,7 @@ export class EncounterService {
           id,
           tenantId,
           branchId,
+          archivedAt: null,
         },
       });
 
