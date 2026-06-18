@@ -63,6 +63,52 @@ export interface HrDepartmentListResponse {
   total?: number;
 }
 
+export type LeaveRequestStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED';
+
+export type LeaveRequestType =
+  | 'ANNUAL'
+  | 'SICK'
+  | 'MATERNITY'
+  | 'EMERGENCY';
+
+export interface HrLeaveRequest {
+  id: string;
+  employeeId: string;
+  tenantId?: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  status: LeaveRequestStatus;
+  reason: string;
+  approvedById?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  employee?: {
+    id: string;
+    employeeNumber: string;
+    firstName: string;
+    lastName: string;
+    branchId: string;
+  } | null;
+}
+
+export interface CreateLeaveRequestPayload {
+  employeeId: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+}
+
+export interface ListLeaveRequestsFilters {
+  status?: LeaveRequestStatus | string;
+  employeeId?: string;
+}
+
 export const hrService = {
   async listEmployees(): Promise<HrEmployee[]> {
     const response = await apiClient.get('/v1/hr/employees');
@@ -97,5 +143,43 @@ export const hrService = {
   async createDepartment(payload: CreateDepartmentPayload): Promise<HrDepartment> {
     const response = await apiClient.post('/v1/hr/departments', payload);
     return response.data as HrDepartment;
+  },
+
+  async listLeaveRequests(
+    filters: ListLeaveRequestsFilters = {},
+  ): Promise<HrLeaveRequest[]> {
+    const response = await apiClient.get('/v1/hr/leave-requests', {
+      params: {
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.employeeId ? { employeeId: filters.employeeId } : {}),
+      },
+    });
+    const body = response.data;
+    if (Array.isArray(body)) return body as HrLeaveRequest[];
+    if (body && Array.isArray((body as { data?: HrLeaveRequest[] }).data)) {
+      return (body as { data: HrLeaveRequest[] }).data;
+    }
+    return [];
+  },
+
+  async createLeaveRequest(
+    payload: CreateLeaveRequestPayload,
+  ): Promise<HrLeaveRequest> {
+    const response = await apiClient.post('/v1/hr/leave-requests', payload);
+    return response.data as HrLeaveRequest;
+  },
+
+  async approveLeaveRequest(id: string): Promise<HrLeaveRequest> {
+    const response = await apiClient.patch(
+      `/v1/hr/leave-requests/${id}/approve`,
+    );
+    return response.data as HrLeaveRequest;
+  },
+
+  async rejectLeaveRequest(id: string): Promise<HrLeaveRequest> {
+    const response = await apiClient.patch(
+      `/v1/hr/leave-requests/${id}/reject`,
+    );
+    return response.data as HrLeaveRequest;
   },
 };
