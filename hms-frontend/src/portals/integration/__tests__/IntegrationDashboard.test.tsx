@@ -88,4 +88,28 @@ describe('IntegrationDashboard — honest state (post-truth-gap fix)', () => {
     expect(screen.getByText('Approvals')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /View Audit Trail/i })).toBeInTheDocument();
   });
+
+  it('shows em-dash + MOCK badge for fetch-failing KPI cards (no fake "0" counts)', () => {
+    // All four fetch hooks return undefined data (simulating 404 from the
+    // /v1/integration/* namespace which is not implemented in the backend).
+    vi.mocked(useIntegrationNotifications).mockReturnValue({ data: undefined, isLoading: false } as unknown as ReturnType<typeof useIntegrationNotifications>);
+    vi.mocked(useIntegrationApprovals).mockReturnValue({ data: undefined, isLoading: false } as unknown as ReturnType<typeof useIntegrationApprovals>);
+    vi.mocked(useIntegrationActivityAudit).mockReturnValue({ data: undefined, isLoading: false } as unknown as ReturnType<typeof useIntegrationActivityAudit>);
+    vi.mocked(useIntegrationReconciliation).mockReturnValue({ data: undefined, isLoading: false } as unknown as ReturnType<typeof useIntegrationReconciliation>);
+
+    renderWithProviders(<IntegrationDashboard />);
+
+    // The four fetch-driven cards must NOT display a fake "0" value.
+    expect(screen.queryByText('0', { selector: 'p.text-xl' })).not.toBeInTheDocument();
+
+    // They must display an honest "—" em-dash marker.
+    const emDashes = screen.getAllByText('—');
+    // 4 originally-honest "—" cards + 4 newly-honest "—" cards = 8 minimum.
+    expect(emDashes.length).toBeGreaterThanOrEqual(8);
+
+    // MOCK badges must be visible on the 4 fetch-failing cards
+    // (in addition to the 4 always-honest cards).
+    const mockBadges = screen.getAllByText('MOCK');
+    expect(mockBadges.length).toBeGreaterThanOrEqual(8);
+  });
 });

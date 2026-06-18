@@ -110,9 +110,23 @@ export const RadiologyCanvas = () => {
       />
 
       {/* Global Read-Only Notice */}
-      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
-        <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0" />
-        <span>This module is currently in read-only mode. Report finalization is not yet available in the live environment.</span>
+      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-start gap-3 text-xs font-medium">
+        <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p>
+            <span className="font-bold">This module is currently in read-only mode.</span>{' '}
+            Report finalization is not yet available in the live environment.
+          </p>
+          <p>
+            <span className="font-bold">Prototype shell — no backend implementation yet.</span>{' '}
+            <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/radiology/orders</code>{' '}
+            and <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/radiology/orders/:id/finalize</code>{' '}
+            are not implemented in the current backend release. This page will return{' '}
+            <span className="font-bold">HTTP 404</span> on load. The worklist will
+            remain empty and report finalization will not persist. No fabricated
+            data is shown in the worklist.
+          </p>
+        </div>
       </div>
 
       {/* Error Notice */}

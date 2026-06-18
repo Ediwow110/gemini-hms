@@ -132,9 +132,24 @@ export const ClaimsDashboard = () => {
       </div>
 
       {/* Global Notice */}
-      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
-        <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0" />
-        <span>This module is currently in read-only mode. Reconciliation updates are not yet available in the live environment.</span>
+      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-start gap-3 text-xs font-medium">
+        <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p>
+            <span className="font-bold">This module is currently in read-only mode.</span>{' '}
+            Reconciliation updates are not yet available in the live environment.
+          </p>
+          <p>
+            <span className="font-bold">Prototype shell — no backend implementation yet.</span>{' '}
+            <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/insurance/partners</code>{' '}
+            and <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/insurance/claims</code>{' '}
+            (list) are not implemented in the current backend release. The HMO
+            insurance partner directory and the claims reconciliation pipeline
+            will return <span className="font-bold">HTTP 404</span> on load.
+            The reconciliation form save action is disabled and will not persist.
+            No fabricated data is shown in the tables.
+          </p>
+        </div>
       </div>
 
       {/* Error Notice */}

@@ -76,4 +76,17 @@ describe('RadiologyCanvas Honesty Tests', () => {
     renderWithAuth(<RadiologyCanvas />);
     expect(screen.getByText(/This module is currently in read-only mode/i)).toBeInTheDocument();
   });
+
+  it('states that /v1/radiology/orders and finalize are not implemented in the backend', async () => {
+    renderWithAuth(<RadiologyCanvas />);
+    expect(screen.getByText(/no backend implementation yet/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/\/v1\/radiology\/orders/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/HTTP 404/i)).toBeInTheDocument();
+  });
+
+  it('does NOT introduce a fabricated "orders loaded" or "save successful" claim', async () => {
+    renderWithAuth(<RadiologyCanvas />);
+    expect(screen.queryByText(/orders loaded successfully/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/save successful/i)).not.toBeInTheDocument();
+  });
 });
