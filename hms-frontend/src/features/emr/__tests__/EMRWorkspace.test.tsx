@@ -144,4 +144,60 @@ describe('EMRWorkspace Honesty Tests', () => {
     // workspace" — a misleading save flow. It must not be rendered.
     expect(screen.queryByRole('button', { name: /cache notes/i })).not.toBeInTheDocument();
   });
+
+  it('does NOT show hardcoded fallback patients when queue API fails', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.get as any).mockImplementation(async (url: string) => {
+      if (url === '/v1/queue/worklist') {
+        throw new Error('Network error');
+      }
+      throw new Error('Unknown endpoint');
+    });
+
+    renderWithAuth(<EMRWorkspace />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('queue-error')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Patient 001/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Patient 002/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/No Patient Selected/i)).toBeInTheDocument();
+  });
+
+  it('clears queue error when queue refetches successfully', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.get as any)
+      .mockImplementationOnce(async (url: string) => {
+        if (url === '/v1/queue/worklist') {
+          throw new Error('Network error');
+        }
+        throw new Error('Unknown endpoint');
+      })
+      .mockImplementation(async (url: string) => {
+        if (url === '/v1/queue/worklist') {
+          return { data: [{
+            id: 'E456',
+            queueNumber: 'C-03',
+            status: 'WAITING',
+            patient: { id: 'P456', patientNumber: 'P002', firstName: 'Jane', lastName: 'Smith', dob: '1985-05-15' }
+          }] };
+        }
+        throw new Error('Unknown endpoint');
+      });
+
+    renderWithAuth(<EMRWorkspace />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('queue-error')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Retry/i));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('queue-error')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Jane Smith/i)).toBeInTheDocument();
+  });
 });

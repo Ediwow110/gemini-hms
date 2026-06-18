@@ -63,6 +63,7 @@ export const EMRWorkspace = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [isSavingVitals, setIsSavingVitals] = useState(false);
   const [vitalsError, setVitalsError] = useState<string | null>(null);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [soapNotes, setSoapNotes] = useState({
     CHIEF_COMPLAINT: "",
@@ -90,49 +91,25 @@ export const EMRWorkspace = () => {
   });
 
   // Pull active queue and patient list
+  const fetchQueue = async () => {
+    try {
+      setQueueError(null);
+      const res = await apiClient.get("/v1/queue/worklist", {
+        params: { serviceType: "CLINICAL" }
+      });
+      setQueue(res.data || []);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        "Unable to load worklist queue. Please refresh or contact support.";
+      setQueueError(message);
+      setQueue([]);
+    }
+  };
+
   useEffect(() => {
-    const fetchQueue = async () => {
-      try {
-        const res = await apiClient.get("/v1/queue/worklist", {
-          params: { serviceType: "CLINICAL" }
-        });
-        setQueue(res.data || []);
-      } catch {
-        // Fallback robust mock list to guarantee operation
-        const fallbackQueue: QueueEntry[] = [
-          {
-            id: "Q-101",
-            queueNumber: "C-01",
-            status: "WAITING",
-            patient: {
-              id: "P-101",
-              patientNumber: "P-2026-001",
-              firstName: "Patient",
-              lastName: "001",
-              dob: "1988-11-24",
-              allergies: "Penicillin, Strawberries"
-            }
-          },
-          {
-            id: "Q-102",
-            queueNumber: "C-02",
-            status: "IN_PROGRESS",
-            patient: {
-              id: "P-102",
-              patientNumber: "P-2026-002",
-              firstName: "Patient",
-              lastName: "002",
-              dob: "1965-04-12",
-              allergies: "None"
-            }
-          }
-        ];
-        setQueue(fallbackQueue);
-        if (fallbackQueue.length > 0) {
-          setSelectedEntry(fallbackQueue[0]);
-        }
-      }
-    };
     void fetchQueue();
   }, []);
 
@@ -230,6 +207,19 @@ export const EMRWorkspace = () => {
           </div>
 
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+            {queueError && (
+              <div role="alert" className="bg-rose-50 border border-rose-200 text-rose-700 p-3.5 rounded-2xl space-y-2.5" data-testid="queue-error">
+                <h3 className="font-bold text-xs uppercase tracking-wider">Unable to load queue</h3>
+                <p className="text-xs leading-relaxed">{queueError}</p>
+                <button
+                  type="button"
+                  onClick={() => void fetchQueue()}
+                  className="bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
             {queue.map(entry => {
               const active = selectedEntry?.id === entry.id;
               return (
