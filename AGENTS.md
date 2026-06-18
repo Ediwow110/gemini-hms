@@ -187,6 +187,34 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
   Tests: `IntegrationShellNotice.test.tsx` (new, 7), `IntegrationDashboard.test.tsx` (+1), `RadiologyCanvas.test.tsx` (+2), `ClaimsDashboard.test.tsx` (new, 5). Full frontend vitest: **104 files / 616 tests pass** (was 102/601, +2 files / +15 tests). Frontend tsc 0 errors, lint 0 errors (2 pre-existing warnings in `PatientDashboard.test.tsx`, not in touched files). git diff --check clean (normalized `RadiologyCanvas.tsx` from CRLF to LF per repo `.gitattributes`).
   Scope strictly additive: 4 surfaces only, no backend changes, no fake data, no portal redesign. The 4 already-fixed lanes (PatientMergeRequests, ApprovalQueuePanel, EMRWorkspace, ClinicalOperationsDashboard) remain intact. Staging still unprovisioned.
 
+### Done (This Session — False Sandbox Notice Disclosure Fix, Commit `7849d09`)
+**Trigger:** The `64ebe70` live employee status-toggle wire lane created a UX risk: a user who reads the false "Sandbox Notice" in `EmployeeWorklist.tsx` is more likely to select `RESIGNED` or `TERMINATED` and deprovision a real account thinking it is harmless. The notice was honest when the page was sandbox but became false after `9d313237` (live list/create) and `64ebe70` (live status PATCH).
+
+**Provenance of the false notice:** It was added in `bcb6548e` (or earlier) when the page was sandbox. The notice was preserved through `5efc6dde` (which had its own false-disclosure issues later fixed by `39fcaa3`) and was NOT removed by `64ebe70` (which only added the status select).
+
+**Backend side effect (unchanged by this lane):** `hr.service.ts:187-198` confirms `RESIGNED`/`TERMINATED` auto-deactivates the linked `user` in same Prisma transaction. This destructive side-effect is **out of scope** for this disclosure-fix lane per the strict scope. A confirmation-prompt lane is a separate, optional follow-up.
+
+**Fix (commit `7849d09`, 1 file / -6 lines, 0 additions):**
+- `hms-frontend/src/portals/hr/components/EmployeeWorklist.tsx` — removed the entire footer block (lines 107-111 in the previous file) that contained the false `Sandbox Notice: Employee records are simulated. Actions in this portal are for UI evaluation and do not affect real staff accounts.` block. No replacement disclosure — the page's other elements (status select with all 5 backend values, refresh button, register-employee button) honestly describe the live surface.
+
+**Strict scope respected:**
+- No edits to `EmployeesPage.tsx`, `HRDashboard.tsx`, `hr.service.ts`, `EmployeesPage.test.tsx`, or any other file
+- No new route, no new test
+- No status-select behavior change
+- No confirmation prompt added
+- No backend touch
+- No git push / PR / deploy
+
+**Validation (this session):**
+- `cd hms-frontend && npx tsc --noEmit` → 0 errors
+- `cd hms-frontend && npm run lint` → 0 errors, 2 pre-existing warnings in `PatientDashboard.test.tsx` (not touched)
+- `cd hms-frontend && npm test` → 111 files / **736 tests pass** (unchanged from `64ebe70`; no behavior change, no test change)
+- `git diff --check` → clean
+- `git status --short` → 1 modified file staged, 10 pre-existing untracked working files (intentional)
+- `git diff --stat` → exactly 1 file / -6 lines (the 5-line notice block + 1 blank line above it)
+- `rg -n "Employee records are simulated|Actions in this portal are for UI evaluation|do not affect real staff accounts" hms-frontend/src` → 0 matches
+- `rg -n "Sandbox Notice" hms-frontend/src/portals/hr/components/EmployeeWorklist.tsx` → 0 matches
+
 ### Done (This Session — Live Employee Status-Toggle Wire Lane, Commit `64ebe70`)
 **Trigger:** The `39fcaa3` HRManagement dead-code removal lane surfaced a residual MEDIUM risk: backend `PATCH /v1/hr/employees/:id/status` existed in `hms-backend/src/hr/hr.controller.ts:95-111` with full implementation (`updateEmployeeStatus` in `hr.service.ts:161-215`, `EMPLOYEE_STATUS_UPDATED` audit, atomic user-deactivation side effect for `RESIGNED`/`TERMINATED`), but had **no live frontend caller** after the orphan was removed. The live `portals/hr/EmployeesPage.tsx` at `/hr/employees` listed employees and supported create only.
 
@@ -281,6 +309,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - (Resolved) bcb6548e "tsc clean" overclaim corrected by `d36d67e6`
 - (Resolved) Pop-culture placeholder names in HR portal + Doctor timeline replaced with neutral sandbox identifiers in `bcb6548e`
 - (Resolved) HRManagement dead-wiring closed in `39fcaa3` — orphaned `HRManagement.tsx` + 7 dead tests removed; equivalent live functionality at `/hr/employees` was already wired via `9d313237`
+- (Resolved) False Sandbox Notice in live `EmployeeWorklist.tsx` closed in `7849d09` — the "Employee records are simulated..." block was removed because the page is now fully live (list, create, status-toggle). A user who reads "sandbox" was more likely to accidentally deprovision a real account via `RESIGNED`/`TERMINATED` thinking it was harmless
 - Tree is clean (only 4 intentional untracked files: 2 stale snapshots, 1 staging checklist, 1 plan doc)
 
 ## Key Decisions
@@ -300,6 +329,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - **AdminExecutiveDashboard carryover** was real and worth finishing — all dependencies existed (`HmsTrendChart`, `getAdminTrends`, `GET /v1/dashboard/admin/trends`)
 - **Delete over revive** for `39fcaa3`: HRManagement was orphaned for 3+ weeks (route removed in `ee0c1775`); reviving it would have duplicated `portals/hr/EmployeesPage.tsx` (live at `/hr/employees` since `9d313237`). Removal is the strictly safer choice — restores code truth without creating two live HR list pages.
 - **Inline select over modal** for `64ebe70`: smallest truthful UI affordance for the status toggle. A modal would have been heavier; the inline `<select>` per row matches the existing dashboard pattern (`EmployeeWorklist` already renders status badges inline). No confirmation prompt for RESIGNED/TERMINATED — adding confirm() would be scope creep beyond "smallest truthful"; the backend's existing auto-deactivate side-effect is the existing production behavior, surfaced via the audit log (`EMPLOYEE_STATUS_UPDATED`) and not introduced by this lane.
+- **Delete-not-replace** for `7849d09`: the false Sandbox Notice was simply removed (no replacement disclosure). The page's other elements (live status select with 5 backend values, live refresh button, live register-employee button) honestly describe the live surface; adding a generic disclosure banner would dilute the truthful design and re-introduce the "every HR page has a sandbox notice" pattern. A future lane may add a targeted confirmation prompt for `RESIGNED`/`TERMINATED` if a real deprovision incident is reported.
 - **Separate staging deploy script over parameterization**: Zero risk to production path. Duplication of 59-line script is acceptable for isolation.
 - **STAGING_SSH_* naming over shared SSH_HOST**: Eliminates GHA fallback risk — if Staging environment is missing SSH secrets, workflow fails immediately instead of silently targeting production.
 - **Same env var names as prod in compose files**: Containers expect `DB_USER`, `DATABASE_URL`, `JWT_SECRET` etc.; staging workflow provides values from `STAGING_*` secrets.
