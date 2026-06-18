@@ -109,6 +109,38 @@ export interface ListLeaveRequestsFilters {
   employeeId?: string;
 }
 
+export type PayslipStatus = 'DRAFT' | 'PAID' | string;
+
+export interface HrPayslipEmployee {
+  id: string;
+  employeeNumber: string;
+  firstName: string;
+  lastName: string;
+  branchId: string;
+}
+
+export interface HrPayslip {
+  id: string;
+  tenantId?: string;
+  branchId: string;
+  employeeId: string;
+  periodStart: string;
+  periodEnd: string;
+  basicSalary: number | string;
+  totalAllowances: number | string;
+  totalDeductions: number | string;
+  netSalary: number | string;
+  status: PayslipStatus;
+  createdAt?: string;
+  employee?: HrPayslipEmployee | null;
+}
+
+export interface ListPayslipsFilters {
+  status?: PayslipStatus;
+  branchId?: string;
+  employeeId?: string;
+}
+
 export const hrService = {
   async listEmployees(): Promise<HrEmployee[]> {
     const response = await apiClient.get('/v1/hr/employees');
@@ -181,5 +213,23 @@ export const hrService = {
       `/v1/hr/leave-requests/${id}/reject`,
     );
     return response.data as HrLeaveRequest;
+  },
+
+  async listPayslips(
+    filters: ListPayslipsFilters = {},
+  ): Promise<HrPayslip[]> {
+    const response = await apiClient.get('/v1/hr/payslips', {
+      params: {
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.branchId ? { branchId: filters.branchId } : {}),
+        ...(filters.employeeId ? { employeeId: filters.employeeId } : {}),
+      },
+    });
+    const body = response.data;
+    if (Array.isArray(body)) return body as HrPayslip[];
+    if (body && Array.isArray((body as { data?: HrPayslip[] }).data)) {
+      return (body as { data: HrPayslip[] }).data;
+    }
+    return [];
   },
 };

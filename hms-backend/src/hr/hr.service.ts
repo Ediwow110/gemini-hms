@@ -10,6 +10,7 @@ import {
   CreateEmployeeDto,
   CreateDepartmentDto,
   CreatePayslipDto,
+  ListPayslipsFiltersDto,
   CreateLeaveRequestDto,
   CreateLicenseRecordDto,
 } from './dto/hr.dto';
@@ -544,6 +545,56 @@ export class HrService {
     });
 
     return payslip;
+  }
+
+  async listPayslips(
+    tenantId: string,
+    user: RequestUser,
+    filters: ListPayslipsFiltersDto = {},
+  ) {
+    const roles = user.roles || [];
+
+    const where: Record<string, unknown> = { tenantId };
+
+    if (this.isBranchScopedHr(roles)) {
+      if (!user.branchId) {
+        throw new BadRequestException('Branch context required');
+      }
+      if (filters.branchId && filters.branchId !== user.branchId) {
+        throw new ForbiddenException(
+          'Branch Admin can only view payslips for their own branch',
+        );
+      }
+      where.branchId = user.branchId;
+    } else if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin')) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+    if (filters.branchId) {
+      where.branchId = filters.branchId;
+    }
+    if (filters.employeeId) {
+      where.employeeId = filters.employeeId;
+    }
+
+    return this.prisma.payslip.findMany({
+      where,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeNumber: true,
+            firstName: true,
+            lastName: true,
+            branchId: true,
+          },
+        },
+      },
+      orderBy: [{ periodEnd: 'desc' }, { createdAt: 'desc' }],
+    });
   }
 
   async getEmployees(tenantId: string, user: RequestUser) {

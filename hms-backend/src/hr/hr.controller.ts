@@ -13,6 +13,7 @@ import {
   CreateEmployeeDto,
   CreateDepartmentDto,
   CreatePayslipDto,
+  ListPayslipsFiltersDto,
   UpdateEmployeeStatusDto,
   CreateLeaveRequestDto,
   CreateLicenseRecordDto,
@@ -204,5 +205,15 @@ export class HrController {
     @Body() dto: CreatePayslipDto,
   ) {
     return this.hrService.generatePayslip(tenantId, userId, dto, user);
+  }
+
+  @Get('payslips')
+  @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff')
+  listPayslips(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser() user: AuthTypes.RequestUser,
+    @Query() filters: ListPayslipsFiltersDto,
+  ) {
+    return this.hrService.listPayslips(tenantId, user, filters);
   }
 }
