@@ -29,6 +29,14 @@
 - **`252fe42` — Branch Management lane:** Backend `branches/` module (controller, service, 15 tests), frontend `BranchesPage.tsx` wired to live API with honest WIP defaults for unsupported fields (director, doctors, nurses, beds, queue, latency). 15/15 backend tests pass.
 - **`e66dd6dc` — AdminExecutiveDashboard carryover:** Patient Volume Trend chart live via `HmsTrendChart` + `getAdminTrends`. Revenue Trend remains `HmsDataUnavailable` (honest). 2/2 frontend tests pass.
 
+
+- **`6557f00c` \u2014 Disclosure-Truth Lane (post-fresh-audit):** Fixed 3 surface-level contract truth gaps from the fresh post-c943c398 read-only audit:
+  1. `IntegrationShellNotice.tsx` removed the false \u201clive-wired to the HMS backend\u201d claim; replaced with \u201cPrototype shell \u2014 no backend implementation yet\u201d + HTTP 404 expected on all 7 drill-down pages + honest description of dashboard card states.
+  2. `IntegrationDashboard.tsx` 4 fetch-failing KPI cards (Notifications, Approvals, Activity, Reconciliation) no longer display fabricated \u201c0\u201d counts; now show \u201c\u2014\u201d + MOCK badge on 404, matching the existing honest-stub pattern of the other 4 cards.
+  3. `RadiologyCanvas.tsx` and `ClaimsDashboard.tsx` banners strengthened to explicitly disclose that `/v1/radiology/orders`, `/v1/insurance/partners`, and `/v1/insurance/claims` are not implemented in the current backend release.
+  Tests: `IntegrationShellNotice.test.tsx` (new, 7), `IntegrationDashboard.test.tsx` (+1), `RadiologyCanvas.test.tsx` (+2), `ClaimsDashboard.test.tsx` (new, 5). Full frontend vitest: **104 files / 616 tests pass** (was 102/601, +2 files / +15 tests). Frontend tsc 0 errors, lint 0 errors (2 pre-existing warnings in `PatientDashboard.test.tsx`, not in touched files). git diff --check clean (normalized `RadiologyCanvas.tsx` from CRLF to LF per repo `.gitattributes`).
+  Scope strictly additive: 4 surfaces only, no backend changes, no fake data, no portal redesign. The 4 already-fixed lanes (PatientMergeRequests, ApprovalQueuePanel, EMRWorkspace, ClinicalOperationsDashboard) remain intact. Staging still unprovisioned.
+
 ### Done (This Session — Proactive Staging Repo-Prep Lane)
 Committed in `72bd168`:
 1. **`.github/workflows/deploy-staging.yml`** — 2-job staging deployment workflow (`docker-build` + `cd-deploy-staging` with `environment: Staging` and 11 `STAGING_*` secrets). No CI step (operator deploys green commits only). SSH secrets prefixed `STAGING_SSH_*` to prevent fallback to repo-level production credentials.
@@ -50,6 +58,14 @@ Committed in `72bd168`:
 - `fa6a64e8` — `fix(patients): add body-level sandbox notice + audit footer to legacy PatientList`
 - `e455acfa` — `fix(settings+notifications): add body-level sandbox notice + audit footer to 7-page family`
 - `bcb6548e` — `fix(hr-portal+doctor-timeline): replace pop-culture employee/provider placeholders with neutral sandbox identifiers` (11 files, +60/-50). 9 HR portal files + 2 doctor portal files. HRDashboard alert count derived from data. Sandbox notices added where missing.
+
+
+- **`6557f00c` \u2014 Disclosure-Truth Lane (post-fresh-audit):** Fixed 3 surface-level contract truth gaps from the fresh post-c943c398 read-only audit:
+  1. `IntegrationShellNotice.tsx` removed the false \u201clive-wired to the HMS backend\u201d claim; replaced with \u201cPrototype shell \u2014 no backend implementation yet\u201d + HTTP 404 expected on all 7 drill-down pages + honest description of dashboard card states.
+  2. `IntegrationDashboard.tsx` 4 fetch-failing KPI cards (Notifications, Approvals, Activity, Reconciliation) no longer display fabricated \u201c0\u201d counts; now show \u201c\u2014\u201d + MOCK badge on 404, matching the existing honest-stub pattern of the other 4 cards.
+  3. `RadiologyCanvas.tsx` and `ClaimsDashboard.tsx` banners strengthened to explicitly disclose that `/v1/radiology/orders`, `/v1/insurance/partners`, and `/v1/insurance/claims` are not implemented in the current backend release.
+  Tests: `IntegrationShellNotice.test.tsx` (new, 7), `IntegrationDashboard.test.tsx` (+1), `RadiologyCanvas.test.tsx` (+2), `ClaimsDashboard.test.tsx` (new, 5). Full frontend vitest: **104 files / 616 tests pass** (was 102/601, +2 files / +15 tests). Frontend tsc 0 errors, lint 0 errors (2 pre-existing warnings in `PatientDashboard.test.tsx`, not in touched files). git diff --check clean (normalized `RadiologyCanvas.tsx` from CRLF to LF per repo `.gitattributes`).
+  Scope strictly additive: 4 surfaces only, no backend changes, no fake data, no portal redesign. The 4 already-fixed lanes (PatientMergeRequests, ApprovalQueuePanel, EMRWorkspace, ClinicalOperationsDashboard) remain intact. Staging still unprovisioned.
 
 ### Done (This Session — EMRWorkspace Silent Fallback Fix + Forced Reality Check, Commit `1c06c27`)
 
@@ -104,6 +120,14 @@ The remaining items at end of prior session:
 
 Rejected at the time (still rejected): IntegrationShellNotice text correction as a standalone lane.
 
+
+- **`6557f00c` \u2014 Disclosure-Truth Lane (post-fresh-audit):** Fixed 3 surface-level contract truth gaps from the fresh post-c943c398 read-only audit:
+  1. `IntegrationShellNotice.tsx` removed the false \u201clive-wired to the HMS backend\u201d claim; replaced with \u201cPrototype shell \u2014 no backend implementation yet\u201d + HTTP 404 expected on all 7 drill-down pages + honest description of dashboard card states.
+  2. `IntegrationDashboard.tsx` 4 fetch-failing KPI cards (Notifications, Approvals, Activity, Reconciliation) no longer display fabricated \u201c0\u201d counts; now show \u201c\u2014\u201d + MOCK badge on 404, matching the existing honest-stub pattern of the other 4 cards.
+  3. `RadiologyCanvas.tsx` and `ClaimsDashboard.tsx` banners strengthened to explicitly disclose that `/v1/radiology/orders`, `/v1/insurance/partners`, and `/v1/insurance/claims` are not implemented in the current backend release.
+  Tests: `IntegrationShellNotice.test.tsx` (new, 7), `IntegrationDashboard.test.tsx` (+1), `RadiologyCanvas.test.tsx` (+2), `ClaimsDashboard.test.tsx` (new, 5). Full frontend vitest: **104 files / 616 tests pass** (was 102/601, +2 files / +15 tests). Frontend tsc 0 errors, lint 0 errors (2 pre-existing warnings in `PatientDashboard.test.tsx`, not in touched files). git diff --check clean (normalized `RadiologyCanvas.tsx` from CRLF to LF per repo `.gitattributes`).
+  Scope strictly additive: 4 surfaces only, no backend changes, no fake data, no portal redesign. The 4 already-fixed lanes (PatientMergeRequests, ApprovalQueuePanel, EMRWorkspace, ClinicalOperationsDashboard) remain intact. Staging still unprovisioned.
+
 ### Done (This Session — Pop-Culture Name Cleanup Extension Lane, Commit `6a598704`)
 **Trigger:** bcb6548e (3 commits prior) replaced pop-culture names in 9 HR + 2 doctor portal files, but missed 4 files that still contained the same House M.D. + Hill House + Frankenstein characters.
 
@@ -129,6 +153,14 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 
 **Out of scope:** backend, no live data wiring, no admin honest-stub expansion, no changes to generic placeholder names in other files (SessionsPage, ReleasedResultDetailPage, MarketplaceInstallationTrackingPage).
 
+
+- **`6557f00c` \u2014 Disclosure-Truth Lane (post-fresh-audit):** Fixed 3 surface-level contract truth gaps from the fresh post-c943c398 read-only audit:
+  1. `IntegrationShellNotice.tsx` removed the false \u201clive-wired to the HMS backend\u201d claim; replaced with \u201cPrototype shell \u2014 no backend implementation yet\u201d + HTTP 404 expected on all 7 drill-down pages + honest description of dashboard card states.
+  2. `IntegrationDashboard.tsx` 4 fetch-failing KPI cards (Notifications, Approvals, Activity, Reconciliation) no longer display fabricated \u201c0\u201d counts; now show \u201c\u2014\u201d + MOCK badge on 404, matching the existing honest-stub pattern of the other 4 cards.
+  3. `RadiologyCanvas.tsx` and `ClaimsDashboard.tsx` banners strengthened to explicitly disclose that `/v1/radiology/orders`, `/v1/insurance/partners`, and `/v1/insurance/claims` are not implemented in the current backend release.
+  Tests: `IntegrationShellNotice.test.tsx` (new, 7), `IntegrationDashboard.test.tsx` (+1), `RadiologyCanvas.test.tsx` (+2), `ClaimsDashboard.test.tsx` (new, 5). Full frontend vitest: **104 files / 616 tests pass** (was 102/601, +2 files / +15 tests). Frontend tsc 0 errors, lint 0 errors (2 pre-existing warnings in `PatientDashboard.test.tsx`, not in touched files). git diff --check clean (normalized `RadiologyCanvas.tsx` from CRLF to LF per repo `.gitattributes`).
+  Scope strictly additive: 4 surfaces only, no backend changes, no fake data, no portal redesign. The 4 already-fixed lanes (PatientMergeRequests, ApprovalQueuePanel, EMRWorkspace, ClinicalOperationsDashboard) remain intact. Staging still unprovisioned.
+
 ### Done (This Session — Pre-Existing tsc Error Fix Lane, Commit `d36d67e6`)
 **Trigger:** bcb6548e claimed "tsc clean" but `cd hms-backend && npx tsc --noEmit` reported 1 pre-existing error: `src/billing/billing.service.spec.ts(3582,17): error TS2554: Expected 5 arguments, but got 4.` The error was introduced in `21916ccf` (2026-06-17, prior session) when `BillingService.expirePayment` was extended to take a 5th `dto: ExpirePaymentDto` argument; that lane updated production code but missed this one test call.
 
@@ -146,6 +178,14 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - `cd hms-backend && npx jest --testPathPatterns=billing.service.spec` → 107/107 pass
 - Targeted: `expirePayment rejects archived payment` passes (2ms)
 - `cd hms-backend && npm run lint` → 0 errors, 160 pre-existing warnings (not introduced)
+
+
+- **`6557f00c` \u2014 Disclosure-Truth Lane (post-fresh-audit):** Fixed 3 surface-level contract truth gaps from the fresh post-c943c398 read-only audit:
+  1. `IntegrationShellNotice.tsx` removed the false \u201clive-wired to the HMS backend\u201d claim; replaced with \u201cPrototype shell \u2014 no backend implementation yet\u201d + HTTP 404 expected on all 7 drill-down pages + honest description of dashboard card states.
+  2. `IntegrationDashboard.tsx` 4 fetch-failing KPI cards (Notifications, Approvals, Activity, Reconciliation) no longer display fabricated \u201c0\u201d counts; now show \u201c\u2014\u201d + MOCK badge on 404, matching the existing honest-stub pattern of the other 4 cards.
+  3. `RadiologyCanvas.tsx` and `ClaimsDashboard.tsx` banners strengthened to explicitly disclose that `/v1/radiology/orders`, `/v1/insurance/partners`, and `/v1/insurance/claims` are not implemented in the current backend release.
+  Tests: `IntegrationShellNotice.test.tsx` (new, 7), `IntegrationDashboard.test.tsx` (+1), `RadiologyCanvas.test.tsx` (+2), `ClaimsDashboard.test.tsx` (new, 5). Full frontend vitest: **104 files / 616 tests pass** (was 102/601, +2 files / +15 tests). Frontend tsc 0 errors, lint 0 errors (2 pre-existing warnings in `PatientDashboard.test.tsx`, not in touched files). git diff --check clean (normalized `RadiologyCanvas.tsx` from CRLF to LF per repo `.gitattributes`).
+  Scope strictly additive: 4 surfaces only, no backend changes, no fake data, no portal redesign. The 4 already-fixed lanes (PatientMergeRequests, ApprovalQueuePanel, EMRWorkspace, ClinicalOperationsDashboard) remain intact. Staging still unprovisioned.
 
 ### Done (This Session — Inventory Sidebar Discoverability Carryover)
 1. **`hms-frontend/src/config/permissions.ts`** — Added `INVENTORY_RECEIVE` permission constant and mapped it to the `Branch Admin` role default permissions.
