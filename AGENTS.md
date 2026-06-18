@@ -187,6 +187,30 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
   Tests: `IntegrationShellNotice.test.tsx` (new, 7), `IntegrationDashboard.test.tsx` (+1), `RadiologyCanvas.test.tsx` (+2), `ClaimsDashboard.test.tsx` (new, 5). Full frontend vitest: **104 files / 616 tests pass** (was 102/601, +2 files / +15 tests). Frontend tsc 0 errors, lint 0 errors (2 pre-existing warnings in `PatientDashboard.test.tsx`, not in touched files). git diff --check clean (normalized `RadiologyCanvas.tsx` from CRLF to LF per repo `.gitattributes`).
   Scope strictly additive: 4 surfaces only, no backend changes, no fake data, no portal redesign. The 4 already-fixed lanes (PatientMergeRequests, ApprovalQueuePanel, EMRWorkspace, ClinicalOperationsDashboard) remain intact. Staging still unprovisioned.
 
+### Done (This Session — HRManagement Dead-Code Removal Lane, Commit `39fcaa3`)
+**Trigger:** A new strict read-only production-truth audit (post `9e02d7cc`) found `hms-frontend/src/features/hr/HRManagement.tsx` (12KB) and `hms-frontend/src/features/hr/__tests__/HRManagement.test.tsx` (7 tests) fully orphaned — no route in `App.tsx`, no `AppShell` mount, no `RoleBasedSidebar` link, no path string anywhere in the frontend.
+
+**Provenance of the orphan:** Route removed in `ee0c1775` (May 25, PR #64 "feat(auth): implement role-aware portal system and granular permission guards"). `5efc6dde` (June 18) "wired" HRManagement and added 7 tests — wasted effort because the page was already unreachable. The same commit's work on `InstallationChecklist` is real (routed at `/logistics-checklist`).
+
+**Equivalent live functionality:** `hms-frontend/src/portals/hr/EmployeesPage.tsx` at `/hr/employees` (wired in `9d313237`). Uses `hrService.listEmployees()` and `hrService.createEmployee()` against `GET/POST /v1/hr/employees`.
+
+**Fix (commit `39fcaa3`, 2 files / -414 lines, 0 additions):**
+- `hms-frontend/src/features/hr/HRManagement.tsx` — DELETED (12KB, 274 lines)
+- `hms-frontend/src/features/hr/__tests__/HRManagement.test.tsx` — DELETED (140 lines, 7 tests)
+
+**Strict scope respected:** No edits to `App.tsx`, `AppShell`, `RoleBasedSidebar`, `role-portal-resolver`, `EmployeesPage.tsx`, or any other file. No new route. No revived `/hr/management`. No "while-here" cleanups. The only docs/ file still mentioning HRManagement is `docs/evidence/hygiene-h1-files-inventory.txt:945` — a historical CI inventory snapshot, correctly left untouched (will be regenerated on next CI hygiene run).
+
+**Validation (this session):**
+- `cd hms-frontend && npx tsc --noEmit` → 0 errors
+- `cd hms-frontend && npm run lint` → 0 errors, 2 pre-existing warnings in `PatientDashboard.test.tsx` (not touched)
+- `cd hms-frontend && npm test` → **111 files / 729 tests pass** (was 101/586 in AGENTS.md baseline; gap reflects the many test additions across subsequent sessions, NOT this lane)
+- `rg -n "HRManagement" -g '!node_modules' -g '!.git' -g '!hms-backend' -g '!dist' -g '!coverage'` → only 1 hit, in `docs/evidence/hygiene-h1-files-inventory.txt:945` (historical inventory, untouched per scope)
+- `rg -n "/hr/management"` → 0 matches
+- `git diff --check` → clean
+- `git status --short` → only 10 pre-existing untracked working files (audit-baseline, plan docs, working scripts) — no dirty tracked files
+- `git diff --stat` → exactly 2 files / 414 deletions (HRManagement.tsx: -274, HRManagement.test.tsx: -140)
+- 7 tests removed from the suite (HRManagement.test.tsx was 7 tests); test count dropped by exactly that amount
+
 ### Done (This Session — Inventory Sidebar Discoverability Carryover)
 1. **`hms-frontend/src/config/permissions.ts`** — Added `INVENTORY_RECEIVE` permission constant and mapped it to the `Branch Admin` role default permissions.
 2. **`hms-frontend/src/config/roleNavigation.ts`** — Added the `/inventory/receiving` ("Stock Receiving") entry to the "Inventory & Stock" sidebar group for users with `INVENTORY_RECEIVE` permission.
@@ -194,11 +218,12 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 
 ### Validation (Current Branch State)
 - Remote CI: 5/5 checks pass (Static Analysis, Backend Tests, Frontend Tests, Docker Build, Vercel Preview)
-- Local: 84 backend suites / 1695 tests passing, **101 frontend files / 586 tests passing** (post-`6a598704`; was 98/580, +3 test files / +6 tests), lint 0 errors, **backend tsc --noEmit 0 errors** (post-`d36d67e6`), frontend tsc clean
+- Local: 84 backend suites / 1695 tests passing, **111 frontend files / 729 tests passing** (post-`39fcaa3`; the AGENTS.md baseline of 101/586 was from `6a598704` and has been growing across subsequent sessions; this lane only removed 7 tests, dropping the count from 736 to 729), lint 0 errors, frontend tsc 0 errors, backend tsc 0 errors
 - Staging: NOT PROVISIONED (external blocker)
 - Repo-side staging readiness: COMPLETE (4 files committed in `72bd168`)
 - bcb6548e claim audit: 9/10 confirmed, 1 (`tsc clean`) corrected by `d36d67e6`
 - Pop-culture name cleanup: 9 HR + 2 doctor (in bcb6548e) + 4 honestly-stubbed (in `6a598704`) = **15 frontend files now pop-culture-free**; 0 pop-culture name hits in non-test frontend source
+- HRManagement dead-wiring closed: route removed `ee0c1775` May 25; misleading "wire" `5efc6dde` cleaned up `39fcaa3` June 19; live replacement at `/hr/employees` via `portals/hr/EmployeesPage.tsx` intact
 - Backend tsc was previously false-claimed clean in bcb6548e; now genuinely clean (verified this session)
 
 ### Carryover Risks
@@ -210,6 +235,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - AuditLog retention: count-only enforcement; no schema change for archival by class.
 - Stale untracked snapshot files: `audit-baseline.txt` and `handoff-verify.txt` show 84/1690 tests (current is 1695). Not committed; not blocking; can confuse future agents.
 - Other admin pages still on mock/hardcoded data (none in this scope — the 4 admin pages with hardcoded data were honest-stubbed in `b5df7498`).
+- Employee status-toggle PATCH endpoint has no frontend caller: backend has `@Patch('employees/:id/status')` (`hms-backend/src/hr/hr.controller.ts:95-104`) but the live `portals/hr/EmployeesPage.tsx` (and its `EmployeeWorklist` component) is read+create only. The orphan `HRManagement.tsx` (deleted in `39fcaa3`) was the only frontend caller of this endpoint. Not introduced by this lane; pre-existing functional gap surfaced by the dead-code audit. Out of strict scope of the dead-code removal lane.
 
 **LOW:**
 - (Resolved) Chaos script health-probe path drift fixed in `b088259`; no stale references remain
@@ -217,6 +243,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - (Resolved) Pre-existing backend tsc error fixed in `d36d67e6` — `npx tsc --noEmit` is now genuinely clean
 - (Resolved) bcb6548e "tsc clean" overclaim corrected by `d36d67e6`
 - (Resolved) Pop-culture placeholder names in HR portal + Doctor timeline replaced with neutral sandbox identifiers in `bcb6548e`
+- (Resolved) HRManagement dead-wiring closed in `39fcaa3` — orphaned `HRManagement.tsx` + 7 dead tests removed; equivalent live functionality at `/hr/employees` was already wired via `9d313237`
 - Tree is clean (only 4 intentional untracked files: 2 stale snapshots, 1 staging checklist, 1 plan doc)
 
 ## Key Decisions
@@ -234,6 +261,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - **PATH B (stop product work, staging is next blocker)** determined: remaining 4 admin pages (Tenants, Security, Reports, Settings) require full new backend modules — no valuable local-only lane remains
 - **Branch Management module** created as standalone `hms-backend/src/branches/` module; frontend `BranchesPage.tsx` uses shared `admin.service.ts`
 - **AdminExecutiveDashboard carryover** was real and worth finishing — all dependencies existed (`HmsTrendChart`, `getAdminTrends`, `GET /v1/dashboard/admin/trends`)
+- **Delete over revive** for `39fcaa3`: HRManagement was orphaned for 3+ weeks (route removed in `ee0c1775`); reviving it would have duplicated `portals/hr/EmployeesPage.tsx` (live at `/hr/employees` since `9d313237`). Removal is the strictly safer choice — restores code truth without creating two live HR list pages.
 - **Separate staging deploy script over parameterization**: Zero risk to production path. Duplication of 59-line script is acceptable for isolation.
 - **STAGING_SSH_* naming over shared SSH_HOST**: Eliminates GHA fallback risk — if Staging environment is missing SSH secrets, workflow fails immediately instead of silently targeting production.
 - **Same env var names as prod in compose files**: Containers expect `DB_USER`, `DATABASE_URL`, `JWT_SECRET` etc.; staging workflow provides values from `STAGING_*` secrets.
