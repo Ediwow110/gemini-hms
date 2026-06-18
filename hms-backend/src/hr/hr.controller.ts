@@ -5,6 +5,7 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { HrService } from './hr.service';
@@ -123,6 +124,27 @@ export class HrController {
     @Body() dto: CreateLeaveRequestDto,
   ) {
     return this.hrService.createLeaveRequest(tenantId, userId, dto);
+  }
+
+  @Get('leave-requests')
+  @Roles(
+    'Super Admin',
+    'HR Manager',
+    'HR Staff',
+    'Branch Admin',
+    'Doctor',
+    'Nurse',
+  )
+  getLeaveRequests(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser() user: AuthTypes.RequestUser,
+    @Query('status') status?: string,
+    @Query('employeeId') employeeId?: string,
+  ) {
+    return this.hrService.getLeaveRequests(tenantId, user, {
+      status,
+      employeeId,
+    });
   }
 
   @Patch('leave-requests/:id/approve')

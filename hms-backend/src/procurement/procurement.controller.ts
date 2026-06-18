@@ -1,9 +1,11 @@
 import {
   Controller,
+  Get,
   Post,
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ProcurementService } from './procurement.service';
@@ -29,6 +31,16 @@ export class ProcurementController {
     return this.procurementService.createSupplier(user, dto);
   }
 
+  @Get('suppliers')
+  @RequirePermissions('procurement.supplier.view')
+  listSuppliers(
+    @GetUser() user: RequestUser,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.procurementService.listSuppliers(user, { search, status });
+  }
+
   @Post('purchase-requests')
   @RequirePermissions('procurement.request.create')
   createPurchaseRequest(
@@ -36,6 +48,16 @@ export class ProcurementController {
     @Body() dto: CreatePurchaseRequestDto,
   ) {
     return this.procurementService.createPurchaseRequest(user, dto);
+  }
+
+  @Get('purchase-requests')
+  @RequirePermissions('procurement.request.view')
+  listPurchaseRequests(
+    @GetUser() user: RequestUser,
+    @Query('status') status?: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.procurementService.listPurchaseRequests(user, { status, branchId });
   }
 
   @Patch('purchase-requests/:id/approve')
@@ -54,6 +76,16 @@ export class ProcurementController {
     @Body() dto: CreatePurchaseOrderDto,
   ) {
     return this.procurementService.createPurchaseOrder(user, dto);
+  }
+
+  @Get('purchase-orders')
+  @RequirePermissions('procurement.po.view')
+  listPurchaseOrders(
+    @GetUser() user: RequestUser,
+    @Query('status') status?: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.procurementService.listPurchaseOrders(user, { status, branchId });
   }
 
   @Post('purchase-orders/:id/receive')

@@ -45,6 +45,9 @@ describe('HrService', () => {
               findFirst: jest.fn(),
               findMany: jest.fn(),
             },
+            leaveRequest: {
+              findMany: jest.fn(),
+            },
             employeeBranch: {
               create: jest.fn(),
             },
@@ -330,6 +333,135 @@ describe('HrService', () => {
       await expect(
         service.getEmployees(mockTenantId, invalidBranchAdmin),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getLeaveRequests', () => {
+    it('should return tenant-wide leave requests for Super Admin', async () => {
+      (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue([
+        { id: 'lr-1' },
+        { id: 'lr-2' },
+      ]);
+
+      const result = await service.getLeaveRequests(
+        mockTenantId,
+        superAdminUser,
+      );
+
+      expect(prisma.leaveRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tenantId: mockTenantId },
+        }),
+      );
+      expect(result.length).toBe(2);
+    });
+
+    it('should scope to own branch for Branch Admin', async () => {
+      (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue([
+        { id: 'lr-1' },
+      ]);
+
+      await service.getLeaveRequests(mockTenantId, branchAdminUser);
+
+      expect(prisma.leaveRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: mockTenantId,
+            employee: { branchId: mockBranchId },
+          }),
+        }),
+      );
+    });
+
+    it('should reject Branch Admin without branch context', async () => {
+      const invalidBranchAdmin: RequestUser = {
+        tenantId: mockTenantId,
+        roles: ['Branch Admin'],
+      };
+      await expect(
+        service.getLeaveRequests(mockTenantId, invalidBranchAdmin),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should restrict Doctor to own employee record only', async () => {
+      const doctorUser: RequestUser = {
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        roles: ['Doctor'],
+      };
+      (prisma.employee.findFirst as jest.Mock).mockResolvedValue({
+        id: 'emp-doctor',
+      });
+      (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue([
+        { id: 'lr-1' },
+      ]);
+
+      const result = await service.getLeaveRequests(mockTenantId, doctorUser);
+
+      expect(prisma.leaveRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: mockTenantId,
+            employeeId: 'emp-doctor',
+          }),
+        }),
+      );
+      expect(result.length).toBe(1);
+    });
+
+    it('should return empty for Doctor with no linked employee record', async () => {
+      const doctorUser: RequestUser = {
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        roles: ['Doctor'],
+      };
+      (prisma.employee.findFirst as jest.Mock).mockResolvedValue(null);
+
+      const result = await service.getLeaveRequests(mockTenantId, doctorUser);
+
+      expect(result).toEqual([]);
+      expect(prisma.leaveRequest.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should reject Doctor using employeeId filter for someone else', async () => {
+      const doctorUser: RequestUser = {
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        roles: ['Doctor'],
+      };
+      (prisma.employee.findFirst as jest.Mock).mockResolvedValue({
+        id: 'emp-doctor',
+      });
+
+      await expect(
+        service.getLeaveRequests(mockTenantId, doctorUser, {
+          employeeId: 'someone-else',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should pass status filter when provided', async () => {
+      (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue([]);
+
+      await service.getLeaveRequests(mockTenantId, superAdminUser, {
+        status: 'PENDING',
+      });
+
+      expect(prisma.leaveRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: 'PENDING' }),
+        }),
+      );
+    });
+
+    it('should reject roles without HR access', async () => {
+      const unprivilegedUser: RequestUser = {
+        tenantId: mockTenantId,
+        roles: ['Receptionist'],
+      };
+      await expect(
+        service.getLeaveRequests(mockTenantId, unprivilegedUser),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

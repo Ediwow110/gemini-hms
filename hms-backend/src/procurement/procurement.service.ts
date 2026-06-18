@@ -48,6 +48,25 @@ export class ProcurementService {
     return supplier;
   }
 
+  async listSuppliers(
+    user: RequestUser,
+    filters: { search?: string; status?: string } = {},
+  ) {
+    const where: Record<string, unknown> = { tenantId: user.tenantId };
+
+    if (filters.search) {
+      where.name = { contains: filters.search, mode: 'insensitive' };
+    }
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    return this.prisma.supplier.findMany({
+      where,
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async createPurchaseRequest(
     user: RequestUser,
     dto: CreatePurchaseRequestDto,
@@ -86,6 +105,84 @@ export class ProcurementService {
     );
 
     return pr;
+  }
+
+  async listPurchaseRequests(
+    user: RequestUser,
+    filters: { status?: string; branchId?: string } = {},
+  ) {
+    const where: Record<string, unknown> = { tenantId: user.tenantId };
+
+    const isSuperAdmin = user.roles?.includes('Super Admin');
+
+    if (filters.branchId) {
+      if (!isSuperAdmin && user.branchId !== filters.branchId) {
+        throw new ForbiddenException(
+          'Cannot view purchase requests for a different branch',
+        );
+      }
+      where.branchId = filters.branchId;
+    } else if (!isSuperAdmin && user.branchId) {
+      where.branchId = user.branchId;
+    }
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    return this.prisma.purchaseRequest.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async listPurchaseOrders(
+    user: RequestUser,
+    filters: { status?: string; branchId?: string } = {},
+  ) {
+    const where: Record<string, unknown> = { tenantId: user.tenantId };
+
+    const isSuperAdmin = user.roles?.includes('Super Admin');
+
+    if (filters.branchId) {
+      if (!isSuperAdmin && user.branchId !== filters.branchId) {
+        throw new ForbiddenException(
+          'Cannot view purchase orders for a different branch',
+        );
+      }
+      where.branchId = filters.branchId;
+    } else if (!isSuperAdmin && user.branchId) {
+      where.branchId = user.branchId;
+    }
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    return this.prisma.purchaseOrder.findMany({
+      where,
+      include: {
+        supplier: {
+          select: {
+            id: true,
+            name: true,
+            contactName: true,
+            contactEmail: true,
+            contactPhone: true,
+            status: true,
+          },
+        },
+        purchaseRequest: {
+          select: {
+            id: true,
+            status: true,
+            reason: true,
+            items: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async approvePurchaseRequest(user: RequestUser, requestId: string) {
