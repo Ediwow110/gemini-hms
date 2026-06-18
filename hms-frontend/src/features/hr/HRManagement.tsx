@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useUser } from "../../hooks/use-user";
 import { apiClient } from "../../lib/api";
 import { PageHeader } from "../../components/ui/page-header";
 import {
@@ -29,12 +28,13 @@ interface StaffMember {
 }
 
 export const HRManagement = () => {
-  const user = useUser();
   const [employees, setEmployees] = useState<StaffMember[]>([]);
   const [search, setSearch] = useState("");
   const [selectedDept, setSelectedDept] = useState("ALL");
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchHRData = async () => {
     try {
@@ -52,12 +52,12 @@ export const HRManagement = () => {
   }, []);
 
   const handleToggleStatus = async (staff: StaffMember) => {
-    if (!user) return;
     const newStatus = staff.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+    setIsUpdating(true);
+    setUpdateError(null);
     try {
       await apiClient.patch(`/v1/hr/employees/${staff.id}/status`, {
         status: newStatus,
-        tenantId: user.tenantId
       });
       const updated = employees.map(e => e.id === staff.id ? { ...e, status: newStatus as "ACTIVE" | "SUSPENDED" } : e);
       setEmployees(updated);
@@ -66,7 +66,9 @@ export const HRManagement = () => {
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || "Failed to update staff status.");
+      setUpdateError(error.response?.data?.message || "Failed to update staff status.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -85,12 +87,6 @@ export const HRManagement = () => {
         title="HR & Staff Directory Workspace"
         description="Oversee active staff credentials, logical assignments, status metrics, and payroll ledgers."
       />
-
-      {/* Global Notice */}
-      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium mb-6">
-        <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0" />
-        <span>This module is currently in read-only mode. Employee status updates are not yet available in the live environment.</span>
-      </div>
 
       {/* SEARCH AND FILTERS */}       <div className="card p-4 flex flex-wrap gap-4 items-center">
          {fetchError && (
@@ -221,11 +217,16 @@ export const HRManagement = () => {
               {/* Status Actions */}
               <div className="space-y-2.5">
                 <h5 className="font-bold text-slate-800 text-xs tracking-wider uppercase">Governance Status Control</h5>
+                {updateError && (
+                  <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-xl text-xs" role="alert" data-testid="hr-update-error">
+                    {updateError}
+                  </div>
+                )}
                 <button
-                  disabled={true}
+                  disabled={isUpdating}
                   onClick={() => handleToggleStatus(selectedStaff)}
-                  title="Employee status updates are currently in read-only mode."
-                  className={`w-full btn justify-center py-2.5 text-xs font-semibold gap-2 border bg-slate-100 text-slate-500 border-slate-200 cursor-not-allowed`}
+                  data-testid="hr-toggle-status"
+                  className={`w-full btn justify-center py-2.5 text-xs font-semibold gap-2 border bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700 disabled:bg-indigo-300 disabled:border-indigo-300`}
                 >
                   {selectedStaff.status === "ACTIVE" ? (
                     <>

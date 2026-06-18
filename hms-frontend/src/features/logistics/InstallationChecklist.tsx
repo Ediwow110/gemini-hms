@@ -322,10 +322,20 @@ export const InstallationChecklist: React.FC = () => {
         </div>
       </div>
 
-      {/* Global Notice */}
-      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
-        <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0" />
-        <span>This module is currently in read-only mode. Field handover and warranty gating are not yet available in the live environment.</span>
+      {/* Global Notice — describes the real offline-first contract */}
+      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
+        <ShieldAlert className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+        <span>
+          <span className="font-bold">Live backend contract:</span>{' '}
+          status writes go to{' '}
+          <code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">PATCH /v1/logistics/installations/:id/status</code>
+          {' '}with{' '}
+          <code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">{`{ status, note? }`}</code>{' '}
+          (server-authoritative: tenant, branch, and actor are derived from the JWT).
+          When the device is offline, writes are buffered to{' '}
+          <code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">localStorage</code>{' '}
+          and replayed on reconnect.
+        </span>
       </div>
       {fetchError && (
         <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-sm font-semibold flex items-center space-x-3 animate-fade-in mt-4">
@@ -335,7 +345,7 @@ export const InstallationChecklist: React.FC = () => {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm font-semibold flex items-center space-x-3 animate-fade-in">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm font-semibold flex items-center space-x-3 animate-fade-in" role="alert" data-testid="logistics-update-error">
           <AlertTriangle className="h-5 w-5 text-red-500" />
           <span>{error}</span>
         </div>
@@ -606,10 +616,9 @@ export const InstallationChecklist: React.FC = () => {
                 <div className="flex flex-col md:flex-row gap-4 border-t border-slate-100 pt-6">
                   {selectedJob.status === 'ASSIGNED' && (
                     <button
-                      disabled={true}
                       onClick={() => handleSyncStatus('IN_PROGRESS')}
-                      title="Installation updates are currently in read-only mode."
-                      className="flex-1 py-3 px-5 bg-slate-100 border border-slate-200 rounded-2xl text-xs font-bold text-slate-500 hover:bg-slate-200 transition-all duration-200 flex items-center justify-center gap-2 cursor-not-allowed shadow-sm"
+                      data-testid="start-assembly"
+                      className="flex-1 py-3 px-5 bg-indigo-600 hover:bg-indigo-700 border border-indigo-700 rounded-2xl text-xs font-bold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                     >
                       <RefreshCw className="h-4.5 w-4.5" />
                       <span>Start Assembly (In Progress)</span>
@@ -617,10 +626,9 @@ export const InstallationChecklist: React.FC = () => {
                   )}
                   {selectedJob.status === 'IN_PROGRESS' && (
                     <button
-                      disabled={true}
                       onClick={() => handleSyncStatus('COMMISSIONED')}
-                      title="Installation updates are currently in read-only mode."
-                      className="flex-1 py-3 px-5 bg-slate-100 border border-slate-200 rounded-2xl text-xs font-bold text-slate-500 hover:bg-slate-200 transition-all duration-200 flex items-center justify-center gap-2 cursor-not-allowed shadow-sm"
+                      data-testid="mark-commissioned"
+                      className="flex-1 py-3 px-5 bg-indigo-600 hover:bg-indigo-700 border border-indigo-700 rounded-2xl text-xs font-bold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                     >
                       <ShieldCheck className="h-4.5 w-4.5" />
                       <span>Mark Commissioned</span>
@@ -628,10 +636,9 @@ export const InstallationChecklist: React.FC = () => {
                   )}
 
                   <button
-                    disabled={true}
                     onClick={() => handleSyncStatus('COMPLETED')}
-                    title="Installation updates are currently in read-only mode."
-                    className="flex-1 py-3.5 px-6 bg-slate-300 text-slate-500 rounded-2xl text-sm font-bold hover:bg-slate-400 transition-all duration-200 flex items-center justify-center gap-2 cursor-not-allowed shadow-md shadow-slate-100"
+                    data-testid="complete-handover"
+                    className="flex-1 py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 rounded-2xl text-sm font-bold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   >
                     <UserCheck className="h-5 w-5" />
                     <span>Complete Handover &amp; Start Warranty</span>
