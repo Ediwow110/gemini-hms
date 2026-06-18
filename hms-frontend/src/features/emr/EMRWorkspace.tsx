@@ -131,11 +131,7 @@ export const EMRWorkspace = () => {
     setIsSavingVitals(true);
     setVitalsError(null);
     try {
-      await apiClient.post(`/v1/emr/encounters/${selectedEntry.id}/vitals`, {
-        ...data,
-        tenantId: user?.tenantId,
-        branchId: user?.branchId
-      });
+      await apiClient.post(`/v1/emr/encounters/${selectedEntry.id}/vitals`, data);
       alert("Vitals successfully saved to medical record.");
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -171,9 +167,7 @@ export const EMRWorkspace = () => {
     if (!selectedEntry) return;
     setIsFinalizing(true);
     try {
-      await apiClient.patch(`/v1/clinical/encounters/${selectedEntry.id}/close`, {
-        tenantId: user?.tenantId
-      });
+      await apiClient.patch(`/v1/clinical/encounters/${selectedEntry.id}/close`);
       setIsLocked(true);
       setShowConfirmClose(false);
       alert("Encounter signed and locked successfully. All clinical logs are finalized.");

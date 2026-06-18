@@ -55,14 +55,14 @@ describe('EMRWorkspace Honesty Tests', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     renderWithAuth(<EMRWorkspace />);
-    
+
     // Select patient from queue
     const patientBtn = await screen.findByText(/John Doe/i);
     fireEvent.click(patientBtn);
 
     // Fill vitals
     fireEvent.change(screen.getByLabelText(/Temperature/i), { target: { value: '37.2' } });
-    
+
     // Submit
     fireEvent.click(screen.getByText(/Save Vitals Metrics/i));
 
@@ -94,6 +94,55 @@ describe('EMRWorkspace Honesty Tests', () => {
     alertSpy.mockRestore();
   });
 
+  it('vitals POST payload does NOT contain client-trusted tenantId (post-fix)', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.post as any).mockResolvedValue({ status: 200 });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+    renderWithAuth(<EMRWorkspace />);
+    const patientBtn = await screen.findByText(/John Doe/i);
+    fireEvent.click(patientBtn);
+
+    fireEvent.change(screen.getByLabelText(/Temperature/i), { target: { value: '37.2' } });
+    fireEvent.click(screen.getByText(/Save Vitals Metrics/i));
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalled();
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const calledBody = (apiClient.post as any).mock.calls[0][1];
+    expect(calledBody).toBeDefined();
+    expect(calledBody).not.toHaveProperty('tenantId');
+    expect(calledBody).not.toHaveProperty('branchId');
+    expect(calledBody).not.toHaveProperty('userId');
+    alertSpy.mockRestore();
+  });
+
+  it('vitals POST payload does NOT contain client-trusted branchId (post-fix)', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.post as any).mockResolvedValue({ status: 200 });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+    renderWithAuth(<EMRWorkspace />);
+    const patientBtn = await screen.findByText(/John Doe/i);
+    fireEvent.click(patientBtn);
+
+    fireEvent.change(screen.getByLabelText(/Heart Rate/i), { target: { value: '80' } });
+    fireEvent.change(screen.getByLabelText(/Systolic BP/i), { target: { value: '120' } });
+    fireEvent.click(screen.getByText(/Save Vitals Metrics/i));
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalled();
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const calledBody = (apiClient.post as any).mock.calls[0][1];
+    expect(calledBody).not.toHaveProperty('branchId');
+    expect(calledBody).not.toHaveProperty('tenantId');
+    alertSpy.mockRestore();
+  });
+
   it('shows error message on vitals API failure', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (apiClient.post as any).mockRejectedValue({
@@ -122,15 +171,38 @@ describe('EMRWorkspace Honesty Tests', () => {
 
     // Open close modal
     fireEvent.click(screen.getByText(/Finalize & Close/i));
-    
+
     // Confirm
     fireEvent.click(screen.getByText(/Yes, Sign & Lock/i));
 
     await waitFor(() => {
-      expect(apiClient.patch).toHaveBeenCalledWith(expect.stringContaining('/close'), expect.any(Object));
+      expect(apiClient.patch).toHaveBeenCalledWith(expect.stringContaining('/close'));
       expect(alertSpy).toHaveBeenCalledWith("Encounter signed and locked successfully. All clinical logs are finalized.");
       expect(screen.getByText(/Locked/i)).toBeInTheDocument();
     });
+  });
+
+  it('close PATCH sends no body payload (post-fix)', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.patch as any).mockResolvedValue({ status: 200 });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+    renderWithAuth(<EMRWorkspace />);
+    const patientBtn = await screen.findByText(/John Doe/i);
+    fireEvent.click(patientBtn);
+
+    fireEvent.click(screen.getByText(/Finalize & Close/i));
+    fireEvent.click(screen.getByText(/Yes, Sign & Lock/i));
+
+    await waitFor(() => {
+      expect(apiClient.patch).toHaveBeenCalled();
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const patchCall = (apiClient.patch as any).mock.calls[0];
+    expect(patchCall[0]).toBe('/v1/clinical/encounters/E123/close');
+    expect(patchCall[1]).toBeUndefined();
+    alertSpy.mockRestore();
   });
 
   it('does not lock UI on finalization failure', async () => {
