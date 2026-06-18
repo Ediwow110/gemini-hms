@@ -72,6 +72,28 @@ describe('EMRWorkspace Honesty Tests', () => {
     });
   });
 
+  it('vitals POST uses the real /v1/emr/encounters/:id/vitals path (not /v1/clinical/encounters/...)', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.post as any).mockResolvedValue({ status: 200 });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+    renderWithAuth(<EMRWorkspace />);
+    const patientBtn = await screen.findByText(/John Doe/i);
+    fireEvent.click(patientBtn);
+
+    fireEvent.click(screen.getByText(/Save Vitals Metrics/i));
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalled();
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const calledUrl = (apiClient.post as any).mock.calls[0][0];
+    expect(calledUrl).toBe('/v1/emr/encounters/E123/vitals');
+    expect(calledUrl).not.toMatch(/\/v1\/clinical\/encounters\//);
+    alertSpy.mockRestore();
+  });
+
   it('shows error message on vitals API failure', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (apiClient.post as any).mockRejectedValue({

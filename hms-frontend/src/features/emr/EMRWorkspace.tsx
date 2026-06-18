@@ -131,7 +131,7 @@ export const EMRWorkspace = () => {
     setIsSavingVitals(true);
     setVitalsError(null);
     try {
-      await apiClient.post(`/v1/clinical/encounters/${selectedEntry.id}/vitals`, {
+      await apiClient.post(`/v1/emr/encounters/${selectedEntry.id}/vitals`, {
         ...data,
         tenantId: user?.tenantId,
         branchId: user?.branchId

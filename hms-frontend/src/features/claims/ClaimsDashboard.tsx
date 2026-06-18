@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { useUser } from "../../hooks/use-user";
+import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "../../lib/api";
 import { PageHeader } from "../../components/ui/page-header";
 import {
@@ -14,7 +13,7 @@ interface HmoPartner {
   id: string;
   name: string;
   code: string;
-  status: "ACTIVE" | "INACTIVE";
+  status: string;
 }
 
 interface ClaimsReconciliation {
@@ -25,12 +24,74 @@ interface ClaimsReconciliation {
   invoiceId: string;
   totalClaimValue: number;
   approvedValue: number;
-  status: "PENDING" | "SUBMITTED" | "APPROVED" | "DENIED";
+  status: "PENDING" | "SUBMITTED" | "APPROVED" | "DENIED" | "PAID";
   remarks?: string;
 }
 
+type ClaimStatus = ClaimsReconciliation["status"];
+
+interface BackendHmoPartner {
+  id: string;
+  name: string;
+  code: string;
+  status: string;
+}
+
+interface BackendClaim {
+  id: string;
+  claimNumber: string;
+  loaNumber: string | null;
+  amountClaimed: string | number;
+  amountApproved: string | number | null;
+  status: string;
+  remarks: string | null;
+  invoice: {
+    id: string;
+    order?: {
+      patient?: {
+        firstName?: string;
+        lastName?: string;
+      };
+    };
+  };
+}
+
+const toNumber = (value: string | number | null | undefined): number => {
+  if (value == null) return 0;
+  if (typeof value === "number") return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const mapPartner = (p: BackendHmoPartner): HmoPartner => ({
+  id: p.id,
+  name: p.name,
+  code: p.code,
+  status: p.status,
+});
+
+const buildPatientName = (claim: BackendClaim): string => {
+  const patient = claim.invoice?.order?.patient;
+  if (!patient) return "—";
+  const first = patient.firstName ?? "";
+  const last = patient.lastName ?? "";
+  const combined = `${first} ${last}`.trim();
+  return combined.length > 0 ? combined : "—";
+};
+
+const mapClaim = (c: BackendClaim): ClaimsReconciliation => ({
+  id: c.id,
+  claimIdentifier: c.claimNumber,
+  loaReference: c.loaNumber ?? "",
+  patientName: buildPatientName(c),
+  invoiceId: c.invoice?.id ?? "",
+  totalClaimValue: toNumber(c.amountClaimed),
+  approvedValue: toNumber(c.amountApproved),
+  status: c.status as ClaimStatus,
+  remarks: c.remarks ?? "",
+});
+
 export const ClaimsDashboard = () => {
-  const user = useUser();
   const [partners, setPartners] = useState<HmoPartner[]>([]);
   const [claims, setClaims] = useState<ClaimsReconciliation[]>([]);
   const [selectedClaim, setSelectedClaim] = useState<ClaimsReconciliation | null>(null);
@@ -39,55 +100,97 @@ export const ClaimsDashboard = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState<"pipeline" | "partners">("pipeline");
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
-  const fetchClaimsData = async () => {
+  const fetchClaimsData = useCallback(async () => {
     try {
       const [partnersRes, claimsRes] = await Promise.all([
-        apiClient.get("/v1/insurance/partners"),
-        apiClient.get("/v1/insurance/claims")
+        apiClient.get("/v1/claims/partners"),
+        apiClient.get("/v1/claims")
       ]);
-      setPartners(partnersRes.data || []);
-      setClaims(claimsRes.data || []);
+      const partnerData: BackendHmoPartner[] = Array.isArray(partnersRes.data) ? partnersRes.data : [];
+      const claimData: BackendClaim[] = Array.isArray(claimsRes.data) ? claimsRes.data : [];
+      setPartners(partnerData.map(mapPartner));
+      setClaims(claimData.map(mapClaim));
       setFetchError(null);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setFetchError(error.response?.data?.message || "Failed to fetch insurance data.");
+      setFetchError(error.response?.data?.message || "Failed to fetch claims data.");
     }
-  };
+  }, []);
 
   useEffect(() => {
     void fetchClaimsData();
-  }, []);
+  }, [fetchClaimsData]);
 
   const handleOpenReconcile = (claim: ClaimsReconciliation) => {
     setSelectedClaim(claim);
     setApprovedAmount(claim.approvedValue || claim.totalClaimValue);
     setRemarks(claim.remarks || "");
+    setUpdateError(null);
+  };
+
+  const patchClaimStatus = async (
+    claimId: string,
+    payload: { status: ClaimStatus; amountApproved?: number; remarks?: string },
+  ) => {
+    return apiClient.patch(`/v1/claims/${claimId}/status`, payload);
   };
 
   const handleSaveReconciliation = async () => {
     if (!selectedClaim) return;
     setIsUpdating(true);
+    setUpdateError(null);
     try {
-      await apiClient.patch(`/v1/insurance/claims/${selectedClaim.id}/reconcile`, {
-        approvedValue: approvedAmount,
-        remarks,
-        status: approvedAmount > 0 ? "APPROVED" : "DENIED",
-        tenantId: user?.tenantId
-      });
+      const desiredApproved = approvedAmount > 0;
+      const currentStatus = selectedClaim.status;
+
+      if (currentStatus === "PENDING") {
+        if (desiredApproved) {
+          await patchClaimStatus(selectedClaim.id, { status: "SUBMITTED" });
+          await patchClaimStatus(selectedClaim.id, {
+            status: "APPROVED",
+            amountApproved: approvedAmount,
+            remarks,
+          });
+        } else {
+          await patchClaimStatus(selectedClaim.id, { status: "DENIED", remarks });
+        }
+      } else if (currentStatus === "SUBMITTED") {
+        if (desiredApproved) {
+          await patchClaimStatus(selectedClaim.id, {
+            status: "APPROVED",
+            amountApproved: approvedAmount,
+            remarks,
+          });
+        } else {
+          await patchClaimStatus(selectedClaim.id, { status: "DENIED", remarks });
+        }
+      } else {
+        await patchClaimStatus(selectedClaim.id, {
+          status: desiredApproved ? "APPROVED" : "DENIED",
+          amountApproved: desiredApproved ? approvedAmount : undefined,
+          remarks,
+        });
+      }
+
       const updated = claims.map(c =>
         c.id === selectedClaim.id
-          ? { ...c, approvedValue: approvedAmount, remarks, status: (approvedAmount > 0 ? "APPROVED" : "DENIED") as "APPROVED" | "DENIED" }
+          ? {
+              ...c,
+              approvedValue: approvedAmount,
+              remarks,
+              status: (desiredApproved ? "APPROVED" : "DENIED") as ClaimStatus,
+            }
           : c
       );
       setClaims(updated);
-      alert("Claims reconciliation updated successfully.");
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || "Failed to update claims reconciliation.");
-    } finally {
       setIsUpdating(false);
       setSelectedClaim(null);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setUpdateError(error.response?.data?.message || "Failed to update claim status.");
+      setIsUpdating(false);
     }
   };
 
@@ -131,23 +234,21 @@ export const ClaimsDashboard = () => {
         </button>
       </div>
 
-      {/* Global Notice */}
-      <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-start gap-3 text-xs font-medium">
-        <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+      {/* Global Notice — honest description of live backend contract */}
+      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl flex items-start gap-3 text-xs font-medium">
+        <ShieldAlert className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
         <div className="space-y-1">
           <p>
-            <span className="font-bold">This module is currently in read-only mode.</span>{' '}
-            Reconciliation updates are not yet available in the live environment.
-          </p>
-          <p>
-            <span className="font-bold">Prototype shell — no backend implementation yet.</span>{' '}
-            <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/insurance/partners</code>{' '}
-            and <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/insurance/claims</code>{' '}
-            (list) are not implemented in the current backend release. The HMO
-            insurance partner directory and the claims reconciliation pipeline
-            will return <span className="font-bold">HTTP 404</span> on load.
-            The reconciliation form save action is disabled and will not persist.
-            No fabricated data is shown in the tables.
+            <span className="font-bold">Live backend contract:</span>{' '}
+            partners and claims are loaded from{' '}
+            <code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">/v1/claims/partners</code>{' '}
+            and{' '}
+            <code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">/v1/claims</code>.
+            Reconciliation writes go through the backend status machine via{' '}
+            <code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">PATCH /v1/claims/:id/status</code>
+            {' '}(<code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">PENDING → SUBMITTED → APPROVED → PAID</code>,
+            {' '}<code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">DENIED</code> as terminal).
+            Server-authoritative: tenant and branch context are derived from the JWT, never trusted from the client.
           </p>
         </div>
       </div>
@@ -186,6 +287,8 @@ export const ClaimsDashboard = () => {
                   statusColor = "bg-blue-50 text-blue-700 border-blue-200";
                 } else if (claim.status === "APPROVED") {
                   statusColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                } else if (claim.status === "PAID") {
+                  statusColor = "bg-indigo-50 text-indigo-700 border-indigo-200";
                 } else if (claim.status === "DENIED") {
                   statusColor = "bg-rose-50 text-rose-700 border-rose-200";
                 }
@@ -193,7 +296,7 @@ export const ClaimsDashboard = () => {
                 return (
                   <tr key={claim.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-4 font-bold text-slate-900">{claim.claimIdentifier}</td>
-                    <td className="px-5 py-4 font-semibold text-slate-700">{claim.loaReference}</td>
+                    <td className="px-5 py-4 font-semibold text-slate-700">{claim.loaReference || "—"}</td>
                     <td className="px-5 py-4 font-bold text-slate-900">{claim.patientName}</td>
                     <td className="px-5 py-4 text-indigo-600 font-bold font-mono">{claim.invoiceId}</td>
                     <td className="px-5 py-4 text-right font-bold text-slate-900">₱{claim.totalClaimValue.toLocaleString()}</td>
@@ -206,7 +309,7 @@ export const ClaimsDashboard = () => {
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      {claim.status !== "APPROVED" && claim.status !== "DENIED" ? (
+                      {claim.status !== "APPROVED" && claim.status !== "DENIED" && claim.status !== "PAID" ? (
                         <button
                           onClick={() => handleOpenReconcile(claim)}
                           className="btn bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-3 py-1.5"
@@ -262,7 +365,7 @@ export const ClaimsDashboard = () => {
 
       {/* CLAIMS RECONCILIATION DIALOG MODAL */}
       {selectedClaim && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Claims reconciliation update">
           <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 animate-slide-up">
             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 border-b pb-3 border-slate-100">
               <RefreshCcw className="h-5 w-5 text-indigo-600" />
@@ -272,8 +375,9 @@ export const ClaimsDashboard = () => {
             <div className="mt-4 space-y-4">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs space-y-2">
                 <p><strong>Claim Identifier:</strong> {selectedClaim.claimIdentifier}</p>
-                <p><strong>LOA Reference:</strong> {selectedClaim.loaReference}</p>
+                <p><strong>LOA Reference:</strong> {selectedClaim.loaReference || "—"}</p>
                 <p><strong>Patient Name:</strong> {selectedClaim.patientName}</p>
+                <p><strong>Current Status:</strong> {selectedClaim.status}</p>
                 <p><strong>Total Invoice Claim:</strong> ₱{selectedClaim.totalClaimValue.toLocaleString()}</p>
               </div>
 
@@ -284,6 +388,8 @@ export const ClaimsDashboard = () => {
                   value={approvedAmount}
                   onChange={e => setApprovedAmount(Number(e.target.value))}
                   className="input"
+                  disabled={isUpdating}
+                  data-testid="approved-amount-input"
                 />
               </div>
 
@@ -295,25 +401,34 @@ export const ClaimsDashboard = () => {
                   rows={3}
                   className="input py-2"
                   placeholder="Notes from insurance partner..."
+                  disabled={isUpdating}
+                  data-testid="remarks-input"
                 />
               </div>
+
+              {updateError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-xl text-xs" role="alert" data-testid="update-error">
+                  {updateError}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
               <button
                 disabled={isUpdating}
-                onClick={() => setSelectedClaim(null)}
+                onClick={() => { setSelectedClaim(null); setUpdateError(null); }}
                 className="btn btn-secondary text-xs px-4 py-2"
+                data-testid="cancel-reconcile"
               >
                 Cancel
               </button>
               <button
-                disabled={true}
+                disabled={isUpdating}
                 onClick={handleSaveReconciliation}
-                title="Reconciliation updates are currently in read-only mode."
-                className="btn btn-primary bg-slate-300 text-slate-500 text-xs px-4 py-2 cursor-not-allowed"
+                className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 disabled:bg-indigo-300"
+                data-testid="save-reconciliation"
               >
-                Save Reconciliation
+                {isUpdating ? "Saving…" : "Save Reconciliation"}
               </button>
             </div>
           </div>
