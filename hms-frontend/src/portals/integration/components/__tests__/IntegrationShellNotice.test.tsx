@@ -10,26 +10,25 @@ describe('IntegrationShellNotice — honest state (post-truth-gap fix)', () => {
     ).toHaveTextContent(/Integration Bridges\s+[—-]\s+Mixed Availability/i);
   });
 
-  it('states that /v1/integration/* is not implemented in the backend', () => {
+  it('states that 2 of 7 /v1/integration/* endpoints are now live', () => {
     render(<IntegrationShellNotice />);
     expect(
-      screen.getByText(/no backend implementation yet/i)
+      screen.getByText(/2 of 7/i)
     ).toBeInTheDocument();
+    expect(screen.getByText(/Partial namespace implementation/i)).toBeInTheDocument();
     expect(screen.getByText(/\/v1\/integration\/\*/i)).toBeInTheDocument();
   });
 
-  it('states that drill-down pages will return HTTP 404', () => {
+  it('states that 5 endpoints remain HTTP 404', () => {
     render(<IntegrationShellNotice />);
-    expect(screen.getByText(/HTTP 404/i)).toBeInTheDocument();
+    expect(screen.getByText(/5 endpoints remain HTTP 404/i)).toBeInTheDocument();
   });
 
   it('DOES NOT falsely claim that the portal is live-wired to the HMS backend', () => {
     render(<IntegrationShellNotice />);
-    // The old false claim: "Billing approvals and basic event listings are live-wired to the HMS backend."
     expect(
       screen.queryByText(/live-wired to the HMS backend/i)
     ).not.toBeInTheDocument();
-    // Other variations that should also be gone
     expect(
       screen.queryByText(/live wired to the HMS backend/i)
     ).not.toBeInTheDocument();
@@ -48,17 +47,16 @@ describe('IntegrationShellNotice — honest state (post-truth-gap fix)', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('honestly describes the dashboard cards as showing the failed fetch state', () => {
+  it('honestly describes the dashboard cards as showing — for the 5 unavailable endpoints', () => {
     render(<IntegrationShellNotice />);
     expect(
-      screen.getByText(/failed fetch state/i)
+      screen.getByText(/5 unavailable ones/i)
     ).toBeInTheDocument();
-    expect(screen.getByText(/MOCK badge/i)).toBeInTheDocument();
+    expect(screen.getByText(/MOCK/i)).toBeInTheDocument();
   });
 
   it('points users to the live approval routes (correctly bounded)', () => {
     render(<IntegrationShellNotice />);
-    // Regular billing approvals remain live
     expect(screen.getByRole('link', { name: /Approval Center/i })).toHaveAttribute(
       'href',
       '/integration/approvals'

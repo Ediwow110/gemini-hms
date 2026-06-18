@@ -15,20 +15,37 @@ export const IntegrationShellNotice: React.FC = () => {
           Integration Bridges — Mixed Availability
         </h4>
         <p className="text-xs text-amber-800 font-medium leading-relaxed">
-          <span className="font-bold">Prototype shell — no backend implementation yet.</span>{' '}
+          <span className="font-bold">Partial namespace implementation.</span>{' '}
           The <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/integration/*</code>{' '}
-          namespace is not implemented in the current backend release. All drill-down pages
-          (Notifications, Approvals, Global Search, Patient Timeline, Asset Timeline,
-          Reconciliation, Activity Audit) will return <span className="font-bold">HTTP 404</span>{' '}
-          until that namespace is added.
+          namespace has <span className="font-bold">2 of 7</span> live endpoints
+          backed by existing controllers:{' '}
+          <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/integration/notifications</code>{' '}
+          (re-uses <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/notifications</code>)
+          and{' '}
+          <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/integration/approvals</code>{' '}
+          (re-uses <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/approvals</code>).
+        </p>
+        <p className="text-xs text-amber-800 font-medium leading-relaxed">
+          <span className="font-bold">5 endpoints remain HTTP 404:</span>{' '}
+          <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">activity-audit</code>,{' '}
+          <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">global-search</code>,{' '}
+          <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">patient-timeline</code>,{' '}
+          <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">asset-timeline</code>,{' '}
+          <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">reconciliation</code>.
+          No truthful cross-domain backend source exists for these in the
+          current release (no reconciliation model, no asset model, no
+          cross-domain search). They will be added in future lanes when
+          the underlying domains exist.
         </p>
         <p className="text-xs text-amber-800 font-medium leading-relaxed">
           <span className="font-bold">What this page currently shows.</span>{' '}
-          Counts on the dashboard cards below reflect the failed fetch state
-          (<span className="font-mono">—</span> with a MOCK badge), not real data.
-          The &quot;Cross-Domain Bridge Health&quot; card is an explicit honest-stub
-          (it has never reported a live value). Approvals that are part of the
-          regular billing workflow remain live on the{' '}
+          Counts on the dashboard cards reflect the live state for the 2
+          wired endpoints and <span className="font-mono">—</span> + MOCK
+          for the 5 unavailable ones. The &quot;Cross-Domain Bridge
+          Health&quot; card remains an explicit honest-stub (no live value
+          is shown until a real provider integration is wired). Approvals
+          that are part of the regular billing workflow remain live on
+          the{' '}
           <a
             href="/integration/approvals"
             className="font-bold underline hover:text-amber-900"
