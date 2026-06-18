@@ -103,12 +103,6 @@ export const EmployeeWorklist: React.FC<EmployeeWorklistProps> = ({
           );
         })}
       </div>
-
-      <div className="p-4 bg-slate-50/50 border-t border-slate-100">
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-semibold">
-          <strong>Sandbox Notice:</strong> Employee records are simulated. Actions in this portal are for UI evaluation and do not affect real staff accounts.
-        </div>
-      </div>
     </div>
   );
 };
