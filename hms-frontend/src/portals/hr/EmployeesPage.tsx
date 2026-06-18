@@ -1,7 +1,13 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { EmployeeWorklist, Employee } from './components/EmployeeWorklist';
-import { hrService, type HrEmployee, type CreateEmployeePayload } from '../../services/hr.service';
+import {
+  hrService,
+  type HrEmployee,
+  type HrEmployeeStatus,
+  type CreateEmployeePayload,
+} from '../../services/hr.service';
 import { adminService } from '../../services/admin.service';
+import { useUser } from '../../hooks/use-user';
 import {
   UserPlus,
   RefreshCw,
@@ -19,6 +25,8 @@ const initialCreateForm: CreateEmployeePayload = {
   lastName: '',
   salary: undefined,
 };
+
+const STATUS_UPDATE_ROLES = ['Super Admin', 'HR Manager', 'HR Staff'] as const;
 
 const mapHrEmployeeToDisplay = (e: HrEmployee): Employee => {
   const first = (e.firstName ?? '').trim();
@@ -51,11 +59,18 @@ const mapHrEmployeeToDisplay = (e: HrEmployee): Employee => {
     department: e.department || '—',
     branch: e.branchId,
     status: displayStatus,
+    rawStatus: e.status,
     joinedAt: e.hireDate ? e.hireDate.slice(0, 10) : '',
   };
 };
 
+const extractApiError = (err: unknown, fallback: string): string => {
+  const e = err as { response?: { data?: { message?: string } }; message?: string };
+  return e?.response?.data?.message || e?.message || fallback;
+};
+
 export const EmployeesPage: React.FC = () => {
+  const user = useUser();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -65,6 +80,13 @@ export const EmployeesPage: React.FC = () => {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [updatingEmployeeId, setUpdatingEmployeeId] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
+  const canChangeStatus = useMemo(
+    () => !!user && user.roles.some((r) => STATUS_UPDATE_ROLES.includes(r as typeof STATUS_UPDATE_ROLES[number])),
+    [user],
+  );
 
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
@@ -73,10 +95,7 @@ export const EmployeesPage: React.FC = () => {
       const list = await hrService.listEmployees();
       setEmployees(list.map(mapHrEmployeeToDisplay));
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setFetchError(
-        error.response?.data?.message || 'Failed to load employee directory.',
-      );
+      setFetchError(extractApiError(err, 'Failed to load employee directory.'));
       setEmployees([]);
     } finally {
       setLoading(false);
@@ -133,14 +152,27 @@ export const EmployeesPage: React.FC = () => {
         setCreateSuccess(null);
       }, 1200);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setCreateError(
-        error.response?.data?.message || 'Failed to register employee.',
-      );
+      setCreateError(extractApiError(err, 'Failed to register employee.'));
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleStatusChange = useCallback(
+    async (employeeId: string, newStatus: HrEmployeeStatus) => {
+      setUpdateError(null);
+      setUpdatingEmployeeId(employeeId);
+      try {
+        await hrService.updateEmployeeStatus(employeeId, newStatus);
+        await fetchEmployees();
+      } catch (err: unknown) {
+        setUpdateError(extractApiError(err, 'Failed to update employee status.'));
+      } finally {
+        setUpdatingEmployeeId(null);
+      }
+    },
+    [fetchEmployees],
+  );
 
   const closeModal = () => {
     if (isSubmitting) return;
@@ -198,6 +230,17 @@ export const EmployeesPage: React.FC = () => {
         </div>
       )}
 
+      {updateError && (
+        <div
+          role="alert"
+          data-testid="employees-status-error"
+          className="bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 text-xs text-rose-800 font-semibold flex items-center gap-2"
+        >
+          <AlertCircle className="h-4 w-4" />
+          {updateError}
+        </div>
+      )}
+
       {loading ? (
         <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-8 text-center text-slate-500 text-xs">
           Loading employee directory…
@@ -207,7 +250,12 @@ export const EmployeesPage: React.FC = () => {
           No employees match the current filters.
         </div>
       ) : (
-        <EmployeeWorklist employees={employees} />
+        <EmployeeWorklist
+          employees={employees}
+          canChangeStatus={canChangeStatus}
+          updatingEmployeeId={updatingEmployeeId}
+          onStatusChange={handleStatusChange}
+        />
       )}
 
       {showCreateModal && (
@@ -398,7 +446,7 @@ export const EmployeesPage: React.FC = () => {
                 onClick={() => void handleCreate()}
                 disabled={isSubmitting}
                 data-testid="employees-create-submit"
-                className="btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
+                className="btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
               >
                 {isSubmitting ? 'Registering…' : 'Register Employee'}
               </button>

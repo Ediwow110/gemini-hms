@@ -7,6 +7,18 @@ export type HrEmployeeStatus =
   | 'RESIGNED'
   | 'TERMINATED';
 
+export const HR_EMPLOYEE_STATUSES: HrEmployeeStatus[] = [
+  'ACTIVE',
+  'ON_LEAVE',
+  'SUSPENDED',
+  'RESIGNED',
+  'TERMINATED',
+];
+
+export interface UpdateEmployeeStatusPayload {
+  status: HrEmployeeStatus;
+}
+
 export interface HrEmployee {
   id: string;
   userId?: string | null;
@@ -159,6 +171,17 @@ export const hrService = {
 
   async createEmployee(payload: CreateEmployeePayload): Promise<HrEmployee> {
     const response = await apiClient.post('/v1/hr/employees', payload);
+    return response.data as HrEmployee;
+  },
+
+  async updateEmployeeStatus(
+    id: string,
+    status: HrEmployeeStatus,
+  ): Promise<HrEmployee> {
+    const response = await apiClient.patch(
+      `/v1/hr/employees/${id}/status`,
+      { status },
+    );
     return response.data as HrEmployee;
   },
 

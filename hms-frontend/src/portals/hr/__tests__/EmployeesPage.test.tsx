@@ -4,11 +4,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { EmployeesPage } from '../EmployeesPage';
 import { apiClient } from '../../../lib/api';
+import { AuthContext } from '../../../hooks/use-user';
 
 vi.mock('../../../lib/api', () => ({
   apiClient: {
     get: vi.fn(),
     post: vi.fn(),
+    patch: vi.fn(),
   },
 }));
 
@@ -18,6 +20,43 @@ const renderPage = () =>
       <EmployeesPage />
     </BrowserRouter>,
   );
+
+const renderWithAuth = (
+  user: {
+    id: string;
+    email: string;
+    tenantId: string;
+    branchId?: string;
+    roles: string[];
+    permissions: string[];
+  } | null,
+) =>
+  render(
+    <AuthContext.Provider
+      value={{ user, isLoading: false, logout: vi.fn(), refetchUser: vi.fn() }}
+    >
+      <BrowserRouter>
+        <EmployeesPage />
+      </BrowserRouter>
+    </AuthContext.Provider>,
+  );
+
+const superAdminUser = {
+  id: 'U-admin',
+  email: 'admin@hms.com',
+  tenantId: 'T-001',
+  roles: ['Super Admin'],
+  permissions: ['hr.employee.manage'],
+};
+
+const branchAdminUser = {
+  id: 'U-branch',
+  email: 'branch@hms.com',
+  tenantId: 'T-001',
+  branchId: 'BR-001',
+  roles: ['Branch Admin'],
+  permissions: ['hr.employee.manage'],
+};
 
 const employeeFixture = [
   {
@@ -95,7 +134,7 @@ describe('EmployeesPage — live backend wiring (post-fix)', () => {
       .mockResolvedValueOnce({ data: branchesFixture });
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText(/Failed to load employee directory/i)).toBeInTheDocument();
+      expect(screen.getByText(/Network error/i)).toBeInTheDocument();
     });
     expect(alertSpy).not.toHaveBeenCalled();
     alertSpy.mockRestore();
@@ -280,6 +319,147 @@ describe('EmployeesPage — live backend wiring (post-fix)', () => {
     const errNode = await screen.findByTestId('employees-create-error');
     expect(errNode).toHaveTextContent(/forbidden/i);
     expect(alertSpy).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+});
+
+describe('EmployeesPage — employee status-toggle (live wire)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders the status select for Super Admin and lists all 5 backend values', async () => {
+    (apiClient.get as any)
+      .mockResolvedValueOnce({ data: employeeFixture })
+      .mockResolvedValueOnce({ data: branchesFixture });
+
+    renderWithAuth(superAdminUser);
+
+    const select = await screen.findByTestId('employees-status-select-emp-1');
+    expect(select).toBeInTheDocument();
+    const options = Array.from(select.querySelectorAll('option')).map((o) => o.textContent);
+    expect(options).toEqual(['ACTIVE', 'ON_LEAVE', 'SUSPENDED', 'RESIGNED', 'TERMINATED']);
+    expect((select as HTMLSelectElement).value).toBe('ACTIVE');
+  });
+
+  it('does NOT render the status select for Branch Admin (backend would 403)', async () => {
+    (apiClient.get as any)
+      .mockResolvedValueOnce({ data: employeeFixture })
+      .mockResolvedValueOnce({ data: branchesFixture });
+
+    renderWithAuth(branchAdminUser);
+
+    await screen.findByText('Alice Anderson');
+    expect(screen.queryByTestId('employees-status-select-emp-1')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render the status select when user is not signed in', async () => {
+    (apiClient.get as any)
+      .mockResolvedValueOnce({ data: employeeFixture })
+      .mockResolvedValueOnce({ data: branchesFixture });
+
+    renderWithAuth(null);
+
+    await screen.findByText('Alice Anderson');
+    expect(screen.queryByTestId('employees-status-select-emp-1')).not.toBeInTheDocument();
+  });
+
+  it('submits PATCH /v1/hr/employees/:id/status with correct DTO (no client-trusted tenantId)', async () => {
+    (apiClient.get as any)
+      .mockResolvedValueOnce({ data: employeeFixture })
+      .mockResolvedValueOnce({ data: branchesFixture })
+      .mockResolvedValueOnce({ data: employeeFixture });
+    (apiClient.patch as any).mockResolvedValue({
+      data: { ...employeeFixture[0], status: 'SUSPENDED' },
+    });
+
+    renderWithAuth(superAdminUser);
+
+    const select = await screen.findByTestId('employees-status-select-emp-1');
+    fireEvent.change(select, { target: { value: 'SUSPENDED' } });
+
+    await waitFor(() => {
+      expect(apiClient.patch).toHaveBeenCalledWith(
+        '/v1/hr/employees/emp-1/status',
+        expect.objectContaining({ status: 'SUSPENDED' }),
+      );
+    });
+
+    const callArgs = (apiClient.patch as any).mock.calls[0];
+    expect(callArgs[0]).toBe('/v1/hr/employees/emp-1/status');
+    expect(callArgs[1]).toEqual({ status: 'SUSPENDED' });
+    expect(callArgs[1]).not.toHaveProperty('tenantId');
+    expect(callArgs[1]).not.toHaveProperty('userId');
+    expect(callArgs[1]).not.toHaveProperty('id');
+  });
+
+  it('refreshes the employee list after successful status update', async () => {
+    (apiClient.get as any)
+      .mockResolvedValueOnce({ data: employeeFixture })
+      .mockResolvedValueOnce({ data: branchesFixture })
+      .mockResolvedValueOnce({ data: employeeFixture });
+    (apiClient.patch as any).mockResolvedValue({
+      data: { ...employeeFixture[0], status: 'SUSPENDED' },
+    });
+
+    renderWithAuth(superAdminUser);
+
+    const select = await screen.findByTestId('employees-status-select-emp-1');
+    fireEvent.change(select, { target: { value: 'SUSPENDED' } });
+
+    await waitFor(() => {
+      expect(apiClient.patch).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(apiClient.get).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  it('disables the status select while the PATCH is in flight (no double-submit)', async () => {
+    (apiClient.get as any)
+      .mockResolvedValueOnce({ data: employeeFixture })
+      .mockResolvedValueOnce({ data: branchesFixture })
+      .mockResolvedValueOnce({ data: employeeFixture });
+    (apiClient.patch as any).mockImplementation(
+      () => new Promise(() => {}),
+    );
+
+    renderWithAuth(superAdminUser);
+
+    const select = await screen.findByTestId('employees-status-select-emp-1') as HTMLSelectElement;
+    expect(select.disabled).toBe(false);
+
+    fireEvent.change(select, { target: { value: 'SUSPENDED' } });
+
+    await waitFor(() => {
+      expect(apiClient.patch).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(
+        (screen.getByTestId('employees-status-select-emp-1') as HTMLSelectElement).disabled,
+      ).toBe(true);
+    });
+  });
+
+  it('surfaces backend rejection inline (no window.alert) and keeps the row editable', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    (apiClient.get as any)
+      .mockResolvedValueOnce({ data: employeeFixture })
+      .mockResolvedValueOnce({ data: branchesFixture });
+    (apiClient.patch as any).mockRejectedValue({
+      response: { data: { message: 'forbidden: insufficient role' } },
+    });
+
+    renderWithAuth(superAdminUser);
+
+    const select = await screen.findByTestId('employees-status-select-emp-1');
+    fireEvent.change(select, { target: { value: 'TERMINATED' } });
+
+    const errNode = await screen.findByTestId('employees-status-error');
+    expect(errNode).toHaveTextContent(/forbidden/i);
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect((screen.getByTestId('employees-status-select-emp-1') as HTMLSelectElement).disabled).toBe(false);
     alertSpy.mockRestore();
   });
 });
