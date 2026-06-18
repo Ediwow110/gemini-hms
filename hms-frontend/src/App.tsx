@@ -327,7 +327,7 @@ const router = createBrowserRouter([
            { path: 'pharmacy', element: <PermissionRoute permission="inventory.stock.dispense"><LazyPage><PharmacyHub /></LazyPage></PermissionRoute> },
 
           { path: 'claims', element: <PermissionRoute permission="billing.claim.view"><LazyPage><ClaimsDashboard /></LazyPage></PermissionRoute> },
-          { path: 'admin/patient-merges', element: <PermissionRoute permission="admin.role.change"><LazyPage><PatientMergeRequests /></LazyPage></PermissionRoute> },
+          { path: 'admin/patient-merges', element: <PermissionRoute permission="patient.merge.approve"><LazyPage><PatientMergeRequests /></LazyPage></PermissionRoute> },
           
           // Branch Admin routes (branch-scoped)
           { path: 'branch-admin', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><BranchAdminDashboard /></LazyPage></PermissionRoute> },

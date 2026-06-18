@@ -22,6 +22,8 @@ export const PERMISSIONS = {
   PROCUREMENT_VIEW: 'procurement.view',
   PROCUREMENT_MANAGE: 'procurement.manage',
   PATIENT_SELF_SERVICE: 'patient.self_service',
+  PATIENT_MERGE_REQUEST: 'patient.merge.request',
+  PATIENT_MERGE_APPROVE: 'patient.merge.approve',
   MARKETPLACE_BUYER: 'marketplace.buyer',
   MARKETPLACE_SUPPLIER: 'marketplace.supplier',
   MARKETPLACE_ADMIN: 'marketplace.admin',

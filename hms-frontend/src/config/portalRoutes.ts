@@ -36,7 +36,7 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'claims', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'inventory', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'inventory/:id', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff', isBranchScoped: true },
-  { path: 'inventory/receiving', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'inventory/receiving', requiredPermission: PERMISSIONS.INVENTORY_RECEIVE, zone: 'staff', isBranchScoped: true },
   
   // Orders & Approvals (Staff, Branch Scoped)
   { path: 'orders/new', requiredPermission: PERMISSIONS.ORDER_CREATE, zone: 'staff', isBranchScoped: true },
@@ -47,7 +47,7 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'admin/users/:id', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   { path: 'admin/roles', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   { path: 'admin/roles/:id', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
-  { path: 'admin/patient-merges', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
+  { path: 'admin/patient-merges', requiredPermission: PERMISSIONS.PATIENT_MERGE_APPROVE, zone: 'staff' },
   { path: 'settings', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   
   // Reports & Logs (Staff)
