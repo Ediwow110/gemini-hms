@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import ProcurementScopeFilter from './components/ProcurementScopeFilter';
 import {
   Truck,
   Plus,
@@ -205,8 +204,6 @@ export const SuppliersPage: React.FC = () => {
           </div>
         }
       />
-
-      <ProcurementScopeFilter />
 
       <div className="card p-4 flex flex-wrap gap-4 items-center bg-white border border-slate-200/80 shadow-sm rounded-2xl">
         <div className="flex-1 min-w-[240px] relative">

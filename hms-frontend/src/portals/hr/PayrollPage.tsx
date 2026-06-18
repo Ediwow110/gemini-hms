@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import HRScopeFilter from './components/HRScopeFilter';
 import { DollarSign, FileText, RefreshCw, AlertCircle } from 'lucide-react';
 import { ReportExportButton } from '../../components/analytics';
 import {
@@ -156,8 +155,6 @@ export const PayrollPage: React.FC = () => {
           </button>
         </div>
       </div>
-
-      <HRScopeFilter />
 
       {fetchError && (
         <div

@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import ProcurementScopeFilter from './components/ProcurementScopeFilter';
 import {
   PurchaseRequestQueue,
   type PurchaseRequest as PresentationalRequest,
@@ -322,8 +321,6 @@ export const PurchaseRequestsPage: React.FC = () => {
           </div>
         }
       />
-
-      <ProcurementScopeFilter />
 
       {actionSuccess && (
         <div

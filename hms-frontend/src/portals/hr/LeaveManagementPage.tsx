@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Calendar, Plus, RefreshCw, AlertCircle, CheckCircle2, X } from 'lucide-react';
-import HRScopeFilter from './components/HRScopeFilter';
 import { LeaveQueuePanel, type LeaveRequest } from './components/LeaveQueuePanel';
 import {
   hrService,
@@ -285,8 +284,6 @@ export const LeaveManagementPage: React.FC = () => {
           </button>
         </div>
       </div>
-
-      <HRScopeFilter />
 
       {actionSuccess && (
         <div

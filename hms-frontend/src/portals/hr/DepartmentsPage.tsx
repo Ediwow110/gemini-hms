@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   X,
 } from 'lucide-react';
-import HRScopeFilter from './components/HRScopeFilter';
 import {
   hrService,
   type HrDepartment,
@@ -149,8 +148,6 @@ export const DepartmentsPage: React.FC = () => {
           </button>
         </div>
       </div>
-
-      <HRScopeFilter />
 
       {fetchError && (
         <div

@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import HRScopeFilter from './components/HRScopeFilter';
 import { EmployeeWorklist, Employee } from './components/EmployeeWorklist';
 import { hrService, type HrEmployee, type CreateEmployeePayload } from '../../services/hr.service';
 import { adminService } from '../../services/admin.service';
@@ -188,8 +187,6 @@ export const EmployeesPage: React.FC = () => {
           </button>
         </div>
       </div>
-
-      <HRScopeFilter />
 
       {fetchError && (
         <div
