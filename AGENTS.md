@@ -187,6 +187,42 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
   Tests: `IntegrationShellNotice.test.tsx` (new, 7), `IntegrationDashboard.test.tsx` (+1), `RadiologyCanvas.test.tsx` (+2), `ClaimsDashboard.test.tsx` (new, 5). Full frontend vitest: **104 files / 616 tests pass** (was 102/601, +2 files / +15 tests). Frontend tsc 0 errors, lint 0 errors (2 pre-existing warnings in `PatientDashboard.test.tsx`, not in touched files). git diff --check clean (normalized `RadiologyCanvas.tsx` from CRLF to LF per repo `.gitattributes`).
   Scope strictly additive: 4 surfaces only, no backend changes, no fake data, no portal redesign. The 4 already-fixed lanes (PatientMergeRequests, ApprovalQueuePanel, EMRWorkspace, ClinicalOperationsDashboard) remain intact. Staging still unprovisioned.
 
+### Done (This Session — Live Employee Status-Toggle Wire Lane, Commit `64ebe70`)
+**Trigger:** The `39fcaa3` HRManagement dead-code removal lane surfaced a residual MEDIUM risk: backend `PATCH /v1/hr/employees/:id/status` existed in `hms-backend/src/hr/hr.controller.ts:95-111` with full implementation (`updateEmployeeStatus` in `hr.service.ts:161-215`, `EMPLOYEE_STATUS_UPDATED` audit, atomic user-deactivation side effect for `RESIGNED`/`TERMINATED`), but had **no live frontend caller** after the orphan was removed. The live `portals/hr/EmployeesPage.tsx` at `/hr/employees` listed employees and supported create only.
+
+**Backend contract proven by source read:**
+- `PATCH /api/v1/hr/employees/:id/status`
+- Body: `{ status: 'ACTIVE' | 'ON_LEAVE' | 'SUSPENDED' | 'RESIGNED' | 'TERMINATED' }`
+- Roles: `Super Admin`, `HR Manager`, `HR Staff` (NOT `Branch Admin`/`Branch Manager`)
+- `tenantId` and `userId` server-derived from JWT (client must NOT send)
+- Auto side-effect: `RESIGNED`/`TERMINATED` deactivates the linked `User` (sets `status: 'INACTIVE'`, `deactivatedAt`, `deactivatedReason`, `tokenVersion++`) in same Prisma transaction
+- Audit: `EMPLOYEE_STATUS_UPDATED` with `oldValues`/`newValues` in same transaction
+
+**Fix (commit `64ebe70`, 5 files / +338/-57):**
+- `hms-frontend/src/services/hr.service.ts` — added `updateEmployeeStatus(id, status)` calling `PATCH /v1/hr/employees/:id/status`; exported `HR_EMPLOYEE_STATUSES` const array (5 backend values).
+- `hms-frontend/src/portals/hr/components/EmployeeWorklist.tsx` — added `rawStatus: HrEmployeeStatus` field to `Employee` interface (non-breaking); added optional `canChangeStatus`/`updatingEmployeeId`/`onStatusChange` props; per-row inline `<select>` for status, disabled while in-flight, `aria-label` set.
+- `hms-frontend/src/portals/hr/EmployeesPage.tsx` — added `useUser()` + `canChangeStatus` (defense-in-depth role gate matching backend); added `updatingEmployeeId`/`updateError` state; added `handleStatusChange` callback (await PATCH, await `fetchEmployees()` to refresh, inline error on failure); extracted shared `extractApiError` helper; `mapHrEmployeeToDisplay` now also populates `rawStatus` from backend.
+- `hms-frontend/src/portals/hr/HRDashboard.tsx` — sandbox mock roster got `rawStatus` field on each object (type-only fix).
+- `hms-frontend/src/portals/hr/__tests__/EmployeesPage.test.tsx` — 7 new tests for the live status-toggle behavior (select visibility by role, 5-value presence, correct PATCH DTO, list refresh, disabled-while-in-flight, inline error); 1 existing test updated for the new `extractApiError` behavior (now shows actual `e.message` rather than the generic fallback).
+
+**Validation (this session):**
+- `cd hms-frontend && npx tsc --noEmit` → 0 errors
+- `cd hms-frontend && npm run lint` → 0 errors, 2 pre-existing warnings in `PatientDashboard.test.tsx` (not touched)
+- `cd hms-frontend && npm test` → 111 files / **736 tests pass** (was 729; +7 from this lane, matches exactly)
+- `cd hms-backend && npx tsc --noEmit` → 0 errors (no backend touched)
+- `git diff --check` → clean
+- `git status --short` → 5 modified files staged, 10 pre-existing untracked working files (intentional)
+- `git diff --stat` → 5 files / +338/-57 (matches the lane scope exactly)
+- 1 `EmployeeWorklist.tsx` CRLF→LF normalization required (my edit tool defaulted to CRLF; repo `.gitattributes` requires LF; resolved before staging)
+
+**Strict scope respected:**
+- No new backend endpoints (existing PATCH used as-is)
+- No new HR mutation surfaces (only the single status toggle)
+- No brand-new UI patterns (inline select, not modal)
+- No payroll, attendance, termination, branch assignment work
+- No unrelated employee flows refactored
+- No git push / PR / deploy
+
 ### Done (This Session — HRManagement Dead-Code Removal Lane, Commit `39fcaa3`)
 **Trigger:** A new strict read-only production-truth audit (post `9e02d7cc`) found `hms-frontend/src/features/hr/HRManagement.tsx` (12KB) and `hms-frontend/src/features/hr/__tests__/HRManagement.test.tsx` (7 tests) fully orphaned — no route in `App.tsx`, no `AppShell` mount, no `RoleBasedSidebar` link, no path string anywhere in the frontend.
 
@@ -218,13 +254,14 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 
 ### Validation (Current Branch State)
 - Remote CI: 5/5 checks pass (Static Analysis, Backend Tests, Frontend Tests, Docker Build, Vercel Preview)
-- Local: 84 backend suites / 1695 tests passing, **111 frontend files / 729 tests passing** (post-`39fcaa3`; the AGENTS.md baseline of 101/586 was from `6a598704` and has been growing across subsequent sessions; this lane only removed 7 tests, dropping the count from 736 to 729), lint 0 errors, frontend tsc 0 errors, backend tsc 0 errors
+- Local: 84 backend suites / 1695 tests passing, **111 frontend files / 736 tests passing** (post-`64ebe70`; the AGENTS.md baseline of 101/586 was from `6a598704` and has been growing across subsequent sessions; this lane added 7 tests, taking the count from 729 to 736), lint 0 errors, frontend tsc 0 errors, backend tsc 0 errors
 - Staging: NOT PROVISIONED (external blocker)
 - Repo-side staging readiness: COMPLETE (4 files committed in `72bd168`)
 - bcb6548e claim audit: 9/10 confirmed, 1 (`tsc clean`) corrected by `d36d67e6`
 - Pop-culture name cleanup: 9 HR + 2 doctor (in bcb6548e) + 4 honestly-stubbed (in `6a598704`) = **15 frontend files now pop-culture-free**; 0 pop-culture name hits in non-test frontend source
 - HRManagement dead-wiring closed: route removed `ee0c1775` May 25; misleading "wire" `5efc6dde` cleaned up `39fcaa3` June 19; live replacement at `/hr/employees` via `portals/hr/EmployeesPage.tsx` intact
 - Backend tsc was previously false-claimed clean in bcb6548e; now genuinely clean (verified this session)
+- HR employee status-toggle live-wired: backend PATCH `/v1/hr/employees/:id/status` now called from live `/hr/employees` page via inline per-row select; Super Admin/HR Manager/HR Staff only (Branch Admin does not see the toggle); disabled while in-flight; inline error; no client-trusted tenantId
 
 ### Carryover Risks
 **HIGH:**
@@ -235,7 +272,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - AuditLog retention: count-only enforcement; no schema change for archival by class.
 - Stale untracked snapshot files: `audit-baseline.txt` and `handoff-verify.txt` show 84/1690 tests (current is 1695). Not committed; not blocking; can confuse future agents.
 - Other admin pages still on mock/hardcoded data (none in this scope — the 4 admin pages with hardcoded data were honest-stubbed in `b5df7498`).
-- Employee status-toggle PATCH endpoint has no frontend caller: backend has `@Patch('employees/:id/status')` (`hms-backend/src/hr/hr.controller.ts:95-104`) but the live `portals/hr/EmployeesPage.tsx` (and its `EmployeeWorklist` component) is read+create only. The orphan `HRManagement.tsx` (deleted in `39fcaa3`) was the only frontend caller of this endpoint. Not introduced by this lane; pre-existing functional gap surfaced by the dead-code audit. Out of strict scope of the dead-code removal lane.
+- Employee status-toggle PATCH endpoint has a live frontend caller: backend `@Patch('employees/:id/status')` (`hms-backend/src/hr/hr.controller.ts:95-104`) is now wired to the live `portals/hr/EmployeesPage.tsx` at `/hr/employees` via `hrService.updateEmployeeStatus()` (added in `64ebe70`). Resolved.
 
 **LOW:**
 - (Resolved) Chaos script health-probe path drift fixed in `b088259`; no stale references remain
@@ -262,6 +299,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - **Branch Management module** created as standalone `hms-backend/src/branches/` module; frontend `BranchesPage.tsx` uses shared `admin.service.ts`
 - **AdminExecutiveDashboard carryover** was real and worth finishing — all dependencies existed (`HmsTrendChart`, `getAdminTrends`, `GET /v1/dashboard/admin/trends`)
 - **Delete over revive** for `39fcaa3`: HRManagement was orphaned for 3+ weeks (route removed in `ee0c1775`); reviving it would have duplicated `portals/hr/EmployeesPage.tsx` (live at `/hr/employees` since `9d313237`). Removal is the strictly safer choice — restores code truth without creating two live HR list pages.
+- **Inline select over modal** for `64ebe70`: smallest truthful UI affordance for the status toggle. A modal would have been heavier; the inline `<select>` per row matches the existing dashboard pattern (`EmployeeWorklist` already renders status badges inline). No confirmation prompt for RESIGNED/TERMINATED — adding confirm() would be scope creep beyond "smallest truthful"; the backend's existing auto-deactivate side-effect is the existing production behavior, surfaced via the audit log (`EMPLOYEE_STATUS_UPDATED`) and not introduced by this lane.
 - **Separate staging deploy script over parameterization**: Zero risk to production path. Duplication of 59-line script is acceptable for isolation.
 - **STAGING_SSH_* naming over shared SSH_HOST**: Eliminates GHA fallback risk — if Staging environment is missing SSH secrets, workflow fails immediately instead of silently targeting production.
 - **Same env var names as prod in compose files**: Containers expect `DB_USER`, `DATABASE_URL`, `JWT_SECRET` etc.; staging workflow provides values from `STAGING_*` secrets.
