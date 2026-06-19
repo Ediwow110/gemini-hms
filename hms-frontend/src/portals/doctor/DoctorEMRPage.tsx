@@ -153,7 +153,10 @@ export const DoctorEMRPage = () => {
         <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
         <div>
           <h5 className="font-bold uppercase text-[10px] tracking-wider">EMR Chart (WIP)</h5>
-          <p className="font-medium mt-0.5">Patient data displayed here is simulated for demonstration. The SOAP editor, vitals history, and patient alerts are mock data. Do not use for actual clinical decision-making.</p>
+          <p className="font-medium mt-0.5">
+            Patient safety header, encounters, SOAP notes, clinical orders, and prescriptions load from live HMS backend APIs.
+            Clinical Timeline and Released Diagnostic Results panels still use hardcoded demonstration data — do not use those panels for clinical decision-making.
+          </p>
         </div>
       </div>
       {/* Page Header */}

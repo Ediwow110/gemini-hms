@@ -103,6 +103,19 @@ describe('DoctorEMRPage — pop-culture name cleanup', () => {
     });
   });
 
+  it('does not falsely claim all patient data is simulated when summary is live-backed', async () => {
+    render(<DoctorEMRPage />, { wrapper: createWrapper('/doctor/emr?patientId=P-101') });
+
+    await waitFor(() => {
+      expect(screen.getByText(/001, Patient/)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Patient data displayed here is simulated/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/SOAP editor.*mock data/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/load from live HMS backend APIs/i)).toBeInTheDocument();
+    expect(screen.getByText(/hardcoded demonstration data/i)).toBeInTheDocument();
+  });
+
   it('shows error when patient summary fetch fails', async () => {
     vi.mocked(apiClient.get).mockImplementation((url: string) => {
       if (url === '/v1/clinical-workflow/patients/P-101/summary') {

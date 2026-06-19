@@ -118,7 +118,7 @@ export const RadiologyCanvas = () => {
     <div className="space-y-6 animate-fade-in">
       <PageHeader 
         title="Radiology Imaging Canvas" 
-        description="Process active diagnostic imaging procedures, upload study DICOM files, and author clinical interpretations." 
+        description="View radiology imaging worklist. Study upload and report authoring are read-only — finalization does not persist in the current backend release."
       />
 
       {/* Global Read-Only Notice */}
