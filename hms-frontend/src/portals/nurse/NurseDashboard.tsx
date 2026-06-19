@@ -118,7 +118,6 @@ export const NurseDashboard = () => {
       label: 'Ready for Doctor',
       value: summary?.waitingForDoctor ?? '—',
       severity: 'success' as const,
-      href: '/doctor/queue',
     },
     {
       id: 'critical-vitals',
@@ -195,7 +194,6 @@ export const NurseDashboard = () => {
       label: 'Handoff Ready',
       value: summary.waitingForDoctor ?? 0,
       status: (summary.waitingForDoctor ?? 0) > 3 ? 'at_risk' as const : 'on_track' as const,
-      drilldownHref: '/doctor/queue',
     },
   ] : [];
 
