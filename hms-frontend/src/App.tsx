@@ -38,8 +38,7 @@ const CashierClosing = lazy(() => import('./features/billing/CashierClosing').th
 const ApprovalCenter = lazy(() => import('./features/approvals/ApprovalCenter').then(m => ({ default: m.ApprovalCenter })));
 const AuditLogViewer = lazy(() => import('./features/admin/AuditLogViewer').then(m => ({ default: m.AuditLogViewer })));
 const UserDetail = lazy(() => import('./features/admin/UserDetail').then(m => ({ default: m.UserDetail })));
-const RoleList = lazy(() => import('./features/admin/RoleList').then(m => ({ default: m.RoleList })));
-const RoleDetail = lazy(() => import('./features/admin/RoleDetail').then(m => ({ default: m.RoleDetail })));
+
 const Reports = lazy(() => import('./features/reports/Reports').then(m => ({ default: m.Reports })));
 const Inventory = lazy(() => import('./features/inventory/Inventory').then(m => ({ default: m.Inventory })));
 const InventoryDetail = lazy(() => import('./features/inventory/InventoryDetail').then(m => ({ default: m.InventoryDetail })));
@@ -293,8 +292,8 @@ const router = createBrowserRouter([
           { path: 'audit/events/:id', element: <PermissionRoute permission="audit.view"><LazyPage><AuditEventDetailPage /></LazyPage></PermissionRoute> },
           { path: 'audit/entity/:recordType/:recordId', element: <PermissionRoute permission="audit.view"><LazyPage><EntityAuditTimelinePage /></LazyPage></PermissionRoute> },
           { path: 'admin/users/:id', element: <PermissionRoute permission="admin.role.change"><LazyPage><UserDetail /></LazyPage></PermissionRoute> },
-          { path: 'admin/roles', element: <PermissionRoute permission="admin.role.change"><LazyPage><RoleList /></LazyPage></PermissionRoute> },
-          { path: 'admin/roles/:id', element: <PermissionRoute permission="admin.role.change"><LazyPage><RoleDetail /></LazyPage></PermissionRoute> },
+          { path: 'admin/roles', element: <Navigate to="/admin/roles-permissions" replace /> },
+          { path: 'admin/roles/:id', element: <Navigate to="/admin/roles-permissions" replace /> },
           { path: 'admin/catalog', element: <PermissionRoute permission="catalog.manage"><LazyPage><CatalogManagementPage /></LazyPage></PermissionRoute> },
           {
             path: 'settings',

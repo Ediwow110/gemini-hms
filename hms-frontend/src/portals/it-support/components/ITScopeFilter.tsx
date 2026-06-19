@@ -6,7 +6,7 @@ interface ITScopeFilterProps {
   displayOnly?: boolean;
 }
 
-export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange, displayOnly }) => {
+export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange, displayOnly = true }) => {
   const [selectedTenant, setSelectedTenant] = useState('all');
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [selectedEnv, setSelectedEnv] = useState('production');

@@ -7,7 +7,7 @@ import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const ExportLogsPage: React.FC = () => {
-  const [, setScope] = useState({ tenantId: 'all', branchId: 'all' });
+
   const [search, setSearch] = useState('');
   const [formatFilter, setFormatFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -51,7 +51,7 @@ export const ExportLogsPage: React.FC = () => {
         />
 
         {/* Scope Selector */}
-        <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
+        <ComplianceScopeFilter />
 
         {/* Sandbox Warning - Honest Labeling */}
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex gap-3 text-xs text-amber-800 leading-normal">

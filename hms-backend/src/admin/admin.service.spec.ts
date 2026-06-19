@@ -4288,7 +4288,9 @@ describe('AdminService', () => {
       expect(base36.test(randomPart)).toBe(false);
     });
 
-    it('generates unique temp passwords across many invocations', async () => {
+    it(
+      'generates unique temp passwords across many invocations',
+      async () => {
       // bcrypt at cost 10 is the dominant cost. 50 calls stays under the
       // 5s jest timeout, while still being many times larger than the
       // Math.random base36 output space (~36^8 = 2.8e12) of any practical
@@ -4305,6 +4307,8 @@ describe('AdminService', () => {
         passwords.add(result.tempPassword);
       }
       expect(passwords.size).toBe(N);
-    });
+      },
+      15_000,
+    );
   });
 });

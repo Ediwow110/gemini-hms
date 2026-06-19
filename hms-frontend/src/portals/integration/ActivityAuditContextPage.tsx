@@ -54,7 +54,15 @@ export const ActivityAuditContextPage: React.FC = () => {
 
         <div className="bg-white border border-slate-200 rounded-3xl p-5 flex items-center gap-4">
           <FileText className="h-5 w-5 text-slate-400" />
-          <input type="text" placeholder="Filter by user, action, resource, or event ID..." className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none" />
+          <input
+            type="text"
+            disabled
+            readOnly
+            aria-disabled="true"
+            title="Filter is not wired — activity-audit endpoint returns an empty shell array in this release"
+            placeholder="Filter not available (shell endpoint — no cross-domain audit aggregation yet)"
+            className="flex-1 px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium text-slate-400 cursor-not-allowed"
+          />
         </div>
 
         <ActivityAuditEventTable />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   ShieldAlert, 
   Users, 
@@ -24,7 +24,6 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 
 export const ComplianceDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [, setScope] = useState({ tenantId: 'all', branchId: 'all' });
   const { events: auditEvents, loading: auditLoading } = useAuditEvents({ pageSize: 50 });
   const { report: accessReview, loading: reviewLoading } = useAccessReview();
 
@@ -60,7 +59,7 @@ export const ComplianceDashboard: React.FC = () => {
         />
 
         {/* Scope Filter */}
-      <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
+      <ComplianceScopeFilter />
 
       {/* Alert Strip: Data Retention & Breach Warnings */}
       <div className="rounded-xl border border-amber-250 bg-amber-50/50 px-4 py-3 flex items-center justify-between shadow-sm">

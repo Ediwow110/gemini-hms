@@ -24,7 +24,6 @@ interface GeneratedReport {
 }
 
 export const ComplianceReportsPage: React.FC = () => {
-  const [scope, setScope] = useState({ tenantId: 'all', branchId: 'all' });
   const [reportType, setReportType] = useState('HIPAA');
   const [generating, setGenerating] = useState(false);
   const [generatedReport, setGeneratedReport] = useState<GeneratedReport | null>(null);
@@ -111,7 +110,7 @@ export const ComplianceReportsPage: React.FC = () => {
           : 'Data Retention & Pruning Compliance Summary',
         generatedAt: new Date().toLocaleString(),
         period: 'Current snapshot',
-        scope: `${scope.tenantId === 'all' ? 'System-wide' : scope.tenantId} / ${scope.branchId === 'all' ? 'All Branches' : scope.branchId}`,
+        scope: 'Current session (JWT tenant/branch scope)',
         stats,
         records,
       });
@@ -120,7 +119,7 @@ export const ComplianceReportsPage: React.FC = () => {
     } finally {
       setGenerating(false);
     }
-  }, [reportType, scope]);
+  }, [reportType]);
 
   return (
     <HmsDashboardShell widthTier="full">
@@ -129,7 +128,7 @@ export const ComplianceReportsPage: React.FC = () => {
         description="Generate compliance reports from live audit and access data"
       />
 
-      <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
+      <ComplianceScopeFilter />
 
       <div className="card p-5 bg-white border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
