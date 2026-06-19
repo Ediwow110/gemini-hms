@@ -280,9 +280,44 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 2. **`hms-frontend/src/config/roleNavigation.ts`** — Added the `/inventory/receiving` ("Stock Receiving") entry to the "Inventory & Stock" sidebar group for users with `INVENTORY_RECEIVE` permission.
 3. **`hms-frontend/src/app/__tests__/RoleBasedSidebar.test.tsx`** — Added tests to verify correct sidebar display of "Stock Receiving" depending on role permission mappings (shown for Branch Admin, hidden for Pharmacist).
 
+### Done (This Session — HR Destructive Status Confirmation Test Recovery, Commit `b8344afe`)
+**Trigger:** The `64ebe70` live employee status-toggle wire lane added 8 new tests for the `window.confirm` gating of `RESIGNED`/`TERMINATED`, but the new test file shipped 5 failing tests + 5 unhandled errors. The previous session did not catch this — this session's forced re-validation surfaced it.
+
+**Root cause (CONFIRMED in source):**
+- `EmployeesPage.tsx` runs `fetchEmployees()` and `fetchBranches()` concurrently on mount (`useEffect` lines 116-119).
+- The test file mocked `apiClient.get` with `mockResolvedValueOnce` in order, then chained on `apiClient.patch` and so on.
+- JavaScript Promise scheduling is non-deterministic; under vitest the branches GET occasionally resolved first, consuming the employee fixture. The employees GET then consumed the branch fixture, which has `id`, `name`, `code`, but no `firstName`/`lastName`/`employeeNumber`.
+- `mapHrEmployeeToDisplay` produced `name = '' || e.employeeNumber → undefined`.
+- `EmployeeWorklist.tsx:50` called `emp.name.charAt(0)` → `TypeError: Cannot read properties of undefined (reading 'charAt')` → React unmounted the tree → `findByTestId('employees-status-select-emp-1')` timed out at 1010ms.
+- 5 of 8 new tests hit the bad case on this run; the other 3 (cancel-`RESIGNED`, cancel-`TERMINATED`, `SUSPENDED` non-destructive) got "lucky" with the fixture order.
+
+**Fix (3 files / +182/-56, defense in depth, zero product behavior change):**
+1. **`EmployeesPage.test.tsx`:** introduced `setupApiGetMocks(opts?)` helper at line 90 that mocks `apiClient.get` by URL prefix, not call order. Replaced all 17 `mockResolvedValueOnce`/`mockRejectedValueOnce` chains on `apiClient.get` with `setupApiGetMocks()` / `setupApiGetMocks({ employees: () => [] })` / `setupApiGetMocks({ employeesError: new Error('Network error') })`. Unmocked URLs now reject with a descriptive `Unmocked GET ${url}` error so future omissions are loud, not silent.
+2. **`EmployeesPage.tsx`:** `mapHrEmployeeToDisplay` name derivation is now `[first, last].filter(Boolean).join(' ') || e.employeeNumber || '(unnamed)'`. A malformed row (e.g. branch data leaked into the employees endpoint) can no longer produce an empty name string.
+3. **`EmployeeWorklist.tsx`:** initial derivation is now `(emp.name?.trim()?.charAt(0) || '?').toUpperCase()`. Defense in depth: even if upstream mapping is ever bypassed, the avatar cell can never crash.
+
+**Product behavior preserved (zero change):**
+- `confirm()` only for `RESIGNED` and `TERMINATED` (DESTRUCTIVE_STATUSES in `EmployeesPage.tsx:31`).
+- Cancel = no PATCH, confirm = PATCH then `fetchEmployees()` refresh.
+- No client-trusted `tenantId` / `userId` / `id` in the PATCH body.
+- Backend `PATCH /v1/hr/employees/:id/status` unchanged.
+- `EmployeeWorklist` rendering for the happy path unchanged (initial of `'Alice Anderson'` is still `'A'`).
+
+**Validation (this session):**
+- `cd hms-frontend && npx vitest run src/portals/hr/__tests__/EmployeesPage.test.tsx` → **24/24 pass** (was 5 failed / 5 unhandled errors)
+- `cd hms-frontend && npx vitest run src/portals/hr` → **57/57 pass** (no HR regression: 24 EmployeesPage + 8 Departments + 14 LeaveManagement + 11 Payroll)
+- `cd hms-frontend && npx tsc --noEmit` → 0 errors
+- `cd hms-frontend && npm run lint` → 0 errors (2 pre-existing `PatientDashboard.test.tsx` warnings untouched)
+- `cd hms-backend && npx tsc --noEmit` → 0 errors (no backend touched)
+- `git diff --check` → clean
+- `git diff --stat` → exactly 3 files / +182/-56 (matches lane scope)
+- `git status --short` → 3 modified files staged + 10 pre-existing untracked files; no dirty tracked files after commit
+
+**Reviewer verdict:** `ACCEPT` — defense in depth, no behavior change, race eliminated at the source (URL-aware mocks), production hardening added at the mapping and rendering layers, all tests green.
+
 ### Validation (Current Branch State)
 - Remote CI: 5/5 checks pass (Static Analysis, Backend Tests, Frontend Tests, Docker Build, Vercel Preview)
-- Local: 84 backend suites / 1695 tests passing, **111 frontend files / 736 tests passing** (post-`64ebe70`; the AGENTS.md baseline of 101/586 was from `6a598704` and has been growing across subsequent sessions; this lane added 7 tests, taking the count from 729 to 736), lint 0 errors, frontend tsc 0 errors, backend tsc 0 errors
+- Local: 86 backend suites / 1738 tests passing, **111 frontend files / 744 tests passing** (fresh full-suite proof after `b8344afe`; HR targeted checks remain 24 EmployeesPage tests + 57 HR-portal tests passing)
 - Staging: NOT PROVISIONED (external blocker)
 - Repo-side staging readiness: COMPLETE (4 files committed in `72bd168`)
 - bcb6548e claim audit: 9/10 confirmed, 1 (`tsc clean`) corrected by `d36d67e6`
@@ -290,6 +325,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - HRManagement dead-wiring closed: route removed `ee0c1775` May 25; misleading "wire" `5efc6dde` cleaned up `39fcaa3` June 19; live replacement at `/hr/employees` via `portals/hr/EmployeesPage.tsx` intact
 - Backend tsc was previously false-claimed clean in bcb6548e; now genuinely clean (verified this session)
 - HR employee status-toggle live-wired: backend PATCH `/v1/hr/employees/:id/status` now called from live `/hr/employees` page via inline per-row select; Super Admin/HR Manager/HR Staff only (Branch Admin does not see the toggle); disabled while in-flight; inline error; no client-trusted tenantId
+- HR destructive status confirmation: 8 new tests in `64ebe70` shipped with concurrent-fetch race; **all 24 EmployeesPage tests + 57 HR-portal tests pass** after `b8344afe` URL-aware mock fix + upstream name-fallback + safe-initials hardening
 
 ### Carryover Risks
 **HIGH:**
@@ -298,7 +334,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 **MEDIUM:**
 - Pre-existing spec/e2e type errors (173 in `hms-backend/test/`) — auth, billing, admin spec files. NOT in default `tsc --noEmit`, but real debt.
 - AuditLog retention: count-only enforcement; no schema change for archival by class.
-- Stale untracked snapshot files: `audit-baseline.txt` and `handoff-verify.txt` show 84/1690 tests (current is 1695). Not committed; not blocking; can confuse future agents.
+- Stale untracked snapshot files: `audit-baseline.txt` and `handoff-verify.txt` show older backend test counts (current is 86 suites / 1738 tests). Not committed; not blocking; can confuse future agents.
 - Other admin pages still on mock/hardcoded data (none in this scope — the 4 admin pages with hardcoded data were honest-stubbed in `b5df7498`).
 - Employee status-toggle PATCH endpoint has a live frontend caller: backend `@Patch('employees/:id/status')` (`hms-backend/src/hr/hr.controller.ts:95-104`) is now wired to the live `portals/hr/EmployeesPage.tsx` at `/hr/employees` via `hrService.updateEmployeeStatus()` (added in `64ebe70`). Resolved.
 
@@ -310,7 +346,8 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - (Resolved) Pop-culture placeholder names in HR portal + Doctor timeline replaced with neutral sandbox identifiers in `bcb6548e`
 - (Resolved) HRManagement dead-wiring closed in `39fcaa3` — orphaned `HRManagement.tsx` + 7 dead tests removed; equivalent live functionality at `/hr/employees` was already wired via `9d313237`
 - (Resolved) False Sandbox Notice in live `EmployeeWorklist.tsx` closed in `7849d09` — the "Employee records are simulated..." block was removed because the page is now fully live (list, create, status-toggle). A user who reads "sandbox" was more likely to accidentally deprovision a real account via `RESIGNED`/`TERMINATED` thinking it was harmless
-- Tree is clean (only 4 intentional untracked files: 2 stale snapshots, 1 staging checklist, 1 plan doc)
+- (Resolved) HR destructive status confirmation test race closed in `b8344afe` — `setupApiGetMocks` URL-aware helper replaced order-dependent `mockResolvedValueOnce` chains; `mapHrEmployeeToDisplay` falls back to `'(unnamed)'`; `EmployeeWorklist` initial is crash-proof. All 24 EmployeesPage tests + 57 HR-portal tests now pass
+- Tree is clean (10 untracked artifacts: 2 stale snapshots, 2 path-list files, 3 scratch/helper scripts, 3 docs/checklist artifacts)
 
 ## Key Decisions
 - Reuse existing `AuditLog` model and `AuditService.log()` throughout
