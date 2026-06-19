@@ -18,18 +18,18 @@ describe('IntegrationShellNotice — honest state (post-truth-gap fix)', () => {
     ).toHaveTextContent(/Integration Bridges\s+[—-]\s+Mixed Availability/i);
   });
 
-  it('states that 2 of 7 /v1/integration/* endpoints are now live', () => {
+  it('states that 3 of 7 /v1/integration/* endpoints are now live', () => {
     renderNotice();
     expect(
-      screen.getByText(/2 of 7/i)
+      screen.getByText(/3 of 7/i)
     ).toBeInTheDocument();
     expect(screen.getByText(/Partial namespace implementation/i)).toBeInTheDocument();
     expect(screen.getByText(/\/v1\/integration\/\*/i)).toBeInTheDocument();
   });
 
-  it('states that 5 endpoints are shell placeholders returning empty arrays (not HTTP 404)', () => {
+  it('states that 4 endpoints are shell placeholders returning empty arrays (not HTTP 404)', () => {
     renderNotice();
-    expect(screen.getByText(/5 endpoints are shell placeholders/i)).toBeInTheDocument();
+    expect(screen.getByText(/4 endpoints are shell placeholders/i)).toBeInTheDocument();
     expect(screen.getByText(/HTTP 200, empty arrays/i)).toBeInTheDocument();
     expect(screen.queryByText(/5 endpoints remain HTTP 404/i)).not.toBeInTheDocument();
   });
@@ -60,7 +60,7 @@ describe('IntegrationShellNotice — honest state (post-truth-gap fix)', () => {
   it('honestly describes the dashboard cards as showing — + MOCK for shell-empty endpoints', () => {
     renderNotice();
     expect(
-      screen.getByText(/5 shell-empty endpoints/i)
+      screen.getByText(/4 shell-empty endpoints/i)
     ).toBeInTheDocument();
     expect(screen.getByText(/not real zero metrics/i)).toBeInTheDocument();
     expect(screen.getByText(/MOCK/i)).toBeInTheDocument();

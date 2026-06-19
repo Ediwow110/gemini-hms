@@ -85,11 +85,23 @@ describe('RadiologyCanvas Honesty Tests', () => {
     expect(screen.getByText(/This module is currently in read-only mode/i)).toBeInTheDocument();
   });
 
-  it('states that radiology finalize is not implemented and worklist may be empty', async () => {
+  it('states live IMAGING worklist with finalize still unavailable', async () => {
     renderWithAuth(<RadiologyCanvas />);
-    expect(screen.getByText(/Limited backend release/i)).toBeInTheDocument();
+    expect(screen.getByText(/Partial backend release/i)).toBeInTheDocument();
     expect(screen.getAllByText(/\/v1\/radiology\/orders/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/IMAGING/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/not implemented/i)).toBeInTheDocument();
+  });
+
+  it('shows honest empty worklist state when API returns no orders', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.get as any).mockResolvedValue({ data: [] });
+
+    renderWithAuth(<RadiologyCanvas />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/No IMAGING orders in worklist/i)).toBeInTheDocument();
+    });
   });
 
   it('does NOT introduce a fabricated "orders loaded" or "save successful" claim', async () => {

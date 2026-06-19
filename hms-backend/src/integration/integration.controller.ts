@@ -51,7 +51,7 @@ export class IntegrationBridgesController {
 
   @Get('activity-audit')
   @RequirePermissions('audit.view')
-  activityAudit() {
-    return [];
+  activityAudit(@GetUser() user: AuthTypes.RequestUser) {
+    return this.integrationBridgesService.listActivityAudit(user);
   }
 }

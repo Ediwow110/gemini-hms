@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ApprovalsService } from '../approvals/approvals.service';
+import { AuditService } from '../audit/audit.service';
 import { RequestUser } from '../common/types/authenticated-request.type';
 
 export interface IntegrationNotificationDto {
@@ -16,6 +17,21 @@ export interface IntegrationNotificationDto {
   actor: string;
   tenantId: string;
   branchId: string | null;
+  accessLabel: string;
+  isMock: false;
+  isShell: false;
+}
+
+export interface IntegrationActivityAuditDto {
+  id: string;
+  actor: string;
+  role: string;
+  tenantBranch: string;
+  recordType: string;
+  recordId: string;
+  eventType: string;
+  risk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  timestamp: string;
   accessLabel: string;
   isMock: false;
   isShell: false;
@@ -52,6 +68,7 @@ export class IntegrationBridgesService {
   constructor(
     private readonly notificationsService: NotificationsService,
     private readonly approvalsService: ApprovalsService,
+    private readonly auditService: AuditService,
   ) {}
 
   async listNotifications(
@@ -80,6 +97,76 @@ export class IntegrationBridgesService {
     );
 
     return rows.map((r) => this.toIntegrationApproval(r));
+  }
+
+  async listActivityAudit(
+    user: RequestUser,
+  ): Promise<IntegrationActivityAuditDto[]> {
+    const result = await this.auditService.findAll(
+      user.tenantId,
+      user.branchId,
+      user.roles ?? [],
+      { pageSize: 50 },
+    );
+
+    return result.data.map((row) => this.toIntegrationActivityAudit(row));
+  }
+
+  private mapAuditRisk(eventKey: string): IntegrationActivityAuditDto['risk'] {
+    const key = eventKey.toUpperCase();
+    if (
+      key.includes('BREACH') ||
+      key.includes('UNAUTHORIZED') ||
+      key.includes('SECURITY')
+    ) {
+      return 'CRITICAL';
+    }
+    if (
+      key.includes('REJECTED') ||
+      key.includes('VOID') ||
+      key.includes('FAILED')
+    ) {
+      return 'HIGH';
+    }
+    if (
+      key.includes('FINANCIAL') ||
+      key.includes('PAYMENT') ||
+      key.includes('BILLING')
+    ) {
+      return 'MEDIUM';
+    }
+    return 'LOW';
+  }
+
+  private toIntegrationActivityAudit(row: {
+    id: string;
+    tenantId: string;
+    branchId: string | null;
+    userId: string;
+    eventKey: string;
+    recordType: string;
+    recordId: string;
+    createdAt: Date;
+    activeRole: string | null;
+  }): IntegrationActivityAuditDto {
+    const tenantBranch = row.branchId
+      ? `Branch ${row.branchId.slice(0, 8)}`
+      : 'Tenant-wide';
+
+    return {
+      id: row.id,
+      actor: row.userId,
+      role: row.activeRole ?? 'N/A',
+      tenantBranch,
+      recordType: row.recordType,
+      recordId: row.recordId,
+      eventType: row.eventKey,
+      risk: this.mapAuditRisk(row.eventKey),
+      timestamp: row.createdAt.toISOString(),
+      accessLabel: `Audit: ${row.recordType}/${row.eventKey}`,
+      isMock: false,
+      isShell: false,
+    };
   }
 
   private toIntegrationNotification(n: {

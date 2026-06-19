@@ -49,7 +49,7 @@ export const IntegrationDashboard: React.FC = () => {
   const isLoading = notifLoading || apprLoading || auditLoading || recLoading;
   const notificationsKpi = liveKpiDisplay(notifications);
   const approvalsKpi = liveKpiDisplay(approvals);
-  const activityKpi = shellKpiDisplay(audits);
+  const activityKpi = liveKpiDisplay(audits);
   const reconciliationKpi = shellKpiDisplay(issues);
 
   return (

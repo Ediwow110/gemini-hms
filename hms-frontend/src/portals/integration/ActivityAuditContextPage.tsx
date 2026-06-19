@@ -11,8 +11,7 @@ export const ActivityAuditContextPage: React.FC = () => {
       <div className="space-y-6 pb-12">
         <HmsPageHeader
           title="Activity & Audit Context"
-          description="Cross-domain audit trail with role-aware visibility"
-          badge="Sandbox"
+          description="Live audit trail from /v1/integration/activity-audit (JWT-scoped, role-aware)"
         />
 
         <IntegrationShellNotice />
@@ -59,8 +58,8 @@ export const ActivityAuditContextPage: React.FC = () => {
             disabled
             readOnly
             aria-disabled="true"
-            title="Filter is not wired — activity-audit endpoint returns an empty shell array in this release"
-            placeholder="Filter not available (shell endpoint — no cross-domain audit aggregation yet)"
+            title="Filter is not wired — use /audit-logs for full audit search in this release"
+            placeholder="Filter not available here — events below are live from the audit log feed"
             className="flex-1 px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium text-slate-400 cursor-not-allowed"
           />
         </div>
@@ -71,7 +70,7 @@ export const ActivityAuditContextPage: React.FC = () => {
           <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
           <div>
             <p className="text-xs font-bold text-amber-900">Audit Log Visibility</p>
-            <p className="text-[10px] text-amber-700 font-medium mt-0.5">Audit events are UI placeholders. No real audit log ingestion or cross-domain aggregation is performed. Patient users cannot see internal staff audit events. Supplier users cannot see tenant-wide audit trails.</p>
+            <p className="text-[10px] text-amber-700 font-medium mt-0.5">Events in the table are live audit-log records scoped to your JWT tenant/branch permissions. Aggregate KPI counts (24h, high-risk) are not yet implemented. Patient and supplier portals cannot access this staff audit feed.</p>
           </div>
         </div>
       </div>

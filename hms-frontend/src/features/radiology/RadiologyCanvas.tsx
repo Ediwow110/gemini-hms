@@ -118,7 +118,7 @@ export const RadiologyCanvas = () => {
     <div className="space-y-6 animate-fade-in">
       <PageHeader 
         title="Radiology Imaging Canvas" 
-        description="View radiology imaging worklist. Study upload and report authoring are read-only — finalization does not persist in the current backend release."
+        description="Live IMAGING clinical-order worklist. Study upload and report finalization are not yet persisted in the backend."
       />
 
       {/* Global Read-Only Notice */}
@@ -130,11 +130,11 @@ export const RadiologyCanvas = () => {
             Report finalization is not yet available in the live environment.
           </p>
           <p>
-            <span className="font-bold">Limited backend release.</span>{' '}
+            <span className="font-bold">Partial backend release.</span>{' '}
             <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">GET /v1/radiology/orders</code>{' '}
-            returns an empty worklist until imaging orders are modeled.{' '}
+            returns live <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">IMAGING</code> clinical orders for your tenant/branch scope.{' '}
             <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">POST .../finalize</code>{' '}
-            is not implemented — report finalization will not persist. File uploads on this page are local-only.
+            is not implemented — report finalization will not persist. File uploads on this page are local-only. Process phase stays PENDING until radiology report storage exists.
           </p>
         </div>
       </div>
@@ -167,6 +167,13 @@ export const RadiologyCanvas = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
+              {orders.length === 0 && !fetchError && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-8 text-center text-slate-400 text-xs font-medium">
+                    No IMAGING orders in worklist for this branch. Orders appear here when clinicians create IMAGING clinical orders.
+                  </td>
+                </tr>
+              )}
               {orders.map(o => {
                 const isSelected = selectedOrder?.id === o.id;
                 return (

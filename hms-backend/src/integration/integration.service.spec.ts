@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { IntegrationBridgesService } from './integration.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ApprovalsService } from '../approvals/approvals.service';
+import { AuditService } from '../audit/audit.service';
 
 describe('IntegrationBridgesService — thin wrappers', () => {
   let service: IntegrationBridgesService;
   let notifications: { listNotifications: jest.Mock };
   let approvals: { getRequests: jest.Mock };
+  let audit: { findAll: jest.Mock };
 
   const tenantId = '00000000-0000-0000-0000-000000000001';
   const otherTenantId = '00000000-0000-0000-0000-000000000002';
@@ -23,12 +25,14 @@ describe('IntegrationBridgesService — thin wrappers', () => {
   beforeEach(async () => {
     notifications = { listNotifications: jest.fn() };
     approvals = { getRequests: jest.fn() };
+    audit = { findAll: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         IntegrationBridgesService,
         { provide: NotificationsService, useValue: notifications },
         { provide: ApprovalsService, useValue: approvals },
+        { provide: AuditService, useValue: audit },
       ],
     }).compile();
 
@@ -276,6 +280,61 @@ describe('IntegrationBridgesService — thin wrappers', () => {
         false,
         false,
       );
+    });
+  });
+
+  describe('listActivityAudit', () => {
+    it('re-uses AuditService.findAll with JWT-derived tenant and roles', async () => {
+      audit.findAll.mockResolvedValueOnce({ data: [], total: 0, page: 1, pageSize: 50 });
+      await service.listActivityAudit(baseUser);
+      expect(audit.findAll).toHaveBeenCalledWith(
+        tenantId,
+        undefined,
+        ['HR Manager'],
+        { pageSize: 50 },
+      );
+    });
+
+    it('maps audit rows to integration activity DTOs without mock/shell flags', async () => {
+      const createdAt = new Date('2026-06-01T12:00:00.000Z');
+      audit.findAll.mockResolvedValueOnce({
+        data: [
+          {
+            id: 'audit-1',
+            tenantId,
+            branchId: 'branch-1',
+            userId: 'actor-1',
+            eventKey: 'SECURITY_BREACH_DETECTED',
+            recordType: 'Patient',
+            recordId: 'patient-1',
+            createdAt,
+            activeRole: 'Doctor',
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+      });
+
+      const result = await service.listActivityAudit(baseUser);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: 'audit-1',
+        actor: 'actor-1',
+        role: 'Doctor',
+        recordType: 'Patient',
+        recordId: 'patient-1',
+        eventType: 'SECURITY_BREACH_DETECTED',
+        risk: 'CRITICAL',
+        isMock: false,
+        isShell: false,
+      });
+      expect(result[0].timestamp).toBe(createdAt.toISOString());
+    });
+
+    it('returns empty array when audit log has no rows', async () => {
+      audit.findAll.mockResolvedValueOnce({ data: [], total: 0, page: 1, pageSize: 50 });
+      await expect(service.listActivityAudit(baseUser)).resolves.toEqual([]);
     });
   });
 });

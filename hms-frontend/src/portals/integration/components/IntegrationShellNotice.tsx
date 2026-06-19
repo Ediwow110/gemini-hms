@@ -18,17 +18,17 @@ export const IntegrationShellNotice: React.FC = () => {
         <p className="text-xs text-amber-800 font-medium leading-relaxed">
           <span className="font-bold">Partial namespace implementation.</span>{' '}
           The <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/integration/*</code>{' '}
-          namespace has <span className="font-bold">2 of 7</span> live endpoints
+          namespace has <span className="font-bold">3 of 7</span> live endpoints
           backed by existing controllers:{' '}
           <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/integration/notifications</code>{' '}
-          (re-uses <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/notifications</code>)
-          and{' '}
+          (re-uses <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/notifications</code>),{' '}
           <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/integration/approvals</code>{' '}
-          (re-uses <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/approvals</code>).
+          (re-uses <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/approvals</code>), and{' '}
+          <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/integration/activity-audit</code>{' '}
+          (re-uses <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/audit</code> with role-aware scoping).
         </p>
         <p className="text-xs text-amber-800 font-medium leading-relaxed">
-          <span className="font-bold">5 endpoints are shell placeholders (HTTP 200, empty arrays):</span>{' '}
-          <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">activity-audit</code>,{' '}
+          <span className="font-bold">4 endpoints are shell placeholders (HTTP 200, empty arrays):</span>{' '}
           <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">global-search</code>,{' '}
           <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">patient-timeline</code>,{' '}
           <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">asset-timeline</code>,{' '}
@@ -40,9 +40,9 @@ export const IntegrationShellNotice: React.FC = () => {
         </p>
         <p className="text-xs text-amber-800 font-medium leading-relaxed">
           <span className="font-bold">What this page currently shows.</span>{' '}
-          Counts on the dashboard cards reflect the live state for the 2
+          Counts on the dashboard cards reflect the live state for the 3
           wired endpoints and <span className="font-mono">—</span> + MOCK
-          for the 5 shell-empty endpoints (not real zero metrics). The &quot;Cross-Domain Bridge
+          for the 4 shell-empty endpoints (not real zero metrics). The &quot;Cross-Domain Bridge
           Health&quot; card remains an explicit honest-stub (no live value
           is shown until a real provider integration is wired). Approvals
           that are part of the regular billing workflow remain live on

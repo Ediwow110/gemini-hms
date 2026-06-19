@@ -106,7 +106,7 @@ describe('IntegrationDashboard — honest state (post-truth-gap fix)', () => {
     expect(mockBadges.length).toBeGreaterThanOrEqual(8);
   });
 
-  it('shows em-dash + MOCK for shell-empty activity/reconciliation arrays (not fake "0")', () => {
+  it('shows em-dash + MOCK for shell-empty reconciliation only; live activity shows real zero', () => {
     vi.mocked(useIntegrationNotifications).mockReturnValue({ data: [{ id: 'n1', isMock: false }], isLoading: false } as unknown as ReturnType<typeof useIntegrationNotifications>);
     vi.mocked(useIntegrationApprovals).mockReturnValue({
       data: [{
@@ -125,19 +125,15 @@ describe('IntegrationDashboard — honest state (post-truth-gap fix)', () => {
 
     renderWithProviders(<IntegrationDashboard />);
 
-    const kpiValues = Array.from(document.querySelectorAll('p.text-xl')).map((el) => el.textContent);
-    expect(kpiValues.filter((v) => v === '0')).toHaveLength(0);
-
-    expect(screen.getByText('Activity Events').closest('div')?.parentElement).toHaveTextContent('—');
-    expect(screen.getByText('Reconciliation Issues').closest('div')?.parentElement).toHaveTextContent('—');
-
     const activityCard = screen.getByText('Activity Events').closest('.col-span-12');
     const reconciliationCard = screen.getByText('Reconciliation Issues').closest('.col-span-12');
-    expect(activityCard).toHaveTextContent('MOCK');
+    expect(activityCard).toHaveTextContent('0');
+    expect(activityCard).not.toHaveTextContent('MOCK');
+    expect(reconciliationCard).toHaveTextContent('—');
     expect(reconciliationCard).toHaveTextContent('MOCK');
   });
 
-  it('preserves real zero counts for live notifications/approvals when arrays are empty', () => {
+  it('preserves real zero counts for live notifications/approvals/activity when arrays are empty', () => {
     vi.mocked(useIntegrationNotifications).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationNotifications>);
     vi.mocked(useIntegrationApprovals).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationApprovals>);
     vi.mocked(useIntegrationActivityAudit).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationActivityAudit>);
@@ -147,9 +143,12 @@ describe('IntegrationDashboard — honest state (post-truth-gap fix)', () => {
 
     const notificationsCard = screen.getByText('Notifications Pending').closest('.col-span-12');
     const approvalsCard = screen.getByText('Approvals Pending').closest('.col-span-12');
+    const activityCard = screen.getByText('Activity Events').closest('.col-span-12');
     expect(notificationsCard).toHaveTextContent('0');
     expect(notificationsCard).not.toHaveTextContent('MOCK');
     expect(approvalsCard).toHaveTextContent('0');
     expect(approvalsCard).not.toHaveTextContent('MOCK');
+    expect(activityCard).toHaveTextContent('0');
+    expect(activityCard).not.toHaveTextContent('MOCK');
   });
 });
