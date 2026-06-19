@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
 
 export const IntegrationShellNotice: React.FC = () => {
@@ -46,19 +47,19 @@ export const IntegrationShellNotice: React.FC = () => {
           is shown until a real provider integration is wired). Approvals
           that are part of the regular billing workflow remain live on
           the{' '}
-          <a
-            href="/integration/approvals"
+          <Link
+            to="/integration/approvals"
             className="font-bold underline hover:text-amber-900"
           >
             Approval Center
-          </a>{' '}
+          </Link>{' '}
           and{' '}
-          <a
-            href="/approvals"
+          <Link
+            to="/approvals"
             className="font-bold underline hover:text-amber-900"
           >
             /approvals
-          </a>{' '}
+          </Link>{' '}
           routes; this portal is the cross-domain bridge layer above them.
         </p>
       </div>
