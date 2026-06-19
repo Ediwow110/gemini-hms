@@ -19,6 +19,7 @@ import { GetPatientUser } from './decorators/get-patient-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { DocumentGeneratorService } from './services/document-generator.service';
 import type { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 
 // Default sameSite is 'strict' for production security.
 // Override via COOKIE_SAME_SITE env var (e.g. 'none' for split-origin staging).
@@ -54,6 +55,7 @@ export class PatientPortalController {
     private readonly documentGenerator: DocumentGeneratorService,
   ) {}
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
   async login(
