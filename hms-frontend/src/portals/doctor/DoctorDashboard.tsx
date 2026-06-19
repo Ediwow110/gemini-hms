@@ -99,7 +99,6 @@ export const DoctorDashboard = () => {
       label: 'Pending Triage',
       value: summary.pendingTriage,
       severity: 'warning' as const,
-      href: '/nurse/triage',
     },
     {
       id: 'pending-lab',
