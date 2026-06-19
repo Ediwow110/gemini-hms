@@ -57,11 +57,19 @@ const MOCK_QUEUE_ENTRY: MockQueueEntry = {
   },
 };
 
-const setupWorklistGetMock = (entries: MockQueueEntry[] = [MOCK_QUEUE_ENTRY]) => {
+const setupWorklistGetMock = (
+  entries: MockQueueEntry[] = [MOCK_QUEUE_ENTRY],
+  encounterDetails: { diagnoses?: Array<{ id: string; icd10Code: string; description: string; isPrimary: boolean }> } = {
+    diagnoses: [],
+  },
+) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (apiClient.get as any).mockImplementation(async (url: string) => {
     if (url === '/v1/queue/worklist') {
       return { data: entries };
+    }
+    if (url === `/v1/emr/encounters/${MOCK_ENCOUNTER_ID}`) {
+      return { data: encounterDetails };
     }
     throw new Error('Unknown endpoint');
   });
@@ -535,6 +543,37 @@ describe('EMRWorkspace diagnosis parity', () => {
     await waitFor(() => {
       expect(screen.getByText(/Diagnosis not found/i)).toBeInTheDocument();
       expect(screen.getByText('Essential hypertension')).toBeInTheDocument();
+    });
+  });
+
+  it('hydrates persisted diagnoses from the encounter and deletes them via the EMR route', async () => {
+    setupWorklistGetMock([MOCK_QUEUE_ENTRY], {
+      diagnoses: [
+        {
+          id: 'diag-existing',
+          icd10Code: 'E11',
+          description: 'Type 2 diabetes mellitus',
+          isPrimary: true,
+        },
+      ],
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.delete as any).mockResolvedValue({ status: 200 });
+
+    renderWithAuth(<EMRWorkspace />);
+    await selectJohnDoe();
+    openIcd10Tab();
+
+    expect(await screen.findByText('Type 2 diabetes mellitus')).toBeInTheDocument();
+
+    const row = screen.getByText('Type 2 diabetes mellitus').closest('tr');
+    fireEvent.click(row!.querySelector('button')!);
+
+    await waitFor(() => {
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        `/v1/emr/encounters/${MOCK_ENCOUNTER_ID}/diagnoses/diag-existing`,
+      );
+      expect(screen.queryByText('Type 2 diabetes mellitus')).not.toBeInTheDocument();
     });
   });
 });

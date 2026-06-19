@@ -53,6 +53,17 @@ interface DiagnosisItem {
   isPrimary: boolean;
 }
 
+interface EncounterDiagnosisResponse {
+  id: string;
+  icd10Code: string;
+  description: string;
+  isPrimary: boolean;
+}
+
+interface EncounterDetailsResponse {
+  diagnoses?: EncounterDiagnosisResponse[];
+}
+
 type SoapNotesState = {
   CHIEF_COMPLAINT: string;
   PROGRESS: string;
@@ -170,6 +181,19 @@ export const EMRWorkspace = () => {
     return res.data?.id ?? null;
   };
 
+  const hydrateEncounterDetails = async (encounterId: string) => {
+    const res = await apiClient.get<EncounterDetailsResponse>(`/v1/emr/encounters/${encounterId}`);
+    const encounter = res.data;
+    setDiagnoses(
+      (encounter.diagnoses ?? []).map((diagnosis) => ({
+        id: diagnosis.id,
+        code: diagnosis.icd10Code,
+        description: diagnosis.description,
+        isPrimary: diagnosis.isPrimary,
+      })),
+    );
+  };
+
   const handleSelectEntry = async (entry: QueueEntry) => {
     setSelectedEntry(entry);
     setIsLocked(false);
@@ -196,6 +220,7 @@ export const EMRWorkspace = () => {
       const encounterId = await ensureEncounterForEntry(entry);
       if (encounterId) {
         setActiveEncounterId(encounterId);
+        await hydrateEncounterDetails(encounterId);
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } }; message?: string };
