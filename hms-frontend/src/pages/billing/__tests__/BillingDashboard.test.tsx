@@ -27,6 +27,11 @@ vi.mock('../../../services/billing-dashboard.service', () => ({
 }));
 
 const mockNavigate = vi.hoisted(() => vi.fn());
+const mockHasPermission = vi.hoisted(() => vi.fn<(permission: string) => boolean>(() => true));
+
+vi.mock('../../../hooks/use-user', () => ({
+  usePermissions: () => ({ hasPermission: mockHasPermission }),
+}));
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -39,6 +44,7 @@ vi.mock('react-router-dom', async () => {
 describe('BillingDashboard Unit Tests', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockHasPermission.mockReturnValue(true);
   });
 
   it('renders successfully with live dashboard data', async () => {
@@ -118,6 +124,54 @@ describe('BillingDashboard Unit Tests', () => {
     fireEvent.click(unpaidDrilldown);
     expect(mockNavigate).toHaveBeenCalledWith('/cashier/invoices');
     expect(mockNavigate).not.toHaveBeenCalledWith('/billing');
+  });
+
+  it('only shows Claims Dashboard shortcut to users with claim-view permission', async () => {
+    mockHasPermission.mockImplementation((permission: string) => permission !== 'billing.claim.view');
+    vi.mocked(billingDashboardService.getDashboardData).mockResolvedValue({
+      kpis: [],
+      alerts: [],
+      invoiceStatusDistribution: [],
+      highestOutstanding: [],
+      recentPayments: [],
+      isUnavailable: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <BillingDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Invoice Registry')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Claims Dashboard')).not.toBeInTheDocument();
+    expect(mockHasPermission).toHaveBeenCalledWith('billing.claim.view');
+
+    mockHasPermission.mockReturnValue(true);
+    vi.mocked(billingDashboardService.getDashboardData).mockResolvedValue({
+      kpis: [],
+      alerts: [],
+      invoiceStatusDistribution: [],
+      highestOutstanding: [],
+      recentPayments: [],
+      isUnavailable: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <BillingDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Claims Dashboard')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Claims Dashboard'));
+    expect(mockNavigate).toHaveBeenCalledWith('/claims');
   });
 
   it('uses honest branch labels that match the actual request scope', async () => {

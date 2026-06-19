@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
+import { RequirePermission } from '../ui/RequirePermission';
 
 interface QuickAction {
   id: string;
@@ -9,6 +10,7 @@ interface QuickAction {
   href?: string;
   onClick?: () => void;
   variant?: 'default' | 'primary' | 'danger';
+  permission?: string;
 }
 
 interface HmsQuickActionsProps {
@@ -48,7 +50,7 @@ export const HmsQuickActions = ({ actions, columns = 1, title }: HmsQuickActions
             else a.onClick?.();
           };
 
-          return (
+          const button = (
             <button
               key={a.id}
               type="button"
@@ -62,6 +64,16 @@ export const HmsQuickActions = ({ actions, columns = 1, title }: HmsQuickActions
               <ChevronRight className="h-3.5 w-3.5 text-slate-400 flex-shrink-0 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
             </button>
           );
+
+          if (a.permission) {
+            return (
+              <RequirePermission key={a.id} permission={a.permission}>
+                {button}
+              </RequirePermission>
+            );
+          }
+
+          return button;
         })}
       </div>
     </div>

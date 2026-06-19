@@ -306,7 +306,7 @@ export const BillingDashboard: React.FC = () => {
               actions={[
                 { id: 'inv-reg', label: 'Invoice Registry', icon: <DollarSign className="h-4 w-4 text-blue-500" />, href: '/cashier/invoices' },
                 { id: 'cash-close', label: 'Cashier closing', icon: <Coins className="h-4 w-4 text-amber-500" />, href: '/cashier/session' },
-                { id: 'claims-db', label: 'Claims Dashboard', icon: <CreditCard className="h-4 w-4 text-emerald-500" />, href: '/claims' },
+                { id: 'claims-db', label: 'Claims Dashboard', icon: <CreditCard className="h-4 w-4 text-emerald-500" />, href: '/claims', permission: 'billing.claim.view' },
               ]}
             />
           </div>
