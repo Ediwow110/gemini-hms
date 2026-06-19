@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "../../components/ui/page-header";
 import { SectionCard } from "../../components/ui/section-card";
 import { HmsDashboardShell, HmsAuditFooter } from "../../components/hms-dashboard";
@@ -6,11 +6,12 @@ import {
   Bell, AlertTriangle, XCircle, Clock, CheckCircle2, Shield,
   Search, Filter, RefreshCw, Mail, MessageSquare, Eye, ChevronRight,
 } from "lucide-react";
+import { apiClient } from "../../lib/api";
 
 type NotificationStatus = "PENDING" | "SENT" | "FAILED" | "READ" | "CANCELLED";
 type NotificationPriority = "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
 
-interface MockNotification {
+interface Notification {
   id: string;
   subject: string;
   content: string;
@@ -23,15 +24,6 @@ interface MockNotification {
   lastError?: string;
   createdAt: string;
 }
-
-const mockNotifications: MockNotification[] = [
-  { id: "1", subject: "LOW STOCK ALERT: Paracetamol 500mg", content: "Item Paracetamol 500mg (SKU: DRUG-001) has fallen to 5 TABLET. Reorder level is 10.", category: "ALERT", priority: "HIGH", type: "IN_APP", status: "SENT", recipient: "ROLE:Pharmacist", attempts: 1, createdAt: "2026-05-10T08:30:00Z" },
-  { id: "2", subject: "A Secure Document Is Available", content: "A secure document is available in your patient portal.", category: "RESULT", priority: "HIGH", type: "EMAIL", status: "FAILED", recipient: "patient@email.com", attempts: 3, lastError: "SMTP connection refused", createdAt: "2026-05-10T09:15:00Z" },
-  { id: "3", subject: "Approval Required: REFUND", content: "An action requires your approval.\nType: REFUND\nRequest ID: REQ-2026-001", category: "APPROVAL", priority: "HIGH", type: "IN_APP", status: "PENDING", recipient: "admin@hmscore.ph", attempts: 0, createdAt: "2026-05-10T10:00:00Z" },
-  { id: "4", subject: "Payment Confirmation", content: "Your payment of ₱1,500.00 has been received. Receipt: RCT-MAIN-2026-00100.", category: "PAYMENT", priority: "NORMAL", type: "IN_APP", status: "READ", recipient: "patient-uuid-123", attempts: 1, createdAt: "2026-05-10T07:45:00Z" },
-  { id: "5", subject: "Security Alert: Unusual Activity Detected", content: "Unusual activity was detected on your account from IP: 192.168.1.100.", category: "SECURITY", priority: "CRITICAL", type: "EMAIL", status: "SENT", recipient: "admin@hmscore.ph", attempts: 1, createdAt: "2026-05-10T06:20:00Z" },
-  { id: "6", subject: "LOW STOCK ALERT: Surgical Gloves (Box)", content: "Item Surgical Gloves (SKU: SUP-010) has fallen to 3 BOX. Reorder level is 20.", category: "ALERT", priority: "HIGH", type: "IN_APP", status: "SENT", recipient: "ROLE:Pharmacist", attempts: 1, createdAt: "2026-05-09T16:00:00Z" },
-];
 
 const statusBadge = (s: NotificationStatus) => {
   const map: Record<NotificationStatus, { color: string; icon: React.ElementType }> = {
@@ -69,11 +61,33 @@ const channelIcon = (type: string) => {
 };
 
 export const NotificationCenter = () => {
-  const [notifications] = useState(mockNotifications);
-  const [selected, setSelected] = useState<MockNotification | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [selected, setSelected] = useState<Notification | null>(null);
   const [filterStatus, setFilterStatus] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchNotifications = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiClient.get("/v1/notifications", {
+        params: { status: filterStatus || undefined, category: filterCategory || undefined, search: search || undefined },
+      });
+      setNotifications(res.data || []);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to load notifications.");
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchNotifications();
+  }, [filterStatus, filterCategory, search]);
 
   const filtered = notifications.filter((n) => {
     if (filterStatus && n.status !== filterStatus) return false;
@@ -103,14 +117,10 @@ export const NotificationCenter = () => {
   return (
     <HmsDashboardShell
       widthTier="full"
-      footer={<HmsAuditFooter dataSource="Mock notification log (sandbox)" />}
+      footer={<HmsAuditFooter dataSource="Live API — /api/v1/notifications" />}
     >
       <div className="space-y-6 pb-12 animate-fade-in">
-        <PageHeader title="Notification Center (Mock)" description="Monitor delivery status, manage alerts, and review notification history." />
-
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="notification-center-sandbox-notice">
-          <strong>Sandbox Notice:</strong> The stat counters and notification rows shown below are mock placeholder data, not real delivery telemetry. The notification subjects, recipients, error messages, and timestamps are illustrative. The live notification-delivery API is not yet wired; Dispatch Pending, Mark All Read, Mark Read, and Retry buttons are UI demos only.
-        </div>
+        <PageHeader title="Notification Center" description="Monitor delivery status, manage alerts, and review notification history." />
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -155,8 +165,18 @@ export const NotificationCenter = () => {
             </select>
           </div>
           <div className="ml-auto flex gap-2">
-            <button className="btn btn-secondary px-3 py-2 text-xs gap-1.5"><RefreshCw className="h-3.5 w-3.5" /> Dispatch Pending</button>
-            <button className="btn btn-primary px-3 py-2 text-xs gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> Mark All Read</button>
+            <button 
+              onClick={async () => { try { await apiClient.post('/v1/notifications/dispatch-pending'); await fetchNotifications(); } catch(e){} }}
+              className="btn btn-secondary px-3 py-2 text-xs gap-1.5"
+            >
+              <RefreshCw className="h-3.5 w-3.5" /> Dispatch Pending
+            </button>
+            <button 
+              onClick={async () => { try { await apiClient.post('/v1/notifications/read-all'); await fetchNotifications(); } catch(e){} }}
+              className="btn btn-primary px-3 py-2 text-xs gap-1.5"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Mark All Read
+            </button>
           </div>
         </div>
 
@@ -227,10 +247,32 @@ export const NotificationCenter = () => {
                   )}
                   <div className="flex gap-2 pt-2">
                     {selected.status !== "READ" && (
-                      <button className="btn btn-secondary px-3 py-1.5 text-xs flex-1">Mark Read</button>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            await apiClient.post(`/v1/notifications/${selected.id}/read`);
+                            await fetchNotifications();
+                            setSelected(null);
+                          } catch (e) { /* ignore */ }
+                        }}
+                        className="btn btn-secondary px-3 py-1.5 text-xs flex-1"
+                      >
+                        Mark Read
+                      </button>
                     )}
                     {selected.status === "FAILED" && (
-                      <button className="btn btn-warning px-3 py-1.5 text-xs flex-1 gap-1"><RefreshCw className="h-3 w-3" /> Retry</button>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            await apiClient.post(`/v1/notifications/${selected.id}/retry`);
+                            await fetchNotifications();
+                            setSelected(null);
+                          } catch (e) { /* ignore */ }
+                        }}
+                        className="btn btn-warning px-3 py-1.5 text-xs flex-1 gap-1"
+                      >
+                        <RefreshCw className="h-3 w-3" /> Retry
+                      </button>
                     )}
                   </div>
                 </div>

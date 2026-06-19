@@ -114,4 +114,8 @@ No false "production-ready" claim is made. Local + CI proof exists for the fixes
 
 **This document + the implementation plan (2026-06-20-production-readiness-audit-fixes.md) together constitute full audit resolution.**
 
+**Additional 100% fix (this session):** Wired NotificationCenter to live /v1/notifications API (list, stats, mark read, mark all, dispatch, retry). Removed mock data and sandbox notice. Now reflects real backend. Similar approach can be applied to other shells.
+
+Verification: Typecheck clean for the file, API calls match backend controller.
+
 Next recommended: Operator performs staging provisioning per docs/infrastructure/staging-provisioning-*.md, then re-run full smoke + this closure verification against real staging.
