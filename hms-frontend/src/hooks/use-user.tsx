@@ -178,6 +178,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (error.response?.status === 401) {
           if (mounted) {
             setUser(null);
+            setAuthError(error);
             // Avoid infinite loop if already null
           }
         } else if (!requestUrl?.includes('/v1/auth/me') && error.response?.status !== 200) {
