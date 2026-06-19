@@ -3,9 +3,21 @@ import { useParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/page-header";
 import { UserStatusBadge, RoleBadge } from "../../components/ui/user-badges";
 import { ReasonModal } from "../../components/ui/approval-modals";
-import { KeyRound, LogOut, UserX, ShieldAlert, AlertCircle } from "lucide-react";
+import { KeyRound, LogOut, UserX, ShieldAlert, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { adminService } from "../../services/admin.service";
-import { apiClient } from "../../lib/api";
+
+const MIN_REASON_LENGTH = 8;
+
+type UserDetailOutcome = {
+  tone: "success" | "error";
+  title: string;
+  body: string;
+};
+
+const extractApiError = (err: unknown, fallback: string): string => {
+  const error = err as { response?: { data?: { message?: string } }; message?: string };
+  return error.response?.data?.message || error.message || fallback;
+};
 
 export const UserDetail = () => {
   const { id } = useParams();
@@ -14,6 +26,7 @@ export const UserDetail = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [actionOutcome, setActionOutcome] = useState<UserDetailOutcome | null>(null);
   const [apiUser, setApiUser] = useState<{
     id: string;
     email: string;
@@ -65,16 +78,44 @@ export const UserDetail = () => {
     return () => { active = false; };
   }, [id]);
 
+  const closeModal = (name: keyof typeof modals) => {
+    setModals((prev) => ({ ...prev, [name]: false }));
+  };
+
+  const validateReason = (reason: string): string | null => {
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < MIN_REASON_LENGTH) {
+      setActionOutcome({
+        tone: "error",
+        title: "Reason required",
+        body: "Reason must be at least 8 characters.",
+      });
+      return null;
+    }
+    return trimmedReason;
+  };
+
   const handleForceLogout = async (reason: string) => {
     if (!id) return;
+    const trimmedReason = validateReason(reason);
+    if (!trimmedReason) return;
+
     setActionLoading(true);
+    setActionOutcome(null);
     try {
-      await adminService.forceLogout(id, reason);
-      alert("User has been forcibly logged out.");
-      setModals({...modals, forceLogout: false});
+      await adminService.forceLogout(id, trimmedReason);
+      setActionOutcome({
+        tone: "success",
+        title: "Force logout completed",
+        body: `${apiUser?.email || "User"} has been forcibly logged out through the live admin API.`,
+      });
+      closeModal("forceLogout");
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || 'Failed to force logout user');
+      setActionOutcome({
+        tone: "error",
+        title: "Force logout failed",
+        body: extractApiError(err, "Failed to force logout user"),
+      });
     } finally {
       setActionLoading(false);
     }
@@ -82,30 +123,57 @@ export const UserDetail = () => {
 
   const handleResetPassword = async (reason: string) => {
     if (!id) return;
+    const trimmedReason = validateReason(reason);
+    if (!trimmedReason) return;
+
     setActionLoading(true);
+    setActionOutcome(null);
     try {
-      const res = await adminService.resetPassword(id, reason);
+      const res = await adminService.resetPassword(id, trimmedReason);
       setTempPassword(res.tempPassword);
-      setModals({...modals, reset: false});
+      closeModal("reset");
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || 'Failed to reset password');
+      setActionOutcome({
+        tone: "error",
+        title: "Password reset failed",
+        body: extractApiError(err, "Failed to reset password"),
+      });
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleSuspend = async (reason: string) => {
-    if (!id) return;
+    if (!id || !apiUser) return;
+    const trimmedReason = validateReason(reason);
+    if (!trimmedReason) return;
+
+    const shouldActivate = apiUser.status === "INACTIVE";
     setSuspendLoading(true);
+    setActionOutcome(null);
     try {
-      const endpoint = apiUser?.status === 'INACTIVE' ? 'activate' : 'deactivate';
-      await apiClient.post(`/v1/admin/users/${id}/${endpoint}`, { reason });
-      setApiUser((prev) => prev ? { ...prev, status: endpoint === 'deactivate' ? 'INACTIVE' : 'ACTIVE' } : prev);
-      setModals({...modals, suspend: false});
+      const updated = shouldActivate
+        ? await adminService.activateUser(id, trimmedReason)
+        : await adminService.deactivateUser(id, trimmedReason);
+      setApiUser((prev) => prev ? {
+        ...prev,
+        email: updated.email || prev.email,
+        status: updated.status,
+        mfaEnabled: updated.mfaEnabled,
+        deactivatedAt: updated.deactivatedAt,
+      } : prev);
+      setActionOutcome({
+        tone: "success",
+        title: shouldActivate ? "Account activated" : "Account suspended",
+        body: `${apiUser.email} was ${shouldActivate ? "activated" : "suspended"} through the live admin lifecycle API.`,
+      });
+      closeModal("suspend");
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || 'Failed to change account status');
+      setActionOutcome({
+        tone: "error",
+        title: "Account status change failed",
+        body: extractApiError(err, "Failed to change account status"),
+      });
     } finally {
       setSuspendLoading(false);
     }
@@ -158,6 +226,27 @@ export const UserDetail = () => {
         backLabel="Back to Users"
         breadcrumbs={breadcrumbs}
       />
+
+      {actionOutcome && (
+        <div
+          role={actionOutcome.tone === "error" ? "alert" : "status"}
+          className={`card p-4 rounded-2xl border flex items-start gap-3 ${
+            actionOutcome.tone === "error"
+              ? "bg-rose-50 border-rose-200 text-rose-800"
+              : "bg-emerald-50 border-emerald-200 text-emerald-800"
+          }`}
+        >
+          {actionOutcome.tone === "error" ? (
+            <XCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          )}
+          <div>
+            <p className="font-bold text-sm">{actionOutcome.title}</p>
+            <p className="text-xs mt-1">{actionOutcome.body}</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
