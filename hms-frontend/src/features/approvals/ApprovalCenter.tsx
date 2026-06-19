@@ -13,6 +13,12 @@ const normalize = (val: string) => {
   return val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
 };
 
+const getActionErrorMessage = (mode: string, error: unknown) => {
+  const fallback = `Failed to ${mode.toLowerCase()} request. Please try again.`;
+  const err = error as { response?: { data?: { message?: string } }; message?: string } | null;
+  return err?.response?.data?.message || err?.message || fallback;
+};
+
 export const ApprovalCenter = () => {
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [selected, setSelected] = useState<ApprovalRequest | null>(null);
@@ -21,6 +27,7 @@ export const ApprovalCenter = () => {
   const [modals, setModals] = useState({ confirm: false, reason: false, mode: "" });
   const [approvalAuthChecked, setApprovalAuthChecked] = useState(false);
   const [approvalAuthError, setApprovalAuthError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const currentUser = useUser();
 
   const fetchRequests = useCallback(async (showLoading = true) => {
@@ -51,17 +58,30 @@ export const ApprovalCenter = () => {
 
   const closeApprovalModal = () => {
     resetApprovalConfirmation();
+    setActionError(null);
     setModals({ ...modals, confirm: false });
   };
 
   const openApprovalModal = () => {
     resetApprovalConfirmation();
+    setActionError(null);
     setModals({ confirm: true, reason: false, mode: "Approve" });
+  };
+
+  const openRejectModal = () => {
+    setActionError(null);
+    setModals({ confirm: false, reason: true, mode: "Reject" });
+  };
+
+  const closeRejectModal = () => {
+    setActionError(null);
+    setModals({ ...modals, reason: false });
   };
 
   const handleAction = async (remarks: string) => {
     if (!selected) return;
     setIsProcessing(true);
+    setActionError(null);
     try {
       if (modals.mode === "Approve") {
         await approvalService.approveRequest(selected.id, selected.type, remarks, selected.details);
@@ -69,13 +89,14 @@ export const ApprovalCenter = () => {
         await approvalService.rejectRequest(selected.id, selected.type, remarks, selected.details);
       }
       await fetchRequests();
+      setActionError(null);
       setModals({ confirm: false, reason: false, mode: "" });
       if (modals.mode === "Approve") {
         resetApprovalConfirmation();
       }
     } catch (error) {
       console.error(`Failed to ${modals.mode.toLowerCase()} request:`, error);
-      alert(`Failed to ${modals.mode.toLowerCase()} request. Please try again.`);
+      setActionError(getActionErrorMessage(modals.mode, error));
     } finally {
       setIsProcessing(false);
     }
@@ -254,7 +275,7 @@ export const ApprovalCenter = () => {
                         {isProcessing && modals.mode === "Approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
                       </button>
                       <button 
-                        onClick={() => setModals({ confirm: false, reason: true, mode: "Reject" })} 
+                        onClick={openRejectModal}
                         disabled={isProcessing}
                         className="btn btn-danger py-2.5 disabled:opacity-50"
                       >
@@ -306,6 +327,11 @@ export const ApprovalCenter = () => {
             {approvalAuthError}
           </p>
         )}
+        {actionError && modals.mode === "Approve" && (
+          <p role="alert" className="mt-2 text-xs font-semibold text-rose-700">
+            {actionError}
+          </p>
+        )}
       </ConfirmationModal>
 
       <ReasonModal 
@@ -313,7 +339,8 @@ export const ApprovalCenter = () => {
         title="Reject Request" 
         guidance="Please provide a mandatory reason for rejection." 
         onConfirm={(remarks) => handleAction(remarks)} 
-        onClose={() => setModals({ ...modals, reason: false })} 
+        onClose={closeRejectModal}
+        error={modals.mode === "Reject" ? actionError : null}
       />
     </div>
   );

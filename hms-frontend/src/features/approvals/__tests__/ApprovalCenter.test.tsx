@@ -132,4 +132,37 @@ describe('ApprovalCenter approval confirmation enforcement', () => {
     });
     expect(approvalService.approveRequest).not.toHaveBeenCalled();
   });
+
+  it('shows inline approval failure feedback without calling window.alert', async () => {
+    vi.mocked(approvalService.approveRequest).mockRejectedValue({
+      response: { data: { message: 'Approval service unavailable' } },
+    });
+
+    await openApproveModal();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /I confirm I have verified/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm$/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Approval service unavailable/i);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: /Approve Request/i })).toBeInTheDocument();
+  });
+
+  it('shows inline rejection failure feedback without calling window.alert', async () => {
+    vi.mocked(approvalService.rejectRequest).mockRejectedValue({
+      response: { data: { message: 'Rejection service unavailable' } },
+    });
+
+    await openSelectedRequest();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Reject$/i }));
+    fireEvent.change(await screen.findByPlaceholderText(/Enter your reason/i), {
+      target: { value: 'Insufficient policy basis' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm$/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Rejection service unavailable/i);
+    expect(window.alert).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: /Reject Request/i })).toBeInTheDocument();
+  });
 });
