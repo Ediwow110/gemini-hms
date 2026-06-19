@@ -5,7 +5,6 @@ import {
   Param,
   Post,
   UseGuards,
-  NotImplementedException,
 } from '@nestjs/common';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
@@ -14,6 +13,7 @@ import { RequireBranchContext } from '../auth/decorators/branch-context.decorato
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 import { RadiologyService } from './radiology.service';
+import { FinalizeRadiologyReportDto } from './dto/finalize-radiology-report.dto';
 
 @Controller('api/v1/radiology')
 @UseGuards(PermissionsGuard, BranchGuard)
@@ -31,11 +31,10 @@ export class RadiologyController {
   @RequirePermissions('lab.result.encode')
   @RequireBranchContext()
   finalizeOrder(
-    @Param('id') _id: string,
-    @Body() _body: Record<string, unknown>,
+    @Param('id') id: string,
+    @Body() dto: FinalizeRadiologyReportDto,
+    @GetUser() user: RequestUser,
   ) {
-    throw new NotImplementedException(
-      'Radiology report finalization is not implemented in this release.',
-    );
+    return this.radiologyService.finalizeReport(user, id, dto);
   }
 }

@@ -1,11 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import {
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { AUDIT_EVENT_KEYS } from '../audit/audit-event-keys';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 import { RadiologyService } from './radiology.service';
 
 describe('RadiologyService', () => {
   let service: RadiologyService;
-  let prisma: { order: { findMany: jest.Mock } };
+  let prisma: {
+    order: { findMany: jest.Mock; findFirst: jest.Mock };
+    $transaction: jest.Mock;
+    radiologyReport: { create: jest.Mock };
+  };
+  let audit: { log: jest.Mock };
 
   const branchActor: RequestUser = {
     userId: 'user-1',
@@ -24,13 +35,19 @@ describe('RadiologyService', () => {
 
   beforeEach(async () => {
     prisma = {
-      order: { findMany: jest.fn() },
+      order: { findMany: jest.fn(), findFirst: jest.fn() },
+      radiologyReport: { create: jest.fn() },
+      $transaction: jest.fn(async (cb: (tx: typeof prisma) => unknown) =>
+        cb(prisma),
+      ),
     };
+    audit = { log: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RadiologyService,
         { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: audit },
       ],
     }).compile();
 
@@ -76,6 +93,7 @@ describe('RadiologyService', () => {
         clinicalIndication: 'Chest pain',
         patient: { firstName: 'Jane', lastName: 'Doe' },
         clinicalItems: [{ itemName: 'Chest X-Ray PA' }],
+        radiologyReport: null,
       },
     ]);
 
@@ -94,8 +112,124 @@ describe('RadiologyService', () => {
     ]);
   });
 
+  it('maps finalized radiology reports to FINALIZED phase with interpretation', async () => {
+    const requestedAt = new Date('2026-06-01T10:00:00.000Z');
+    const finalizedAt = new Date('2026-06-02T12:00:00.000Z');
+    prisma.order.findMany.mockResolvedValueOnce([
+      {
+        id: 'order-2',
+        orderNumber: 'IMG-1002',
+        priority: 'ROUTINE',
+        requestedAt,
+        createdAt: requestedAt,
+        clinicalIndication: null,
+        patient: { firstName: 'John', lastName: 'Smith' },
+        clinicalItems: [{ itemName: 'CT Abdomen' }],
+        radiologyReport: {
+          interpretation: 'No acute findings.',
+          status: 'FINALIZED',
+          finalizedAt,
+        },
+      },
+    ]);
+
+    const result = await service.listImagingOrders(branchActor);
+
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        phase: 'FINALIZED',
+        interpretation: 'No acute findings.',
+        finalizedAt: finalizedAt.toISOString(),
+      }),
+    );
+  });
+
   it('returns empty array when no IMAGING orders exist', async () => {
     prisma.order.findMany.mockResolvedValueOnce([]);
     await expect(service.listImagingOrders(branchActor)).resolves.toEqual([]);
+  });
+
+  describe('finalizeReport', () => {
+    const orderId = 'order-1';
+    const finalizedAt = new Date('2026-06-03T09:00:00.000Z');
+
+    it('persists interpretation and emits audit event for scoped IMAGING order', async () => {
+      prisma.order.findFirst.mockResolvedValueOnce({
+        id: orderId,
+        branchId: 'branch-1',
+        radiologyReport: null,
+      });
+      prisma.radiologyReport.create.mockResolvedValueOnce({
+        id: 'report-1',
+        orderId,
+        interpretation: 'Mild cardiomegaly.',
+        status: 'FINALIZED',
+        finalizedAt,
+      });
+
+      const result = await service.finalizeReport(branchActor, orderId, {
+        interpretation: 'Mild cardiomegaly.',
+      });
+
+      expect(prisma.order.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: orderId,
+            tenantId: 'tenant-1',
+            branchId: 'branch-1',
+            orderType: 'IMAGING',
+          }),
+        }),
+      );
+      expect(prisma.radiologyReport.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          tenantId: 'tenant-1',
+          orderId,
+          interpretation: 'Mild cardiomegaly.',
+          status: 'FINALIZED',
+          finalizedById: 'user-1',
+        }),
+      });
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: AUDIT_EVENT_KEYS.RADIOLOGY_REPORT_FINALIZED,
+          recordType: 'RadiologyReport',
+          recordId: 'report-1',
+        }),
+        prisma,
+        'branch-1',
+      );
+      expect(result).toEqual({
+        id: 'report-1',
+        orderId,
+        interpretation: 'Mild cardiomegaly.',
+        status: 'FINALIZED',
+        finalizedAt: finalizedAt.toISOString(),
+      });
+    });
+
+    it('throws NotFoundException when order is out of scope', async () => {
+      prisma.order.findFirst.mockResolvedValueOnce(null);
+
+      await expect(
+        service.finalizeReport(branchActor, orderId, {
+          interpretation: 'Clear lungs.',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws ConflictException when report already exists', async () => {
+      prisma.order.findFirst.mockResolvedValueOnce({
+        id: orderId,
+        branchId: 'branch-1',
+        radiologyReport: { id: 'existing-report' },
+      });
+
+      await expect(
+        service.finalizeReport(branchActor, orderId, {
+          interpretation: 'Clear lungs.',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
   });
 });

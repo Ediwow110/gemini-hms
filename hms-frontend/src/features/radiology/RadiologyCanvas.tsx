@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useUser } from "../../hooks/use-user";
 import { apiClient } from "../../lib/api";
 import { PageHeader } from "../../components/ui/page-header";
 import { 
@@ -22,11 +21,11 @@ interface ImagingOrder {
   phase: "PENDING" | "UPLOADED" | "FINALIZED";
   uploadedFile?: string;
   interpretation?: string;
+  finalizedAt?: string;
   requestedAt: string;
 }
 
 export const RadiologyCanvas = () => {
-  const user = useUser();
   const [orders, setOrders] = useState<ImagingOrder[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<ImagingOrder | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -35,12 +34,23 @@ export const RadiologyCanvas = () => {
   const [fileAttachmentNotice, setFileAttachmentNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
+  const [finalizeSuccess, setFinalizeSuccess] = useState<string | null>(null);
 
   const fetchRadiologyOrders = async () => {
     try {
       const res = await apiClient.get("/v1/radiology/orders");
-      setOrders(res.data || []);
+      const nextOrders: ImagingOrder[] = res.data || [];
+      setOrders(nextOrders);
       setFetchError(null);
+
+      if (selectedOrder) {
+        const refreshed = nextOrders.find((o) => o.id === selectedOrder.id) ?? null;
+        setSelectedOrder(refreshed);
+        if (refreshed) {
+          setInterpretation(refreshed.interpretation || "");
+        }
+      }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setFetchError(error.response?.data?.message || "Failed to fetch radiology orders.");
@@ -49,12 +59,16 @@ export const RadiologyCanvas = () => {
 
   useEffect(() => {
     void fetchRadiologyOrders();
+    // selectedOrder intentionally excluded — refresh preserves selection via id lookup
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRowSelect = (order: ImagingOrder) => {
     setSelectedOrder(order);
     setInterpretation(order.interpretation || "");
     setUploadedFile(order.uploadedFile || null);
+    setFinalizeError(null);
+    setFinalizeSuccess(null);
     setFileAttachmentNotice(
       order.uploadedFile
         ? "Existing file reference returned by source data. No new file upload is performed from this read-only screen."
@@ -69,7 +83,6 @@ export const RadiologyCanvas = () => {
     );
   };
 
-  // Drag and drop handlers
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -88,7 +101,7 @@ export const RadiologyCanvas = () => {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
       if (file.size > 50 * 1024 * 1024) {
-        alert("File size exceeds the 50MB limit!");
+        setFinalizeError("File size exceeds the 50MB limit.");
         return;
       }
       handleLocalFileSelection(file);
@@ -97,18 +110,23 @@ export const RadiologyCanvas = () => {
 
   const handleSaveReport = async () => {
     if (!selectedOrder) return;
+    const trimmedInterpretation = interpretation.trim();
+    if (!trimmedInterpretation) return;
+
     setIsSaving(true);
+    setFinalizeError(null);
+    setFinalizeSuccess(null);
     try {
       await apiClient.post(`/v1/radiology/orders/${selectedOrder.id}/finalize`, {
-        interpretation,
-        uploadedFile,
-        tenantId: user?.tenantId,
-        branchId: user?.branchId
+        interpretation: trimmedInterpretation,
       });
-      alert("Report finalized successfully.");
+      setFinalizeSuccess("Interpretation report finalized and persisted.");
+      await fetchRadiologyOrders();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || "Failed to finalize radiology report.");
+      setFinalizeError(
+        error.response?.data?.message || "Failed to finalize radiology report.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -118,36 +136,35 @@ export const RadiologyCanvas = () => {
     <div className="space-y-6 animate-fade-in">
       <PageHeader 
         title="Radiology Imaging Canvas" 
-        description="Live IMAGING clinical-order worklist. Study upload and report finalization are not yet persisted in the backend."
+        description="Live IMAGING clinical-order worklist with persisted interpretation finalization. Binary study upload is not yet available."
       />
 
-      {/* Global Read-Only Notice */}
       <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-start gap-3 text-xs font-medium">
         <ShieldAlert className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <p>
-            <span className="font-bold">This module is currently in read-only mode.</span>{' '}
-            Report finalization is not yet available in the live environment.
-          </p>
           <p>
             <span className="font-bold">Partial backend release.</span>{' '}
             <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">GET /v1/radiology/orders</code>{' '}
             returns live <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">IMAGING</code> clinical orders for your tenant/branch scope.{' '}
             <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">POST .../finalize</code>{' '}
-            is not implemented — report finalization will not persist. File uploads on this page are local-only. Process phase stays PENDING until radiology report storage exists.
+            persists interpretation text only — study binaries are not uploaded or stored.
+          </p>
+          <p>
+            File selection on this page remains local-only preview. Object storage signed URLs are not implemented.
           </p>
         </div>
       </div>
 
-      {/* Error Notice */}
       {fetchError && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
+        <div
+          role="alert"
+          className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium"
+        >
           <ShieldAlert className="h-4 w-4 text-rose-600 flex-shrink-0" />
           <span>{fetchError}</span>
         </div>
       )}
 
-      {/* UPPER PANEL: Technical Study Worklist */}
       <div className="card p-5 space-y-4">
         <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase flex items-center gap-2 border-b pb-3 border-slate-100">
           <FileImage className="h-4.5 w-4.5 text-indigo-500" />
@@ -218,11 +235,8 @@ export const RadiologyCanvas = () => {
         </div>
       </div>
 
-      {/* LOWER PANEL: Activated Workspace */}
       {selectedOrder ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
-          
-          {/* Left Box: File Upload Canvas */}
           <div className="card p-6 space-y-4">
             <h4 className="font-bold text-slate-800 text-xs tracking-wider uppercase flex items-center gap-2 border-b pb-2 border-slate-100">
               <UploadCloud className="h-4 w-4 text-indigo-500" />
@@ -280,7 +294,6 @@ export const RadiologyCanvas = () => {
             )}
           </div>
 
-          {/* Right Box: Interpretations Canvas */}
           <div className="card p-6 flex flex-col justify-between space-y-4">
             <div className="space-y-4">
               <h4 className="font-bold text-slate-800 text-xs tracking-wider uppercase flex items-center gap-2 border-b pb-2 border-slate-100">
@@ -299,6 +312,17 @@ export const RadiologyCanvas = () => {
                   className="input min-h-[140px] py-2 font-medium"
                 />
               </div>
+
+              {finalizeError && (
+                <p role="alert" data-testid="finalize-error" className="text-xs text-rose-600 font-medium">
+                  {finalizeError}
+                </p>
+              )}
+              {finalizeSuccess && (
+                <p role="status" data-testid="finalize-success" className="text-xs text-emerald-600 font-medium">
+                  {finalizeSuccess}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
@@ -317,15 +341,16 @@ export const RadiologyCanvas = () => {
                {selectedOrder.phase !== "FINALIZED" && (
                  <button
                    onClick={handleSaveReport}
-                   disabled={isSaving || !uploadedFile || !interpretation || true}
+                   disabled={isSaving || !interpretation.trim()}
+                   data-testid="finalize-report-btn"
                    className={`btn text-xs px-4 py-2 flex items-center gap-1.5 ${
-                     uploadedFile && interpretation
+                     interpretation.trim()
                        ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                        : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                    } disabled:opacity-50 disabled:cursor-not-allowed`}
                  >
                    <ClipboardCheck className="h-4 w-4" />
-                   {isSaving ? "Saving..." : "Finalize Report (WIP)"}
+                   {isSaving ? "Saving..." : "Finalize Report"}
                  </button>
                )}
 

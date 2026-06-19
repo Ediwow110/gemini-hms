@@ -73,24 +73,60 @@ describe('RadiologyCanvas Honesty Tests', () => {
     });
   });
 
-  it('disables finalize report button and shows WIP text', async () => {
+  it('enables finalize when interpretation is provided (file not required)', async () => {
     await openRadiologyWorkspace();
 
-    const finalizeBtn = screen.getByText(/Finalize Report \(WIP\)/i);
+    const finalizeBtn = screen.getByTestId('finalize-report-btn');
     expect(finalizeBtn).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText(/formal medical diagnosis/i), {
+      target: { value: 'No acute cardiopulmonary process.' },
+    });
+
+    expect(finalizeBtn).not.toBeDisabled();
+    expect(finalizeBtn).toHaveTextContent('Finalize Report');
   });
 
-  it('shows the read-only banner', async () => {
+  it('posts interpretation-only finalize payload and refreshes worklist', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.get as any).mockResolvedValue({ data: [radiologyOrder] });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.post as any).mockResolvedValue({
+      data: {
+        id: 'RPT-1',
+        orderId: 'ORD-1',
+        interpretation: 'Clear lungs.',
+        status: 'FINALIZED',
+        finalizedAt: '2026-06-03T00:00:00.000Z',
+      },
+    });
+
     renderWithAuth(<RadiologyCanvas />);
-    expect(screen.getByText(/This module is currently in read-only mode/i)).toBeInTheDocument();
+    fireEvent.click(await screen.findByText(/Test Patient/i));
+    fireEvent.change(screen.getByPlaceholderText(/formal medical diagnosis/i), {
+      target: { value: 'Clear lungs.' },
+    });
+    fireEvent.click(screen.getByTestId('finalize-report-btn'));
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/v1/radiology/orders/ORD-1/finalize',
+        { interpretation: 'Clear lungs.' },
+      );
+      expect(screen.getByTestId('finalize-success')).toHaveTextContent(
+        /finalized and persisted/i,
+      );
+    });
+    expect(apiClient.get).toHaveBeenCalledTimes(2);
   });
 
-  it('states live IMAGING worklist with finalize still unavailable', async () => {
+  it('shows honest disclosure for partial backend release', async () => {
     renderWithAuth(<RadiologyCanvas />);
     expect(screen.getByText(/Partial backend release/i)).toBeInTheDocument();
     expect(screen.getAllByText(/\/v1\/radiology\/orders/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/IMAGING/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/not implemented/i)).toBeInTheDocument();
+    expect(screen.getByText(/persists interpretation text only/i)).toBeInTheDocument();
+    expect(screen.getByText(/study binaries are not uploaded or stored/i)).toBeInTheDocument();
   });
 
   it('shows honest empty worklist state when API returns no orders', async () => {
@@ -104,14 +140,13 @@ describe('RadiologyCanvas Honesty Tests', () => {
     });
   });
 
-  it('does NOT introduce a fabricated "orders loaded" or "save successful" claim', async () => {
+  it('does NOT introduce a fabricated "orders loaded" or fake upload success claim', async () => {
     renderWithAuth(<RadiologyCanvas />);
     expect(screen.queryByText(/orders loaded successfully/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/save successful/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/uploaded successfully/i)).not.toBeInTheDocument();
   });
 
   it('keeps drag/drop file selection local-only without fake persistence claims', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     await openRadiologyWorkspace();
 
     const dropZone = screen.getByText(/Drag & Drop Study Files/i).closest('div');
@@ -126,11 +161,9 @@ describe('RadiologyCanvas Honesty Tests', () => {
     expect(screen.queryByText(/uploaded successfully/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/matched to.*database entity/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/DICOM properties mapped/i)).not.toBeInTheDocument();
-    expect(alertSpy).not.toHaveBeenCalled();
   });
 
   it('keeps file input selection local-only without fake persistence claims', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     await openRadiologyWorkspace();
 
     const input = screen.getByLabelText(/Browse Files/i);
@@ -143,6 +176,29 @@ describe('RadiologyCanvas Honesty Tests', () => {
     expect(screen.queryByText(/uploaded successfully/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/matched to.*database entity/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/DICOM properties mapped/i)).not.toBeInTheDocument();
+  });
+
+  it('shows inline finalize error without alert on API failure', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.get as any).mockResolvedValue({ data: [radiologyOrder] });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.post as any).mockRejectedValue({
+      response: { data: { message: 'Radiology report already finalized for this order' } },
+    });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+    renderWithAuth(<RadiologyCanvas />);
+    fireEvent.click(await screen.findByText(/Test Patient/i));
+    fireEvent.change(screen.getByPlaceholderText(/formal medical diagnosis/i), {
+      target: { value: 'Duplicate attempt.' },
+    });
+    fireEvent.click(screen.getByTestId('finalize-report-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('finalize-error')).toHaveTextContent(
+        /already finalized/i,
+      );
+    });
     expect(alertSpy).not.toHaveBeenCalled();
   });
 });

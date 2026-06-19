@@ -7,7 +7,16 @@ export interface RadiologyOrderDto {
   patientName: string;
   procedure: string;
   priority: RadiologyOrderPriority;
-  /** Always PENDING until radiology report/upload persistence exists. */
   phase: RadiologyOrderPhase;
   requestedAt: string;
+  interpretation?: string;
+  finalizedAt?: string;
+}
+
+export interface RadiologyReportFinalizeResponseDto {
+  id: string;
+  orderId: string;
+  interpretation: string;
+  status: string;
+  finalizedAt: string;
 }

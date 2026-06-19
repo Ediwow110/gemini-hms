@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotImplementedException } from '@nestjs/common';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { BranchGuard } from '../auth/guards/branch.guard';
 import { RadiologyController } from './radiology.controller';
@@ -8,7 +7,10 @@ import type { RequestUser } from '../common/types/authenticated-request.type';
 
 describe('RadiologyController', () => {
   let controller: RadiologyController;
-  let radiologyService: { listImagingOrders: jest.Mock };
+  let radiologyService: {
+    listImagingOrders: jest.Mock;
+    finalizeReport: jest.Mock;
+  };
 
   const actor: RequestUser = {
     userId: 'user-1',
@@ -19,7 +21,10 @@ describe('RadiologyController', () => {
   };
 
   beforeEach(async () => {
-    radiologyService = { listImagingOrders: jest.fn() };
+    radiologyService = {
+      listImagingOrders: jest.fn(),
+      finalizeReport: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [RadiologyController],
@@ -52,9 +57,24 @@ describe('RadiologyController', () => {
     expect(radiologyService.listImagingOrders).toHaveBeenCalledWith(actor);
   });
 
-  it('POST finalize throws NotImplementedException', () => {
-    expect(() =>
-      controller.finalizeOrder('order-1', { interpretation: 'clear' }),
-    ).toThrow(NotImplementedException);
+  it('POST finalize delegates to RadiologyService.finalizeReport', async () => {
+    const response = {
+      id: 'report-1',
+      orderId: 'order-1',
+      interpretation: 'No acute findings.',
+      status: 'FINALIZED',
+      finalizedAt: '2026-06-03T00:00:00.000Z',
+    };
+    radiologyService.finalizeReport.mockResolvedValueOnce(response);
+
+    const dto = { interpretation: 'No acute findings.' };
+    await expect(
+      controller.finalizeOrder('order-1', dto, actor),
+    ).resolves.toEqual(response);
+    expect(radiologyService.finalizeReport).toHaveBeenCalledWith(
+      actor,
+      'order-1',
+      dto,
+    );
   });
 });
