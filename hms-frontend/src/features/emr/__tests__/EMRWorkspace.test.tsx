@@ -10,6 +10,7 @@ vi.mock('../../../lib/api', () => ({
     get: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -460,5 +461,80 @@ describe('EMRWorkspace Honesty Tests', () => {
     });
 
     expect(screen.getByText(/Jane Smith/i)).toBeInTheDocument();
+  });
+});
+
+const openIcd10Tab = () => {
+  fireEvent.click(screen.getByText(/ICD-10 Diagnostics/i));
+};
+
+const addDiagnosisFixture = async (diagId = 'diag-1') => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (apiClient.post as any).mockResolvedValue({
+    data: {
+      id: diagId,
+      icd10Code: 'I10',
+      description: 'Essential hypertension',
+      isPrimary: false,
+    },
+  });
+
+  openIcd10Tab();
+  fireEvent.change(screen.getByPlaceholderText(/e\.g\. I10/i), {
+    target: { value: 'I10' },
+  });
+  fireEvent.change(screen.getByPlaceholderText(/e\.g\. Essential hypertension/i), {
+    target: { value: 'Essential hypertension' },
+  });
+  fireEvent.click(screen.getByText(/^Add$/i));
+
+  await waitFor(() => {
+    expect(screen.getByText('I10')).toBeInTheDocument();
+  });
+};
+
+describe('EMRWorkspace diagnosis parity', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupWorklistGetMock();
+  });
+
+  it('removes a saved diagnosis via DELETE on the EMR encounters route', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.delete as any).mockResolvedValue({ status: 200 });
+
+    renderWithAuth(<EMRWorkspace />);
+    await selectJohnDoe();
+    await addDiagnosisFixture('diag-1');
+
+    const row = screen.getByText('Essential hypertension').closest('tr');
+    expect(row).not.toBeNull();
+    fireEvent.click(row!.querySelector('button')!);
+
+    await waitFor(() => {
+      expect(apiClient.delete).toHaveBeenCalledWith(
+        `/v1/emr/encounters/${MOCK_ENCOUNTER_ID}/diagnoses/diag-1`,
+      );
+      expect(screen.queryByText('Essential hypertension')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows error when diagnosis DELETE fails and keeps the row visible', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.delete as any).mockRejectedValue({
+      response: { data: { message: 'Diagnosis not found' } },
+    });
+
+    renderWithAuth(<EMRWorkspace />);
+    await selectJohnDoe();
+    await addDiagnosisFixture('diag-2');
+
+    const row = screen.getByText('Essential hypertension').closest('tr');
+    fireEvent.click(row!.querySelector('button')!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Diagnosis not found/i)).toBeInTheDocument();
+      expect(screen.getByText('Essential hypertension')).toBeInTheDocument();
+    });
   });
 });

@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -103,6 +104,25 @@ export class EncounterController {
       branchId,
       encounterId,
       dto,
+    );
+  }
+
+  @Delete(':id/diagnoses/:diagnosisId')
+  @RequirePermissions('encounter.update')
+  @RequireBranchContext()
+  async removeDiagnosis(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
+    @GetUser('branchId') branchId: string,
+    @Param('id') encounterId: string,
+    @Param('diagnosisId') diagnosisId: string,
+  ) {
+    return this.encounterService.removeDiagnosis(
+      tenantId,
+      userId,
+      branchId,
+      encounterId,
+      diagnosisId,
     );
   }
 

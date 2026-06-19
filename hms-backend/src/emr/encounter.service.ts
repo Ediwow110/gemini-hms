@@ -359,6 +359,67 @@ export class EncounterService {
     }
   }
 
+  async removeDiagnosis(
+    tenantId: string,
+    userId: string,
+    branchId: string,
+    encounterId: string,
+    diagnosisId: string,
+  ) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const encounter = await this.getEncounterLocked(
+          tx,
+          tenantId,
+          encounterId,
+          branchId,
+        );
+        this.assertMutable(encounter);
+
+        const diagnosis = await tx.diagnosis.findFirst({
+          where: { id: diagnosisId, tenantId, encounterId },
+        });
+
+        if (!diagnosis) {
+          throw new NotFoundException('Diagnosis not found');
+        }
+
+        await tx.diagnosis.delete({ where: { id: diagnosisId } });
+
+        await this.audit.log(
+          {
+            tenantId,
+            userId,
+            eventKey: 'DIAGNOSIS_REMOVED',
+            recordType: 'Diagnosis',
+            recordId: diagnosisId,
+            oldValues: {
+              encounterId,
+              icd10Code: diagnosis.icd10Code,
+              isPrimary: diagnosis.isPrimary,
+            },
+          },
+          tx,
+          branchId,
+        );
+
+        return { success: true };
+      });
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
+        throw error;
+      }
+      this.logger.error(
+        `Error removing diagnosis: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
   async addClinicalNote(
     tenantId: string,
     userId: string,

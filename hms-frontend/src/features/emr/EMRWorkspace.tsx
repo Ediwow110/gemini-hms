@@ -47,6 +47,7 @@ interface QueueEntry {
 }
 
 interface DiagnosisItem {
+  id?: string;
   code: string;
   description: string;
   isPrimary: boolean;
@@ -234,17 +235,18 @@ export const EMRWorkspace = () => {
   const handleAddDiagnosis = async () => {
     if (!newDiagCode || !newDiagDesc || !activeEncounterId || isLocked) return;
     setDiagError(null);
-    const item: DiagnosisItem = {
-      code: newDiagCode,
-      description: newDiagDesc,
-      isPrimary: newDiagPrimary
-    };
     try {
-      await apiClient.post(`/v1/emr/encounters/${activeEncounterId}/diagnoses`, {
+      const res = await apiClient.post(`/v1/emr/encounters/${activeEncounterId}/diagnoses`, {
         icd10Code: newDiagCode,
         description: newDiagDesc,
         isPrimary: newDiagPrimary,
       });
+      const item: DiagnosisItem = {
+        id: res.data?.id,
+        code: newDiagCode,
+        description: newDiagDesc,
+        isPrimary: newDiagPrimary,
+      };
       if (newDiagPrimary) {
         setDiagnoses(diagnoses.map(d => ({ ...d, isPrimary: false })).concat(item));
       } else {
@@ -300,8 +302,25 @@ export const EMRWorkspace = () => {
     }
   };
 
-  const handleRemoveDiagnosis = (index: number) => {
-    setDiagnoses(diagnoses.filter((_, i) => i !== index));
+  const handleRemoveDiagnosis = async (index: number) => {
+    const target = diagnoses[index];
+    if (!target || !activeEncounterId || isLocked) return;
+
+    if (!target.id) {
+      setDiagnoses(diagnoses.filter((_, i) => i !== index));
+      return;
+    }
+
+    setDiagError(null);
+    try {
+      await apiClient.delete(
+        `/v1/emr/encounters/${activeEncounterId}/diagnoses/${target.id}`,
+      );
+      setDiagnoses(diagnoses.filter((_, i) => i !== index));
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setDiagError(error.response?.data?.message || 'Failed to remove diagnosis.');
+    }
   };
 
   const handleFinalizeEncounter = async () => {
@@ -754,7 +773,7 @@ export const EMRWorkspace = () => {
                       <tbody className="divide-y divide-slate-100">
                         {diagnoses.length > 0 ? (
                           diagnoses.map((diag, index) => (
-                            <tr key={index} className="hover:bg-slate-50/50">
+                            <tr key={diag.id ?? index} className="hover:bg-slate-50/50">
                               <td className="px-4 py-3 font-bold text-slate-800 uppercase">{diag.code}</td>
                               <td className="px-4 py-3 text-slate-600">{diag.description}</td>
                               <td className="px-4 py-3">
@@ -769,7 +788,7 @@ export const EMRWorkspace = () => {
                               {!isLocked && (
                                 <td className="px-4 py-3 text-right">
                                   <button
-                                    onClick={() => handleRemoveDiagnosis(index)}
+                                    onClick={() => void handleRemoveDiagnosis(index)}
                                     className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
                                   >
                                     <Trash2 className="h-4 w-4" />

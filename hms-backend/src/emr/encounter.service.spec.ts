@@ -57,7 +57,7 @@ describe('EncounterService', () => {
         updateMany: jest.fn(),
       },
       vitals: { create: jest.fn() },
-      diagnosis: { create: jest.fn() },
+      diagnosis: { create: jest.fn(), findFirst: jest.fn(), delete: jest.fn() },
       clinicalNote: { create: jest.fn() },
     };
 
@@ -345,6 +345,79 @@ describe('EncounterService', () => {
           branchId,
         ),
       ).rejects.toThrow('Audit failure');
+    });
+  });
+
+  describe('removeDiagnosis', () => {
+    const diagnosisId = 'diagnosis-1';
+
+    it('removes a diagnosis from an open encounter and emits audit', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
+      prisma.diagnosis.findFirst.mockResolvedValue({
+        id: diagnosisId,
+        tenantId,
+        encounterId,
+        icd10Code: 'I10',
+        description: 'Essential hypertension',
+        isPrimary: true,
+      });
+      prisma.diagnosis.delete.mockResolvedValue({ id: diagnosisId });
+
+      const result = await service.removeDiagnosis(
+        tenantId,
+        userId,
+        branchId,
+        encounterId,
+        diagnosisId,
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.diagnosis.delete).toHaveBeenCalledWith({
+        where: { id: diagnosisId },
+      });
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'DIAGNOSIS_REMOVED',
+          recordId: diagnosisId,
+        }),
+        prisma,
+        branchId,
+      );
+    });
+
+    it('rejects removal when diagnosis is not found', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
+      prisma.diagnosis.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.removeDiagnosis(
+          tenantId,
+          userId,
+          branchId,
+          encounterId,
+          diagnosisId,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.diagnosis.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejects removal from a finished encounter', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(
+        mockEncounter({ status: EncounterStatus.FINISHED }),
+      );
+
+      await expect(
+        service.removeDiagnosis(
+          tenantId,
+          userId,
+          branchId,
+          encounterId,
+          diagnosisId,
+        ),
+      ).rejects.toThrow(ConflictException);
+
+      expect(prisma.diagnosis.findFirst).not.toHaveBeenCalled();
     });
   });
 
