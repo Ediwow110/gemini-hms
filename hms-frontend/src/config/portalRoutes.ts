@@ -146,7 +146,6 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'lab/validated', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
   { path: 'lab/released', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
   { path: 'lab/released/:patientId/:orderId', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/release', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
   { path: 'lab/critical-results', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
   { path: 'lab/turnaround', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
 
