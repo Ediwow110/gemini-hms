@@ -175,13 +175,29 @@ export const NotificationCenter = () => {
           </div>
           <div className="ml-auto flex gap-2">
             <button 
-              onClick={async () => { try { await apiClient.post('/v1/notifications/dispatch-pending'); await fetchNotifications(); } catch(e){} }}
+              onClick={async () => { 
+                try { 
+                  await apiClient.post('/v1/notifications/dispatch-pending'); 
+                  await fetchNotifications(); 
+                } catch (e) { 
+                  console.error('Failed to dispatch pending notifications', e); 
+                  setError('Failed to dispatch pending. Please try again.'); 
+                } 
+              }}
               className="btn btn-secondary px-3 py-2 text-xs gap-1.5"
             >
               <RefreshCw className="h-3.5 w-3.5" /> Dispatch Pending
             </button>
             <button 
-              onClick={async () => { try { await apiClient.post('/v1/notifications/read-all'); await fetchNotifications(); } catch(e){} }}
+              onClick={async () => { 
+                try { 
+                  await apiClient.post('/v1/notifications/read-all'); 
+                  await fetchNotifications(); 
+                } catch (e) { 
+                  console.error('Failed to mark all read', e); 
+                  setError('Failed to mark all as read. Please try again.'); 
+                } 
+              }}
               className="btn btn-primary px-3 py-2 text-xs gap-1.5"
             >
               <CheckCircle2 className="h-3.5 w-3.5" /> Mark All Read
@@ -262,7 +278,10 @@ export const NotificationCenter = () => {
                             await apiClient.post(`/v1/notifications/${selected.id}/read`);
                             await fetchNotifications();
                             setSelected(null);
-                          } catch (e) { /* ignore */ }
+                          } catch (e) { 
+                            console.error('Failed to mark notification read', e); 
+                            setError('Failed to mark as read.'); 
+                          }
                         }}
                         className="btn btn-secondary px-3 py-1.5 text-xs flex-1"
                       >
@@ -276,7 +295,10 @@ export const NotificationCenter = () => {
                             await apiClient.post(`/v1/notifications/${selected.id}/retry`);
                             await fetchNotifications();
                             setSelected(null);
-                          } catch (e) { /* ignore */ }
+                          } catch (e) { 
+                            console.error('Failed to retry notification', e); 
+                            setError('Failed to retry.'); 
+                          }
                         }}
                         className="btn btn-warning px-3 py-1.5 text-xs flex-1 gap-1"
                       >
