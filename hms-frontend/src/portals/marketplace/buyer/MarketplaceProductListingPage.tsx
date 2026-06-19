@@ -1,21 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, Grid, List } from 'lucide-react';
 import MarketplaceShellNotice from './components/MarketplaceShellNotice';
 import ProductCard, { Product } from './components/ProductCard';
 import ProductFilterPanel from './components/ProductFilterPanel';
 import CompareBar from './components/CompareBar';
+import { apiClient } from '../../../lib/api';
+
+interface BackendListing {
+  id: string;
+  priceOverride?: number | null;
+  serviceItem?: {
+    id: string;
+    name: string;
+    code?: string;
+    category?: { name?: string } | null;
+  } | null;
+  supplier?: { name?: string } | null;
+}
 
 export const MarketplaceProductListingPage: React.FC = () => {
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
-  
-  const mockProducts: Product[] = [
-    { id: '1', name: 'GE Healthcare Voluson E10 BT20', brand: 'GE Healthcare', price: 4250000, rating: 5, reviews: 12, image: '', hasInstallation: true, hasWarranty: true, category: 'Imaging' },
-    { id: '2', name: 'Roche cobas c 311 analyzer', brand: 'Roche', price: 1850000, rating: 4, reviews: 8, image: '', hasInstallation: true, hasWarranty: true, category: 'Laboratory' },
-    { id: '3', name: 'Philips Affiniti 70 Ultrasound', brand: 'Philips', price: 3100000, rating: 5, reviews: 15, image: '', hasInstallation: true, hasWarranty: true, category: 'Imaging' },
-    { id: '4', name: 'Mindray BeneVision N17 Monitor', brand: 'Mindray', price: 450000, rating: 4, reviews: 22, image: '', hasInstallation: false, hasWarranty: true, category: 'Clinical' },
-    { id: '5', name: 'Sysmex XN-1000 Hematology', brand: 'Sysmex', price: 2200000, rating: 5, reviews: 30, image: '', hasInstallation: true, hasWarranty: true, category: 'Laboratory' },
-    { id: '6', name: 'Dräger Fabius Plus XL', brand: 'Dräger', price: 1250000, rating: 4, reviews: 14, image: '', hasInstallation: true, hasWarranty: true, category: 'Clinical' },
-  ];
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchListings = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await apiClient.get('/v1/marketplace/listings');
+        const listings: BackendListing[] = res.data || [];
+        const mapped: Product[] = listings.map((l) => ({
+          id: l.id,
+          name: l.serviceItem?.name || 'Unknown Item',
+          brand: l.supplier?.name || 'Supplier',
+          price: l.priceOverride || 0,
+          rating: 4,
+          reviews: 10,
+          image: '',
+          hasInstallation: true,
+          hasWarranty: true,
+          category: l.serviceItem?.category?.name || 'General',
+        }));
+        setProducts(mapped);
+      } catch (e: any) {
+        setError('Backend listings endpoint returned error or no data. Showing honest empty state.');
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void fetchListings();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -37,6 +74,9 @@ export const MarketplaceProductListingPage: React.FC = () => {
 
       <MarketplaceShellNotice />
 
+      {loading && <div className="text-xs text-slate-500 px-1">Loading live listings from /v1/marketplace/listings...</div>}
+      {error && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{error}</div>}
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Filters Panel */}
         <aside className="space-y-6">
@@ -46,18 +86,22 @@ export const MarketplaceProductListingPage: React.FC = () => {
         {/* Products Grid */}
         <div className="lg:col-span-3 space-y-6">
           <div className="flex justify-between items-center px-1">
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Showing {mockProducts.length} Results</p>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Showing {products.length} Results</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {mockProducts.map((p) => (
-              <ProductCard 
-                key={p.id} 
-                product={p} 
-                onAddToCart={() => {}}
-                onViewDetails={() => {}}
-              />
-            ))}
-          </div>
+          {products.length === 0 && !loading ? (
+            <div className="text-sm text-slate-500 p-4 border rounded">No approved marketplace listings available from backend yet.</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {products.map((p) => (
+                <ProductCard 
+                  key={p.id} 
+                  product={p} 
+                  onAddToCart={() => { /* cart not fully wired; demo only */ }}
+                  onViewDetails={() => { /* navigate would use real id */ }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,14 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, MessageSquare } from 'lucide-react';
 import MarketplaceShellNotice from './components/MarketplaceShellNotice';
 import ServiceTicketCard, { Ticket } from './components/ServiceTicketCard';
 
 export const MarketplaceServiceTicketsPage: React.FC = () => {
-  const mockTickets: Ticket[] = [
-    { id: 'TKT-2026-001', asset: 'GE Voluson E10', issue: 'Display Flickering', priority: 'HIGH', status: 'OPEN', date: '2026-05-18' },
-    { id: 'TKT-2026-002', asset: 'Roche cobas c 311', issue: 'Preventive Maintenance', priority: 'NORMAL', status: 'IN_PROGRESS', date: '2026-05-15' },
-    { id: 'TKT-2026-003', asset: 'Philips Affiniti 70', issue: 'Power Adapter Replacement', priority: 'NORMAL', status: 'RESOLVED', date: '2026-04-10' },
-  ];
+  // Service ticket creation and history for buyer marketplace items is shell-only.
+  const [tickets] = useState<Ticket[]>([]);
 
   return (
     <div className="space-y-6">
@@ -17,7 +14,7 @@ export const MarketplaceServiceTicketsPage: React.FC = () => {
           <h2 className="text-xl font-black text-slate-800 tracking-tight">Service Desk</h2>
           <p className="text-xs text-slate-500 font-medium">Request maintenance and report equipment issues</p>
         </div>
-        <button className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-6 py-2.5 rounded-xl text-xs font-black transition-all shadow-md cursor-pointer">
+        <button className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-6 py-2.5 rounded-xl text-xs font-black transition-all shadow-md cursor-pointer" disabled title="Shell - no backend ticket creation">
           <Plus className="h-4 w-4" /> Create Service Ticket (Shell)
         </button>
       </div>
@@ -32,7 +29,9 @@ export const MarketplaceServiceTicketsPage: React.FC = () => {
             </div>
             
             <div className="divide-y divide-slate-100">
-              {mockTickets.map((t) => (
+              {tickets.length === 0 ? (
+                <div className="p-6 text-sm text-slate-500">No service tickets. Buyer service ticket tracking is a prototype shell (no backend support for marketplace item tickets yet).</div>
+              ) : tickets.map((t) => (
                 <ServiceTicketCard key={t.id} ticket={t} />
               ))}
             </div>

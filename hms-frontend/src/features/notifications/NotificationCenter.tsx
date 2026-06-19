@@ -66,20 +66,22 @@ export const NotificationCenter = () => {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [search, setSearch] = useState("");
-  // States reserved for future loading/error UI; referenced to satisfy linter in this scope
-  const loading = true; // eslint-disable-line @typescript-eslint/no-unused-vars
-  const _error = null; // eslint-disable-line @typescript-eslint/no-unused-vars
-  const setLoading = (_v: boolean) => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
-  const setError = (_v: string | null) => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchNotifications = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await apiClient.get("/v1/notifications", {
         params: { status: filterStatus || undefined, category: filterCategory || undefined, search: search || undefined },
       });
       setNotifications(res.data || []);
-    } catch {
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Failed to load notifications');
       setNotifications([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -119,6 +121,15 @@ export const NotificationCenter = () => {
     >
       <div className="space-y-6 pb-12 animate-fade-in">
         <PageHeader title="Notification Center" description="Monitor delivery status, manage alerts, and review notification history." />
+
+        {loading && (
+          <div className="text-xs text-slate-500 p-2">Loading notifications from live API...</div>
+        )}
+        {error && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+            {error} — using last known data if available.
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
