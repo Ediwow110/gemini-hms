@@ -84,6 +84,20 @@ const selectJohnDoe = async () => {
   });
 };
 
+const notePostCalls = () =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (apiClient.post as any).mock.calls.filter(
+    (call: [string, unknown]) =>
+      typeof call[0] === 'string' && call[0].includes('/notes'),
+  );
+
+const openSoapAndTypeComplaint = (text: string) => {
+  fireEvent.click(screen.getByText(/SOAP Notes/i));
+  fireEvent.change(screen.getByPlaceholderText(/Subjective complaints/i), {
+    target: { value: text },
+  });
+};
+
 describe('EMRWorkspace Honesty Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -232,6 +246,70 @@ describe('EMRWorkspace Honesty Tests', () => {
     });
   });
 
+  it('manual Save Clinical Notes posts each dirty section once', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.post as any).mockResolvedValue({ status: 201 });
+
+    renderWithAuth(<EMRWorkspace />);
+    await selectJohnDoe();
+    openSoapAndTypeComplaint('Chest pain x 2 days');
+
+    fireEvent.click(screen.getByText(/Save Clinical Notes/i));
+
+    await waitFor(() => {
+      expect(notePostCalls()).toHaveLength(1);
+      expect(apiClient.post).toHaveBeenCalledWith(
+        `/v1/emr/encounters/${MOCK_ENCOUNTER_ID}/notes`,
+        { noteType: 'CHIEF_COMPLAINT', content: 'Chest pain x 2 days' },
+      );
+    });
+  });
+
+  it('manual save then finalize does not duplicate already-saved SOAP notes', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.post as any).mockResolvedValue({ status: 201 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.patch as any).mockResolvedValue({ status: 200 });
+
+    renderWithAuth(<EMRWorkspace />);
+    await selectJohnDoe();
+    openSoapAndTypeComplaint('Chest pain x 2 days');
+
+    fireEvent.click(screen.getByText(/Save Clinical Notes/i));
+    await waitFor(() => {
+      expect(notePostCalls()).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByText(/Finalize & Close/i));
+    fireEvent.click(screen.getByText(/Yes, Sign & Lock/i));
+
+    await waitFor(() => {
+      expect(notePostCalls()).toHaveLength(1);
+      expect(apiClient.patch).toHaveBeenCalledWith(
+        `/v1/clinical/encounters/${MOCK_ENCOUNTER_ID}/close`,
+      );
+      expect(screen.getByText(/Locked/i)).toBeInTheDocument();
+    });
+  });
+
+  it('finalize with empty SOAP notes closes without note POSTs', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.patch as any).mockResolvedValue({ status: 200 });
+
+    renderWithAuth(<EMRWorkspace />);
+    await selectJohnDoe();
+
+    fireEvent.click(screen.getByText(/Finalize & Close/i));
+    fireEvent.click(screen.getByText(/Yes, Sign & Lock/i));
+
+    await waitFor(() => {
+      expect(notePostCalls()).toHaveLength(0);
+      expect(apiClient.patch).toHaveBeenCalledWith(
+        `/v1/clinical/encounters/${MOCK_ENCOUNTER_ID}/close`,
+      );
+    });
+  });
+
   it('chains unsaved SOAP notes to backend before finalize close', async () => {
     let closePatchInvoked = false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -252,9 +330,7 @@ describe('EMRWorkspace Honesty Tests', () => {
     renderWithAuth(<EMRWorkspace />);
     await selectJohnDoe();
 
-    fireEvent.click(screen.getByText(/SOAP Notes/i));
-    const complaintField = screen.getByPlaceholderText(/Subjective complaints/i);
-    fireEvent.change(complaintField, { target: { value: 'Chest pain x 2 days' } });
+    openSoapAndTypeComplaint('Chest pain x 2 days');
 
     fireEvent.click(screen.getByText(/Finalize & Close/i));
     fireEvent.click(screen.getByText(/Yes, Sign & Lock/i));

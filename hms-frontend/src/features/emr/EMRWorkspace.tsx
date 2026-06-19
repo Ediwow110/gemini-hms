@@ -52,6 +52,32 @@ interface DiagnosisItem {
   isPrimary: boolean;
 }
 
+type SoapNotesState = {
+  CHIEF_COMPLAINT: string;
+  PROGRESS: string;
+  NURSING: string;
+  DISCHARGE: string;
+};
+
+const EMPTY_SOAP_NOTES: SoapNotesState = {
+  CHIEF_COMPLAINT: "",
+  PROGRESS: "",
+  NURSING: "",
+  DISCHARGE: "",
+};
+
+function getDirtySoapEntries(
+  current: SoapNotesState,
+  saved: SoapNotesState,
+): Array<[keyof SoapNotesState, string]> {
+  return (Object.keys(current) as Array<keyof SoapNotesState>)
+    .filter((key) => {
+      const trimmed = current[key].trim();
+      return trimmed.length > 0 && trimmed !== saved[key].trim();
+    })
+    .map((key) => [key, current[key]] as [keyof SoapNotesState, string]);
+}
+
 export const EMRWorkspace = () => {
   const user = useUser();
   const [queue, setQueue] = useState<QueueEntry[]>([]);
@@ -76,12 +102,8 @@ export const EMRWorkspace = () => {
   const [diagError, setDiagError] = useState<string | null>(null);
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
-  const [soapNotes, setSoapNotes] = useState({
-    CHIEF_COMPLAINT: "",
-    PROGRESS: "",
-    NURSING: "",
-    DISCHARGE: "",
-  });
+  const [soapNotes, setSoapNotes] = useState<SoapNotesState>(EMPTY_SOAP_NOTES);
+  const [savedSoapSnapshot, setSavedSoapSnapshot] = useState<SoapNotesState>(EMPTY_SOAP_NOTES);
 
   // react-hook-form for Vitals
   const {
@@ -159,12 +181,8 @@ export const EMRWorkspace = () => {
     setFinalizeError(null);
     setActiveEncounterId(null);
     setDiagnoses([]);
-    setSoapNotes({
-      CHIEF_COMPLAINT: "",
-      PROGRESS: "",
-      NURSING: "",
-      DISCHARGE: "",
-    });
+    setSoapNotes(EMPTY_SOAP_NOTES);
+    setSavedSoapSnapshot(EMPTY_SOAP_NOTES);
     reset();
 
     if (!entry.patient) {
@@ -241,11 +259,10 @@ export const EMRWorkspace = () => {
     }
   };
 
-  const persistSoapNotesToEncounter = async (encounterId: string): Promise<number> => {
-    const entries = Object.entries(soapNotes).filter(([, value]) => value.trim().length > 0);
-    if (entries.length === 0) {
-      return 0;
-    }
+  const persistSoapNoteEntries = async (
+    encounterId: string,
+    entries: Array<[keyof SoapNotesState, string]>,
+  ): Promise<void> => {
     await Promise.all(
       entries.map(([noteType, content]) =>
         apiClient.post(`/v1/emr/encounters/${encounterId}/notes`, {
@@ -254,7 +271,6 @@ export const EMRWorkspace = () => {
         }),
       ),
     );
-    return entries.length;
   };
 
   const handleSaveSoapNotes = async () => {
@@ -263,11 +279,18 @@ export const EMRWorkspace = () => {
     setSoapError(null);
     setSoapSuccess(null);
     try {
-      const savedCount = await persistSoapNotesToEncounter(activeEncounterId);
-      if (savedCount === 0) {
-        setSoapError('Enter at least one note before saving.');
+      const dirtyEntries = getDirtySoapEntries(soapNotes, savedSoapSnapshot);
+      if (dirtyEntries.length === 0) {
+        const hasAnyContent = Object.values(soapNotes).some((value) => value.trim().length > 0);
+        if (!hasAnyContent) {
+          setSoapError('Enter at least one note before saving.');
+        } else {
+          setSoapSuccess('Clinical notes are already saved.');
+        }
         return;
       }
+      await persistSoapNoteEntries(activeEncounterId, dirtyEntries);
+      setSavedSoapSnapshot({ ...soapNotes });
       setSoapSuccess('Clinical notes saved to the encounter.');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -286,7 +309,11 @@ export const EMRWorkspace = () => {
     setIsFinalizing(true);
     setFinalizeError(null);
     try {
-      await persistSoapNotesToEncounter(activeEncounterId);
+      const dirtyEntries = getDirtySoapEntries(soapNotes, savedSoapSnapshot);
+      if (dirtyEntries.length > 0) {
+        await persistSoapNoteEntries(activeEncounterId, dirtyEntries);
+        setSavedSoapSnapshot({ ...soapNotes });
+      }
       await apiClient.patch(`/v1/clinical/encounters/${activeEncounterId}/close`);
       setIsLocked(true);
       setShowConfirmClose(false);
