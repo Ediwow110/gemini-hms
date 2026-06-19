@@ -20,14 +20,14 @@ function Start-Service {
   $p = [System.Diagnostics.Process]::Start($psi)
   
   # Start async readers to capture output
-  $outTask = [System.Threading.Tasks.Task]::Run({
+  $outTask = [System.Threading.Tasks.Task]::Run([Action]{
     $reader = $p.StandardOutput
     while (-not $reader.EndOfStream) {
       $line = $reader.ReadLine()
       if ($line) { Add-Content -Path $logFile -Value $line }
     }
   })
-  $errTask = [System.Threading.Tasks.Task]::Run({
+  $errTask = [System.Threading.Tasks.Task]::Run([Action]{
     $reader = $p.StandardError
     while (-not $reader.EndOfStream) {
       $line = $reader.ReadLine()
