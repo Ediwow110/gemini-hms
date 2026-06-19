@@ -1,6 +1,7 @@
 import React from 'react';
 import { LucideIcon, ShieldAlert } from 'lucide-react';
 import { StatusBadge } from '../../../components/feedback/StatusBadge';
+import { RequirePermission } from '../../../components/ui/RequirePermission';
 
 interface ComplianceRiskCardProps {
   title: string;
@@ -10,6 +11,7 @@ interface ComplianceRiskCardProps {
   description?: string;
   actionLabel?: string;
   onActionClick?: () => void;
+  actionPermission?: string;
 }
 
 export const ComplianceRiskCard: React.FC<ComplianceRiskCardProps> = ({
@@ -20,6 +22,7 @@ export const ComplianceRiskCard: React.FC<ComplianceRiskCardProps> = ({
   description,
   actionLabel,
   onActionClick,
+  actionPermission,
 }) => {
   const getRiskType = (level: string) => {
     switch (level) {
@@ -62,15 +65,27 @@ export const ComplianceRiskCard: React.FC<ComplianceRiskCardProps> = ({
         {description && <p className="text-xs text-slate-500 font-medium">{description}</p>}
       </div>
 
-      {actionLabel && (
-        <button
-          onClick={onActionClick}
-          className="mt-4 w-full py-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-        >
-          {riskLevel === 'CRITICAL' && <ShieldAlert className="h-4 w-4 text-rose-500 animate-pulse" />}
-          {actionLabel}
-        </button>
-      )}
+      {actionLabel && (() => {
+        const actionButton = (
+          <button
+            onClick={onActionClick}
+            className="mt-4 w-full py-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            {riskLevel === 'CRITICAL' && <ShieldAlert className="h-4 w-4 text-rose-500 animate-pulse" />}
+            {actionLabel}
+          </button>
+        );
+
+        if (actionPermission) {
+          return (
+            <RequirePermission permission={actionPermission}>
+              {actionButton}
+            </RequirePermission>
+          );
+        }
+
+        return actionButton;
+      })()}
     </div>
   );
 };

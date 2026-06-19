@@ -19,6 +19,7 @@ import PHIAccessTable from './components/PHIAccessTable';
 import { StatusBadge } from '../../components/feedback/StatusBadge';
 import { useAuditEvents, useAccessReview } from '../../hooks/use-compliance';
 import { HmsPageHeader } from '../../components/hms-page';
+import { RequirePermission } from '../../components/ui/RequirePermission';
 import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const ComplianceDashboard: React.FC = () => {
@@ -83,6 +84,7 @@ export const ComplianceDashboard: React.FC = () => {
             riskLevel={criticalCount > 0 ? 'CRITICAL' : 'LOW'}
             description={criticalCount > 0 ? 'High-risk events flagged' : 'No critical alerts'}
             actionLabel="View Alerts"
+            actionPermission="compliance.phi.monitor"
             onActionClick={() => navigate('/compliance/breach-alerts')}
           />
         </div>
@@ -94,6 +96,7 @@ export const ComplianceDashboard: React.FC = () => {
             riskLevel={breakGlassCount > 0 ? 'MEDIUM' : 'LOW'}
             description="Flagged access events"
             actionLabel="Review Access Logs"
+            actionPermission="compliance.phi.monitor"
             onActionClick={() => navigate('/compliance/phi-access')}
           />
         </div>
@@ -128,12 +131,14 @@ export const ComplianceDashboard: React.FC = () => {
                 <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">PHI Access Events Monitor</h3>
                 <p className="text-[10px] text-slate-400 font-medium">Real audit records of clinical data access</p>
               </div>
-              <button
-                onClick={() => navigate('/compliance/phi-access')}
-                className="text-xs font-bold text-indigo-650 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                Full Monitor <ArrowRight className="h-3 w-3" />
-              </button>
+              <RequirePermission permission="compliance.phi.monitor">
+                <button
+                  onClick={() => navigate('/compliance/phi-access')}
+                  className="text-xs font-bold text-indigo-650 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  Full Monitor <ArrowRight className="h-3 w-3" />
+                </button>
+              </RequirePermission>
             </div>
             {auditLoading ? (
               <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-6 text-center text-xs text-slate-400">
