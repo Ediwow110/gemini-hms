@@ -79,6 +79,40 @@ export interface AdminBranchListResponse {
   limit: number;
 }
 
+export interface CreateAdminUserPayload {
+  email: string;
+  password: string;
+  mfaEnabled?: boolean;
+  branchIds: string[];
+  roleIds?: string[];
+  reason: string;
+}
+
+export interface CreateAdminUserResponse {
+  userId: string;
+  email: string;
+  status: string;
+  branchIds: string[];
+  roleIds: string[];
+}
+
+export interface AdminUserLifecycleResponse {
+  userId: string;
+  email: string;
+  status: string;
+  mfaEnabled: boolean;
+  tokenVersion: number;
+  deactivatedAt: string | null;
+  previousStatus?: string;
+}
+
+export interface AdminUserRoleMutationResponse {
+  userId: string;
+  roleId: string;
+  roleName: string;
+  status: string;
+}
+
 export const adminService = {
   async listUsers(params?: AdminUserListParams): Promise<AdminUserListResponse> {
     const queryParams: Record<string, string> = {};
@@ -96,12 +130,50 @@ export const adminService = {
     return response.data;
   },
 
+  async createUser(payload: CreateAdminUserPayload): Promise<CreateAdminUserResponse> {
+    const response = await apiClient.post('/v1/admin/users', payload);
+    return response.data;
+  },
+
+  async activateUser(id: string, reason: string): Promise<AdminUserLifecycleResponse> {
+    const response = await apiClient.post(`/v1/admin/users/${id}/activate`, { reason });
+    return response.data;
+  },
+
+  async deactivateUser(id: string, reason: string): Promise<AdminUserLifecycleResponse> {
+    const response = await apiClient.post(`/v1/admin/users/${id}/deactivate`, { reason });
+    return response.data;
+  },
+
   async forceLogout(id: string, reason: string): Promise<void> {
     await apiClient.post(`/v1/admin/users/${id}/force-logout`, { reason });
   },
 
   async resetPassword(id: string, reason: string): Promise<{ tempPassword: string }> {
     const response = await apiClient.post(`/v1/admin/users/${id}/reset-password`, { reason });
+    return response.data;
+  },
+
+  async assignUserRole(
+    id: string,
+    roleId: string,
+    reason: string,
+  ): Promise<AdminUserRoleMutationResponse> {
+    const response = await apiClient.post(`/v1/admin/users/${id}/roles`, {
+      roleId,
+      reason,
+    });
+    return response.data;
+  },
+
+  async revokeUserRole(
+    id: string,
+    roleId: string,
+    reason: string,
+  ): Promise<AdminUserRoleMutationResponse> {
+    const response = await apiClient.post(`/v1/admin/users/${id}/roles/${roleId}/revoke`, {
+      reason,
+    });
     return response.data;
   },
 
