@@ -19,7 +19,51 @@ const mockUser = {
   tenantId: 'T123',
   branchId: 'B123',
   roles: ['Doctor'],
-  permissions: ['clinical.encounter.write'],
+  permissions: ['encounter.update', 'encounter.create'],
+};
+
+const MOCK_ENCOUNTER_ID = 'enc-1';
+
+type MockQueueEntry = {
+  id: string;
+  queueNumber: string;
+  status: string;
+  patientId: string;
+  encounterId: string | null;
+  serviceType: string;
+  patient: {
+    id: string;
+    patientNumber: string;
+    firstName: string;
+    lastName: string;
+    dob: string;
+  };
+};
+
+const MOCK_QUEUE_ENTRY: MockQueueEntry = {
+  id: 'E123',
+  queueNumber: 'C-01',
+  status: 'WAITING',
+  patientId: 'P123',
+  encounterId: MOCK_ENCOUNTER_ID,
+  serviceType: 'DOCTOR',
+  patient: {
+    id: 'P123',
+    patientNumber: 'P001',
+    firstName: 'John',
+    lastName: 'Doe',
+    dob: '1990-01-01',
+  },
+};
+
+const setupWorklistGetMock = (entries: MockQueueEntry[] = [MOCK_QUEUE_ENTRY]) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (apiClient.get as any).mockImplementation(async (url: string) => {
+    if (url === '/v1/queue/worklist') {
+      return { data: entries };
+    }
+    throw new Error('Unknown endpoint');
+  });
 };
 
 const renderWithAuth = (ui: React.ReactElement) => {
@@ -32,55 +76,73 @@ const renderWithAuth = (ui: React.ReactElement) => {
   );
 };
 
+const selectJohnDoe = async () => {
+  const patientBtn = await screen.findByText(/John Doe/i);
+  fireEvent.click(patientBtn);
+  await waitFor(() => {
+    expect(screen.getByText(/Save Vitals Metrics/i)).not.toBeDisabled();
+  });
+};
+
 describe('EMRWorkspace Honesty Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setupWorklistGetMock();
+  });
+
+  it('fetches worklist with serviceType DOCTOR', async () => {
+    renderWithAuth(<EMRWorkspace />);
+
+    await waitFor(() => {
+      expect(apiClient.get).toHaveBeenCalledWith('/v1/queue/worklist', {
+        params: { serviceType: 'DOCTOR' },
+      });
+    });
+  });
+
+  it('creates encounter via POST when queue entry has no encounterId', async () => {
+    const entryWithoutEncounter: MockQueueEntry = { ...MOCK_QUEUE_ENTRY, encounterId: null };
+    setupWorklistGetMock([entryWithoutEncounter]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (apiClient.get as any).mockImplementation(async (url: string) => {
-      if (url === '/v1/queue/worklist') {
-        return { data: [{
-          id: 'E123',
-          queueNumber: 'C-01',
-          status: 'WAITING',
-          patient: { id: 'P123', patientNumber: 'P001', firstName: 'John', lastName: 'Doe', dob: '1990-01-01' }
-        }] };
-      }
-      throw new Error('Unknown endpoint');
+    (apiClient.post as any).mockResolvedValue({ data: { id: 'enc-new' } });
+
+    renderWithAuth(<EMRWorkspace />);
+    await selectJohnDoe();
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith('/v1/emr/encounters', {
+        patientId: 'P123',
+        branchId: 'B123',
+        reason: 'Clinical queue intake',
+      });
     });
   });
 
   it('wires vitals capture and shows success on 200', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (apiClient.post as any).mockResolvedValue({ status: 200 });
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     renderWithAuth(<EMRWorkspace />);
+    await selectJohnDoe();
 
-    // Select patient from queue
-    const patientBtn = await screen.findByText(/John Doe/i);
-    fireEvent.click(patientBtn);
-
-    // Fill vitals
     fireEvent.change(screen.getByLabelText(/Temperature/i), { target: { value: '37.2' } });
-
-    // Submit
     fireEvent.click(screen.getByText(/Save Vitals Metrics/i));
 
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith(expect.stringContaining('/vitals'), expect.any(Object));
-      expect(alertSpy).toHaveBeenCalledWith("Vitals successfully saved to medical record.");
+      expect(apiClient.post).toHaveBeenCalledWith(
+        `/v1/emr/encounters/${MOCK_ENCOUNTER_ID}/vitals`,
+        expect.any(Object),
+      );
+      expect(screen.getByRole('status')).toHaveTextContent(/Vitals saved to the medical record/i);
     });
   });
 
   it('vitals POST uses the real /v1/emr/encounters/:id/vitals path (not /v1/clinical/encounters/...)', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (apiClient.post as any).mockResolvedValue({ status: 200 });
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     renderWithAuth(<EMRWorkspace />);
-    const patientBtn = await screen.findByText(/John Doe/i);
-    fireEvent.click(patientBtn);
-
+    await selectJohnDoe();
     fireEvent.click(screen.getByText(/Save Vitals Metrics/i));
 
     await waitFor(() => {
@@ -89,19 +151,17 @@ describe('EMRWorkspace Honesty Tests', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const calledUrl = (apiClient.post as any).mock.calls[0][0];
-    expect(calledUrl).toBe('/v1/emr/encounters/E123/vitals');
+    expect(calledUrl).toBe(`/v1/emr/encounters/${MOCK_ENCOUNTER_ID}/vitals`);
     expect(calledUrl).not.toMatch(/\/v1\/clinical\/encounters\//);
-    alertSpy.mockRestore();
+    expect(calledUrl).not.toContain('E123');
   });
 
   it('vitals POST payload does NOT contain client-trusted tenantId (post-fix)', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (apiClient.post as any).mockResolvedValue({ status: 200 });
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     renderWithAuth(<EMRWorkspace />);
-    const patientBtn = await screen.findByText(/John Doe/i);
-    fireEvent.click(patientBtn);
+    await selectJohnDoe();
 
     fireEvent.change(screen.getByLabelText(/Temperature/i), { target: { value: '37.2' } });
     fireEvent.click(screen.getByText(/Save Vitals Metrics/i));
@@ -116,17 +176,14 @@ describe('EMRWorkspace Honesty Tests', () => {
     expect(calledBody).not.toHaveProperty('tenantId');
     expect(calledBody).not.toHaveProperty('branchId');
     expect(calledBody).not.toHaveProperty('userId');
-    alertSpy.mockRestore();
   });
 
   it('vitals POST payload does NOT contain client-trusted branchId (post-fix)', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (apiClient.post as any).mockResolvedValue({ status: 200 });
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     renderWithAuth(<EMRWorkspace />);
-    const patientBtn = await screen.findByText(/John Doe/i);
-    fireEvent.click(patientBtn);
+    await selectJohnDoe();
 
     fireEvent.change(screen.getByLabelText(/Heart Rate/i), { target: { value: '80' } });
     fireEvent.change(screen.getByLabelText(/Systolic BP/i), { target: { value: '120' } });
@@ -140,7 +197,6 @@ describe('EMRWorkspace Honesty Tests', () => {
     const calledBody = (apiClient.post as any).mock.calls[0][1];
     expect(calledBody).not.toHaveProperty('branchId');
     expect(calledBody).not.toHaveProperty('tenantId');
-    alertSpy.mockRestore();
   });
 
   it('shows error message on vitals API failure', async () => {
@@ -150,9 +206,7 @@ describe('EMRWorkspace Honesty Tests', () => {
     });
 
     renderWithAuth(<EMRWorkspace />);
-    const patientBtn = await screen.findByText(/John Doe/i);
-    fireEvent.click(patientBtn);
-
+    await selectJohnDoe();
     fireEvent.click(screen.getByText(/Save Vitals Metrics/i));
 
     await waitFor(() => {
@@ -163,21 +217,17 @@ describe('EMRWorkspace Honesty Tests', () => {
   it('wires encounter finalization and locks UI on success', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (apiClient.patch as any).mockResolvedValue({ status: 200 });
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     renderWithAuth(<EMRWorkspace />);
-    const patientBtn = await screen.findByText(/John Doe/i);
-    fireEvent.click(patientBtn);
+    await selectJohnDoe();
 
-    // Open close modal
     fireEvent.click(screen.getByText(/Finalize & Close/i));
-
-    // Confirm
     fireEvent.click(screen.getByText(/Yes, Sign & Lock/i));
 
     await waitFor(() => {
-      expect(apiClient.patch).toHaveBeenCalledWith(expect.stringContaining('/close'));
-      expect(alertSpy).toHaveBeenCalledWith("Encounter signed and locked successfully. All clinical logs are finalized.");
+      expect(apiClient.patch).toHaveBeenCalledWith(
+        `/v1/clinical/encounters/${MOCK_ENCOUNTER_ID}/close`,
+      );
       expect(screen.getByText(/Locked/i)).toBeInTheDocument();
     });
   });
@@ -185,11 +235,9 @@ describe('EMRWorkspace Honesty Tests', () => {
   it('close PATCH sends no body payload (post-fix)', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (apiClient.patch as any).mockResolvedValue({ status: 200 });
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     renderWithAuth(<EMRWorkspace />);
-    const patientBtn = await screen.findByText(/John Doe/i);
-    fireEvent.click(patientBtn);
+    await selectJohnDoe();
 
     fireEvent.click(screen.getByText(/Finalize & Close/i));
     fireEvent.click(screen.getByText(/Yes, Sign & Lock/i));
@@ -200,9 +248,9 @@ describe('EMRWorkspace Honesty Tests', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const patchCall = (apiClient.patch as any).mock.calls[0];
-    expect(patchCall[0]).toBe('/v1/clinical/encounters/E123/close');
+    expect(patchCall[0]).toBe(`/v1/clinical/encounters/${MOCK_ENCOUNTER_ID}/close`);
     expect(patchCall[1]).toBeUndefined();
-    alertSpy.mockRestore();
+    expect(patchCall[0]).not.toContain('E123');
   });
 
   it('does not lock UI on finalization failure', async () => {
@@ -210,32 +258,25 @@ describe('EMRWorkspace Honesty Tests', () => {
     (apiClient.patch as any).mockRejectedValue({
       response: { data: { message: 'Permission denied' } },
     });
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     renderWithAuth(<EMRWorkspace />);
-    const patientBtn = await screen.findByText(/John Doe/i);
-    fireEvent.click(patientBtn);
+    await selectJohnDoe();
 
     fireEvent.click(screen.getByText(/Finalize & Close/i));
     fireEvent.click(screen.getByText(/Yes, Sign & Lock/i));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith("Permission denied");
+      expect(screen.getByRole('alert')).toHaveTextContent(/Permission denied/i);
       expect(screen.queryByText(/Locked/i)).not.toBeInTheDocument();
     });
   });
 
   it('does NOT render the dead "Cache Notes" button (misleading save flow)', async () => {
     renderWithAuth(<EMRWorkspace />);
-    const patientBtn = await screen.findByText(/John Doe/i);
-    fireEvent.click(patientBtn);
+    await selectJohnDoe();
 
-    // Switch to SOAP tab
     fireEvent.click(screen.getByText(/SOAP Notes/i));
 
-    // The "Cache Notes" button is dead: it does nothing (notes are already in
-    // local state from typing) but its alert claims "Notes updated in local
-    // workspace" — a misleading save flow. It must not be rendered.
     expect(screen.queryByRole('button', { name: /cache notes/i })).not.toBeInTheDocument();
   });
 
@@ -270,12 +311,23 @@ describe('EMRWorkspace Honesty Tests', () => {
       })
       .mockImplementation(async (url: string) => {
         if (url === '/v1/queue/worklist') {
-          return { data: [{
-            id: 'E456',
-            queueNumber: 'C-03',
-            status: 'WAITING',
-            patient: { id: 'P456', patientNumber: 'P002', firstName: 'Jane', lastName: 'Smith', dob: '1985-05-15' }
-          }] };
+          return {
+            data: [{
+              id: 'E456',
+              queueNumber: 'C-03',
+              status: 'WAITING',
+              patientId: 'P456',
+              encounterId: 'enc-2',
+              serviceType: 'DOCTOR',
+              patient: {
+                id: 'P456',
+                patientNumber: 'P002',
+                firstName: 'Jane',
+                lastName: 'Smith',
+                dob: '1985-05-15',
+              },
+            }],
+          };
         }
         throw new Error('Unknown endpoint');
       });

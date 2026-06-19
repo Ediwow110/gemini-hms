@@ -31,6 +31,7 @@ jobs:
           npx prisma generate
           npm run lint
           npm run typecheck
+          npm run typecheck:tests
 
       - name: Frontend Analysis
         working-directory: ./hms-frontend

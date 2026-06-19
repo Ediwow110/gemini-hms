@@ -14,7 +14,7 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'patients/new', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'patients/:id', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'queue', requiredPermission: PERMISSIONS.QUEUE_VIEW, zone: 'staff', isBranchScoped: true },
-  { path: 'emr', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'emr', requiredPermission: PERMISSIONS.ENCOUNTER_UPDATE, zone: 'staff', isBranchScoped: true },
   
   // Telehealth (Accessible by Staff and Patients, Branch Scoped)
   { path: 'telehealth', requiredPermission: PERMISSIONS.PATIENT_VIEW, allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse', 'Patient'], isBranchScoped: true },

@@ -40,18 +40,11 @@ export const useUpdateInstallationStatus = () => {
 export const useFieldServicePreventiveMaintenance = () => {
   return useQuery({
     queryKey: ['field-service', 'preventive-maintenance'],
-    queryFn: async () => [
-      {
-        id: 'PM-2026-0421',
-        asset: { model: 'Roche cobas c 311', location: 'Metro Central' },
-        status: 'SCHEDULED' as const,
-      },
-      {
-        id: 'PM-2026-0422',
-        asset: { model: 'Roche cobas c 311', location: 'Metro Central' },
-        status: 'IN_PROGRESS' as const,
-      },
-    ],
+    queryFn: async () => [] as Array<{
+      id: string;
+      asset: { model: string; location: string };
+      status: 'SCHEDULED' | 'IN_PROGRESS';
+    }>,
     retry: false,
   });
 };
@@ -60,12 +53,12 @@ export const useFieldServiceServiceTicket = () => {
   return useQuery({
     queryKey: ['field-service', 'service-ticket'],
     queryFn: async () => ({
-      id: 'TKT-2026-001',
-      asset: 'GE Voluson E10 ultrasound',
-      serialNumber: '9918-XYZ-2026',
-      priority: 'HIGH' as const,
+      id: '',
+      asset: '',
+      serialNumber: '',
+      priority: 'LOW' as const,
       status: 'OPEN' as const,
-      issue: 'Display Flickering',
+      issue: '',
     }),
     retry: false,
   });
@@ -74,21 +67,16 @@ export const useFieldServiceServiceTicket = () => {
 export const useFieldServiceTechnicianSchedule = () => {
   return useQuery({
     queryKey: ['field-service', 'technician-schedule'],
-    queryFn: async () => {
-      const days = ['MON 21', 'TUE 22', 'WED 23', 'THU 24', 'FRI 25', 'SAT 26', 'SUN 27'];
-      return days.map((day, i) => ({
-        day,
-        jobs: [
-          {
-            id: 1042 + i,
-            customer: 'Metro Central Hospital',
-            location: 'Floor 4, Radiology',
-            time: `${8 + i}:00 AM`,
-            duration: '2.5 Hrs',
-          },
-        ],
-      }));
-    },
+    queryFn: async () => [] as Array<{
+      day: string;
+      jobs: Array<{
+        id: number;
+        customer: string;
+        location: string;
+        time: string;
+        duration: string;
+      }>;
+    }>,
     retry: false,
   });
 };
@@ -97,9 +85,9 @@ export const useFieldServiceWarrantyActivation = () => {
   return useQuery({
     queryKey: ['field-service', 'warranty-activation'],
     queryFn: async () => ({
-      assetId: 'GE-V10-9918',
-      startDate: 'May 21, 2026',
-      endDate: 'May 21, 2029',
+      assetId: '',
+      startDate: '',
+      endDate: '',
     }),
     retry: false,
   });
@@ -109,18 +97,10 @@ export const useFieldServiceHandoverChecklist = () => {
   return useQuery({
     queryKey: ['field-service', 'handover-checklist'],
     queryFn: async () => ({
-      jobId: 'INS-2026-0042',
-      asset: 'GE Voluson E10 ultrasound',
-      serialNumber: '9918-XYZ-2026',
-      tasks: [
-        'Delivered item verified against PO',
-        'Physical installation complete',
-        'Power & grounding tested',
-        'Software configuration finalized',
-        'Calibration passed & verified',
-        'User basic training completed',
-        'Warranty terms explained',
-      ],
+      jobId: '',
+      asset: '',
+      serialNumber: '',
+      tasks: [] as string[],
     }),
     retry: false,
   });
@@ -130,12 +110,8 @@ export const useFieldServiceOfflineSync = () => {
   return useQuery({
     queryKey: ['field-service', 'offline-sync'],
     queryFn: async () => ({
-      pendingCount: 3,
-      items: [
-        { id: '1', type: 'HANDOVER', label: 'Handover INS-2026-0042' },
-        { id: '2', type: 'PHOTO', label: 'Installation photos (3)' },
-        { id: '3', type: 'SIGNATURE', label: 'Delivery signature DEL-9918' },
-      ],
+      pendingCount: 0,
+      items: [] as Array<{ id: string; type: string; label: string }>,
     }),
     retry: false,
   });

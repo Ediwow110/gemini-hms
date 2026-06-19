@@ -11,49 +11,35 @@ import { DoctorResultsPanel } from './components/DoctorResultsPanel';
 import { DoctorPrescriptionPanel } from './components/DoctorPrescriptionPanel';
 import { AlertCircle, UserCheck, Stethoscope, ChevronLeft } from 'lucide-react';
 import { usePatientEncounters } from '../../hooks/use-clinical-workflow';
+import {
+  clinicalWorkflowService,
+  type PatientClinicalSummaryDto,
+} from '../../services/clinicalWorkflow.service';
 import axios from 'axios';
 
-// Mock patient database for doctor lookup
-const mockPatientDb: Record<string, PatientSafetyInfo> = {
-  'P-101': {
-    id: 'P-101',
-    firstName: 'Patient',
-    lastName: '001',
-    mrn: 'MRN-2026-0091',
-    dob: '1988-11-24',
-    gender: 'Female',
-    allergies: 'Penicillin, Strawberries',
-    diagnoses: ['Essential Hypertension', 'Type 2 Diabetes'],
-    warnings: ['Drug-drug interaction risk: NSAIDs with ACE inhibitors'],
-    insuranceProvider: 'Maxicare HMO',
-    insuranceNumber: 'MAX-8820-911',
-  },
-  'P-102': {
-    id: 'P-102',
-    firstName: 'Patient',
-    lastName: '002',
-    mrn: 'MRN-2026-0042',
-    dob: '1965-04-12',
-    gender: 'Male',
-    allergies: 'None',
-    diagnoses: ['Gastroesophageal Reflux Disease (GERD)'],
-    warnings: ['Severe abdominal pain - evaluate for acute appendicitis'],
-    insuranceProvider: 'Medicard HMO',
-    insuranceNumber: 'MED-1102-998',
-  },
-  'P-103': {
-    id: 'P-103',
-    firstName: 'Patient',
-    lastName: '003',
-    mrn: 'MRN-2026-0810',
-    dob: '1996-08-18',
-    gender: 'Male',
-    allergies: 'Sulfa Drugs',
+const mapSummaryToPatientSafetyInfo = (summary: PatientClinicalSummaryDto): PatientSafetyInfo => {
+  const nameParts = (summary.patientName ?? '').trim().split(/\s+/);
+  const firstName = nameParts[0] ?? '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+  const dobValue = summary.dob instanceof Date ? summary.dob : new Date(summary.dob);
+  const dob = Number.isNaN(dobValue.getTime()) ? '' : dobValue.toISOString().slice(0, 10);
+
+  return {
+    id: summary.patientId || summary.id,
+    firstName,
+    lastName,
+    mrn: summary.patientNumber || '',
+    dob,
+    gender: summary.gender || 'Unknown',
+    allergies: summary.allergies?.length ? summary.allergies.join(', ') : 'None',
     diagnoses: [],
     warnings: [],
-    insuranceProvider: 'PhilHealth Senior',
-    insuranceNumber: 'PH-4402-120',
-  },
+  };
+};
+
+const extractPatientLoadError = (err: unknown): string => {
+  const e = err as { response?: { data?: { message?: string } }; message?: string };
+  return e?.response?.data?.message || e?.message || 'Failed to load patient record.';
 };
 
 export const DoctorEMRPage = () => {
@@ -83,48 +69,42 @@ export const DoctorEMRPage = () => {
   );
 
   useEffect(() => {
-    if (patientId) {
-      // Defer all state synchronization updates to avoid synchronous render loop warnings
-      const initTimer = setTimeout(() => {
-        setError(null);
-        setIsLoading(true);
-      }, 0);
-
-      // Simulate API load latency safely, supporting lookup and standard fallback patients
-      const timer = setTimeout(() => {
-        let p = mockPatientDb[patientId];
-        if (!p) {
-          p = {
-            id: patientId,
-            firstName: patientId === 'patient-1' ? 'Patient' : 'Test',
-            lastName: patientId === 'patient-1' ? '001' : 'Patient',
-            mrn: 'MRN-2026-9999',
-            dob: '1990-01-01',
-            gender: 'Female',
-            allergies: 'None',
-            diagnoses: [],
-            warnings: [],
-            insuranceProvider: 'Maxicare HMO',
-            insuranceNumber: 'MAX-9999-999',
-          };
-        }
-        setActivePatient(p);
-        setIsLoading(false);
-      }, 350);
-
-      return () => {
-        clearTimeout(initTimer);
-        clearTimeout(timer);
-      };
-    } else {
-      // Defer reset updates as well
-      const resetTimer = setTimeout(() => {
-        setActivePatient(null);
-        setError(null);
-        setIsLoading(false);
-      }, 0);
-      return () => clearTimeout(resetTimer);
+    if (!patientId) {
+      setActivePatient(null);
+      setError(null);
+      setIsLoading(false);
+      return;
     }
+
+    let cancelled = false;
+    setError(null);
+    setIsLoading(true);
+
+    clinicalWorkflowService
+      .getPatientSummary(patientId)
+      .then((summary) => {
+        if (cancelled) return;
+        if (!summary) {
+          setError('Patient record not found.');
+          setActivePatient(null);
+          return;
+        }
+        setActivePatient(mapSummaryToPatientSafetyInfo(summary));
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(extractPatientLoadError(err));
+        setActivePatient(null);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [patientId]);
 
   if (encountersError) {

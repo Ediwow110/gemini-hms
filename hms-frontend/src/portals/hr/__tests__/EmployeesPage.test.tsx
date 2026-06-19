@@ -431,7 +431,7 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
 
   it('surfaces backend rejection inline (no window.alert) and keeps the row editable', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('DEACTIVATE');
     setupApiGetMocks();
     (apiClient.patch as any).mockRejectedValue({
       response: { data: { message: 'forbidden: insufficient role' } },
@@ -445,10 +445,10 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
     const errNode = await screen.findByTestId('employees-status-error');
     expect(errNode).toHaveTextContent(/forbidden/i);
     expect(alertSpy).not.toHaveBeenCalled();
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(promptSpy).toHaveBeenCalledTimes(1);
     expect((screen.getByTestId('employees-status-select-emp-1') as HTMLSelectElement).disabled).toBe(false);
     alertSpy.mockRestore();
-    confirmSpy.mockRestore();
+    promptSpy.mockRestore();
   });
 
   describe('EmployeesPage — destructive status confirmation (RESIGNED / TERMINATED)', () => {
@@ -456,8 +456,8 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
       vi.clearAllMocks();
     });
 
-    it('asks for window.confirm before PATCH when status is RESIGNED', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('asks for window.prompt with DEACTIVATE before PATCH when status is RESIGNED', async () => {
+      const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('DEACTIVATE');
       setupApiGetMocks();
       (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
 
@@ -469,15 +469,16 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
       await waitFor(() => {
         expect(apiClient.patch).toHaveBeenCalledTimes(1);
       });
-      expect(confirmSpy).toHaveBeenCalledTimes(1);
-      expect(confirmSpy.mock.calls[0][0]).toMatch(/RESIGNED/);
-      expect(confirmSpy.mock.calls[0][0]).toMatch(/deactivate/i);
-      expect(confirmSpy.mock.calls[0][0]).toMatch(/real staff records/i);
-      confirmSpy.mockRestore();
+      expect(promptSpy).toHaveBeenCalledTimes(1);
+      expect(promptSpy.mock.calls[0][0]).toMatch(/RESIGNED/);
+      expect(promptSpy.mock.calls[0][0]).toMatch(/Alice Anderson/);
+      expect(promptSpy.mock.calls[0][0]).toMatch(/deactivate/i);
+      expect(promptSpy.mock.calls[0][0]).toMatch(/Type DEACTIVATE to confirm/i);
+      promptSpy.mockRestore();
     });
 
-    it('asks for window.confirm before PATCH when status is TERMINATED', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('asks for window.prompt with DEACTIVATE before PATCH when status is TERMINATED', async () => {
+      const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('DEACTIVATE');
       setupApiGetMocks();
       (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
 
@@ -489,13 +490,14 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
       await waitFor(() => {
         expect(apiClient.patch).toHaveBeenCalledTimes(1);
       });
-      expect(confirmSpy).toHaveBeenCalledTimes(1);
-      expect(confirmSpy.mock.calls[0][0]).toMatch(/TERMINATED/);
-      confirmSpy.mockRestore();
+      expect(promptSpy).toHaveBeenCalledTimes(1);
+      expect(promptSpy.mock.calls[0][0]).toMatch(/TERMINATED/);
+      expect(promptSpy.mock.calls[0][0]).toMatch(/Type DEACTIVATE to confirm/i);
+      promptSpy.mockRestore();
     });
 
-    it('does NOT call PATCH when user cancels the destructive confirmation', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    it('does NOT call PATCH when user cancels the destructive prompt', async () => {
+      const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue(null);
       setupApiGetMocks();
       (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
 
@@ -504,16 +506,15 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
       const select = await screen.findByTestId('employees-status-select-emp-1');
       fireEvent.change(select, { target: { value: 'RESIGNED' } });
 
-      // Give the page a chance to react to the cancel.
       await new Promise((r) => setTimeout(r, 50));
-      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(promptSpy).toHaveBeenCalledTimes(1);
       expect(apiClient.patch).not.toHaveBeenCalled();
       expect((screen.getByTestId('employees-status-select-emp-1') as HTMLSelectElement).disabled).toBe(false);
-      confirmSpy.mockRestore();
+      promptSpy.mockRestore();
     });
 
-    it('does NOT call PATCH when user cancels the TERMINATED confirmation', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    it('does NOT call PATCH when user enters wrong confirmation text for TERMINATED', async () => {
+      const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('deactivate');
       setupApiGetMocks();
       (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
 
@@ -523,13 +524,13 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
       fireEvent.change(select, { target: { value: 'TERMINATED' } });
 
       await new Promise((r) => setTimeout(r, 50));
-      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(promptSpy).toHaveBeenCalledTimes(1);
       expect(apiClient.patch).not.toHaveBeenCalled();
-      confirmSpy.mockRestore();
+      promptSpy.mockRestore();
     });
 
-    it('proceeds with PATCH when user confirms RESIGNED', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('proceeds with PATCH when user types DEACTIVATE for RESIGNED', async () => {
+      const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('DEACTIVATE');
       setupApiGetMocks();
       (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
 
@@ -548,13 +549,13 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
       await waitFor(() => {
         expect(apiClient.get).toHaveBeenCalledTimes(3);
       });
-      confirmSpy.mockRestore();
+      promptSpy.mockRestore();
     });
 
     it.each(['ACTIVE', 'ON_LEAVE', 'SUSPENDED'])(
       'does NOT ask for confirmation when status is %s (non-destructive)',
       async (nonDestructiveStatus) => {
-        const confirmSpy = vi.spyOn(window, 'confirm');
+        const promptSpy = vi.spyOn(window, 'prompt');
         setupApiGetMocks();
         (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
 
@@ -566,12 +567,12 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
         await waitFor(() => {
           expect(apiClient.patch).toHaveBeenCalledTimes(1);
         });
-        expect(confirmSpy).not.toHaveBeenCalled();
+        expect(promptSpy).not.toHaveBeenCalled();
         expect(apiClient.patch).toHaveBeenCalledWith(
           '/v1/hr/employees/emp-1/status',
           expect.objectContaining({ status: nonDestructiveStatus }),
         );
-        confirmSpy.mockRestore();
+        promptSpy.mockRestore();
       },
     );
   });

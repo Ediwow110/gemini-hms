@@ -130,13 +130,11 @@ export const RadiologyCanvas = () => {
             Report finalization is not yet available in the live environment.
           </p>
           <p>
-            <span className="font-bold">Prototype shell — no backend implementation yet.</span>{' '}
-            <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/radiology/orders</code>{' '}
-            and <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/radiology/orders/:id/finalize</code>{' '}
-            are not implemented in the current backend release. This page will return{' '}
-            <span className="font-bold">HTTP 404</span> on load. The worklist will
-            remain empty and report finalization will not persist. No fabricated
-            data is shown in the worklist.
+            <span className="font-bold">Limited backend release.</span>{' '}
+            <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">GET /v1/radiology/orders</code>{' '}
+            returns an empty worklist until imaging orders are modeled.{' '}
+            <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">POST .../finalize</code>{' '}
+            is not implemented — report finalization will not persist. File uploads on this page are local-only.
           </p>
         </div>
       </div>

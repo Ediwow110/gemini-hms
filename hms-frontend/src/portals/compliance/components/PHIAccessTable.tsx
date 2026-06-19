@@ -162,15 +162,18 @@ export const PHIAccessTable: React.FC<PHIAccessTableProps> = ({ events }) => {
               </div>
             </div>
 
+            <p className="text-[10px] text-slate-500 font-medium">
+              Audit flagging is not yet wired to the backend; use the compliance audit review workflow for live incidents.
+            </p>
+
             <div className="mt-5 flex gap-2">
-              <button 
-                onClick={() => {
-                  alert("Audit Flag queued in sandbox memory.");
-                  setSelectedEvent(null);
-                }}
-                className="w-full btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-xs transition-colors cursor-pointer"
+              <button
+                type="button"
+                disabled
+                title="Not yet implemented"
+                className="w-full btn bg-indigo-600 text-white font-bold py-2 rounded-xl text-xs cursor-not-allowed opacity-60"
               >
-                Flag for Verification
+                Flag for Verification (not yet implemented)
               </button>
               <button 
                 onClick={() => setSelectedEvent(null)}

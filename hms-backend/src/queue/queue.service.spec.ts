@@ -20,11 +20,16 @@ describe('QueueService write isolation', () => {
           useValue: {
             patient: {
               findFirst: jest.fn(),
+              findMany: jest.fn(),
             },
             queueEntry: {
               findFirst: jest.fn(),
+              findMany: jest.fn(),
               create: jest.fn(),
               updateMany: jest.fn(),
+            },
+            encounter: {
+              findMany: jest.fn(),
             },
           },
         },
@@ -185,6 +190,89 @@ describe('QueueService write isolation', () => {
       expect(call[0].recordType).toBe('QueueEntry');
       expect(call[0].recordId).toBe('queue-new');
       expect(call[2]).toBe(branchId);
+    });
+  });
+
+  describe('getWorklist', () => {
+    it('normalizes CLINICAL service type to DOCTOR when querying queue entries', async () => {
+      prisma.queueEntry.findMany.mockResolvedValue([]);
+
+      await service.getWorklist(tenantId, branchId, 'CLINICAL');
+
+      expect(prisma.queueEntry.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId,
+            branchId,
+            serviceType: 'DOCTOR',
+          }),
+        }),
+      );
+    });
+
+    it('maps patient join and encounterId onto worklist entries', async () => {
+      const dob = new Date('1990-01-01');
+      prisma.queueEntry.findMany.mockResolvedValue([
+        {
+          id: 'queue-1',
+          queueNumber: 'C-01',
+          status: 'WAITING',
+          serviceType: 'DOCTOR',
+          patientId: 'patient-1',
+          patientName: null,
+        },
+      ]);
+      prisma.patient.findMany.mockResolvedValue([
+        {
+          id: 'patient-1',
+          patientNumber: 'P001',
+          firstName: 'John',
+          lastName: 'Doe',
+          dob,
+        },
+      ]);
+      prisma.encounter.findMany.mockResolvedValue([
+        { id: 'enc-1', patientId: 'patient-1' },
+      ]);
+
+      const result = await service.getWorklist(tenantId, branchId, 'DOCTOR');
+
+      expect(prisma.patient.findMany).toHaveBeenCalledWith({
+        where: { tenantId, id: { in: ['patient-1'] } },
+        select: {
+          id: true,
+          patientNumber: true,
+          firstName: true,
+          lastName: true,
+          dob: true,
+        },
+      });
+      expect(prisma.encounter.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId,
+            branchId,
+            patientId: { in: ['patient-1'] },
+          }),
+        }),
+      );
+      expect(result).toEqual([
+        {
+          id: 'queue-1',
+          queueNumber: 'C-01',
+          status: 'WAITING',
+          serviceType: 'DOCTOR',
+          patientId: 'patient-1',
+          encounterId: 'enc-1',
+          patient: {
+            id: 'patient-1',
+            patientNumber: 'P001',
+            firstName: 'John',
+            lastName: 'Doe',
+            dob: '1990-01-01',
+          },
+        },
+      ]);
     });
   });
 });

@@ -33,7 +33,9 @@ type VitalsFormValues = z.infer<typeof vitalsSchema>;
 interface QueueEntry {
   id: string;
   queueNumber: string;
-  status: "WAITING" | "IN_PROGRESS";
+  status: string;
+  patientId: string | null;
+  encounterId: string | null;
   patient: {
     id: string;
     patientNumber: string;
@@ -41,7 +43,7 @@ interface QueueEntry {
     lastName: string;
     dob: string;
     allergies?: string;
-  };
+  } | null;
 }
 
 interface DiagnosisItem {
@@ -64,6 +66,15 @@ export const EMRWorkspace = () => {
   const [isSavingVitals, setIsSavingVitals] = useState(false);
   const [vitalsError, setVitalsError] = useState<string | null>(null);
   const [queueError, setQueueError] = useState<string | null>(null);
+  const [activeEncounterId, setActiveEncounterId] = useState<string | null>(null);
+  const [encounterError, setEncounterError] = useState<string | null>(null);
+  const [isEnsuringEncounter, setIsEnsuringEncounter] = useState(false);
+  const [vitalsSuccess, setVitalsSuccess] = useState<string | null>(null);
+  const [soapError, setSoapError] = useState<string | null>(null);
+  const [soapSuccess, setSoapSuccess] = useState<string | null>(null);
+  const [isSavingSoap, setIsSavingSoap] = useState(false);
+  const [diagError, setDiagError] = useState<string | null>(null);
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [soapNotes, setSoapNotes] = useState({
     CHIEF_COMPLAINT: "",
@@ -95,7 +106,7 @@ export const EMRWorkspace = () => {
     try {
       setQueueError(null);
       const res = await apiClient.get("/v1/queue/worklist", {
-        params: { serviceType: "CLINICAL" }
+        params: { serviceType: "DOCTOR" }
       });
       setQueue(res.data || []);
     } catch (err: unknown) {
@@ -113,9 +124,40 @@ export const EMRWorkspace = () => {
     void fetchQueue();
   }, []);
 
-  const handleSelectEntry = (entry: QueueEntry) => {
+  const ensureEncounterForEntry = async (entry: QueueEntry): Promise<string | null> => {
+    if (entry.encounterId) {
+      return entry.encounterId;
+    }
+    const patientId = entry.patientId ?? entry.patient?.id;
+    if (!patientId || patientId === entry.id) {
+      setEncounterError(
+        'This queue entry has no registered patient. Register the patient before charting.',
+      );
+      return null;
+    }
+    if (!user?.branchId) {
+      setEncounterError('Branch context is required to open a clinical encounter.');
+      return null;
+    }
+    const res = await apiClient.post('/v1/emr/encounters', {
+      patientId,
+      branchId: user.branchId,
+      reason: 'Clinical queue intake',
+    });
+    return res.data?.id ?? null;
+  };
+
+  const handleSelectEntry = async (entry: QueueEntry) => {
     setSelectedEntry(entry);
     setIsLocked(false);
+    setEncounterError(null);
+    setVitalsError(null);
+    setVitalsSuccess(null);
+    setSoapError(null);
+    setSoapSuccess(null);
+    setDiagError(null);
+    setFinalizeError(null);
+    setActiveEncounterId(null);
     setDiagnoses([]);
     setSoapNotes({
       CHIEF_COMPLAINT: "",
@@ -124,15 +166,45 @@ export const EMRWorkspace = () => {
       DISCHARGE: "",
     });
     reset();
+
+    if (!entry.patient) {
+      setEncounterError('Queue entry has no patient context. Cannot open chart.');
+      return;
+    }
+
+    setIsEnsuringEncounter(true);
+    try {
+      const encounterId = await ensureEncounterForEntry(entry);
+      if (encounterId) {
+        setActiveEncounterId(encounterId);
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      setEncounterError(
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to open clinical encounter for this queue entry.',
+      );
+    } finally {
+      setIsEnsuringEncounter(false);
+    }
   };
 
   const handleSaveVitals = async (data: VitalsFormValues) => {
-    if (!selectedEntry || isLocked) return;
+    if (!selectedEntry || isLocked || !activeEncounterId) return;
     setIsSavingVitals(true);
     setVitalsError(null);
+    setVitalsSuccess(null);
     try {
-      await apiClient.post(`/v1/emr/encounters/${selectedEntry.id}/vitals`, data);
-      alert("Vitals successfully saved to medical record.");
+      await apiClient.post(`/v1/emr/encounters/${activeEncounterId}/vitals`, {
+        temperature: data.temperature,
+        systolicBp: data.systolicBp,
+        diastolicBp: data.diastolicBp,
+        heartRate: data.heartRate,
+        respiratory: data.respiratoryRate,
+        weightKg: data.weight,
+      });
+      setVitalsSuccess('Vitals saved to the medical record.');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setVitalsError(error.response?.data?.message || "Failed to save vitals. Please try again.");
@@ -141,22 +213,60 @@ export const EMRWorkspace = () => {
     }
   };
 
-  const handleAddDiagnosis = () => {
-    if (!newDiagCode || !newDiagDesc) return;
+  const handleAddDiagnosis = async () => {
+    if (!newDiagCode || !newDiagDesc || !activeEncounterId || isLocked) return;
+    setDiagError(null);
     const item: DiagnosisItem = {
       code: newDiagCode,
       description: newDiagDesc,
       isPrimary: newDiagPrimary
     };
-    if (newDiagPrimary) {
-      // Ensure only one primary diagnosis exists
-      setDiagnoses(diagnoses.map(d => ({ ...d, isPrimary: false })).concat(item));
-    } else {
-      setDiagnoses([...diagnoses, item]);
+    try {
+      await apiClient.post(`/v1/emr/encounters/${activeEncounterId}/diagnoses`, {
+        icd10Code: newDiagCode,
+        description: newDiagDesc,
+        isPrimary: newDiagPrimary,
+      });
+      if (newDiagPrimary) {
+        setDiagnoses(diagnoses.map(d => ({ ...d, isPrimary: false })).concat(item));
+      } else {
+        setDiagnoses([...diagnoses, item]);
+      }
+      setNewDiagCode("");
+      setNewDiagDesc("");
+      setNewDiagPrimary(false);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setDiagError(error.response?.data?.message || 'Failed to save diagnosis.');
     }
-    setNewDiagCode("");
-    setNewDiagDesc("");
-    setNewDiagPrimary(false);
+  };
+
+  const handleSaveSoapNotes = async () => {
+    if (!activeEncounterId || isLocked) return;
+    setIsSavingSoap(true);
+    setSoapError(null);
+    setSoapSuccess(null);
+    try {
+      const entries = Object.entries(soapNotes).filter(([, value]) => value.trim().length > 0);
+      if (entries.length === 0) {
+        setSoapError('Enter at least one note before saving.');
+        return;
+      }
+      await Promise.all(
+        entries.map(([noteType, content]) =>
+          apiClient.post(`/v1/emr/encounters/${activeEncounterId}/notes`, {
+            noteType,
+            content,
+          }),
+        ),
+      );
+      setSoapSuccess('Clinical notes saved to the encounter.');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setSoapError(error.response?.data?.message || 'Failed to save clinical notes.');
+    } finally {
+      setIsSavingSoap(false);
+    }
   };
 
   const handleRemoveDiagnosis = (index: number) => {
@@ -164,16 +274,17 @@ export const EMRWorkspace = () => {
   };
 
   const handleFinalizeEncounter = async () => {
-    if (!selectedEntry) return;
+    if (!selectedEntry || !activeEncounterId) return;
     setIsFinalizing(true);
+    setFinalizeError(null);
     try {
-      await apiClient.patch(`/v1/clinical/encounters/${selectedEntry.id}/close`);
+      await apiClient.patch(`/v1/clinical/encounters/${activeEncounterId}/close`);
       setIsLocked(true);
       setShowConfirmClose(false);
-      alert("Encounter signed and locked successfully. All clinical logs are finalized.");
+      void fetchQueue();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || "Failed to finalize encounter. Please try again.");
+      setFinalizeError(error.response?.data?.message || "Failed to finalize encounter. Please try again.");
     } finally {
       setIsFinalizing(false);
     }
@@ -216,10 +327,13 @@ export const EMRWorkspace = () => {
             )}
             {queue.map(entry => {
               const active = selectedEntry?.id === entry.id;
+              if (!entry.patient) {
+                return null;
+              }
               return (
                 <div 
                   key={entry.id}
-                  onClick={() => handleSelectEntry(entry)}
+                  onClick={() => void handleSelectEntry(entry)}
                   className={`p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer flex justify-between items-center ${
                     active 
                       ? "border-indigo-500 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 shadow-sm"
@@ -257,19 +371,27 @@ export const EMRWorkspace = () => {
           
           {selectedEntry ? (
             <>
+              {encounterError && (
+                <div role="alert" className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl text-xs font-medium" data-testid="encounter-error">
+                  {encounterError}
+                </div>
+              )}
+              {isEnsuringEncounter && (
+                <p className="text-xs text-slate-500 font-medium">Opening clinical encounter…</p>
+              )}
               {/* Header profile information */}
               <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-4 gap-4">
                 <div>
                   <div className="flex items-center gap-2.5">
                     <div className="h-10 w-10 bg-indigo-100 text-indigo-700 rounded-xl flex items-center justify-center font-extrabold text-sm uppercase">
-                      {selectedEntry.patient.firstName[0]}{selectedEntry.patient.lastName[0]}
+                      {(selectedEntry.patient?.firstName?.[0] || '?')}{(selectedEntry.patient?.lastName?.[0] || '')}
                     </div>
                     <div>
                       <h2 className="text-lg font-bold text-slate-900">
-                        {selectedEntry.patient.firstName} {selectedEntry.patient.lastName}
+                        {selectedEntry.patient?.firstName} {selectedEntry.patient?.lastName}
                       </h2>
                       <p className="text-xs text-slate-500">
-                        ID: {selectedEntry.patient.id} · Tenant: {user?.tenantId || "N/A"} · Branch: {user?.branchId || "N/A"}
+                        ID: {selectedEntry.patient?.id} · Encounter: {activeEncounterId ?? '—'} · Branch: {user?.branchId || "N/A"}
                       </p>
                     </div>
                   </div>
@@ -283,7 +405,8 @@ export const EMRWorkspace = () => {
                   ) : (
                     <button
                       onClick={() => setShowConfirmClose(true)}
-                      className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 text-xs py-2"
+                      disabled={!activeEncounterId || isEnsuringEncounter}
+                      className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 text-xs py-2 disabled:opacity-50"
                     >
                       <CheckCircle className="h-4 w-4" />
                       Finalize & Close
@@ -293,7 +416,7 @@ export const EMRWorkspace = () => {
               </div>
 
               {/* Red flash alert for Allergies */}
-              {selectedEntry.patient.allergies && selectedEntry.patient.allergies !== "None" && (
+              {selectedEntry.patient?.allergies && selectedEntry.patient.allergies !== "None" && (
                 <div className="bg-rose-50 border border-rose-100 text-rose-700 px-4 py-3 rounded-2xl flex items-center gap-3 animate-pulse">
                   <ShieldAlert className="h-5 w-5 text-rose-500 flex-shrink-0" />
                   <div className="text-xs">
@@ -435,9 +558,14 @@ export const EMRWorkspace = () => {
                              {vitalsError}
                            </div>
                          )}
+                         {vitalsSuccess && (
+                           <div className="text-emerald-600 text-[10px] font-bold text-center" role="status">
+                             {vitalsSuccess}
+                           </div>
+                         )}
                          <button 
                            type="submit" 
-                           disabled={isSavingVitals}
+                           disabled={isSavingVitals || !activeEncounterId}
                            className="btn btn-primary text-xs py-2 bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-70"
                          >
                            {isSavingVitals ? "Saving..." : "Save Vitals Metrics"}
@@ -498,6 +626,25 @@ export const EMRWorkspace = () => {
                     </div>
                   </div>
 
+                  {!isLocked && (
+                    <div className="flex flex-col items-center gap-2 pt-2">
+                      {soapError && (
+                        <p className="text-rose-500 text-[10px] font-bold text-center">{soapError}</p>
+                      )}
+                      {soapSuccess && (
+                        <p className="text-emerald-600 text-[10px] font-bold text-center" role="status">{soapSuccess}</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveSoapNotes()}
+                        disabled={isSavingSoap || !activeEncounterId}
+                        className="btn btn-primary text-xs py-2 bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-70"
+                      >
+                        {isSavingSoap ? 'Saving…' : 'Save Clinical Notes'}
+                      </button>
+                    </div>
+                  )}
+
                 </div>
               )}
 
@@ -541,11 +688,15 @@ export const EMRWorkspace = () => {
                       </div>
                       <button
                         type="button"
-                        onClick={handleAddDiagnosis}
-                        className="btn btn-primary py-2 px-4 text-xs bg-indigo-600 text-white flex items-center gap-1"
+                        onClick={() => void handleAddDiagnosis()}
+                        disabled={!activeEncounterId}
+                        className="btn btn-primary py-2 px-4 text-xs bg-indigo-600 text-white flex items-center gap-1 disabled:opacity-50"
                       >
                         <Plus className="h-4 w-4" /> Add
                       </button>
+                      {diagError && (
+                        <p className="w-full text-rose-500 text-[10px] font-bold">{diagError}</p>
+                      )}
                     </div>
                   )}
 
@@ -611,6 +762,9 @@ export const EMRWorkspace = () => {
                     <p className="text-sm text-slate-500 mt-3 leading-relaxed">
                       Are you sure you want to finalize and close this encounter? <strong>This operation is irreversible</strong> and will cryptographically secure and lock the medical chart from further manual updates.
                     </p>
+                    {finalizeError && (
+                      <p className="text-sm text-rose-600 mt-3 font-medium" role="alert">{finalizeError}</p>
+                    )}
                     <div className="mt-6 flex justify-end gap-3">
                       <button
                         onClick={() => setShowConfirmClose(false)}

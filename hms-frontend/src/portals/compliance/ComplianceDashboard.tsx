@@ -37,7 +37,7 @@ export const ComplianceDashboard: React.FC = () => {
       timestamp: new Date(e.createdAt).toLocaleString(),
       actorName: e.activeRole || 'Unknown',
       actorRole: e.activeRole || 'N/A',
-      patientName: e.recordId,
+      patientName: `${e.recordType} ${e.recordId.slice(0, 8)}`,
       patientId: e.recordId,
       tenantName: '',
       branchName: '',

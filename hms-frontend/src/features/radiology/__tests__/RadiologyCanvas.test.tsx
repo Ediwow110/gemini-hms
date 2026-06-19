@@ -85,11 +85,11 @@ describe('RadiologyCanvas Honesty Tests', () => {
     expect(screen.getByText(/This module is currently in read-only mode/i)).toBeInTheDocument();
   });
 
-  it('states that /v1/radiology/orders and finalize are not implemented in the backend', async () => {
+  it('states that radiology finalize is not implemented and worklist may be empty', async () => {
     renderWithAuth(<RadiologyCanvas />);
-    expect(screen.getByText(/no backend implementation yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/Limited backend release/i)).toBeInTheDocument();
     expect(screen.getAllByText(/\/v1\/radiology\/orders/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/HTTP 404/i)).toBeInTheDocument();
+    expect(screen.getByText(/not implemented/i)).toBeInTheDocument();
   });
 
   it('does NOT introduce a fabricated "orders loaded" or "save successful" claim', async () => {

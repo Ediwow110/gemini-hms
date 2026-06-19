@@ -163,12 +163,14 @@ export const EmployeesPage: React.FC = () => {
   const handleStatusChange = useCallback(
     async (employeeId: string, newStatus: HrEmployeeStatus) => {
       if (DESTRUCTIVE_STATUSES.includes(newStatus)) {
-        const confirmed = window.confirm(
-          `Setting status to ${newStatus} will deactivate the linked user account, ` +
+        const employee = employees.find((e) => e.id === employeeId);
+        const employeeName = employee?.name ?? employeeId;
+        const confirmation = window.prompt(
+          `Setting status to ${newStatus} for ${employeeName} will deactivate the linked user account, ` +
             'invalidate any active sessions, and update real staff records. ' +
-            'This action will be audited. Continue?',
+            'This action will be audited.\n\nType DEACTIVATE to confirm:',
         );
-        if (!confirmed) {
+        if (confirmation !== 'DEACTIVATE') {
           return;
         }
       }
@@ -183,7 +185,7 @@ export const EmployeesPage: React.FC = () => {
         setUpdatingEmployeeId(null);
       }
     },
-    [fetchEmployees],
+    [fetchEmployees, employees],
   );
 
   const closeModal = () => {

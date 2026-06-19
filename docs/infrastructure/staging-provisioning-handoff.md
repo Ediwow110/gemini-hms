@@ -24,7 +24,7 @@ This document defines exactly what must be provisioned to unblock staging verifi
 | Staging host / VM | ❌ |
 | Staging database | ❌ |
 | Staging secrets in GitHub | ❌ |
-| Staging deployment workflow | ❌ |
+| Staging deployment workflow | ⚠️ Exists (`.github/workflows/deploy-staging.yml`) — environment still NOT provisioned |
 
 ---
 

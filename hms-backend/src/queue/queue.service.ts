@@ -5,8 +5,45 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JoinQueueDto, UpdateQueueStatusDto } from './dto/queue.dto';
+import {
+  WorklistEntryDto,
+  WorklistPatientDto,
+} from './dto/worklist-entry.dto';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
+
+const OPEN_ENCOUNTER_STATUSES = [
+  'OPEN',
+  'PLANNED',
+  'ARRIVED',
+  'IN_PROGRESS',
+] as const;
+
+/** Legacy frontend alias — canonical queue service type is DOCTOR */
+function normalizeServiceType(serviceType: string): string {
+  if (!serviceType || serviceType === 'CLINICAL') {
+    return 'DOCTOR';
+  }
+  return serviceType;
+}
+
+function splitWalkInName(patientName: string | null | undefined): {
+  firstName: string;
+  lastName: string;
+} {
+  const trimmed = (patientName ?? '').trim();
+  if (!trimmed) {
+    return { firstName: 'Walk-in', lastName: 'Patient' };
+  }
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '—' };
+  }
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' '),
+  };
+}
 
 @Injectable()
 export class QueueService {
@@ -151,19 +188,117 @@ export class QueueService {
     return updated;
   }
 
-  async getWorklist(tenantId: string, branchId: string, serviceType: string) {
-    return this.prisma.queueEntry.findMany({
+  async getWorklist(
+    tenantId: string,
+    branchId: string,
+    serviceType: string,
+  ): Promise<WorklistEntryDto[]> {
+    const normalizedType = normalizeServiceType(serviceType);
+    const dayStart = new Date(new Date().setHours(0, 0, 0, 0));
+
+    const entries = await this.prisma.queueEntry.findMany({
       where: {
         tenantId,
         branchId,
-        serviceType,
+        serviceType: normalizedType,
         status: { in: ['WAITING', 'CALLING', 'SERVING'] },
-        createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+        createdAt: { gte: dayStart },
       },
-      orderBy: [
-        { category: 'desc' }, // PRIORITY first
-        { createdAt: 'asc' },
-      ],
+      orderBy: [{ category: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    if (entries.length === 0) {
+      return [];
+    }
+
+    const patientIds = entries
+      .map((e) => e.patientId)
+      .filter((id): id is string => Boolean(id));
+
+    const patients =
+      patientIds.length > 0
+        ? await this.prisma.patient.findMany({
+            where: { tenantId, id: { in: patientIds } },
+            select: {
+              id: true,
+              patientNumber: true,
+              firstName: true,
+              lastName: true,
+              dob: true,
+            },
+          })
+        : [];
+
+    const patientById = new Map(patients.map((p) => [p.id, p]));
+
+    const openEncounters =
+      patientIds.length > 0
+        ? await this.prisma.encounter.findMany({
+            where: {
+              tenantId,
+              branchId,
+              patientId: { in: patientIds },
+              status: { in: [...OPEN_ENCOUNTER_STATUSES] },
+              archivedAt: null,
+              createdAt: { gte: dayStart },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, patientId: true },
+          })
+        : [];
+
+    const encounterByPatient = new Map<string, string>();
+    for (const enc of openEncounters) {
+      if (!encounterByPatient.has(enc.patientId)) {
+        encounterByPatient.set(enc.patientId, enc.id);
+      }
+    }
+
+    return entries.map((entry) => {
+      const linked = entry.patientId
+        ? patientById.get(entry.patientId)
+        : undefined;
+
+      let patient: WorklistPatientDto | null = null;
+      if (linked) {
+        patient = {
+          id: linked.id,
+          patientNumber: linked.patientNumber,
+          firstName: linked.firstName,
+          lastName: linked.lastName,
+          dob: linked.dob.toISOString().slice(0, 10),
+        };
+      } else if (entry.patientId) {
+        const { firstName, lastName } = splitWalkInName(entry.patientName);
+        patient = {
+          id: entry.patientId,
+          patientNumber: entry.queueNumber,
+          firstName,
+          lastName,
+          dob: '',
+        };
+      } else if (entry.patientName) {
+        const { firstName, lastName } = splitWalkInName(entry.patientName);
+        patient = {
+          id: entry.id,
+          patientNumber: entry.queueNumber,
+          firstName,
+          lastName,
+          dob: '',
+        };
+      }
+
+      return {
+        id: entry.id,
+        queueNumber: entry.queueNumber,
+        status: entry.status,
+        serviceType: entry.serviceType,
+        patientId: entry.patientId,
+        encounterId: entry.patientId
+          ? (encounterByPatient.get(entry.patientId) ?? null)
+          : null,
+        patient,
+      };
     });
   }
 }
