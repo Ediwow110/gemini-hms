@@ -3,11 +3,24 @@ import { TrendingUp, AlertTriangle } from 'lucide-react';
 import IntegrationShellNotice from './components/IntegrationShellNotice';
 import ReconciliationIssueCard from './components/ReconciliationIssueCard';
 import { useIntegrationReconciliation } from '../../hooks/use-integration';
+import type { ReconciliationIssueDto } from '../../services/integration.service';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
 
+/** Shell reconciliation endpoint returns HTTP 200 + []; empty must not masquerade as zero issues. */
+function shellIssueCountDisplay(
+  issues: ReconciliationIssueDto[] | undefined,
+  isLoading: boolean,
+  picker: (items: ReconciliationIssueDto[]) => number,
+): string {
+  if (isLoading) return '...';
+  if (!issues || issues.length === 0) return '—';
+  return String(picker(issues));
+}
+
 export const ReconciliationMonitorPage: React.FC = () => {
   const { data: issues, isLoading, error } = useIntegrationReconciliation();
+  const shellEmpty = !isLoading && !error && (!issues || issues.length === 0);
   return (
     <HmsDashboardShell widthTier="full">
       <div className="space-y-6 pb-12">
@@ -24,15 +37,20 @@ export const ReconciliationMonitorPage: React.FC = () => {
               <AlertTriangle className="h-4 w-4 text-rose-500" />
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Open Issues</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">{issues?.length || 0}</p>
+            <p className="text-2xl font-black text-slate-900" data-testid="reconciliation-open-count">
+              {shellIssueCountDisplay(issues, isLoading, (items) => items.length)}
+            </p>
+            {shellEmpty && (
+              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">Shell empty</p>
+            )}
           </div>
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-amber-500" />
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Under Review</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">
-              {issues?.filter(i => i.status === 'UNDER_REVIEW').length || 0}
+            <p className="text-2xl font-black text-slate-900" data-testid="reconciliation-review-count">
+              {shellIssueCountDisplay(issues, isLoading, (items) => items.filter((i) => i.status === 'UNDER_REVIEW').length)}
             </p>
           </div>
           <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-2">
@@ -40,8 +58,8 @@ export const ReconciliationMonitorPage: React.FC = () => {
               <TrendingUp className="h-4 w-4 text-emerald-500" />
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resolved</p>
             </div>
-            <p className="text-2xl font-black text-slate-900">
-              {issues?.filter(i => i.status === 'RESOLVED').length || 0}
+            <p className="text-2xl font-black text-slate-900" data-testid="reconciliation-resolved-count">
+              {shellIssueCountDisplay(issues, isLoading, (items) => items.filter((i) => i.status === 'RESOLVED').length)}
             </p>
           </div>
         </div>
