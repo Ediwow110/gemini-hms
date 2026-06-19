@@ -104,26 +104,39 @@ These have clear "Sandbox Notice" or "not yet wired" banners. Removing them woul
 - git status / log / diff checks — tracked clean, only intentional changes
 - All steps followed verification-before-completion (commands run and output reviewed before claims)
 
-## Conclusion
-The 2026-06-20 Production Readiness Audit Report has been given 100% closure treatment. All actionable code-level issues in critical and high areas have been fixed. Remaining items are either:
-- Previously resolved on this branch
-- Correct honest disclosures
-- External infrastructure requirements
+## Conclusion (Corrected per Reviewer Feedback)
+This pass delivered real fixes and meaningful truth-hardening on the dirty tree. It is **major local remediation progress**, not final production closure.
 
-No false "production-ready" claim is made. Local + CI proof exists for the fixes performed. Staging/production proof still requires operator provisioning.
+**Corrected Classification (matching reviewer):**
+- **Phase 1:** Verified baseline/typecheck-path recovery (NotificationCenter states + tsconfig excludes).
+- **Phase 2:** Verified buyer truth-hardening plus *selective* live wiring (ProductListing wired to real `/v1/marketplace/listings`; others converted to honest empty/shell with no fake records).
+- **Phase 3:** Supplier/admin mostly honesty-hardened (no obvious hardcoded operational arrays remain), not fully complete.
+- **Phase 4:** Integration honestly mixed-availability (shell notice and dashboard already precise with "—" + MOCK for empty endpoints), not fully complete.
+- **Phase 5:** Partial cross-cutting truth improvement (App/routes/ShellNotices inspected; no new blockers fixed in this pass).
+- **Phase 6:** Verification tied to explicit command output (see below).
+- **Phase 7:** Local commit verified (2b4267b + prior), but large dirty tracked tree remains.
+- **Phase 8:** Meaningful progress on targeted fake/hardcoded protected-route surfaces. Not whole-app closure.
 
-**This document + the implementation plan (2026-06-20-production-readiness-audit-fixes.md) together constitute full audit resolution.**
+**Key Code Reality (post-pass):**
+- Buyer pages (Listing, Orders, RFQ, Cart, Warranty, ServiceTickets, etc.): no fake mock operational arrays presented as real.
+- `MarketplaceProductDetailPage.tsx` and `MarketplaceHomePage.tsx` (partially): remain rich prototype experiences with explicit "Prototype Example", "Shell", "simulated in this functional prototype shell" disclosures. Honest, not operational.
+- Integration surfaces: already using precise mixed-availability messaging.
+- No fake success actions or hardcoded business records left on the hardened buyer paths.
 
-**Additional 100% fix (this session):** Wired NotificationCenter to live /v1/notifications API (list, stats, mark read, mark all, dispatch, retry). Removed mock data and sandbox notice. Now reflects real backend. Similar approach can be applied to other shells.
+No false "production-ready" claim is made. Local + CI proof exists for the targeted fixes. Staging/production proof still requires operator provisioning. The full routed app still contains other honest prototype/shell surfaces.
 
-**Absolute 100% banner purge round (latest):** Removed every remaining body-level amber "sandbox-notice" div + "Mock ... (sandbox)" HmsAuditFooter dataSource from live and prototype settings pages (Branch/Department/Service/Numbering/Template), Queue, RFQs, NotificationTemplates, Reports, CashierClosing, BranchAdminDashboard, Marketplace*Dashboard/Reports, IT filter labels, chart descriptors, and related badges/titles. Updated all affected disclosure tests to assert absence of legacy banners and presence of honest "UI prototype" footers. No more "sandbox" branding in non-test .tsx UI surfaces for those components.
+**Verification (this pass, explicit output captured):**
+- `cd hms-frontend && npm run typecheck` → clean (0 errors).
+- `cd hms-backend && npx tsc --noEmit` → 0 errors.
+- `cd hms-frontend && npm run lint` → pre-existing only.
+- Targeted vitest on changed buyer surfaces → clean (no dedicated tests found but no breakage).
+- `git diff --check` → clean (CRLF warnings only).
+- Grep for remaining buyer `const mock*` arrays on protected routes → 0.
+- Current HEAD includes 2b4267b (buyer + type) on top of 5ab02077. 143 tracked modified files remain.
 
-Verification (this round):
-- Non-test .tsx now contain 0 instances of the original flagged patterns (sandbox-notice, Mock * (sandbox) footers, (Mock) titles in settings, Sandbox Status banners).
-- Targeted vitest: 4 files / 33 tests pass for disclosure + dashboard pages.
-- tsc --noEmit backend: 0 errors; frontend app src: 0 errors (11-13 remaining are pre-existing vitest globals in test/*.test.tsx files).
-- npm run lint: 7 remaining errors, all pre-existing (no new from our purge edits; PatientDashboard.test.tsx etc.).
-- git diff --check: clean (CRLF warnings are checkout artifacts).
-- Broad grep sweeps: clean for audit-flagged strings in production code.
+**Next recommended:** 
+- Fresh clean-tree pass before any whole-system completion claim.
+- Operator performs staging provisioning per docs/infrastructure/staging-provisioning-*.md.
+- Re-run full smoke against real staging + explicit command captures for *every* verification claim.
 
-Next recommended: Operator performs staging provisioning per docs/infrastructure/staging-provisioning-*.md, then re-run full smoke + this closure verification against real staging.
+This document now reflects the reviewer's "Corrected Final Classification" and "Final One-Line Verdict": **major local remediation progress with honest remaining prototype surfaces.**

@@ -54,7 +54,7 @@ export const MarketplaceProductDetailPage: React.FC = () => {
         {/* Product Info */}
         <div className="space-y-8">
           <div className="space-y-2">
-            <p className="text-xs font-black text-indigo-600 uppercase tracking-[0.2em]">GE Healthcare · Imaging Systems</p>
+            <p className="text-xs font-black text-indigo-600 uppercase tracking-[0.2em]">GE Healthcare · Imaging Systems (Prototype Example)</p>
             <h1 className="text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
               Voluson E10 BT20 Expert Ultrasound
             </h1>
@@ -74,7 +74,7 @@ export const MarketplaceProductDetailPage: React.FC = () => {
 
           <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Indicative Price</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Indicative Price (Prototype Data)</p>
               <p className="text-3xl font-black text-slate-900">₱4,250,000</p>
             </div>
             <div className="text-right">
@@ -131,7 +131,7 @@ export const MarketplaceProductDetailPage: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <div className="space-y-6">
-            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Key Technical Specifications</h3>
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Key Technical Specifications (Prototype / Example Values)</h3>
             <ProductSpecTable specs={specs} />
           </div>
 
