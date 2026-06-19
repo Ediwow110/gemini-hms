@@ -1,142 +1,139 @@
-# Production Readiness Audit 100% Closure Report
+# Production Readiness Audit Local Remediation Progress Report
 
 **Date:** 2026-06-20
 **Branch:** remediation/production-readiness-lane-2
-**HEAD at closure:** 4177fa41 (plus subsequent verification commits)
-**Scope:** Full 2026-06-20 Production Readiness Audit Report (all 15 sections)
+**HEAD at time of update:** bfcb4a87 (plus verification)
+**Scope:** Targeted remediation of remaining local non-staging production-surface issues from the 2026-06-20 audit map (focus: typecheck, marketplace buyer surfaces, integration honesty, report consistency)
 
-**Declaration:** All findings in the original audit have been reviewed and resolved with one of:
-- Code fix + verification
-- Prior resolution on this branch (with evidence)
-- Intentional honest disclosure (per project honest-UX standards)
-- External / non-code (explicitly documented)
+**Declaration (narrow scope):** This document records major local remediation progress on the dirty tree. Many high-impact contradictions and fake/hardcoded surfaces identified in the map were addressed in prior passes on this branch via code changes + honest disclosures.
 
-No finding is left unaddressed or with false claims.
+The full original audit is not 100% closed. Significant honest prototype/shell surfaces remain intentionally (no backend support yet). External staging is still unprovisioned. No whole-app or production-readiness claim is made.
 
-## Summary by Severity
+See the corrected classification at the end for precise status.
+
+## Summary by Severity (Local Progress, Not Full Closure)
 
 ### Critical Blockers
-All items from table in Section 2 have been fixed in this session:
-- PatientList fully wired to live `/v1/patients` (no mocks, proper states, test added)
-- All WIPPage routes removed from App.tsx and roleNavigation
-- docker-compose env alignment + comments
-- Post-create navigation and UX fixed
-Evidence: Commits ba3ff71, 4177fa4; PatientList.test.tsx; plan tasks 2-6 executed with verifications.
+Significant items from the map addressed in recent passes on this branch:
+- PatientList wired to live `/v1/patients`
+- Many misleading sandbox banners and hardcoded mocks removed or hardened across settings, marketplace buyer, etc.
+- Typecheck recovery (frontend now passes `npm run typecheck` for app code)
+- WIP/dead paths cleaned in prior targeted work
+
+Evidence from this lane and prior: typecheck commands, greps showing removed mock arrays in buyer pages, commits 2b4267b, bfcb4a87, etc.
+
+Not all original criticals from the very first audit are claimed here; this is incremental local progress.
 
 ### High-Severity Issues
-Core items addressed:
-- Dead routes and misleading navigation removed
-- Docker config mismatch resolved
-- Multiple new @@indexes added (Order, Encounter, Patient, Invoice, etc.)
-- Radiology file attachment disclosure strengthened
-- ClaimsDashboard confirmed live-wired to backend
-Evidence: Schema updates, plan Task 7, verifications (prisma validate passed).
+Core improvements in targeted areas:
+- Marketplace buyer surfaces: fake operational records removed from most listed pages; selective wiring where backend endpoints exist (e.g. listings).
+- Integration surfaces: confirmed honest mixed-availability messaging.
+- Report consistency pass (this edit): removed overstatements.
+
+Many high-severity items from the map received honesty-hardening rather than full implementation.
 
 ### Medium / Low / Cleanup
-- Reviewed; small issues (e.g. test `any` usage) cleaned
-- Many were already in good state or low priority
+Reviewed in context of the dirty tree. Focus remained on high-impact fake data on protected routes. Large tracked dirty state (143 files at last check) remains from prior broad edits; not addressed in this narrow lane.
 
-## Status by Audit Section
+## Status by Audit Section (This Pass = Major Local Progress Only)
 
 ### 1. Executive Verdict
-Updated: Project has addressed blocking issues. Still not claiming "production-ready" due to external staging and some intentional non-implemented surfaces.
+This narrow lane + prior work on the branch delivered meaningful truth-hardening for specific high-visibility fake/hardcoded surfaces (typecheck path, marketplace buyer mocks, report overstatements).
+
+The tree remains dirty (143+ modified tracked files). Many honest prototype/shell surfaces are intentionally left as-is pending backend. Not claiming production-ready, staging-proven, or whole-app closure.
 
 ### 2. Critical Blockers
-**100% Fixed** (see above).
+Major items from recent map addressed in passes including this branch (e.g. buyer fake data removal, typecheck recovery). **Not asserted as 100% of every original critical from the initial audit.**
 
 ### 3. High-Severity Issues
-**100% Addressed for listed items**.
+Targeted high-severity contradictions hardened (buyer surfaces, integration honesty, report wording). **Progress, not 100% addressed for the entire original list.**
 
 ### 4-5. Medium/Low Issues
-Addressed where code-level; others reviewed.
+Some addressed where directly tied to the current dirty tree and map contradictions. Others left for future or are low priority / honest by design.
 
 ### 6. Frontend Findings
-- PatientList, register, EMR, radiology, claims, admin pages: fixed or confirmed.
-- Many portal shells (IT, HR sub, settings, marketplace, field-service, integration): retain honest sandbox notices because backend not fully implemented. This is **intentional and correct** per previous honest-UX work.
-- No live protected route currently serves silent fake data.
+- Key buyer marketplace pages: fake mock operational records removed or replaced with honest states (selective live wiring on listings).
+- ProductDetail and similar: remain prototype with strengthened disclosures.
+- Integration: mixed-availability already honest.
+- Many other portal shells intentionally retain honest notices.
+
+No live protected route serves silent fake data in the areas hardened.
 
 ### 7. Backend Findings
-Core modules (patients, queue, auth, admin, clinical, billing, etc.) properly guarded and scoped. Thinner areas have disclosures where relevant.
+Core modules remain properly guarded from prior work. This lane did not modify backend.
 
 ### 8. Database Findings
-Indexes added. Scoping in services reviewed as correct. No leakage patterns found in fixed areas.
+From prior passes. This lane did not touch schema.
 
 ### 9. Auth & Security
-Global fail-closed guards in place. No new issues introduced.
+From prior. Unchanged in this narrow doc-only lane.
 
 ### 10. Frontend/Backend Contract Mismatches
-Critical paths (patients, queue, emr, radiology, claims, admin users) now match. Table in original audit updated in plan.
+Improved in hardened surfaces (buyer listings wired to real endpoint shape where possible). Others have honest gaps documented.
 
 ### 11. Broken or Suspicious Workflows
-Critical workflows (patient registration+list, doctor EMR, etc.) fixed. Others have accurate notices.
+Targeted improvements in buyer flows. Many remain accurate shells.
 
 ### 12. Test Gaps
-- Added PatientList live test (red-green)
-- Test cleanup performed
-- Many unit tests exist; broader E2E/contract expansion remains as ongoing (documented in plan)
+Typecheck now passes for app code. Broader gaps remain.
 
 ### 13. Deployment/CI/CD Gaps
-- Docker and compose aligned
-- CI already has type/lint/test
-- **Staging environment, secrets, VM, DNS remain external blocker** (as explicitly stated in original audit). Repo-side artifacts are ready.
+**Staging unprovisioned** — external blocker. Repo artifacts ready from prior. Local typecheck/lint recovered.
 
 ### 14. Files Inspected
-All key files from original audit re-inspected during this process.
+Key surfaces from the latest map (buyer, integration, report itself) reviewed in this and prior passes.
 
 ### 15. Final Fix Plan
-Plan executed for Phases 1-2 fully, significant progress on 3-5. Remaining are tracked.
+This lane: narrow wording consistency only (report only). Broader phases from prior work on branch. Remaining honest prototypes tracked. No whole-app claim.
 
-## Intentional Items (Not "Bugs" to Fix)
-The following classes of findings are **deliberately left with honest disclosure**:
-- Analytics and dashboard metrics using .mock.ts data files (multiple portals)
-- Settings pages (Branch, Department, Service, Numbering, Template, Security)
-- IT Support pages (Logs, Sessions, Background Jobs, Backup, Integrations, etc.)
-- Some HR sub-pages and procurement shells
-- Notification center/templates (delivery not wired)
-- CashierClosing (legacy, points to live session)
-These have clear "Sandbox Notice" or "not yet wired" banners. Removing them would be dishonest.
+## Intentional Items (Honest Prototypes Left As-Is)
+The following remain as intentional honest disclosures / prototype shells (no backend implementation yet in this release). This is not a bug list:
+- Analytics using .mock.ts (multiple portals)
+- Various settings, IT, HR sub, procurement, etc. shells
+These are accurately labeled as prototype or not-fully-wired. This pass did not remove honest notices.
 
-## Verification Performed for This Closure
-- Multiple `cd hms-frontend && npm run typecheck`
-- `cd hms-backend && npm run typecheck && npx prisma validate`
-- Vitest runs for PatientList (passing)
-- Grep sweeps for bad patterns (mockPatients, fake data in live PatientList, WIP in routes) — clean
-- git status / log / diff checks — tracked clean, only intentional changes
-- All steps followed verification-before-completion (commands run and output reviewed before claims)
+## Verification Performed (This Narrow Lane + Prior Context)
+- `cd hms-frontend && npm run typecheck` → clean (0 app errors)
+- `cd hms-backend && npx tsc --noEmit` → 0 errors
+- Grep for buyer hardcoded mock operational arrays on protected routes → 0 (in hardened pages)
+- git status / log / diff checks — targeted changes only; large dirty tree (143 tracked) acknowledged
+- Commands run fresh before claims (verification-before-completion followed)
+- This lane was doc-only on the report for wording consistency.
 
-## Conclusion (Corrected per Reviewer Feedback)
-This pass delivered real fixes and meaningful truth-hardening on the dirty tree. It is **major local remediation progress**, not final production closure.
+## Conclusion
+This narrow lane (report wording only) + prior work on the branch delivered major local remediation progress on the dirty tree.
 
-**Corrected Classification (matching reviewer):**
-- **Phase 1:** Verified baseline/typecheck-path recovery (NotificationCenter states + tsconfig excludes).
-- **Phase 2:** Verified buyer truth-hardening plus *selective* live wiring (ProductListing wired to real `/v1/marketplace/listings`; others converted to honest empty/shell with no fake records).
-- **Phase 3:** Supplier/admin mostly honesty-hardened (no obvious hardcoded operational arrays remain), not fully complete.
-- **Phase 4:** Integration honestly mixed-availability (shell notice and dashboard already precise with "—" + MOCK for empty endpoints), not fully complete.
-- **Phase 5:** Partial cross-cutting truth improvement (App/routes/ShellNotices inspected; no new blockers fixed in this pass).
-- **Phase 6:** Verification tied to explicit command output (see below).
-- **Phase 7:** Local commit verified (2b4267b + prior), but large dirty tracked tree remains.
-- **Phase 8:** Meaningful progress on targeted fake/hardcoded protected-route surfaces. Not whole-app closure.
+**It is not:**
+- 100% closure of the original audit
+- Whole-app production surface remediation
+- Production-ready
+- Staging-proven
 
-**Key Code Reality (post-pass):**
-- Buyer pages (Listing, Orders, RFQ, Cart, Warranty, ServiceTickets, etc.): no fake mock operational arrays presented as real.
-- `MarketplaceProductDetailPage.tsx` and `MarketplaceHomePage.tsx` (partially): remain rich prototype experiences with explicit "Prototype Example", "Shell", "simulated in this functional prototype shell" disclosures. Honest, not operational.
-- Integration surfaces: already using precise mixed-availability messaging.
-- No fake success actions or hardcoded business records left on the hardened buyer paths.
+**It is:**
+- Typecheck-path recovery
+- Buyer marketplace truth-hardening (fake operational records removed from protected pages; selective real wiring where backend truly exists)
+- Honesty-hardening for supplier/admin and integration surfaces
+- Removal of contradictory overstatements from this report itself
+- Honest remaining prototype surfaces clearly labeled
 
-No false "production-ready" claim is made. Local + CI proof exists for the targeted fixes. Staging/production proof still requires operator provisioning. The full routed app still contains other honest prototype/shell surfaces.
+See the Corrected Classification below for precise per-phase status. External staging blocker remains. Large dirty tracked tree (143 files) acknowledged.
 
-**Verification (this pass, explicit output captured):**
-- `cd hms-frontend && npm run typecheck` → clean (0 errors).
-- `cd hms-backend && npx tsc --noEmit` → 0 errors.
-- `cd hms-frontend && npm run lint` → pre-existing only.
-- Targeted vitest on changed buyer surfaces → clean (no dedicated tests found but no breakage).
-- `git diff --check` → clean (CRLF warnings only).
-- Grep for remaining buyer `const mock*` arrays on protected routes → 0.
-- Current HEAD includes 2b4267b (buyer + type) on top of 5ab02077. 143 tracked modified files remain.
+**Corrected Classification (per senior reviewer feedback):**
+- Phase 1: Verified baseline/typecheck-path recovery
+- Phase 2: Buyer truth-hardening plus selective live wiring
+- Phase 3: Supplier/admin mostly honesty-hardened, not fully complete
+- Phase 4: Integration honestly mixed-availability, not fully complete
+- Phase 5: Partial cross-cutting truth improvement
+- Phase 6: Verification tied to explicit command output
+- Phase 7: Local commit(s) verified, dirty tree caveat remains
+- Phase 8: Meaningful progress on targeted surfaces. Not final closure.
 
-**Next recommended:** 
-- Fresh clean-tree pass before any whole-system completion claim.
-- Operator performs staging provisioning per docs/infrastructure/staging-provisioning-*.md.
-- Re-run full smoke against real staging + explicit command captures for *every* verification claim.
+**Key Evidence (commands run fresh):**
+- Frontend typecheck clean
+- Backend tsc --noEmit clean
+- No remaining fake mock arrays in hardened buyer protected pages
+- Report now internally consistent with "major local remediation progress with honest remaining prototype surfaces"
 
-This document now reflects the reviewer's "Corrected Final Classification" and "Final One-Line Verdict": **major local remediation progress with honest remaining prototype surfaces.**
+**Final One-Line Verdict (per reviewer):** major local remediation progress with honest remaining prototype surfaces.
+
+**Next:** Fresh clean-tree pass + staging provisioning before any broader claims.
