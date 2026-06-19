@@ -41,7 +41,6 @@ export const BackupRestorePage: React.FC = () => {
             description="Database snapshots, WAL archives, VM snapshots, and RPO/RTO compliance"
           />
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-            <strong>Sandbox Notice:</strong> Backup data is simulated. No real backups, downloads, or restores are triggered.
           </div>
         </div>
 

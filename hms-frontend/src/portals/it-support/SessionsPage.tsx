@@ -53,7 +53,6 @@ export const SessionsPage: React.FC = () => {
             description="Cross-tenant session monitoring, client analytics, and simulated revocation controls"
           />
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-            <strong>Sandbox Notice:</strong> Session data is simulated. Revoke actions affect UI only and do not terminate real sessions.
           </div>
         </div>
 

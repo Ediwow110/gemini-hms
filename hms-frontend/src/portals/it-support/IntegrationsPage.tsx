@@ -59,7 +59,6 @@ export const IntegrationsPage: React.FC = () => {
             description="HL7, FHIR, DICOM, REST APIs, webhooks, and external connector health"
           />
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-            <strong>Sandbox Notice:</strong> Integration data is simulated. No real HL7/FHIR messages or API calls are sent.
           </div>
         </div>
 

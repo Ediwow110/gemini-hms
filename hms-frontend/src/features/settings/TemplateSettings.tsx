@@ -33,7 +33,6 @@ export const TemplateSettings = () => {
       <div className="space-y-6 animate-fade-in">
         <SectionCard title="Print Templates (Mock)">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="template-settings-sandbox-notice">
-            <strong>Sandbox Notice:</strong> The template rows, types, version numbers, and last-updated dates shown below are mock placeholder data, not real print-template catalog entries. The live print-template API is not yet wired; Preview and Edit buttons below are UI demos only. The blue &ldquo;Version preservation&rdquo; banner describes the intended immutable-versioning behavior; it is not active enforcement in this sandbox.
           </div>
           {/* Version preservation warning */}
           <div className="flex items-start gap-3 p-3 mb-4 mt-4 bg-blue-50 border border-blue-200 rounded-xl">

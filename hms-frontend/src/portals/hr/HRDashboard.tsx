@@ -63,7 +63,6 @@ export const HRDashboard: React.FC = () => {
     >
       <div className="space-y-6 pb-12">
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">
-          <strong>Sandbox Notice:</strong> Workforce analytics are mock data moved out of the page component. No real HR or payroll actions are performed.
         </div>
 
         {/* Alert Strip: Expiring License Alerts */}

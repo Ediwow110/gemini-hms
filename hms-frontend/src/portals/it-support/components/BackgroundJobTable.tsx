@@ -146,7 +146,6 @@ export const BackgroundJobTable: React.FC<BackgroundJobTableProps> = ({ jobs }) 
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 text-[10px] text-amber-800 font-semibold">
-        <strong>Sandbox Notice:</strong> Retry and job controls are simulated. No real background jobs are started, retried, or stopped from this view. Worker data is mock-generated.
       </div>
     </div>
   );

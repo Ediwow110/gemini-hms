@@ -45,7 +45,6 @@ export const MarketplaceAdminDashboard: React.FC = () => {
         <PageHeader title="Marketplace Governance Command Center" description="Supplier approvals, listings, disputes, GMV, commission, fulfillment SLA, and warranty risk." actions={<button type="button" onClick={() => window.location.reload()} aria-label="Refresh marketplace dashboard" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 hover:bg-slate-50"><RefreshCw className="h-4 w-4" /> Refresh</button>} />
 
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="marketplace-admin-sandbox-notice">
-          <strong>Sandbox Notice:</strong> Marketplace governance metrics, trend charts, and queue drilldown on this page are mock analytics. No live supplier approvals, dispute resolutions, warranty claim decisions, commission/fee mutations, or fulfillment SLA signals are aggregated here. The live part of this module is the listing approval queue and KPI counts on the Listing Approval page.
         </div>
 
         <MarketplaceAdminScopeFilter />

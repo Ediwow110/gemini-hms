@@ -48,7 +48,6 @@ export const MarketplaceReportsPage: React.FC = () => {
         />
 
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="marketplace-reports-sandbox-notice">
-          <strong>Sandbox Notice:</strong> Marketplace report metrics, trend charts, and the category performance table on this page are mock analytics. No live GMV aggregation, supplier SLA ranking, dispute reporting, or warranty claim analysis is performed here. Export remains gated to governed backend endpoints.
         </div>
 
         <DashboardFilterBar dateRange={dateRange} onDateRangeChange={setDateRange} reportType={reportType} onReportTypeChange={setReportType} reportTypeOptions={[{ label: 'Marketplace health', value: 'marketplace-health' }, { label: 'Supplier SLA', value: 'supplier-sla' }, { label: 'Warranty', value: 'warranty' }]} />

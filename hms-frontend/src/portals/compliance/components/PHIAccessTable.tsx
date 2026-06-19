@@ -157,7 +157,6 @@ export const PHIAccessTable: React.FC<PHIAccessTableProps> = ({ events }) => {
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2 text-[11px] text-amber-800">
                 <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
                 <p className="font-medium">
-                  <strong>Sandbox Notice:</strong> Raising flags, dispatching alerts to CISO, or triggering user lockout policies is simulated. No backend audit mutations or email alerts will be dispatched.
                 </p>
               </div>
             </div>

@@ -32,7 +32,6 @@ export const LogsPage: React.FC = () => {
             description="Filterable log stream with severity classification and service grouping"
           />
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-            <strong>Sandbox Notice:</strong> All log entries are simulated. No real system logs are exposed. Sensitive values are redacted.
           </div>
         </div>
 

@@ -27,7 +27,6 @@ export const SystemHealthPage: React.FC = () => {
             description="Service uptime, infrastructure status, database connections, and dependency health"
           />
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-            <strong>Sandbox Notice:</strong> All health metrics are simulated. No real infrastructure monitoring is running.
           </div>
         </div>
 

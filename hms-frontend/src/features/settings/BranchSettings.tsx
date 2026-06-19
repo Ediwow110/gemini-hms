@@ -45,7 +45,6 @@ export const BranchSettings = () => {
       <div className="space-y-6 animate-fade-in">
         <SectionCard title="Branch Management (Mock)">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="branch-settings-sandbox-notice">
-            <strong>Sandbox Notice:</strong> The branch rows, addresses, contact info, and operating hours shown below are mock placeholder data, not real branch records. The branch names (&ldquo;Main Hospital&rdquo;, &ldquo;Satellite Clinic – North&rdquo;, &ldquo;South Outpatient Center&rdquo;) and contact details are intentionally fake. The live branch-management API is not yet wired; Add, Edit, and Save buttons below are UI demos only.
           </div>
           <div className="flex items-center justify-between mb-4 mt-4">
             <p className="text-xs text-slate-500">

@@ -23,7 +23,6 @@ export const LicensesCertificationsPage: React.FC = () => {
         </div>
         <div className="flex flex-col md:flex-row gap-2">
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-            <strong>Sandbox Notice:</strong> License verification is simulated. No real external board checks are performed.
           </div>
           <button className="btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-indigo-100 transition-all">
             <Plus className="h-4 w-4" /> Upload New Credential

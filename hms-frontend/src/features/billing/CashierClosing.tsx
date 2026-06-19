@@ -42,7 +42,6 @@ export const CashierClosing = () => {
         <div>
           <h5 className="font-bold uppercase text-[10px] tracking-wider font-sans">Legacy Page — Not Wired to Backend</h5>
           <p className="font-medium font-sans">
-            This page uses hardcoded mock data and does not submit to the live API. Use the <strong>Shift Closure</strong> panel on the <strong>POS Teller Drawer Console</strong> (/cashier/session) for real reconciliation.
           </p>
         </div>
       </div>

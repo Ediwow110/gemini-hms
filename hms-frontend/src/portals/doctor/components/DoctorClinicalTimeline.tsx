@@ -54,9 +54,7 @@ export const DoctorClinicalTimeline = ({ patientId }: DoctorClinicalTimelineProp
         </span>
       </div>
 
-      {/* Sandbox Notice */}
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-800 font-semibold">
-        <strong>Sandbox Notice:</strong> Timeline events are illustrative placeholders. No real provider or encounter records are loaded into this view.
       </div>
 
       {/* Timeline items */}

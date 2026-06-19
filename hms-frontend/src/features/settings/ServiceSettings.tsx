@@ -33,7 +33,6 @@ export const ServiceSettings = () => {
       <div className="space-y-6 animate-fade-in">
         <SectionCard title="Services & Packages (Mock)">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="service-settings-sandbox-notice">
-            <strong>Sandbox Notice:</strong> The service rows, categories, prices, and branch assignments shown below are mock placeholder data, not real service catalog entries. Prices (&ldquo;₱350&rdquo;, &ldquo;₱150&rdquo;, &ldquo;₱800&rdquo;, &ldquo;₱500&rdquo;, &ldquo;₱600&rdquo;) are placeholder values, not live pricing. The live service-catalog API is not yet wired; Package Builder, Add Service, and Edit buttons below are UI demos only. The amber &ldquo;Price Change Warning&rdquo; that appears when you click a price describes the intended immutable-price-snapshot behavior; it is not active enforcement in this sandbox.
           </div>
           <div className="flex items-center justify-between mb-4 mt-4">
             <p className="text-xs text-slate-500">

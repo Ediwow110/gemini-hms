@@ -32,7 +32,6 @@ export const DepartmentSettings = () => {
       <div className="space-y-6 animate-fade-in">
         <SectionCard title="Department Management (Mock)">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="department-settings-sandbox-notice">
-            <strong>Sandbox Notice:</strong> The department rows, codes, and branch assignments shown below are mock placeholder data, not real department records. Department codes (&ldquo;ER&rdquo;, &ldquo;OPD&rdquo;, &ldquo;LAB&rdquo;, &ldquo;RAD&rdquo;, &ldquo;PHAR&rdquo;) and branch names reference the mock branches on the Branch Settings page. The live department-management API is not yet wired; Add and Edit buttons below are UI demos only.
           </div>
           <div className="flex items-center justify-between mb-4 mt-4">
             <p className="text-xs text-slate-500">

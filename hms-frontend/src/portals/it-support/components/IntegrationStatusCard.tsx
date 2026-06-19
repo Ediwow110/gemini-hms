@@ -113,7 +113,6 @@ export const IntegrationStatusCard: React.FC<IntegrationStatusCardProps> = ({ in
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 text-[10px] text-amber-800 font-semibold">
-        <strong>Sandbox Notice:</strong> Integration status and sync data are simulated. No real HL7/FHIR messages, webhooks, or API calls are triggered from this view.
       </div>
     </div>
   );

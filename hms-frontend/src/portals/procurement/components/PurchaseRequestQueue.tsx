@@ -163,7 +163,6 @@ export const PurchaseRequestQueue: React.FC<PurchaseRequestQueueProps> = ({
       {!isLive ? (
         <div className="p-4 bg-amber-50/50 border-t border-slate-100">
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-semibold">
-            <strong>Sandbox Notice:</strong> Purchase requests are simulated. No real budget commitment or supplier notifications occur.
           </div>
         </div>
       ) : null}

@@ -40,7 +40,6 @@ export const NumberingSettings = () => {
       <div className="space-y-6 animate-fade-in">
         <SectionCard title="Numbering Rules (Mock)">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="numbering-settings-sandbox-notice">
-            <strong>Sandbox Notice:</strong> The numbering rules and &ldquo;Next Number Preview&rdquo; values shown below are mock placeholder data, not real production counters. The preview values (&ldquo;PAT-2026-00147&rdquo;, &ldquo;ORD-MAIN-2026-01203&rdquo;, &ldquo;INV-MAIN-2026-00891&rdquo;, etc.) are illustrative only; real numbering counters are managed by the database. The live numbering-rules API is not yet wired; Edit, Save, and Confirm Change buttons below are UI demos only. The amber &ldquo;high-risk operation&rdquo; banner describes the intended change-control behavior; it is not active enforcement in this sandbox.
           </div>
           <div className="flex items-start gap-3 p-3 mb-4 mt-4 bg-amber-50 border border-amber-200 rounded-xl">
             <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />

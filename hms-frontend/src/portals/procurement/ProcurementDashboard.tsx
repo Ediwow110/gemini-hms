@@ -46,7 +46,6 @@ export const ProcurementDashboard: React.FC = () => {
     >
       <div className="space-y-6 pb-12">
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">
-          <strong>Sandbox Notice:</strong> Supply-chain analytics are mock data. No financial commitments, purchase approvals, or stock mutations are performed.
         </div>
 
         {/* Alert Strip: Supply Chain Alert */}

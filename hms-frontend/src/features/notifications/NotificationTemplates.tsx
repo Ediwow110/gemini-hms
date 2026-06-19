@@ -63,7 +63,6 @@ export const NotificationTemplates = () => {
         <PageHeader title="Notification Templates (Mock)" description="Manage notification templates, channels, and privacy classifications." />
 
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="notification-templates-sandbox-notice">
-          <strong>Sandbox Notice:</strong> The template rows, channels, subjects, and privacy classifications shown below are mock placeholder data, not real production template definitions. The live notification-template API is not yet wired; Preview, Edit, and Open Editor buttons are UI demos only. The rose &ldquo;PHI-SAFE&rdquo; notice below describes the intended privacy policy; it is not active enforcement in this sandbox.
         </div>
 
         <div className="flex items-start gap-3 p-3 bg-rose-50 border border-rose-200 rounded-xl">

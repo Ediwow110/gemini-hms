@@ -122,7 +122,6 @@ export const SessionActivityTable: React.FC<SessionActivityTableProps> = ({ sess
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 text-[10px] text-amber-800 font-semibold">
-        <strong>Sandbox Notice:</strong> Session revocation is simulated. No real user sessions are terminated from this view. All session data shown is mock-generated for demonstration purposes.
       </div>
     </div>
   );
