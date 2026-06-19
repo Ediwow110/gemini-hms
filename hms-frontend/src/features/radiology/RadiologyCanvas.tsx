@@ -37,6 +37,9 @@ export const RadiologyCanvas = () => {
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [finalizeSuccess, setFinalizeSuccess] = useState<string | null>(null);
 
+  // Honest disclosure per production audit: file attachments for studies are not modeled in current backend.
+  // Only interpretation + finalize metadata are live.
+
   const fetchRadiologyOrders = async () => {
     try {
       const res = await apiClient.get("/v1/radiology/orders");
