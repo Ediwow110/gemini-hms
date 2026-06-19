@@ -280,14 +280,14 @@ export const BillingDashboard: React.FC = () => {
                     label: 'Unpaid Invoices',
                     value: unpaidCount,
                     status: unpaidCount > 10 ? 'at_risk' : 'on_track',
-                    drilldownHref: '/billing',
+                    drilldownHref: '/cashier/invoices',
                   },
                   {
                     id: 'sla-overdue',
                     label: 'Overdue Bills',
                     value: overdueCount,
                     status: overdueCount > 0 ? 'breached' : 'on_track',
-                    drilldownHref: '/billing',
+                    drilldownHref: '/cashier/invoices',
                   }
                 ]}
               />
@@ -304,7 +304,7 @@ export const BillingDashboard: React.FC = () => {
             <HmsQuickActions
               title="Quick Actions"
               actions={[
-                { id: 'inv-reg', label: 'Invoice Registry', icon: <DollarSign className="h-4 w-4 text-blue-500" />, href: '/billing' },
+                { id: 'inv-reg', label: 'Invoice Registry', icon: <DollarSign className="h-4 w-4 text-blue-500" />, href: '/cashier/invoices' },
                 { id: 'cash-close', label: 'Cashier closing', icon: <Coins className="h-4 w-4 text-amber-500" />, href: '/cashier/session' },
                 { id: 'claims-db', label: 'Claims Dashboard', icon: <CreditCard className="h-4 w-4 text-emerald-500" />, href: '/claims' },
               ]}

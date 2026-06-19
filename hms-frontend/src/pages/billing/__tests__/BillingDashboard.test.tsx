@@ -26,6 +26,16 @@ vi.mock('../../../services/billing-dashboard.service', () => ({
   },
 }));
 
+const mockNavigate = vi.hoisted(() => vi.fn());
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 describe('BillingDashboard Unit Tests', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -64,6 +74,50 @@ describe('BillingDashboard Unit Tests', () => {
       expect(screen.queryByText(/Live source unavailable/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Demo Preview/i)).not.toBeInTheDocument();
     });
+  });
+
+  it('routes invoice drilldowns to the live cashier invoice registry, not the legacy billing placeholder', async () => {
+    vi.mocked(billingDashboardService.getDashboardData).mockResolvedValue({
+      kpis: [
+        { title: 'Current Session', value: '₱5,000', description: 'Active cashier total', severity: 'success' },
+        { title: 'Unpaid Invoices', value: 3, description: 'Pending payment', severity: 'warning' },
+        { title: 'Overdue Bills', value: 1, description: 'Past due date', severity: 'critical' },
+        { title: 'Total Outstanding', value: '₱12,500', description: 'Total receivables', severity: 'info' },
+      ],
+      alerts: [],
+      invoiceStatusDistribution: [],
+      highestOutstanding: [],
+      recentPayments: [],
+      isUnavailable: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <BillingDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Invoice Registry')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Invoice Registry'));
+    expect(mockNavigate).toHaveBeenCalledWith('/cashier/invoices');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/billing');
+
+    mockNavigate.mockClear();
+    const unpaidDrilldown = screen
+      .getAllByText('Unpaid Invoices')
+      .map((element) => element.closest('[role="button"]'))
+      .find((element): element is HTMLElement => element !== null);
+
+    if (!unpaidDrilldown) {
+      throw new Error('Expected Unpaid Invoices drilldown to be interactive');
+    }
+
+    fireEvent.click(unpaidDrilldown);
+    expect(mockNavigate).toHaveBeenCalledWith('/cashier/invoices');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/billing');
   });
 
   it('uses honest branch labels that match the actual request scope', async () => {
