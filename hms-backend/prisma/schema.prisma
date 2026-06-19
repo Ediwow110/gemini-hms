@@ -315,6 +315,9 @@ model Encounter {
   archivedAt    DateTime? @map("archived_at")
   archiveReason String?   @map("archive_reason")
 
+  @@index([tenantId, branchId, status, encounteredAt])
+  @@index([tenantId, patientId, status])
+
   vitals             Vitals[]
   diagnoses          Diagnosis[]
   encounterDiagnoses EncounterDiagnosis[]
@@ -491,6 +494,9 @@ model Patient {
   updatedAt            DateTime  @updatedAt @map("updated_at")
   archivedAt           DateTime? @map("archived_at")
   archiveReason        String?   @map("archive_reason")
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, patientNumber])
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id])
   orders          Order[]
@@ -721,6 +727,7 @@ model Invoice {
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
+  @@index([tenantId, status, createdAt])
   @@map("invoices")
 }
 

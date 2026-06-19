@@ -213,9 +213,10 @@ export const PatientList = () => {
 - [ ] Run any local docker validation if possible: `docker compose config` (non-destructive).
 - [ ] Update .env.example if needed with clearer notes.
 
-### Task 7: Add critical indexes to Prisma schema (perf + high)
+### Task 7: Add critical indexes to Prisma schema (perf + high) - COMPLETED in this session + extension
 **Files:**
 - Modify: `hms-backend/prisma/schema.prisma` (additive only, at end of relevant models)
+- Additional: Encounter, Patient, Invoice indexes added and validated with `prisma validate`
 
 - [ ] Add (after reading full relevant model):
   ```prisma

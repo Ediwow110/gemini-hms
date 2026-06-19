@@ -36,7 +36,7 @@ describe('PatientList (live wiring)', () => {
 
     // Wait for the call
     await waitFor(() => {
-      expect(apiClient.get).toHaveBeenCalledWith('/v1/patients', expect.any(Object));
+      expect(apiClient.get).toHaveBeenCalledWith('/v1/patients', expect.anything());
     });
 
     // Must NOT render the old fake names
