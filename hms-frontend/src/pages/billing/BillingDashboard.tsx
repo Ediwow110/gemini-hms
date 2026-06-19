@@ -16,8 +16,16 @@ import {
 import { billingDashboardService } from '../../services/billing-dashboard.service';
 import type { BillingDashboardData } from '../../services/billing-dashboard.service';
 
+const BRANCH_OPTIONS = [
+  { value: 'main-branch', label: 'Main Branch' },
+  { value: 'north-clinic', label: 'North Branch' },
+];
+
+const getBranchLabel = (branchId: string) =>
+  BRANCH_OPTIONS.find((branch) => branch.value === branchId)?.label ?? branchId;
+
 export const BillingDashboard: React.FC = () => {
-  const [selectedBranch, setSelectedBranch] = useState('all');
+  const [selectedBranch, setSelectedBranch] = useState('main-branch');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<BillingDashboardData | null>(null);
@@ -27,8 +35,7 @@ export const BillingDashboard: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const branchId = selectedBranch === 'all' ? 'main-branch' : selectedBranch;
-      const result = await billingDashboardService.getDashboardData(branchId);
+      const result = await billingDashboardService.getDashboardData(selectedBranch);
       setData(result);
       setLastUpdated(new Date());
     } catch {
@@ -89,7 +96,7 @@ export const BillingDashboard: React.FC = () => {
     <HmsDashboardShell
       toolbar={
         <HmsToolbar
-          branchName={selectedBranch === 'all' ? 'All Branches' : selectedBranch}
+          branchName={getBranchLabel(selectedBranch)}
           role="Billing & Finance Dashboard"
           lastRefreshed={lastUpdated}
           onRefresh={fetchData}
@@ -102,9 +109,9 @@ export const BillingDashboard: React.FC = () => {
               onChange={(e) => setSelectedBranch(e.target.value)}
               className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-700 focus:border-blue-500 focus:outline-none"
             >
-              <option value="all">All Branches</option>
-              <option value="main-branch">Main Branch</option>
-              <option value="north-clinic">North Branch</option>
+              {BRANCH_OPTIONS.map((branch) => (
+                <option key={branch.value} value={branch.value}>{branch.label}</option>
+              ))}
             </select>
           </div>
         </HmsToolbar>

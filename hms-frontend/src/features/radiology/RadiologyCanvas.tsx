@@ -32,6 +32,7 @@ export const RadiologyCanvas = () => {
   const [dragActive, setDragActive] = useState(false);
   const [interpretation, setInterpretation] = useState("");
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [fileAttachmentNotice, setFileAttachmentNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -54,6 +55,18 @@ export const RadiologyCanvas = () => {
     setSelectedOrder(order);
     setInterpretation(order.interpretation || "");
     setUploadedFile(order.uploadedFile || null);
+    setFileAttachmentNotice(
+      order.uploadedFile
+        ? "Existing file reference returned by source data. No new file upload is performed from this read-only screen."
+        : null,
+    );
+  };
+
+  const handleLocalFileSelection = (file: File) => {
+    setUploadedFile(file.name);
+    setFileAttachmentNotice(
+      `File "${file.name}" is selected locally for this session only. It is not uploaded, persisted, or mapped to backend records.`,
+    );
   };
 
   // Drag and drop handlers
@@ -78,8 +91,7 @@ export const RadiologyCanvas = () => {
         alert("File size exceeds the 50MB limit!");
         return;
       }
-      setUploadedFile(file.name);
-      alert(`File "${file.name}" uploaded successfully and matched to the File database entity.`);
+      handleLocalFileSelection(file);
     }
   };
 
@@ -216,18 +228,28 @@ export const RadiologyCanvas = () => {
               <div className="flex flex-col items-center justify-center border-2 border-dashed border-emerald-300 bg-emerald-50/20 p-8 rounded-2xl">
                 <FileImage className="h-16 w-16 text-emerald-500 mb-3" />
                 <p className="font-bold text-emerald-800 text-sm">{uploadedFile}</p>
-                <p className="text-xs text-emerald-500 mt-1">DICOM properties mapped to File database entity</p>
+                <p className="text-xs text-emerald-500 mt-1 text-center max-w-xs">
+                  Local file selection only — not persisted or mapped to backend records.
+                </p>
+                {fileAttachmentNotice && (
+                  <p role="status" className="text-xs text-slate-500 mt-2 text-center max-w-xs">
+                    {fileAttachmentNotice}
+                  </p>
+                )}
                 {selectedOrder.phase !== "FINALIZED" && (
-                  <button 
-                    onClick={() => setUploadedFile(null)} 
+                  <button
+                    onClick={() => {
+                      setUploadedFile(null);
+                      setFileAttachmentNotice(null);
+                    }}
                     className="mt-4 text-xs font-semibold text-rose-600 hover:text-rose-500 underline"
                   >
-                    Remove and upload new
+                    Remove and choose another file
                   </button>
                 )}
               </div>
             ) : (
-              <div 
+              <div
                 onDragEnter={handleDrag}
                 onDragOver={handleDrag}
                 onDragLeave={handleDrag}
@@ -246,7 +268,7 @@ export const RadiologyCanvas = () => {
                   <input
                     type="file"
                     className="hidden"
-                    onChange={e => e.target.files?.[0] && setUploadedFile(e.target.files[0].name)}
+                    onChange={e => e.target.files?.[0] && handleLocalFileSelection(e.target.files[0])}
                   />
                 </label>
               </div>

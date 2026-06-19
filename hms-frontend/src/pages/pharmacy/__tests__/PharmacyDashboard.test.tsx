@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PharmacyDashboard } from '../PharmacyDashboard';
 import { pharmacyDashboardService } from '../../../services/pharmacy-dashboard.service';
@@ -62,6 +62,37 @@ describe('PharmacyDashboard Unit Tests', () => {
       expect(screen.queryByText(/Live source unavailable/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Demo Preview/i)).not.toBeInTheDocument();
     });
+  });
+
+  it('uses honest branch labels that match the actual request scope', async () => {
+    vi.mocked(pharmacyDashboardService.getDashboardData).mockResolvedValue({
+      kpis: [],
+      alerts: [],
+      stockDistribution: [],
+      lowestStock: [],
+      isUnavailable: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <PharmacyDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(pharmacyDashboardService.getDashboardData).toHaveBeenCalledWith('main-branch');
+    });
+
+    const branchSelect = screen.getByLabelText(/Select Branch/i);
+    expect(screen.queryByRole('option', { name: /All Branches/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Main Branch/i).length).toBeGreaterThan(0);
+
+    fireEvent.change(branchSelect, { target: { value: 'north-clinic' } });
+
+    await waitFor(() => {
+      expect(pharmacyDashboardService.getDashboardData).toHaveBeenLastCalledWith('north-clinic');
+    });
+    expect(screen.getAllByText(/North Branch/i).length).toBeGreaterThan(0);
   });
 
   it('renders successfully with fallback demo data when API fails', async () => {

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { RadiologyCanvas } from '../RadiologyCanvas';
 import { apiClient } from '../../../lib/api';
@@ -31,9 +31,33 @@ const renderWithAuth = (ui: React.ReactElement) => {
   );
 };
 
+const radiologyOrder = {
+  id: 'ORD-1',
+  orderNumber: 'IMG-001',
+  patientName: 'Test Patient',
+  procedure: 'X-Ray',
+  priority: 'STAT' as const,
+  phase: 'PENDING' as const,
+  requestedAt: '2026-01-01',
+};
+
+const openRadiologyWorkspace = async () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (apiClient.get as any).mockResolvedValue({ data: [radiologyOrder] });
+
+  renderWithAuth(<RadiologyCanvas />);
+
+  const orderRow = await screen.findByText(/Test Patient/i);
+  fireEvent.click(orderRow);
+};
+
 describe('RadiologyCanvas Honesty Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('does not show mock data when API fails', async () => {
@@ -50,23 +74,7 @@ describe('RadiologyCanvas Honesty Tests', () => {
   });
 
   it('disables finalize report button and shows WIP text', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (apiClient.get as any).mockResolvedValue({
-      data: [{
-        id: 'ORD-1',
-        orderNumber: 'IMG-001',
-        patientName: 'Test Patient',
-        procedure: 'X-Ray',
-        priority: 'STAT',
-        phase: 'PENDING',
-        requestedAt: '2026-01-01'
-      }]
-    });
-
-    renderWithAuth(<RadiologyCanvas />);
-    
-    const orderRow = await screen.findByText(/Test Patient/i);
-    fireEvent.click(orderRow);
+    await openRadiologyWorkspace();
 
     const finalizeBtn = screen.getByText(/Finalize Report \(WIP\)/i);
     expect(finalizeBtn).toBeDisabled();
@@ -88,5 +96,41 @@ describe('RadiologyCanvas Honesty Tests', () => {
     renderWithAuth(<RadiologyCanvas />);
     expect(screen.queryByText(/orders loaded successfully/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/save successful/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps drag/drop file selection local-only without fake persistence claims', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    await openRadiologyWorkspace();
+
+    const dropZone = screen.getByText(/Drag & Drop Study Files/i).closest('div');
+    expect(dropZone).not.toBeNull();
+
+    const file = new File(['demo'], 'study.dcm', { type: 'application/dicom' });
+    fireEvent.drop(dropZone!, { dataTransfer: { files: [file] } });
+
+    expect(screen.getByText('study.dcm')).toBeInTheDocument();
+    expect(screen.getByText(/selected locally for this session only/i)).toBeInTheDocument();
+    expect(screen.getByText(/not uploaded, persisted, or mapped to backend records/i)).toBeInTheDocument();
+    expect(screen.queryByText(/uploaded successfully/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/matched to.*database entity/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/DICOM properties mapped/i)).not.toBeInTheDocument();
+    expect(alertSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps file input selection local-only without fake persistence claims', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    await openRadiologyWorkspace();
+
+    const input = screen.getByLabelText(/Browse Files/i);
+    const file = new File(['demo'], 'study.pdf', { type: 'application/pdf' });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(screen.getByText('study.pdf')).toBeInTheDocument();
+    expect(screen.getByText(/selected locally for this session only/i)).toBeInTheDocument();
+    expect(screen.getByText(/not uploaded, persisted, or mapped to backend records/i)).toBeInTheDocument();
+    expect(screen.queryByText(/uploaded successfully/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/matched to.*database entity/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/DICOM properties mapped/i)).not.toBeInTheDocument();
+    expect(alertSpy).not.toHaveBeenCalled();
   });
 });
