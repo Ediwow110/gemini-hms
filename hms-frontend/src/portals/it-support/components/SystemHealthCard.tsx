@@ -1,6 +1,7 @@
 import React from 'react';
 import { LucideIcon, Activity } from 'lucide-react';
 import { StatusBadge } from '../../../components/feedback/StatusBadge';
+import { RequirePermission } from '../../../components/ui/RequirePermission';
 
 interface SystemHealthCardProps {
   title: string;
@@ -10,6 +11,7 @@ interface SystemHealthCardProps {
   description?: string;
   metricLabel?: string;
   onActionClick?: () => void;
+  actionPermission?: string;
 }
 
 export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({
@@ -20,6 +22,7 @@ export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({
   description,
   metricLabel,
   onActionClick,
+  actionPermission,
 }) => {
   const getStatusType = (currentStatus: string) => {
     switch (currentStatus) {
@@ -60,15 +63,27 @@ export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({
         {description && <p className="text-xs text-slate-500 font-medium">{description}</p>}
       </div>
 
-      {metricLabel && (
-        <button
-          onClick={onActionClick}
-          className="mt-4 w-full py-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-        >
-          <Activity className="h-4 w-4 text-indigo-500 animate-pulse" />
-          {metricLabel}
-        </button>
-      )}
+      {metricLabel && (() => {
+        const actionButton = (
+          <button
+            onClick={onActionClick}
+            className="mt-4 w-full py-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Activity className="h-4 w-4 text-indigo-500 animate-pulse" />
+            {metricLabel}
+          </button>
+        );
+
+        if (actionPermission) {
+          return (
+            <RequirePermission permission={actionPermission}>
+              {actionButton}
+            </RequirePermission>
+          );
+        }
+
+        return actionButton;
+      })()}
     </div>
   );
 };

@@ -17,14 +17,32 @@ import { itInsights, itLatencyTrend, itMetrics, jobBreakdown } from '../../data/
 import UserSupportQueue from './components/UserSupportQueue';
 import BackgroundJobTable from './components/BackgroundJobTable';
 import { useSupportTickets, useTicketStats } from '../../hooks/use-it-support';
+import { usePermissions } from '../../hooks/use-user';
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
+import { RequirePermission } from '../../components/ui/RequirePermission';
 
 export const ITSupportDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
+  const canManageSupport = hasPermission('it.support.manage');
   const { tickets, loading: ticketsLoading, error: ticketsError, refetch } = useSupportTickets({ pageSize: 3 });
   const { stats, loading: statsLoading, statsError } = useTicketStats();
   const [renderCharts, setRenderCharts] = React.useState(false);
+
+  const gatedItMetrics = itMetrics.map((metric) => {
+    if (!canManageSupport && (metric.href === '/it/user-support' || metric.href === '/it/incidents')) {
+      return { ...metric, href: undefined };
+    }
+    return metric;
+  });
+
+  const gatedItInsights = itInsights.map((insight) => {
+    if (!canManageSupport && insight.actionTo === '/it/user-support') {
+      return { ...insight, actionLabel: undefined, actionTo: undefined };
+    }
+    return insight;
+  });
 
   React.useEffect(() => {
     // Defer chart rendering to second paint / post-mount
@@ -68,6 +86,7 @@ export const ITSupportDashboard: React.FC = () => {
             status={stats.open > 0 ? 'CRITICAL' : 'HEALTHY'}
             description={stats.urgent > 0 ? `${stats.urgent} urgent` : 'No urgent tickets'}
             metricLabel="View Tickets"
+            actionPermission="it.support.manage"
             onActionClick={() => navigate('/it/user-support')}
           />
         </div>
@@ -79,6 +98,7 @@ export const ITSupportDashboard: React.FC = () => {
             status={stats.inProgress > 0 ? 'DEGRADED' : 'HEALTHY'}
             description="Tickets being worked on"
             metricLabel="View Active"
+            actionPermission="it.support.manage"
             onActionClick={() => navigate('/it/user-support')}
           />
         </div>
@@ -90,6 +110,7 @@ export const ITSupportDashboard: React.FC = () => {
             status="HEALTHY"
             description="All-time ticket volume"
             metricLabel="View All"
+            actionPermission="it.support.manage"
             onActionClick={() => navigate('/it/user-support')}
           />
         </div>
@@ -106,7 +127,7 @@ export const ITSupportDashboard: React.FC = () => {
         </div>
 
         {/* 6 XS-size telemetry metrics (2 cols each on desktop) */}
-        {itMetrics.map((metric) => (
+        {gatedItMetrics.map((metric) => (
           <div key={metric.title} className="col-span-12 sm:col-span-4 xl:col-span-2">
             <AnalyticsMetricCard {...metric} value={metric.title === 'Open Tickets' ? (statsLoading ? '...' : stats.open) : metric.title === 'Urgent Incidents' ? (statsLoading ? '...' : stats.urgent) : metric.value} />
           </div>
@@ -166,17 +187,29 @@ export const ITSupportDashboard: React.FC = () => {
                 { label: 'System Integrations', icon: Link2, path: '/it/integrations' },
                 { label: 'System Logs', icon: Terminal, path: '/it/logs' },
                 { label: 'Backup & Recovery', icon: Database, path: '/it/backup-restore' },
-                { label: 'Ticket Queue', icon: AlertOctagon, path: '/it/user-support' },
-              ].map((item) => (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className="w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all text-xs font-bold text-slate-700 flex justify-between items-center cursor-pointer"
-                >
-                  <span>{item.label}</span>
-                  <item.icon className="h-4 w-4 text-indigo-500" />
-                </button>
-              ))}
+                { label: 'Ticket Queue', icon: AlertOctagon, path: '/it/user-support', permission: 'it.support.manage' },
+              ].map((item) => {
+                const button = (
+                  <button
+                    key={item.path}
+                    onClick={() => navigate(item.path)}
+                    className="w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all text-xs font-bold text-slate-700 flex justify-between items-center cursor-pointer"
+                  >
+                    <span>{item.label}</span>
+                    <item.icon className="h-4 w-4 text-indigo-500" />
+                  </button>
+                );
+
+                if (item.permission) {
+                  return (
+                    <RequirePermission key={item.path} permission={item.permission}>
+                      {button}
+                    </RequirePermission>
+                  );
+                }
+
+                return button;
+              })}
             </div>
           </div>
         </div>
@@ -193,7 +226,7 @@ export const ITSupportDashboard: React.FC = () => {
         </div>
 
         <div className="col-span-12 md:col-span-6 xl:col-span-6">
-          <InsightPanel insights={itInsights} title="IT operations insights" />
+          <InsightPanel insights={gatedItInsights} title="IT operations insights" />
         </div>
       </div>
       </div>
