@@ -107,9 +107,21 @@ Add these to the `Staging` environment:
 
 ## 5. Required Workflow Structure
 
-### 5.1 Option A — Dedicated `deploy-staging.yml` (Recommended)
+### 5.0 Repo Status (code-ready, environment NOT provisioned)
 
-Create `.github/workflows/deploy-staging.yml`:
+The following repo artifacts **already exist** on `remediation/production-readiness-lane-2` (commit `72bd168` and later). Operator work is provisioning the host, database, DNS, and GitHub `Staging` environment secrets — not authoring these files:
+
+| Artifact | Path | Status |
+|----------|------|--------|
+| Staging deploy workflow | `.github/workflows/deploy-staging.yml` | ✅ Committed — `workflow_dispatch` only; uses `environment: Staging` and `STAGING_*` / `STAGING_SSH_*` secrets |
+| Staging compose topology | `docker-compose.staging.yml` | ✅ Committed — isolated volume/network |
+| Staging remote deploy script | `hms-backend/scripts/remote-deploy-staging.sh` | ✅ Committed — references `docker-compose.staging.yml` only |
+
+**Still missing (external):** staging VM/host, PostgreSQL 15 instance, DNS, GitHub `Staging` environment, and all `STAGING_*` secrets.
+
+### 5.1 Option A — Dedicated `deploy-staging.yml` (Recommended) — IMPLEMENTED
+
+Reference implementation (already in repo at `.github/workflows/deploy-staging.yml`):
 
 ```yaml
 name: Deploy Staging
@@ -239,13 +251,15 @@ Once staging is deployed, execute these checks:
 
 | File | Current State | Required Change |
 |------|---------------|-----------------|
-| `AGENTS.md` | Mentions missing staging | Update after staging provisioned |
-| `.github/workflows/deploy.yml` | Production-only (`workflow_dispatch`) | Add staging job OR create `deploy-staging.yml` |
-| `.github/workflows/deploy-gate.yml` | Manual pre-deploy validation gate | Consider gating staging deploys through this or a parallel gate |
-| `.github/workflows/docker-build.yml` | Manual Docker build (GHCR push stubbed) | Consolidate or remove if staging workflow supersedes it |
-| `.github/workflows/ci.yml` | Push/PR CI (4 jobs) | Reusable — staging workflow should reference these jobs |
-| (new) `docker-compose.staging.yml` | Does not exist | Create from `docker-compose.prod.yml` template with staging-specific env vars |
-| `hms-backend/scripts/remote-deploy.sh` | Production hardcoded | Either parameterize with `ENVIRONMENT` arg or copy to `remote-deploy-staging.sh` |
+| `AGENTS.md` | Notes staging blocked | Update after staging environment is provisioned and verified |
+| `.github/workflows/deploy.yml` | Production-only (`workflow_dispatch`) | No change required — staging uses separate `deploy-staging.yml` |
+| `.github/workflows/deploy-staging.yml` | ✅ Exists — `workflow_dispatch`, `environment: Staging` | Operator: add `Staging` environment + `STAGING_*` secrets, then run workflow |
+| `.github/workflows/deploy-gate.yml` | Manual pre-deploy validation gate | Optional: gate staging deploys through this or a parallel gate |
+| `.github/workflows/docker-build.yml` | Manual Docker build (GHCR push stubbed) | Optional consolidation — not blocking staging |
+| `.github/workflows/ci.yml` | Push/PR CI (4 jobs) + `typecheck:tests` | Deploy staging only from green CI commits (manual discipline) |
+| `docker-compose.staging.yml` | ✅ Exists | Operator: use as-is on staging host |
+| `hms-backend/scripts/remote-deploy-staging.sh` | ✅ Exists | Operator: invoked by `deploy-staging.yml` rsync step |
+| `hms-backend/scripts/remote-deploy.sh` | Production hardcoded | Unchanged — production isolation preserved |
 
 ---
 
@@ -259,9 +273,9 @@ Once staging is deployed, execute these checks:
 [ ] 5. Create GitHub `Staging` environment
 [ ] 6. Generate staging secrets (different from CI and prod)
 [ ] 7. Add secrets to GitHub `Staging` environment
-[ ] 8. Create `deploy-staging.yml` workflow OR modify `deploy.yml`
-[ ] 9. Create `docker-compose.staging.yml` if needed
-[ ] 10. Push to main → trigger staging deploy
+[x] 8. `deploy-staging.yml` workflow — **done in repo** (operator still must create GitHub `Staging` environment + secrets)
+[x] 9. `docker-compose.staging.yml` + `remote-deploy-staging.sh` — **done in repo**
+[ ] 10. Operator: `workflow_dispatch` on `deploy-staging.yml` after secrets exist (not auto on push)
 [ ] 11. Run verification checklist (Section 6)
 [ ] 12. Document staging URLs, access, and secrets location
 [ ] 13. Update AGENTS.md and handoff docs

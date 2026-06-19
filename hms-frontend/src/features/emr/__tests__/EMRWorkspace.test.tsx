@@ -232,6 +232,45 @@ describe('EMRWorkspace Honesty Tests', () => {
     });
   });
 
+  it('chains unsaved SOAP notes to backend before finalize close', async () => {
+    let closePatchInvoked = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.post as any).mockImplementation(async (url: string) => {
+      if (url.includes('/notes')) {
+        expect(closePatchInvoked).toBe(false);
+      }
+      return { status: 201 };
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (apiClient.patch as any).mockImplementation(async (url: string) => {
+      if (url.includes('/close')) {
+        closePatchInvoked = true;
+      }
+      return { status: 200 };
+    });
+
+    renderWithAuth(<EMRWorkspace />);
+    await selectJohnDoe();
+
+    fireEvent.click(screen.getByText(/SOAP Notes/i));
+    const complaintField = screen.getByPlaceholderText(/Subjective complaints/i);
+    fireEvent.change(complaintField, { target: { value: 'Chest pain x 2 days' } });
+
+    fireEvent.click(screen.getByText(/Finalize & Close/i));
+    fireEvent.click(screen.getByText(/Yes, Sign & Lock/i));
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith(
+        `/v1/emr/encounters/${MOCK_ENCOUNTER_ID}/notes`,
+        { noteType: 'CHIEF_COMPLAINT', content: 'Chest pain x 2 days' },
+      );
+      expect(apiClient.patch).toHaveBeenCalledWith(
+        `/v1/clinical/encounters/${MOCK_ENCOUNTER_ID}/close`,
+      );
+      expect(closePatchInvoked).toBe(true);
+    });
+  });
+
   it('close PATCH sends no body payload (post-fix)', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (apiClient.patch as any).mockResolvedValue({ status: 200 });

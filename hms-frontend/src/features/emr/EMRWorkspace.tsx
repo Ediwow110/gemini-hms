@@ -241,25 +241,33 @@ export const EMRWorkspace = () => {
     }
   };
 
+  const persistSoapNotesToEncounter = async (encounterId: string): Promise<number> => {
+    const entries = Object.entries(soapNotes).filter(([, value]) => value.trim().length > 0);
+    if (entries.length === 0) {
+      return 0;
+    }
+    await Promise.all(
+      entries.map(([noteType, content]) =>
+        apiClient.post(`/v1/emr/encounters/${encounterId}/notes`, {
+          noteType,
+          content,
+        }),
+      ),
+    );
+    return entries.length;
+  };
+
   const handleSaveSoapNotes = async () => {
     if (!activeEncounterId || isLocked) return;
     setIsSavingSoap(true);
     setSoapError(null);
     setSoapSuccess(null);
     try {
-      const entries = Object.entries(soapNotes).filter(([, value]) => value.trim().length > 0);
-      if (entries.length === 0) {
+      const savedCount = await persistSoapNotesToEncounter(activeEncounterId);
+      if (savedCount === 0) {
         setSoapError('Enter at least one note before saving.');
         return;
       }
-      await Promise.all(
-        entries.map(([noteType, content]) =>
-          apiClient.post(`/v1/emr/encounters/${activeEncounterId}/notes`, {
-            noteType,
-            content,
-          }),
-        ),
-      );
       setSoapSuccess('Clinical notes saved to the encounter.');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -278,13 +286,18 @@ export const EMRWorkspace = () => {
     setIsFinalizing(true);
     setFinalizeError(null);
     try {
+      await persistSoapNotesToEncounter(activeEncounterId);
       await apiClient.patch(`/v1/clinical/encounters/${activeEncounterId}/close`);
       setIsLocked(true);
       setShowConfirmClose(false);
       void fetchQueue();
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setFinalizeError(error.response?.data?.message || "Failed to finalize encounter. Please try again.");
+      const error = err as { response?: { data?: { message?: string } }; message?: string };
+      setFinalizeError(
+        error.response?.data?.message ||
+          error.message ||
+          'Failed to finalize encounter. Please try again.',
+      );
     } finally {
       setIsFinalizing(false);
     }
