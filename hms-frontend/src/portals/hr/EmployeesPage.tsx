@@ -28,10 +28,12 @@ const initialCreateForm: CreateEmployeePayload = {
 
 const STATUS_UPDATE_ROLES = ['Super Admin', 'HR Manager', 'HR Staff'] as const;
 
+const DESTRUCTIVE_STATUSES: HrEmployeeStatus[] = ['RESIGNED', 'TERMINATED'];
+
 const mapHrEmployeeToDisplay = (e: HrEmployee): Employee => {
   const first = (e.firstName ?? '').trim();
   const last = (e.lastName ?? '').trim();
-  const name = [first, last].filter(Boolean).join(' ') || e.employeeNumber;
+  const name = [first, last].filter(Boolean).join(' ') || e.employeeNumber || '(unnamed)';
 
   let displayStatus: Employee['status'];
   switch (e.status) {
@@ -160,6 +162,16 @@ export const EmployeesPage: React.FC = () => {
 
   const handleStatusChange = useCallback(
     async (employeeId: string, newStatus: HrEmployeeStatus) => {
+      if (DESTRUCTIVE_STATUSES.includes(newStatus)) {
+        const confirmed = window.confirm(
+          `Setting status to ${newStatus} will deactivate the linked user account, ` +
+            'invalidate any active sessions, and update real staff records. ' +
+            'This action will be audited. Continue?',
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
       setUpdateError(null);
       setUpdatingEmployeeId(employeeId);
       try {

@@ -43,11 +43,12 @@ export const EmployeeWorklist: React.FC<EmployeeWorklistProps> = ({
       <div className="divide-y divide-slate-50">
         {employees.map((emp) => {
           const isUpdating = updatingEmployeeId === emp.id;
+          const initial = (emp.name?.trim()?.charAt(0) || '?').toUpperCase();
           return (
             <div key={emp.id} className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between group">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center font-bold text-xs group-hover:bg-indigo-100 group-hover:text-indigo-700 transition-colors">
-                  {emp.name.charAt(0)}
+                  {initial}
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-800">{emp.name}</h4>

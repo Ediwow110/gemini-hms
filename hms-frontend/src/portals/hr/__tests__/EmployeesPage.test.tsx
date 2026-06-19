@@ -86,14 +86,35 @@ const branchesFixture = {
   limit: 200,
 };
 
+const setupApiGetMocks = (opts?: {
+  employees?: () => unknown;
+  employeesError?: unknown;
+}) => {
+  (apiClient.get as any).mockImplementation((url: string) => {
+    if (typeof url !== 'string') {
+      return Promise.reject(new Error(`Invalid URL type: ${typeof url}`));
+    }
+    if (url.startsWith('/v1/hr/employees')) {
+      if (opts?.employeesError !== undefined) {
+        return Promise.reject(opts.employeesError);
+      }
+      return Promise.resolve({
+        data: opts?.employees ? opts.employees() : employeeFixture,
+      });
+    }
+    if (url.startsWith('/v1/admin/branches')) {
+      return Promise.resolve({ data: branchesFixture });
+    }
+    return Promise.reject(new Error(`Unmocked GET ${url}`));
+  });
+};
+
 describe('EmployeesPage — live backend wiring (post-fix)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
   it('fetches /v1/hr/employees on mount', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: employeeFixture })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks();
     renderPage();
     await waitFor(() => {
       expect(apiClient.get).toHaveBeenCalledWith('/v1/hr/employees');
@@ -102,9 +123,7 @@ describe('EmployeesPage — live backend wiring (post-fix)', () => {
   });
 
   it('renders real employee data from API response', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: employeeFixture })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks();
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('Alice Anderson')).toBeInTheDocument();
@@ -115,9 +134,7 @@ describe('EmployeesPage — live backend wiring (post-fix)', () => {
   });
 
   it('does NOT render any hardcoded mock employee fallback', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: [] })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks({ employees: () => [] });
     renderPage();
     await waitFor(() => {
       expect(apiClient.get).toHaveBeenCalledWith('/v1/hr/employees');
@@ -129,9 +146,7 @@ describe('EmployeesPage — live backend wiring (post-fix)', () => {
 
   it('shows inline fetch error (no alert) when API fails', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    (apiClient.get as any)
-      .mockRejectedValueOnce(new Error('Network error'))
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks({ employeesError: new Error('Network error') });
     renderPage();
     await waitFor(() => {
       expect(screen.getByText(/Network error/i)).toBeInTheDocument();
@@ -141,9 +156,7 @@ describe('EmployeesPage — live backend wiring (post-fix)', () => {
   });
 
   it('opens create modal and validates required fields', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: employeeFixture })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks();
     renderPage();
 
     const registerBtn = await screen.findByTestId('employees-register');
@@ -161,9 +174,7 @@ describe('EmployeesPage — live backend wiring (post-fix)', () => {
   });
 
   it('submits POST /v1/hr/employees with correct DTO (no client-trusted tenantId)', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: [] })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks({ employees: () => [] });
     (apiClient.post as any).mockResolvedValue({
       data: { ...employeeFixture[0], id: 'new-emp', employeeNumber: 'EMP-002' },
     });
@@ -217,9 +228,7 @@ describe('EmployeesPage — live backend wiring (post-fix)', () => {
   });
 
   it('submits with optional fields omitted when blank', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: [] })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks({ employees: () => [] });
     (apiClient.post as any).mockResolvedValue({ data: { id: 'new-emp' } });
 
     renderPage();
@@ -254,12 +263,7 @@ describe('EmployeesPage — live backend wiring (post-fix)', () => {
   });
 
   it('refreshes the employee list after successful create', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: [] })
-      .mockResolvedValueOnce({ data: branchesFixture })
-      .mockResolvedValueOnce({
-        data: [{ ...employeeFixture[0], id: 'new-emp', employeeNumber: 'EMP-NEW' }],
-      });
+    setupApiGetMocks({ employees: () => [] });
     (apiClient.post as any).mockResolvedValue({
       data: { ...employeeFixture[0], id: 'new-emp', employeeNumber: 'EMP-NEW' },
     });
@@ -293,9 +297,7 @@ describe('EmployeesPage — live backend wiring (post-fix)', () => {
 
   it('surfaces backend rejection inline (no window.alert)', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: [] })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks({ employees: () => [] });
     (apiClient.post as any).mockRejectedValue({
       response: { data: { message: 'forbidden: hr.employee.manage required' } },
     });
@@ -329,9 +331,7 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
   });
 
   it('renders the status select for Super Admin and lists all 5 backend values', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: employeeFixture })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks();
 
     renderWithAuth(superAdminUser);
 
@@ -343,9 +343,7 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
   });
 
   it('does NOT render the status select for Branch Admin (backend would 403)', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: employeeFixture })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks();
 
     renderWithAuth(branchAdminUser);
 
@@ -354,9 +352,7 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
   });
 
   it('does NOT render the status select when user is not signed in', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: employeeFixture })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    setupApiGetMocks();
 
     renderWithAuth(null);
 
@@ -365,10 +361,7 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
   });
 
   it('submits PATCH /v1/hr/employees/:id/status with correct DTO (no client-trusted tenantId)', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: employeeFixture })
-      .mockResolvedValueOnce({ data: branchesFixture })
-      .mockResolvedValueOnce({ data: employeeFixture });
+    setupApiGetMocks();
     (apiClient.patch as any).mockResolvedValue({
       data: { ...employeeFixture[0], status: 'SUSPENDED' },
     });
@@ -394,10 +387,7 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
   });
 
   it('refreshes the employee list after successful status update', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: employeeFixture })
-      .mockResolvedValueOnce({ data: branchesFixture })
-      .mockResolvedValueOnce({ data: employeeFixture });
+    setupApiGetMocks();
     (apiClient.patch as any).mockResolvedValue({
       data: { ...employeeFixture[0], status: 'SUSPENDED' },
     });
@@ -416,10 +406,7 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
   });
 
   it('disables the status select while the PATCH is in flight (no double-submit)', async () => {
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: employeeFixture })
-      .mockResolvedValueOnce({ data: branchesFixture })
-      .mockResolvedValueOnce({ data: employeeFixture });
+    setupApiGetMocks();
     (apiClient.patch as any).mockImplementation(
       () => new Promise(() => {}),
     );
@@ -444,9 +431,8 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
 
   it('surfaces backend rejection inline (no window.alert) and keeps the row editable', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    (apiClient.get as any)
-      .mockResolvedValueOnce({ data: employeeFixture })
-      .mockResolvedValueOnce({ data: branchesFixture });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    setupApiGetMocks();
     (apiClient.patch as any).mockRejectedValue({
       response: { data: { message: 'forbidden: insufficient role' } },
     });
@@ -459,7 +445,134 @@ describe('EmployeesPage — employee status-toggle (live wire)', () => {
     const errNode = await screen.findByTestId('employees-status-error');
     expect(errNode).toHaveTextContent(/forbidden/i);
     expect(alertSpy).not.toHaveBeenCalled();
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect((screen.getByTestId('employees-status-select-emp-1') as HTMLSelectElement).disabled).toBe(false);
     alertSpy.mockRestore();
+    confirmSpy.mockRestore();
+  });
+
+  describe('EmployeesPage — destructive status confirmation (RESIGNED / TERMINATED)', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('asks for window.confirm before PATCH when status is RESIGNED', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      setupApiGetMocks();
+      (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
+
+      renderWithAuth(superAdminUser);
+
+      const select = await screen.findByTestId('employees-status-select-emp-1');
+      fireEvent.change(select, { target: { value: 'RESIGNED' } });
+
+      await waitFor(() => {
+        expect(apiClient.patch).toHaveBeenCalledTimes(1);
+      });
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(confirmSpy.mock.calls[0][0]).toMatch(/RESIGNED/);
+      expect(confirmSpy.mock.calls[0][0]).toMatch(/deactivate/i);
+      expect(confirmSpy.mock.calls[0][0]).toMatch(/real staff records/i);
+      confirmSpy.mockRestore();
+    });
+
+    it('asks for window.confirm before PATCH when status is TERMINATED', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      setupApiGetMocks();
+      (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
+
+      renderWithAuth(superAdminUser);
+
+      const select = await screen.findByTestId('employees-status-select-emp-1');
+      fireEvent.change(select, { target: { value: 'TERMINATED' } });
+
+      await waitFor(() => {
+        expect(apiClient.patch).toHaveBeenCalledTimes(1);
+      });
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(confirmSpy.mock.calls[0][0]).toMatch(/TERMINATED/);
+      confirmSpy.mockRestore();
+    });
+
+    it('does NOT call PATCH when user cancels the destructive confirmation', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      setupApiGetMocks();
+      (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
+
+      renderWithAuth(superAdminUser);
+
+      const select = await screen.findByTestId('employees-status-select-emp-1');
+      fireEvent.change(select, { target: { value: 'RESIGNED' } });
+
+      // Give the page a chance to react to the cancel.
+      await new Promise((r) => setTimeout(r, 50));
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(apiClient.patch).not.toHaveBeenCalled();
+      expect((screen.getByTestId('employees-status-select-emp-1') as HTMLSelectElement).disabled).toBe(false);
+      confirmSpy.mockRestore();
+    });
+
+    it('does NOT call PATCH when user cancels the TERMINATED confirmation', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      setupApiGetMocks();
+      (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
+
+      renderWithAuth(superAdminUser);
+
+      const select = await screen.findByTestId('employees-status-select-emp-1');
+      fireEvent.change(select, { target: { value: 'TERMINATED' } });
+
+      await new Promise((r) => setTimeout(r, 50));
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(apiClient.patch).not.toHaveBeenCalled();
+      confirmSpy.mockRestore();
+    });
+
+    it('proceeds with PATCH when user confirms RESIGNED', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      setupApiGetMocks();
+      (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
+
+      renderWithAuth(superAdminUser);
+
+      const select = await screen.findByTestId('employees-status-select-emp-1');
+      fireEvent.change(select, { target: { value: 'RESIGNED' } });
+
+      await waitFor(() => {
+        expect(apiClient.patch).toHaveBeenCalledTimes(1);
+      });
+      expect(apiClient.patch).toHaveBeenCalledWith(
+        '/v1/hr/employees/emp-1/status',
+        expect.objectContaining({ status: 'RESIGNED' }),
+      );
+      await waitFor(() => {
+        expect(apiClient.get).toHaveBeenCalledTimes(3);
+      });
+      confirmSpy.mockRestore();
+    });
+
+    it.each(['ACTIVE', 'ON_LEAVE', 'SUSPENDED'])(
+      'does NOT ask for confirmation when status is %s (non-destructive)',
+      async (nonDestructiveStatus) => {
+        const confirmSpy = vi.spyOn(window, 'confirm');
+        setupApiGetMocks();
+        (apiClient.patch as any).mockResolvedValue({ data: employeeFixture[0] });
+
+        renderWithAuth(superAdminUser);
+
+        const select = await screen.findByTestId('employees-status-select-emp-1');
+        fireEvent.change(select, { target: { value: nonDestructiveStatus } });
+
+        await waitFor(() => {
+          expect(apiClient.patch).toHaveBeenCalledTimes(1);
+        });
+        expect(confirmSpy).not.toHaveBeenCalled();
+        expect(apiClient.patch).toHaveBeenCalledWith(
+          '/v1/hr/employees/emp-1/status',
+          expect.objectContaining({ status: nonDestructiveStatus }),
+        );
+        confirmSpy.mockRestore();
+      },
+    );
   });
 });
