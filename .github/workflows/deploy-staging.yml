@@ -54,6 +54,15 @@ jobs:
           DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
           DB_NAME: ${{ secrets.STAGING_DB_NAME }}
           CORS_ALLOWED_ORIGINS: ${{ secrets.STAGING_CORS_ORIGINS }}
+          EMAIL_PROVIDER: ${{ secrets.STAGING_EMAIL_PROVIDER }}
+          SMS_PROVIDER: ${{ secrets.STAGING_SMS_PROVIDER }}
+          AWS_REGION: ${{ secrets.STAGING_AWS_REGION }}
+          SES_SENDER_EMAIL: ${{ secrets.STAGING_SES_SENDER_EMAIL }}
+          MAILRELAY_API_KEY: ${{ secrets.STAGING_MAILRELAY_API_KEY }}
+          MAILRELAY_SMTP_PASS: ${{ secrets.STAGING_MAILRELAY_SMTP_PASS }}
+          MAILRELAY_SENDER_EMAIL: ${{ secrets.STAGING_MAILRELAY_SENDER_EMAIL }}
+          MAILRELAY_SENDER_NAME: ${{ secrets.STAGING_MAILRELAY_SENDER_NAME }}
+          SEMAPHORE_API_KEY: ${{ secrets.STAGING_SEMAPHORE_API_KEY }}
         run: |
           echo "=== STAGING DEPLOYMENT ==="
           echo "Target: $SSH_USER@$SSH_HOST"
@@ -81,5 +90,15 @@ jobs:
              CORS_ALLOWED_ORIGINS='$CORS_ALLOWED_ORIGINS' \
              DATABASE_URL='$DATABASE_URL' \
              JWT_SECRET='$JWT_SECRET' \
-             MASTER_MFA_KEY='$MASTER_MFA_KEY'; \
+             JWT_REFRESH_SECRET='$JWT_REFRESH_SECRET' \
+             MASTER_MFA_KEY='$MASTER_MFA_KEY' \
+             EMAIL_PROVIDER='$EMAIL_PROVIDER' \
+             SMS_PROVIDER='$SMS_PROVIDER' \
+             AWS_REGION='$AWS_REGION' \
+             SES_SENDER_EMAIL='$SES_SENDER_EMAIL' \
+             MAILRELAY_API_KEY='$MAILRELAY_API_KEY' \
+             MAILRELAY_SMTP_PASS='$MAILRELAY_SMTP_PASS' \
+             MAILRELAY_SENDER_EMAIL='$MAILRELAY_SENDER_EMAIL' \
+             MAILRELAY_SENDER_NAME='$MAILRELAY_SENDER_NAME' \
+             SEMAPHORE_API_KEY='$SEMAPHORE_API_KEY'; \
              bash ./hms-backend/scripts/remote-deploy-staging.sh"

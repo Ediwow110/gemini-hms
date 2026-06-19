@@ -88,6 +88,17 @@ Add these to the `Staging` environment:
 | `STAGING_DB_PASSWORD` | Database password | `(auto-generated)` |
 | `STAGING_DB_NAME` | Database name | `hms_staging` |
 | `STAGING_CORS_ORIGINS` | CORS origins for staging | `https://staging.gemini-hms.example.com` |
+| `STAGING_EMAIL_PROVIDER` | Email provider (non-mock) | `ses` or `mailrelay` |
+| `STAGING_SMS_PROVIDER` | SMS provider (non-mock) | `semaphore` |
+| `STAGING_AWS_REGION` | AWS region (if `EMAIL_PROVIDER=ses`) | `ap-southeast-1` |
+| `STAGING_SES_SENDER_EMAIL` | SES verified sender (if `EMAIL_PROVIDER=ses`) | `noreply@staging.example.com` |
+| `STAGING_SEMAPHORE_API_KEY` | Semaphore API key (if `SMS_PROVIDER=semaphore`) | `(api key)` |
+| `STAGING_MAILRELAY_API_KEY` | Mailrelay key (if `EMAIL_PROVIDER=mailrelay`) | `(api key)` |
+| `STAGING_MAILRELAY_SMTP_PASS` | Mailrelay SMTP pass (alt to API key) | `(password)` |
+| `STAGING_MAILRELAY_SENDER_EMAIL` | Mailrelay sender email | `noreply@staging.example.com` |
+| `STAGING_MAILRELAY_SENDER_NAME` | Mailrelay sender display name | `HMS Staging` |
+
+> **Notification launch boundary:** `NODE_ENV=production` (set in `docker-compose.staging.yml`) rejects `EMAIL_PROVIDER=mock` and `SMS_PROVIDER=mock` at backend startup (`notification-providers.ts:166-170`, `188-192`). Real provider classes (`SesProvider`, `SemaphoreProvider`, etc.) validate credentials at construction but their `sendEmail`/`sendSms` methods still throw `NotImplementedException` until external HTTP/SDK integration is wired (`notification-providers.ts:103-108`, `138-143`). Staging deploy requires non-mock provider **configuration** so the backend starts; actual email/SMS **delivery** remains blocked until provider send implementations are completed.
 
 ### 4.3 Secret Separation Rules
 

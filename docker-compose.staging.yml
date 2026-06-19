@@ -28,6 +28,17 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       MASTER_MFA_KEY: ${MASTER_MFA_KEY:?MASTER_MFA_KEY is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      # Notification providers: mock is rejected at startup when NODE_ENV=production.
+      # Operator must set non-mock values (ses/mailrelay + semaphore) before deploy.
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:?EMAIL_PROVIDER is required (ses or mailrelay; mock forbidden in production)}
+      SMS_PROVIDER: ${SMS_PROVIDER:?SMS_PROVIDER is required (semaphore; mock forbidden in production)}
+      AWS_REGION: ${AWS_REGION:-}
+      SES_SENDER_EMAIL: ${SES_SENDER_EMAIL:-}
+      MAILRELAY_API_KEY: ${MAILRELAY_API_KEY:-}
+      MAILRELAY_SMTP_PASS: ${MAILRELAY_SMTP_PASS:-}
+      MAILRELAY_SENDER_EMAIL: ${MAILRELAY_SENDER_EMAIL:-}
+      MAILRELAY_SENDER_NAME: ${MAILRELAY_SENDER_NAME:-}
+      SEMAPHORE_API_KEY: ${SEMAPHORE_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
