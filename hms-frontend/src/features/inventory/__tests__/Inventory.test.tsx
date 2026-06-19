@@ -11,6 +11,12 @@ vi.mock('../../../hooks/use-inventory', () => ({
   useInventoryCatalog: vi.fn(),
 }));
 
+vi.mock('../../../components/ui/RequirePermission', () => ({
+  RequirePermission: ({ permission, children }: { permission: string; children: React.ReactNode }) => (
+    <div data-permission={permission}>{children}</div>
+  ),
+}));
+
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -122,6 +128,23 @@ describe('Inventory page real-wiring (post-fix)', () => {
       // The real stat value is computed from data length (1), not hardcoded "45"
       expect(screen.queryByText('45')).not.toBeInTheDocument();
     });
+  });
+
+  it('gates Receive Stock with the same permission required by the receiving route', async () => {
+    vi.mocked(useInventoryCatalog).mockReturnValue({
+      data: [buildItem()],
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useInventoryCatalog>);
+
+    render(<Inventory />, { wrapper });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Receive Stock/i })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /Receive Stock/i }).closest('[data-permission="inventory.stock.receive"]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: /Receive Stock/i }).closest('[data-permission="inventory.adjust.request"]')).toBeNull();
   });
 
   it('does NOT render the MOCK_STOCK hardcoded names when data is loading', () => {

@@ -71,7 +71,7 @@ export const Inventory = () => {
     <div className="space-y-6 pb-12 animate-fade-in">
       <div className="flex justify-between items-center">
         <PageHeader title="Inventory & Stock" description="Monitor stock levels, units, and movements." />
-        <RequirePermission permission="inventory.adjust.request">
+        <RequirePermission permission="inventory.stock.receive">
           <button
             onClick={() => navigate("/inventory/receiving")}
             className="btn btn-primary flex items-center gap-2 px-5 py-2.5"
