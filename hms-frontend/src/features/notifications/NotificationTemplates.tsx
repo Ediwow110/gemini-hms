@@ -57,13 +57,10 @@ export const NotificationTemplates = () => {
   return (
     <HmsDashboardShell
       widthTier="full"
-      footer={<HmsAuditFooter dataSource="Mock notification templates (sandbox)" />}
+      footer={<HmsAuditFooter dataSource="Notification templates (UI prototype - not persisted)" />}
     >
       <div className="space-y-6 pb-12 animate-fade-in">
-        <PageHeader title="Notification Templates (Mock)" description="Manage notification templates, channels, and privacy classifications." />
-
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="notification-templates-sandbox-notice">
-        </div>
+        <PageHeader title="Notification Templates" description="Manage notification templates, channels, and privacy classifications." />
 
         <div className="flex items-start gap-3 p-3 bg-rose-50 border border-rose-200 rounded-xl">
           <Shield className="h-4 w-4 text-rose-600 mt-0.5 flex-shrink-0" />

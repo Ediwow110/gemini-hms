@@ -32,8 +32,8 @@ export const Queue = () => {
   const derivedStats = [
     { label: "Waiting", val: waitingCount.toString(), icon: Clock, color: "from-amber-500 to-orange-500 shadow-amber-200/50" },
     { label: "Calling", val: callingCount.toString(), icon: UserCheck, color: "from-indigo-500 to-violet-500 shadow-indigo-200/50" },
-    { label: "Served (Sandbox)", val: servedCount.toString(), icon: CheckCircle2, color: "from-emerald-500 to-teal-500 shadow-emerald-200/50" },
-    { label: "Skipped (Sandbox)", val: skippedCount.toString(), icon: SkipForward, color: "from-slate-400 to-slate-500 shadow-slate-200/50" },
+    { label: "Served", val: servedCount.toString(), icon: CheckCircle2, color: "from-emerald-500 to-teal-500 shadow-emerald-200/50" },
+    { label: "Skipped", val: skippedCount.toString(), icon: SkipForward, color: "from-slate-400 to-slate-500 shadow-slate-200/50" },
   ];
   const [toast, setToast] = useState<ToastNotification | null>(null);
 
@@ -69,7 +69,7 @@ export const Queue = () => {
   return (
     <HmsDashboardShell
       toolbar={<HmsToolbar role="Queue Manager" />}
-      footer={<HmsAuditFooter dataSource="Mock queue (sandbox)" />}
+      footer={<HmsAuditFooter dataSource="Queue state (local demo - backend sync pending)" />}
     >
       {/* Toast notification */}
       {toast && (

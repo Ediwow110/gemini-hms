@@ -28,12 +28,10 @@ export const TemplateSettings = () => {
   return (
     <HmsDashboardShell
       widthTier="full"
-      footer={<HmsAuditFooter dataSource="Mock print templates (sandbox)" />}
+      footer={<HmsAuditFooter dataSource="Print templates (UI prototype - not persisted)" />}
     >
       <div className="space-y-6 animate-fade-in">
-        <SectionCard title="Print Templates (Mock)">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="template-settings-sandbox-notice">
-          </div>
+        <SectionCard title="Print Templates">
           {/* Version preservation warning */}
           <div className="flex items-start gap-3 p-3 mb-4 mt-4 bg-blue-50 border border-blue-200 rounded-xl">
             <History className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />

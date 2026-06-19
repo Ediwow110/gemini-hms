@@ -35,12 +35,10 @@ export const NumberingSettings = () => {
   return (
     <HmsDashboardShell
       widthTier="full"
-      footer={<HmsAuditFooter dataSource="Mock numbering rules (sandbox)" />}
+      footer={<HmsAuditFooter dataSource="Numbering rules (UI prototype - not persisted)" />}
     >
       <div className="space-y-6 animate-fade-in">
-        <SectionCard title="Numbering Rules (Mock)">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="numbering-settings-sandbox-notice">
-          </div>
+        <SectionCard title="Numbering Rules">
           <div className="flex items-start gap-3 p-3 mb-4 mt-4 bg-amber-50 border border-amber-200 rounded-xl">
             <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-amber-700">

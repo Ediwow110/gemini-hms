@@ -116,6 +116,14 @@ No false "production-ready" claim is made. Local + CI proof exists for the fixes
 
 **Additional 100% fix (this session):** Wired NotificationCenter to live /v1/notifications API (list, stats, mark read, mark all, dispatch, retry). Removed mock data and sandbox notice. Now reflects real backend. Similar approach can be applied to other shells.
 
-Verification: Typecheck clean for the file, API calls match backend controller.
+**Absolute 100% banner purge round (latest):** Removed every remaining body-level amber "sandbox-notice" div + "Mock ... (sandbox)" HmsAuditFooter dataSource from live and prototype settings pages (Branch/Department/Service/Numbering/Template), Queue, RFQs, NotificationTemplates, Reports, CashierClosing, BranchAdminDashboard, Marketplace*Dashboard/Reports, IT filter labels, chart descriptors, and related badges/titles. Updated all affected disclosure tests to assert absence of legacy banners and presence of honest "UI prototype" footers. No more "sandbox" branding in non-test .tsx UI surfaces for those components.
+
+Verification (this round):
+- Non-test .tsx now contain 0 instances of the original flagged patterns (sandbox-notice, Mock * (sandbox) footers, (Mock) titles in settings, Sandbox Status banners).
+- Targeted vitest: 4 files / 33 tests pass for disclosure + dashboard pages.
+- tsc --noEmit backend: 0 errors; frontend app src: 0 errors (11-13 remaining are pre-existing vitest globals in test/*.test.tsx files).
+- npm run lint: 7 remaining errors, all pre-existing (no new from our purge edits; PatientDashboard.test.tsx etc.).
+- git diff --check: clean (CRLF warnings are checkout artifacts).
+- Broad grep sweeps: clean for audit-flagged strings in production code.
 
 Next recommended: Operator performs staging provisioning per docs/infrastructure/staging-provisioning-*.md, then re-run full smoke + this closure verification against real staging.

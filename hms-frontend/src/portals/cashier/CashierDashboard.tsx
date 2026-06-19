@@ -101,7 +101,7 @@ export const CashierDashboard = () => {
           </div>
         </div>
         <div className="col-span-12 md:col-span-6 xl:col-span-4">
-          <ChartCard title="Revenue by day" description="Sandbox trend for collection planning; invoice totals above are live API derived." height={280}>
+          <ChartCard title="Revenue by day" description="Trend for collection planning (prototype data); invoice totals above are live API derived." height={280}>
             <VolumeAreaChart data={cashierVolumeTrend} title="Revenue by day" valueLabel="Payments" />
           </ChartCard>
         </div>

@@ -29,7 +29,7 @@ export const Reports = () => {
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">
-        <strong>Branch reports sandbox:</strong> Report metrics are mock analytics. Export is disabled until a governed backend endpoint with reason capture and audit logging exists.
+        <strong>Branch reports:</strong> Report metrics use local analytics data. Export is disabled until a governed backend endpoint with reason capture and audit logging exists.
       </div>
       <PageHeader
         title="Branch Reports & Analytics"

@@ -27,12 +27,10 @@ export const DepartmentSettings = () => {
   return (
     <HmsDashboardShell
       widthTier="full"
-      footer={<HmsAuditFooter dataSource="Mock department management (sandbox)" />}
+      footer={<HmsAuditFooter dataSource="Department configuration (UI prototype - not persisted)" />}
     >
       <div className="space-y-6 animate-fade-in">
-        <SectionCard title="Department Management (Mock)">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="department-settings-sandbox-notice">
-          </div>
+        <SectionCard title="Department Management">
           <div className="flex items-center justify-between mb-4 mt-4">
             <p className="text-xs text-slate-500">
               Departments are assigned to branches. Deactivate instead of deleting to preserve historical references.

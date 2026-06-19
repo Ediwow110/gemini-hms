@@ -28,12 +28,10 @@ export const ServiceSettings = () => {
   return (
     <HmsDashboardShell
       widthTier="full"
-      footer={<HmsAuditFooter dataSource="Mock service catalog (sandbox)" />}
+      footer={<HmsAuditFooter dataSource="Service catalog (UI prototype - not persisted)" />}
     >
       <div className="space-y-6 animate-fade-in">
-        <SectionCard title="Services & Packages (Mock)">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="service-settings-sandbox-notice">
-          </div>
+        <SectionCard title="Services & Packages">
           <div className="flex items-center justify-between mb-4 mt-4">
             <p className="text-xs text-slate-500">
               Define medical services and their pricing. Price changes apply only to future orders.

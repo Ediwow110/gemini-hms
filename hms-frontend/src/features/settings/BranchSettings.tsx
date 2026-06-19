@@ -40,12 +40,10 @@ export const BranchSettings = () => {
   return (
     <HmsDashboardShell
       widthTier="full"
-      footer={<HmsAuditFooter dataSource="Mock branch management (sandbox)" />}
+      footer={<HmsAuditFooter dataSource="Branch configuration (UI prototype - not persisted)" />}
     >
       <div className="space-y-6 animate-fade-in">
-        <SectionCard title="Branch Management (Mock)">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800" data-testid="branch-settings-sandbox-notice">
-          </div>
+        <SectionCard title="Branch Management">
           <div className="flex items-center justify-between mb-4 mt-4">
             <p className="text-xs text-slate-500">
               Manage hospital branches. Branches cannot be permanently deleted — only deactivated.

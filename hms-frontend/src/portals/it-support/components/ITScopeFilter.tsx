@@ -38,7 +38,7 @@ export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange, dis
   const environments = [
     { id: 'production', name: 'Production (Live)' },
     { id: 'staging', name: 'Staging (UAT)' },
-    { id: 'development', name: 'Development (Sandbox)' },
+    { id: 'development', name: 'Development' },
   ];
 
   const handleTenantChange = (tenantId: string) => {

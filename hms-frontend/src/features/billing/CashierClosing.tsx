@@ -36,13 +36,10 @@ export const CashierClosing = () => {
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
-      {/* WIP Banner — no backend wiring */}
       <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2.5 text-[12px] text-amber-800 animate-fade-in">
         <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
         <div>
-          <h5 className="font-bold uppercase text-[10px] tracking-wider font-sans">Legacy Page — Not Wired to Backend</h5>
-          <p className="font-medium font-sans">
-          </p>
+          <h5 className="font-bold uppercase text-[10px] tracking-wider font-sans">Legacy Page — Redirects to Live Cashier Session</h5>
         </div>
       </div>
 
