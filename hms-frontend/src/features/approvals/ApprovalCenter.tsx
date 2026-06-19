@@ -19,6 +19,8 @@ export const ApprovalCenter = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [modals, setModals] = useState({ confirm: false, reason: false, mode: "" });
+  const [approvalAuthChecked, setApprovalAuthChecked] = useState(false);
+  const [approvalAuthError, setApprovalAuthError] = useState<string | null>(null);
   const currentUser = useUser();
 
   const fetchRequests = useCallback(async (showLoading = true) => {
@@ -42,6 +44,21 @@ export const ApprovalCenter = () => {
     fetchRequests(false);
   }, [fetchRequests]);
 
+  const resetApprovalConfirmation = () => {
+    setApprovalAuthChecked(false);
+    setApprovalAuthError(null);
+  };
+
+  const closeApprovalModal = () => {
+    resetApprovalConfirmation();
+    setModals({ ...modals, confirm: false });
+  };
+
+  const openApprovalModal = () => {
+    resetApprovalConfirmation();
+    setModals({ confirm: true, reason: false, mode: "Approve" });
+  };
+
   const handleAction = async (remarks: string) => {
     if (!selected) return;
     setIsProcessing(true);
@@ -53,12 +70,23 @@ export const ApprovalCenter = () => {
       }
       await fetchRequests();
       setModals({ confirm: false, reason: false, mode: "" });
+      if (modals.mode === "Approve") {
+        resetApprovalConfirmation();
+      }
     } catch (error) {
       console.error(`Failed to ${modals.mode.toLowerCase()} request:`, error);
       alert(`Failed to ${modals.mode.toLowerCase()} request. Please try again.`);
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleApproveConfirm = () => {
+    if (!approvalAuthChecked) {
+      setApprovalAuthError("Confirm policy authorization before approving this request.");
+      return;
+    }
+    void handleAction("Approved per policy");
   };
 
   return (
@@ -219,7 +247,7 @@ export const ApprovalCenter = () => {
                   >
                     <div className="grid grid-cols-2 gap-3">
                       <button 
-                        onClick={() => setModals({ confirm: true, reason: false, mode: "Approve" })} 
+                        onClick={openApprovalModal}
                         disabled={isProcessing}
                         className="btn btn-success py-2.5 disabled:opacity-50"
                       >
@@ -252,16 +280,32 @@ export const ApprovalCenter = () => {
         isOpen={modals.confirm} 
         title="Approve Request" 
         warning="This action will be permanently recorded in the audit log and the change will be applied." 
-        onConfirm={() => handleAction("Approved per policy")} 
-        onClose={() => setModals({ ...modals, confirm: false })}
+        onConfirm={handleApproveConfirm}
+        onClose={closeApprovalModal}
       >
         <p className="mb-2">Are you sure you want to approve request <strong className="text-slate-900">{selected?.id}</strong>?</p>
         <div className="mt-4 flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
-          <input type="checkbox" id="auth-check" className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+          <input
+            type="checkbox"
+            id="auth-check"
+            checked={approvalAuthChecked}
+            onChange={(event) => {
+              setApprovalAuthChecked(event.target.checked);
+              if (event.target.checked) {
+                setApprovalAuthError(null);
+              }
+            }}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
           <label htmlFor="auth-check" className="text-xs text-slate-600 font-medium leading-tight">
             I confirm I have verified the details and am authorized to approve this request per hospital policy.
           </label>
         </div>
+        {approvalAuthError && (
+          <p role="alert" className="mt-2 text-xs font-semibold text-rose-700">
+            {approvalAuthError}
+          </p>
+        )}
       </ConfirmationModal>
 
       <ReasonModal 
