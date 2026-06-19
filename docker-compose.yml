@@ -1,4 +1,7 @@
 services:
+  # NOTE: Backend (NestJS + Prisma) expects DATABASE_URL as the primary connection string.
+  # The DB_* variables below are ONLY for starting the postgres container.
+  # Always provide a full DATABASE_URL for the backend service in .env or your environment.
   db:
     image: postgres:15-alpine
     restart: always

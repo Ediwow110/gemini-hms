@@ -57,7 +57,6 @@ const ClaimsDashboard = lazy(() => import('./features/claims/ClaimsDashboard').t
 const PatientMergeRequests = lazy(() => import('./features/admin/PatientMergeRequests').then(m => ({ default: m.PatientMergeRequests })));
 const CatalogManagementPage = lazy(() => import('./portals/admin/CatalogManagementPage').then(m => ({ default: m.CatalogManagementPage })));
 
-const WIPPage = lazy(() => import('./app/WIPPage').then(m => ({ default: m.WIPPage })));
 const BranchAdminDashboard = lazy(() => import('./portals/branch-admin/BranchAdminDashboard').then(m => ({ default: m.BranchAdminDashboard })));
 
 // SuperAdmin Portal
@@ -330,16 +329,6 @@ const router = createBrowserRouter([
           
           // Branch Admin routes (branch-scoped)
           { path: 'branch-admin', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><BranchAdminDashboard /></LazyPage></PermissionRoute> },
-          { path: 'branch-admin/staff', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
-          { path: 'branch-admin/departments', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
-          { path: 'branch-admin/rooms', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
-          { path: 'branch-admin/schedules', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
-          { path: 'branch-admin/services', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
-          { path: 'branch-admin/equipment', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
-          { path: 'branch-admin/inventory-rules', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
-          { path: 'branch-admin/billing-rules', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
-          { path: 'branch-admin/queue-settings', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
-          { path: 'branch-admin/approvals', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
 
           // SuperAdmin Portal
           { path: 'admin', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><SuperAdminDashboard /></LazyPage></PermissionRoute> },
@@ -510,9 +499,7 @@ const router = createBrowserRouter([
           { path: 'sales-dashboard', element: <PermissionRoute permission="report.export"><LazyPage><SalesDashboard /></LazyPage></PermissionRoute> },
           { path: 'logistics-checklist', element: <PermissionRoute permission="field_service.job.view"><LazyPage><InstallationChecklist /></LazyPage></PermissionRoute> },
 
-          // Pharmacy Sub-routes (branch-scoped)
-          { path: 'pharmacy/dispense', element: <PermissionRoute permission="inventory.stock.dispense" isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
-          { path: 'pharmacy/inventory', element: <PermissionRoute permission="inventory.stock.dispense" isBranchScoped><LazyPage><WIPPage /></LazyPage></PermissionRoute> },
+          // Pharmacy Sub-routes (branch-scoped) — dispense/inventory sub views not yet implemented (see PharmacyHub for live surface)
 
           // Notifications
           { path: 'notifications', element: <PermissionRoute mode={GuardMode.ANY} permissions={['it.system.view', 'compliance.audit.review']}><LazyPage><NotificationCenter /></LazyPage></PermissionRoute> },

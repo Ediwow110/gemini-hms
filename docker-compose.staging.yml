@@ -1,4 +1,6 @@
 services:
+  # NOTE (staging): Backend uses DATABASE_URL. DB_* vars configure only the postgres service.
+  # See docs/infrastructure/staging-provisioning-handoff.md and the plan 2026-06-20 for full secrets.
   db:
     image: postgres:15-alpine
     restart: unless-stopped

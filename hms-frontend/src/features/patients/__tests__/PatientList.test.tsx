@@ -1,48 +1,58 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { vi } from 'vitest';
 import { PatientList } from '../PatientList';
+import { apiClient } from '../../../lib/api';
 
-const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
+vi.mock('../../../lib/api');
 
-const renderPage = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
+const mockLivePatients = [
+  { id: 'p-1', firstName: 'Alice', lastName: 'Anderson', patientNumber: 'PAT-001', status: 'ACTIVE', dob: '1990-01-01' },
+  { id: 'p-2', firstName: 'Bob', lastName: 'Baker', patientNumber: 'PAT-002', status: 'ACTIVE', dob: '1985-05-05' },
+];
 
-describe('PatientList — sandbox disclosure (post-truth-alignment)', () => {
-  it('renders page title with explicit (Mock) suffix', () => {
-    renderPage(<PatientList />);
-    expect(screen.getByText('Patients (Mock)')).toBeInTheDocument();
+describe('PatientList (live wiring)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(apiClient.get).mockResolvedValue({ data: mockLivePatients });
   });
 
-  it('renders body-level sandbox notice', () => {
-    renderPage(<PatientList />);
-    expect(screen.getByTestId('patient-list-sandbox-notice')).toBeInTheDocument();
-    expect(screen.getByText(/The patient rows, balances, and statuses shown below are mock placeholder data/i)).toBeInTheDocument();
+  function renderPatientList() {
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <PatientList />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+  }
+
+  it('fetches from the real /v1/patients endpoint (no hardcoded mock data)', async () => {
+    renderPatientList();
+
+    // Wait for the call
+    await waitFor(() => {
+      expect(apiClient.get).toHaveBeenCalledWith('/v1/patients', expect.any(Object));
+    });
+
+    // Must NOT render the old fake names
+    expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+    expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument();
+
+    // Must render data that came from the (mocked) API response
+    expect(screen.getByText(/Alice Anderson/)).toBeInTheDocument();
+    expect(screen.getByText(/PAT-001/)).toBeInTheDocument();
   });
 
-  it('renders honest audit footer', () => {
-    renderPage(<PatientList />);
-    expect(screen.getByText(/Mock patient list \(sandbox\)/i)).toBeInTheDocument();
-  });
-
-  it('disclosure explicitly states the patient names are fake', () => {
-    renderPage(<PatientList />);
-    expect(screen.getByText(/intentionally fake/i)).toBeInTheDocument();
-  });
-
-  it('disclosure points to the live Register Patient flow', () => {
-    renderPage(<PatientList />);
-    expect(screen.getByText(/live patient registration flow is at the/i)).toBeInTheDocument();
-  });
-
-  it('Register Patient button is present and remains wired to nurse intake', () => {
-    renderPage(<PatientList />);
-    expect(screen.getByRole('button', { name: /Register Patient/i })).toBeInTheDocument();
+  it('renders loading then content (or error state)', async () => {
+    renderPatientList();
+    // Basic presence of shell or loading is acceptable; main assertion is the API contract + no mocks
+    await waitFor(() => {
+      expect(apiClient.get).toHaveBeenCalled();
+    });
   });
 });

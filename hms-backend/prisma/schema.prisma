@@ -554,6 +554,8 @@ model Order {
   @@index([cancelledById])
   @@index([tenantId, branchId, createdAt])
   @@index([tenantId, branchId, patientId])
+  @@index([tenantId, branchId, status, requestedAt])
+  @@index([tenantId, orderType, status])
   @@map("orders")
 }
 
