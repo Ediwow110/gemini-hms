@@ -14,6 +14,30 @@ import { useIntegrationNotifications, useIntegrationApprovals, useIntegrationAct
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../components/hms-dashboard';
 
+type KpiListItem = { isMock?: boolean };
+
+/** Live-backed endpoints: undefined = unavailable; [] may be a real zero count. */
+function liveKpiDisplay(data: KpiListItem[] | undefined): { value: string; isMock: boolean } {
+  if (data === undefined) {
+    return { value: '—', isMock: true };
+  }
+  return {
+    value: data.length.toString(),
+    isMock: data[0]?.isMock ?? false,
+  };
+}
+
+/** Shell endpoints return HTTP 200 + []; empty must not masquerade as a real zero metric. */
+function shellKpiDisplay(data: KpiListItem[] | undefined): { value: string; isMock: boolean } {
+  if (!data || data.length === 0) {
+    return { value: '—', isMock: true };
+  }
+  return {
+    value: data.length.toString(),
+    isMock: data[0]?.isMock ?? false,
+  };
+}
+
 export const IntegrationDashboard: React.FC = () => {
   const { data: notifications, isLoading: notifLoading } = useIntegrationNotifications();
   const { data: approvals, isLoading: apprLoading, error: apprError } = useIntegrationApprovals();
@@ -23,6 +47,10 @@ export const IntegrationDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const isLoading = notifLoading || apprLoading || auditLoading || recLoading;
+  const notificationsKpi = liveKpiDisplay(notifications);
+  const approvalsKpi = liveKpiDisplay(approvals);
+  const activityKpi = shellKpiDisplay(audits);
+  const reconciliationKpi = shellKpiDisplay(issues);
 
   return (
     <HmsDashboardShell widthTier="full">
@@ -44,13 +72,13 @@ export const IntegrationDashboard: React.FC = () => {
           <>
             {/* KPI Metrics Row 1 */}
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Notifications Pending" value={notifications ? notifications.length.toString() : "—"} source="All Portals" icon={Bell} color="bg-indigo-50 text-indigo-600" isMock={!notifications ? true : (notifications[0]?.isMock ?? false)} />
+              <CrossDomainContextCard title="Notifications Pending" value={notificationsKpi.value} source="All Portals" icon={Bell} color="bg-indigo-50 text-indigo-600" isMock={notificationsKpi.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Approvals Pending" value={approvals ? approvals.length.toString() : "—"} source="Cross-Domain" icon={ShieldCheck} color="bg-emerald-50 text-emerald-600" isMock={!approvals ? true : (approvals[0]?.isMock ?? false)} />
+              <CrossDomainContextCard title="Approvals Pending" value={approvalsKpi.value} source="Cross-Domain" icon={ShieldCheck} color="bg-emerald-50 text-emerald-600" isMock={approvalsKpi.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Activity Events" value={audits ? audits.length.toString() : "—"} source="Audit Trail" icon={AlertTriangle} color="bg-rose-50 text-rose-600" isMock={!audits ? true : (audits[0]?.isMock ?? false)} />
+              <CrossDomainContextCard title="Activity Events" value={activityKpi.value} source="Audit Trail" icon={AlertTriangle} color="bg-rose-50 text-rose-600" isMock={activityKpi.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
               <CrossDomainContextCard title="Patient Timeline Events" value="—" source="Clinical" icon={Users} color="bg-blue-50 text-blue-600" isMock />
@@ -61,7 +89,7 @@ export const IntegrationDashboard: React.FC = () => {
               <CrossDomainContextCard title="Asset Timeline Events" value="—" source="Marketplace" icon={Package} color="bg-violet-50 text-violet-600" isMock />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Reconciliation Issues" value={issues ? issues.length.toString() : "—"} source="Finance" icon={TrendingUp} color="bg-amber-50 text-amber-600" isMock={!issues ? true : (issues[0]?.isMock ?? false)} />
+              <CrossDomainContextCard title="Reconciliation Issues" value={reconciliationKpi.value} source="Finance" icon={TrendingUp} color="bg-amber-50 text-amber-600" isMock={reconciliationKpi.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
               <CrossDomainContextCard title="Recent Cross Activity" value="—" source="All" icon={Activity} color="bg-indigo-50 text-indigo-600" isMock />

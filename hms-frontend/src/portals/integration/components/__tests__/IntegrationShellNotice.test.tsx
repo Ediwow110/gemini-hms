@@ -19,9 +19,11 @@ describe('IntegrationShellNotice — honest state (post-truth-gap fix)', () => {
     expect(screen.getByText(/\/v1\/integration\/\*/i)).toBeInTheDocument();
   });
 
-  it('states that 5 endpoints remain HTTP 404', () => {
+  it('states that 5 endpoints are shell placeholders returning empty arrays (not HTTP 404)', () => {
     render(<IntegrationShellNotice />);
-    expect(screen.getByText(/5 endpoints remain HTTP 404/i)).toBeInTheDocument();
+    expect(screen.getByText(/5 endpoints are shell placeholders/i)).toBeInTheDocument();
+    expect(screen.getByText(/HTTP 200, empty arrays/i)).toBeInTheDocument();
+    expect(screen.queryByText(/5 endpoints remain HTTP 404/i)).not.toBeInTheDocument();
   });
 
   it('DOES NOT falsely claim that the portal is live-wired to the HMS backend', () => {
@@ -47,11 +49,12 @@ describe('IntegrationShellNotice — honest state (post-truth-gap fix)', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('honestly describes the dashboard cards as showing — for the 5 unavailable endpoints', () => {
+  it('honestly describes the dashboard cards as showing — + MOCK for shell-empty endpoints', () => {
     render(<IntegrationShellNotice />);
     expect(
-      screen.getByText(/5 unavailable ones/i)
+      screen.getByText(/5 shell-empty endpoints/i)
     ).toBeInTheDocument();
+    expect(screen.getByText(/not real zero metrics/i)).toBeInTheDocument();
     expect(screen.getByText(/MOCK/i)).toBeInTheDocument();
   });
 

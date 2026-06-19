@@ -26,22 +26,22 @@ export const IntegrationShellNotice: React.FC = () => {
           (re-uses <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">/v1/approvals</code>).
         </p>
         <p className="text-xs text-amber-800 font-medium leading-relaxed">
-          <span className="font-bold">5 endpoints remain HTTP 404:</span>{' '}
+          <span className="font-bold">5 endpoints are shell placeholders (HTTP 200, empty arrays):</span>{' '}
           <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">activity-audit</code>,{' '}
           <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">global-search</code>,{' '}
           <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">patient-timeline</code>,{' '}
           <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">asset-timeline</code>,{' '}
           <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">reconciliation</code>.
-          No truthful cross-domain backend source exists for these in the
-          current release (no reconciliation model, no asset model, no
-          cross-domain search). They will be added in future lanes when
-          the underlying domains exist.
+          Routes exist and respond successfully, but return{' '}
+          <code className="px-1 py-0.5 bg-amber-100 rounded text-[11px]">[]</code>{' '}
+          until cross-domain sources are implemented (no reconciliation model,
+          no asset model, no cross-domain search in this release).
         </p>
         <p className="text-xs text-amber-800 font-medium leading-relaxed">
           <span className="font-bold">What this page currently shows.</span>{' '}
           Counts on the dashboard cards reflect the live state for the 2
           wired endpoints and <span className="font-mono">—</span> + MOCK
-          for the 5 unavailable ones. The &quot;Cross-Domain Bridge
+          for the 5 shell-empty endpoints (not real zero metrics). The &quot;Cross-Domain Bridge
           Health&quot; card remains an explicit honest-stub (no live value
           is shown until a real provider integration is wired). Approvals
           that are part of the regular billing workflow remain live on

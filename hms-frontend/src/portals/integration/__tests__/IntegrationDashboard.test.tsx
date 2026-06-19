@@ -90,8 +90,6 @@ describe('IntegrationDashboard — honest state (post-truth-gap fix)', () => {
   });
 
   it('shows em-dash + MOCK badge for fetch-failing KPI cards (no fake "0" counts)', () => {
-    // All four fetch hooks return undefined data (simulating 404 from the
-    // /v1/integration/* namespace which is not implemented in the backend).
     vi.mocked(useIntegrationNotifications).mockReturnValue({ data: undefined, isLoading: false } as unknown as ReturnType<typeof useIntegrationNotifications>);
     vi.mocked(useIntegrationApprovals).mockReturnValue({ data: undefined, isLoading: false } as unknown as ReturnType<typeof useIntegrationApprovals>);
     vi.mocked(useIntegrationActivityAudit).mockReturnValue({ data: undefined, isLoading: false } as unknown as ReturnType<typeof useIntegrationActivityAudit>);
@@ -99,17 +97,59 @@ describe('IntegrationDashboard — honest state (post-truth-gap fix)', () => {
 
     renderWithProviders(<IntegrationDashboard />);
 
-    // The four fetch-driven cards must NOT display a fake "0" value.
     expect(screen.queryByText('0', { selector: 'p.text-xl' })).not.toBeInTheDocument();
 
-    // They must display an honest "—" em-dash marker.
     const emDashes = screen.getAllByText('—');
-    // 4 originally-honest "—" cards + 4 newly-honest "—" cards = 8 minimum.
     expect(emDashes.length).toBeGreaterThanOrEqual(8);
 
-    // MOCK badges must be visible on the 4 fetch-failing cards
-    // (in addition to the 4 always-honest cards).
     const mockBadges = screen.getAllByText('MOCK');
     expect(mockBadges.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('shows em-dash + MOCK for shell-empty activity/reconciliation arrays (not fake "0")', () => {
+    vi.mocked(useIntegrationNotifications).mockReturnValue({ data: [{ id: 'n1', isMock: false }], isLoading: false } as unknown as ReturnType<typeof useIntegrationNotifications>);
+    vi.mocked(useIntegrationApprovals).mockReturnValue({
+      data: [{
+        id: 'a1',
+        isMock: false,
+        recordType: 'PATIENT_MERGE',
+        riskLevel: 'MEDIUM',
+        status: 'PENDING',
+        sourceDomain: 'Clinical',
+        requester: 'Dr. Smith',
+      }],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useIntegrationApprovals>);
+    vi.mocked(useIntegrationActivityAudit).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationActivityAudit>);
+    vi.mocked(useIntegrationReconciliation).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationReconciliation>);
+
+    renderWithProviders(<IntegrationDashboard />);
+
+    const kpiValues = Array.from(document.querySelectorAll('p.text-xl')).map((el) => el.textContent);
+    expect(kpiValues.filter((v) => v === '0')).toHaveLength(0);
+
+    expect(screen.getByText('Activity Events').closest('div')?.parentElement).toHaveTextContent('—');
+    expect(screen.getByText('Reconciliation Issues').closest('div')?.parentElement).toHaveTextContent('—');
+
+    const activityCard = screen.getByText('Activity Events').closest('.col-span-12');
+    const reconciliationCard = screen.getByText('Reconciliation Issues').closest('.col-span-12');
+    expect(activityCard).toHaveTextContent('MOCK');
+    expect(reconciliationCard).toHaveTextContent('MOCK');
+  });
+
+  it('preserves real zero counts for live notifications/approvals when arrays are empty', () => {
+    vi.mocked(useIntegrationNotifications).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationNotifications>);
+    vi.mocked(useIntegrationApprovals).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationApprovals>);
+    vi.mocked(useIntegrationActivityAudit).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationActivityAudit>);
+    vi.mocked(useIntegrationReconciliation).mockReturnValue({ data: [], isLoading: false } as unknown as ReturnType<typeof useIntegrationReconciliation>);
+
+    renderWithProviders(<IntegrationDashboard />);
+
+    const notificationsCard = screen.getByText('Notifications Pending').closest('.col-span-12');
+    const approvalsCard = screen.getByText('Approvals Pending').closest('.col-span-12');
+    expect(notificationsCard).toHaveTextContent('0');
+    expect(notificationsCard).not.toHaveTextContent('MOCK');
+    expect(approvalsCard).toHaveTextContent('0');
+    expect(approvalsCard).not.toHaveTextContent('MOCK');
   });
 });
