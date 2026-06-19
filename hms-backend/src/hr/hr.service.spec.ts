@@ -473,10 +473,7 @@ describe('HrService', () => {
         { id: 'ps-2' },
       ]);
 
-      const result = await service.listPayslips(
-        mockTenantId,
-        superAdminUser,
-      );
+      const result = await service.listPayslips(mockTenantId, superAdminUser);
 
       expect(prisma.payslip.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

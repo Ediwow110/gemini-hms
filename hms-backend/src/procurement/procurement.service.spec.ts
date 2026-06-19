@@ -218,7 +218,11 @@ describe('ProcurementService', () => {
   describe('listPurchaseOrders', () => {
     it('should return tenant-wide for Super Admin with supplier+PR relations', async () => {
       (prisma.purchaseOrder.findMany as jest.Mock).mockResolvedValue([
-        { id: 'po-1', supplier: { id: 'sup-1' }, purchaseRequest: { id: 'pr-1' } },
+        {
+          id: 'po-1',
+          supplier: { id: 'sup-1' },
+          purchaseRequest: { id: 'pr-1' },
+        },
       ]);
 
       const result = await service.listPurchaseOrders(superAdminUser);

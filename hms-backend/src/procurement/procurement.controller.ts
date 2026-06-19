@@ -57,7 +57,10 @@ export class ProcurementController {
     @Query('status') status?: string,
     @Query('branchId') branchId?: string,
   ) {
-    return this.procurementService.listPurchaseRequests(user, { status, branchId });
+    return this.procurementService.listPurchaseRequests(user, {
+      status,
+      branchId,
+    });
   }
 
   @Patch('purchase-requests/:id/approve')
@@ -85,7 +88,10 @@ export class ProcurementController {
     @Query('status') status?: string,
     @Query('branchId') branchId?: string,
   ) {
-    return this.procurementService.listPurchaseOrders(user, { status, branchId });
+    return this.procurementService.listPurchaseOrders(user, {
+      status,
+      branchId,
+    });
   }
 
   @Post('purchase-orders/:id/receive')

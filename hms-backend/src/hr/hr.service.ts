@@ -285,10 +285,7 @@ export class HrService {
     }
     if (filters.employeeId) {
       // Doctor/Nurse cannot widen scope via employeeId filter; self-only is enforced.
-      if (
-        doctorOrNurseSelfId &&
-        filters.employeeId !== doctorOrNurseSelfId
-      ) {
+      if (doctorOrNurseSelfId && filters.employeeId !== doctorOrNurseSelfId) {
         throw new ForbiddenException(
           'Doctor/Nurse can only view their own leave requests',
         );

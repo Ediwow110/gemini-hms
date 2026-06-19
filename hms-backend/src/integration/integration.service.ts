@@ -54,7 +54,9 @@ export class IntegrationBridgesService {
     private readonly approvalsService: ApprovalsService,
   ) {}
 
-  async listNotifications(user: RequestUser): Promise<IntegrationNotificationDto[]> {
+  async listNotifications(
+    user: RequestUser,
+  ): Promise<IntegrationNotificationDto[]> {
     const rows = await this.notificationsService.listNotifications(
       user.tenantId,
       user.userId ?? '',
