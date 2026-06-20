@@ -285,7 +285,12 @@ describe('IntegrationBridgesService — thin wrappers', () => {
 
   describe('listActivityAudit', () => {
     it('re-uses AuditService.findAll with JWT-derived tenant and roles', async () => {
-      audit.findAll.mockResolvedValueOnce({ data: [], total: 0, page: 1, pageSize: 50 });
+      audit.findAll.mockResolvedValueOnce({
+        data: [],
+        total: 0,
+        page: 1,
+        pageSize: 50,
+      });
       await service.listActivityAudit(baseUser);
       expect(audit.findAll).toHaveBeenCalledWith(
         tenantId,
@@ -333,7 +338,12 @@ describe('IntegrationBridgesService — thin wrappers', () => {
     });
 
     it('returns empty array when audit log has no rows', async () => {
-      audit.findAll.mockResolvedValueOnce({ data: [], total: 0, page: 1, pageSize: 50 });
+      audit.findAll.mockResolvedValueOnce({
+        data: [],
+        total: 0,
+        page: 1,
+        pageSize: 50,
+      });
       await expect(service.listActivityAudit(baseUser)).resolves.toEqual([]);
     });
   });

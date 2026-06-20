@@ -131,12 +131,10 @@ describe('Advanced Analytics Module (e2e)', () => {
 
     await request(app.getHttpServer())
       .get('/api/v1/analytics/occupancy')
-      .expect(200)
+      .expect(501)
       .expect((res) => {
-        expect(res.body.tenantId).toBe(tenantId);
-        expect(res.body.totalBeds).toBe(150);
-        expect(res.body.occupiedBeds).toBe(68);
-        expect(res.body.utilizationRate).toBe(0.4533);
+        expect(res.body.message).toContain('Not Implemented');
+        expect(res.body.message).toContain('Bed occupancy');
       });
   });
 

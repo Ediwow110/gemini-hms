@@ -240,17 +240,17 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
 
     await request(app.getHttpServer())
       .post(`/api/v1/clinical/erx/transmit/${prescriptionId}`)
-      .expect(201)
+      .expect(501)
       .expect((res) => {
-        expect(res.body.surescriptsReference).toBeDefined();
-        expect(res.body.status).toBe('TRANSMITTED');
+        expect(res.body.message).toContain('Not Implemented');
+        expect(res.body.message).toContain('NCPDP');
       });
 
     await request(app.getHttpServer())
       .get(`/api/v1/clinical/erx/transmission/NCPDP-TX-12345/status`)
-      .expect(200)
+      .expect(501)
       .expect((res) => {
-        expect(res.body.status).toBeDefined();
+        expect(res.body.message).toContain('Not Implemented');
       });
   });
 

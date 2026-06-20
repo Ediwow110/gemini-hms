@@ -62,8 +62,8 @@ export class AnalyticsService {
     // Returning fabricated numbers would be deceptive on the live /api/v1/analytics/occupancy contract.
     throw new NotImplementedException(
       'Bed occupancy analytics is not yet implemented with real data. ' +
-      'No branch bed counts or live occupancy tracking exist in the current schema. ' +
-      'Do not rely on this endpoint until real data sources are wired.',
+        'No branch bed counts or live occupancy tracking exist in the current schema. ' +
+        'Do not rely on this endpoint until real data sources are wired.',
     );
   }
 

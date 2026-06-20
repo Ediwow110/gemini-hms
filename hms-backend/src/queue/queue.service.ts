@@ -5,10 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JoinQueueDto, UpdateQueueStatusDto } from './dto/queue.dto';
-import {
-  WorklistEntryDto,
-  WorklistPatientDto,
-} from './dto/worklist-entry.dto';
+import { WorklistEntryDto, WorklistPatientDto } from './dto/worklist-entry.dto';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
 

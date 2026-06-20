@@ -98,7 +98,9 @@ export class RadiologyService {
     }
 
     if (order.radiologyReport) {
-      throw new ConflictException('Radiology report already finalized for this order');
+      throw new ConflictException(
+        'Radiology report already finalized for this order',
+      );
     }
 
     const interpretation = dto.interpretation.trim();
@@ -171,19 +173,14 @@ export class RadiologyService {
       .join(', ');
 
     const procedure =
-      procedureFromItems ||
-      order.clinicalIndication?.trim() ||
-      'Imaging study';
+      procedureFromItems || order.clinicalIndication?.trim() || 'Imaging study';
 
     const priority: RadiologyOrderDto['priority'] =
       order.priority === 'STAT' ? 'STAT' : 'ROUTINE';
 
-    const requestedAt = (
-      order.requestedAt ?? order.createdAt
-    ).toISOString();
+    const requestedAt = (order.requestedAt ?? order.createdAt).toISOString();
 
-    const isFinalized =
-      order.radiologyReport?.status === 'FINALIZED';
+    const isFinalized = order.radiologyReport?.status === 'FINALIZED';
 
     return {
       id: order.id,
