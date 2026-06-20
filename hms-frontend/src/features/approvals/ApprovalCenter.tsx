@@ -28,10 +28,12 @@ export const ApprovalCenter = () => {
   const [approvalAuthChecked, setApprovalAuthChecked] = useState(false);
   const [approvalAuthError, setApprovalAuthError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
   const currentUser = useUser();
 
   const fetchRequests = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
+    setListError(null);
     try {
       const data = await approvalService.getRequests();
       setRequests(data);
@@ -42,6 +44,8 @@ export const ApprovalCenter = () => {
       }
     } catch (error) {
       console.error("Failed to fetch approvals:", error);
+      setListError('Failed to load approval requests. Please retry.');
+      setRequests([]);
     } finally {
       setIsLoading(false);
     }
@@ -60,6 +64,10 @@ export const ApprovalCenter = () => {
     resetApprovalConfirmation();
     setActionError(null);
     setModals({ ...modals, confirm: false });
+  };
+
+  const handleRefresh = () => {
+    void fetchRequests();
   };
 
   const openApprovalModal = () => {
@@ -110,12 +118,16 @@ export const ApprovalCenter = () => {
     void handleAction("Approved per policy");
   };
 
+  const handleRetry = () => {
+    void fetchRequests(true);
+  };
+
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       <div className="flex justify-between items-center">
         <PageHeader title="Approval Center" description="Review and authorize high-risk clinical and operational requests." />
         <button 
-          onClick={() => fetchRequests()} 
+          onClick={handleRefresh}
           disabled={isLoading}
           className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
           title="Refresh"
@@ -124,6 +136,11 @@ export const ApprovalCenter = () => {
         </button>
       </div>
       
+      {listError && (
+        <div role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+          {listError}
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 card overflow-hidden animate-slide-up stagger-1">
           {isLoading && requests.length === 0 ? (
@@ -286,14 +303,17 @@ export const ApprovalCenter = () => {
                 )}
               </div>
             </div>
-          ) : (
-            <div className="py-12 text-center">
-              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <ShieldCheck className="h-6 w-6 text-slate-400" />
-              </div>
-              <p className="text-sm font-medium text-slate-500">Select a request to review details and take action.</p>
-            </div>
+      ) : (
+        <div className="py-20 flex flex-col items-center justify-center text-slate-400">
+          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <ShieldCheck className="h-8 w-8 text-slate-300" />
+          </div>
+          <p className="font-medium">No pending approval requests.</p>
+          {listError && (
+            <button onClick={handleRetry} className="mt-3 text-xs text-indigo-600 underline">Retry</button>
           )}
+        </div>
+      )}
         </div>
       </div>
 

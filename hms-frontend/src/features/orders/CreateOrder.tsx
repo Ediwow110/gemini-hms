@@ -27,15 +27,19 @@ export const CreateOrder = () => {
   const [isLoadingServices, setIsLoadingServices] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [servicesError, setServicesError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchServices = async () => {
       setIsLoadingServices(true);
+      setServicesError(null);
       try {
         const res = await apiClient.get('/v1/catalog');
         setServices(res.data);
       } catch (err) {
         console.error("Failed to fetch services:", err);
+        setServicesError('Failed to load services catalog. Please retry.');
+        setServices([]);
       } finally {
         setIsLoadingServices(false);
       }
@@ -69,6 +73,23 @@ export const CreateOrder = () => {
       console.error("Patient search failed:", err);
       setPatient(null);
     }
+  };
+
+  const handleRetryServices = () => {
+    void (async () => {
+      setIsLoadingServices(true);
+      setServicesError(null);
+      try {
+        const res = await apiClient.get('/v1/catalog');
+        setServices(res.data);
+      } catch (err) {
+        console.error("Failed to fetch services:", err);
+        setServicesError('Failed to load services catalog. Please retry.');
+        setServices([]);
+      } finally {
+        setIsLoadingServices(false);
+      }
+    })();
   };
 
   const addService = (service: Service) => {
@@ -137,6 +158,11 @@ export const CreateOrder = () => {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input className="input w-full pl-10" onChange={handleSearch} placeholder="Search by name or ID..." />
         </div>
+        {servicesError && (
+          <div role="alert" className="mt-2 text-xs text-rose-600">
+            {servicesError} <button type="button" onClick={handleRetryServices} className="underline ml-1">Retry</button>
+          </div>
+        )}
       </div>
 
       {patient && (
