@@ -40,13 +40,20 @@ test.describe('production readiness smoke', () => {
     await page.locator('input[name="email"]').fill('admin@hospital.com');
     await page.locator('input[name="password"]').fill(DEFAULT_PASSWORD);
 
+    // Defensive login: wait for any /api/v1/auth/login response with an
+    // explicit 20s timeout, then assert the status. The previous form used
+    // `waitForResponse(... && resp.status() === 200)` which has no timeout
+    // for non-200 responses, so a 401/429/etc caused the test to wait the
+    // full test timeout (60min) and the GHA job to be cancelled at 25min
+    // with no error output. See: PR #229 Browser Smoke hang.
     const [loginResponse] = await Promise.all([
       page.waitForResponse(
-        (resp) => resp.url().includes('/api/v1/auth/login') && resp.status() === 200,
+        (resp) => resp.url().includes('/api/v1/auth/login'),
+        { timeout: 20_000 },
       ),
       page.locator('button[type="submit"]').click(),
     ]);
-    expect(loginResponse.ok()).toBeTruthy();
+    expect(loginResponse.status(), `Login status (url=${loginResponse.url()})`).toBe(200);
 
     await page.waitForURL('**/admin', { timeout: 20_000 });
     await assertPageNotBlank(page);
