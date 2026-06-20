@@ -35,7 +35,8 @@ export const ApprovalCenter = () => {
     if (showLoading) setIsLoading(true);
     setListError(null);
     try {
-      const data = await approvalService.getRequests();
+      // Explicit first-page fetch; server now caps at 200 to prevent unbounded lists.
+      const data = await approvalService.getRequests({ page: 1, pageSize: 50 });
       setRequests(data);
       // Update selected reference if it exists
       if (selected) {

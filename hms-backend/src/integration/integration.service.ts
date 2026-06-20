@@ -89,11 +89,14 @@ export class IntegrationBridgesService {
       ['Super Admin', 'Compliance Officer', 'Tenant Admin'].includes(r),
     );
 
+    // SCALABILITY: explicitly request first page (bounded by service cap at 200).
     const rows = await this.approvalsService.getRequests(
       user.tenantId,
       user.branchId,
       isSuperAdmin,
       isTenantWide,
+      1,
+      50,
     );
 
     return rows.map((r) => this.toIntegrationApproval(r));

@@ -317,6 +317,7 @@ model Encounter {
 
   @@index([tenantId, branchId, status, encounteredAt])
   @@index([tenantId, patientId, status])
+  @@index([tenantId, archivedAt, createdAt])
 
   vitals             Vitals[]
   diagnoses          Diagnosis[]
@@ -497,6 +498,7 @@ model Patient {
 
   @@index([tenantId, status, createdAt])
   @@index([tenantId, patientNumber])
+  @@index([tenantId, archivedAt, createdAt])
 
   tenant          Tenant           @relation(fields: [tenantId], references: [id])
   orders          Order[]
@@ -728,6 +730,7 @@ model Invoice {
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@index([tenantId, status, createdAt])
+  @@index([tenantId, archivedAt, createdAt])
   @@map("invoices")
 }
 
@@ -767,6 +770,7 @@ model Payment {
   @@unique([tenantId, id, branchId])
   @@index([tenantId, cashierSessionId, status])
   @@index([tenantId, createdAt])
+  @@index([tenantId, archivedAt, createdAt])
   @@map("payments")
 }
 
@@ -835,6 +839,7 @@ model LabResult {
 
   @@index([tenantId, isCritical, criticalStatus])
   @@index([tenantId, status, archivedAt])
+  @@index([tenantId, archivedAt, createdAt])
   @@map("lab_results")
 }
 

@@ -167,6 +167,8 @@ describe('IntegrationBridgesService — thin wrappers', () => {
         undefined,
         false,
         false,
+        1,
+        50,
       );
     });
 
@@ -182,6 +184,8 @@ describe('IntegrationBridgesService — thin wrappers', () => {
         undefined,
         true,
         true,
+        1,
+        50,
       );
     });
 
@@ -197,6 +201,8 @@ describe('IntegrationBridgesService — thin wrappers', () => {
         undefined,
         false,
         true,
+        1,
+        50,
       );
     });
 
@@ -279,6 +285,8 @@ describe('IntegrationBridgesService — thin wrappers', () => {
         undefined,
         false,
         false,
+        1,
+        50,
       );
     });
   });

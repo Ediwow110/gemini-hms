@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApprovalsService } from './approvals.service';
@@ -59,12 +60,18 @@ export class ApprovalsController {
     @GetUser('tenantId') tenantId: string,
     @GetUser('branchId') branchId: string | undefined,
     @GetUser('roles') roles: string[] | undefined,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
+    const p = page ? parseInt(page, 10) : 1;
+    const ps = pageSize ? parseInt(pageSize, 10) : 50;
     return this.approvalsService.getRequests(
       tenantId,
       branchId,
       roles?.includes('Super Admin') ?? false,
       this.isTenantWideUser(roles),
+      Number.isFinite(p) && p > 0 ? p : 1,
+      Number.isFinite(ps) && ps > 0 ? ps : 50,
     );
   }
 
