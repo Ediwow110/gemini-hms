@@ -55,7 +55,14 @@ test.describe('production readiness smoke', () => {
     ]);
     expect(loginResponse.status(), `Login status (url=${loginResponse.url()})`).toBe(200);
 
-    await page.waitForURL('**/admin', { timeout: 20_000 });
+    // Super Admin's default portal is /admin/executive (per
+    // role-portal-resolver.ts line 42, with passing unit test at
+    // role-portal-resolver.test.ts:25). The previous glob '**/admin'
+    // matched only URLs whose final segment is 'admin' and missed
+    // /admin/executive. Accept either /admin or any /admin/* sub-path
+    // while still rejecting unrelated paths (e.g. /patient, /admin-stuff).
+    // See: PR #229 Browser Smoke URL-glob fix.
+    await page.waitForURL(/\/admin(\/|$)/, { timeout: 20_000 });
     await assertPageNotBlank(page);
 
     for (const route of SMOKE_ROUTES) {
