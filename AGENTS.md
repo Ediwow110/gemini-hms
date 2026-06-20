@@ -429,3 +429,54 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - `docker-compose.staging.yml` — **NEW**: 3-service staging compose with isolated volume/network
 - `hms-backend/scripts/remote-deploy-staging.sh` — **NEW**: Staging deploy script (all staging.yml references)
 - `docs/infrastructure/staging-provisioning-handoff.md` — **MODIFIED**: SSH secrets renamed to STAGING_SSH_*
+
+### This Session (Final Local Branch Lane — 3 Commits, Branch Done for Mandatory Local Hardening)
+
+**Note on scope:** The user prompted with "find exactly one last meaningful local lane — but only if it is a real, source-proven issue. If no such lane exists, stop honestly and say the branch is done." The audit found 1 priority-1 live-route correctness bug and fixed it (`ae38cca`). The branch is now **done for mandatory local hardening before staging, with a small set of explicitly deferred lower-priority live-route honesty issues still known.** It is NOT "perfect" and NOT "nothing left at all." The deferred items are documented below.
+
+#### Commit `152a861e` — Backend warm-start profiling + startup reliability fix
+- `hms-backend/nest-cli.json` — `deleteOutDir: true` → `deleteOutDir: false`. Preserves `dist/` and `tsconfig.build.tsbuildinfo` across restarts, so TypeScript's `createIncrementalProgram` reuses incremental cache. **Warm-start: 22.3s → 6.8s (3.28× speedup).** Cold-start (wiped dist): 22.3s → 19.1s.
+- `start-dev.ps1` — `Test-Port` (which threw on 4xx and reported DOWN even when port was listening) replaced with `Test-BackendReady` (port-listen via `Test-NetConnection` + `GET /health` 200) and `Test-FrontendReady` (same pattern, <500). Readiness timeout 60s → 120s with explicit failure message. `Stop-PortOwner` pre-cleanup of stale port owners preserved from prior uncommitted changes. `aria-label="Close mobile menu"` added to mobile close button.
+
+#### Commit `19398bc1` — Top-right user control honest + safe
+- `hms-frontend/src/app/AppShell.tsx` — Replaced the misleading `<button onClick={logout}>` avatar cluster with: (1) `<div data-testid="user-control">` containing identity divs (email, role, avatar with `aria-hidden="true"`), (2) explicit `<button data-testid="logout-button" aria-label="Sign out">` with `LogOut` icon + visible "Sign out" label, (3) inline `role="alertdialog"` confirmation bar that requires explicit Confirm before `logout()` fires. The avatar no longer triggers session termination on accidental click.
+- `hms-frontend/src/app/__tests__/AppShell.test.tsx` — **NEW** 14 tests covering: identity rendering, explicit Sign out button visibility, avatar-click safety (regression guard), confirmation bar open/close, cancel path, confirm path, mobile sidebar open/close (3 tests), quick-create modal open/close (3 tests).
+
+#### Commit `ae38cca` — Final lane: `/patients/:id` hardcoded identity → honest stub
+- **Bug (source-confirmed):** `hms-frontend/src/features/patients/PatientProfile.tsx` line 12 (pre-fix) hardcoded `const patient = { id: patientId ?? "P001", name: "John Doe", age: 45, gender: "M", category: "Regular", balance: 50 }`. The page is the live route at `App.tsx:279` → `path: 'patients/:id'` with `patient.view` permission. **Any clinician navigating to `/patients/{any-id}` saw fabricated identity presented as real.** Same class of bug as the `b5df7498` admin mega-lane; that lane missed `/patients/:id` because the hardcoded data was in a component file (not a dedicated admin page) and the live-wired `PatientList` at `/patients` made the detail view appear to be live by association.
+- `hms-frontend/src/features/patients/PatientProfile.tsx` — Wrapped in `HmsDashboardShell` + `HmsAuditFooter`; replaced Overview with `HmsDataUnavailable` (sectionName="Patient Demographics", expectedApi="GET /api/v1/patients/:id", expectedPhase="next release"); added body-level amber notice (data-testid="patient-profile-shell-notice") naming the patient ID from the URL and explicitly disclaiming fabricated identity; preserved the genuinely-live Notes tab; removed unused `PatientIdentityHeader` import.
+- `hms-frontend/src/features/patients/__tests__/PatientProfile.test.tsx` — **NEW** 7 tests: no hardcoded identity (regression guard against "John Doe"/45/M/Regular/$50), honest notice present, patientId in notice, HmsDataUnavailable on Overview, audit footer present, Notes tab live, no fabricated content in unwired tabs. TDD red-green verified: reverting PatientProfile.tsx to HEAD → 6/7 fail; restoring fix → 7/7 pass.
+
+**Validation across all 3 commits:**
+- Frontend `npx tsc --noEmit` → 0 errors
+- Frontend lint on touched files → 0 errors; full lint → 0 errors, 3 pre-existing warnings in `NotificationCenter.tsx` + `PatientDashboard.test.tsx` (untouched)
+- Frontend full vitest suite: **124/124 files, 816/816 tests** (was 122/795 in pre-session baseline; +2 files, +21 tests, 0 regressions)
+- Backend `npx tsc --noEmit` → 0 errors (unchanged)
+- `git diff --check` → clean on all 3 commits
+
+### Explicitly Deferred (lower-priority live-route honesty issues, real but not blockers)
+
+The senior reviewer (`ACCEPT WITH NITS`) and the user explicitly affirmed these do not outrank the completed lanes. They are real, source-confirmed, and remain known:
+
+1. **`/queue` (Queue.tsx)** — `App.tsx:281` mounts the page with `queue.view` permission. Lines 22-25 hardcode `{ num: "Q001", name: "John Doe", service: "CBC", status: "Waiting", time: "10 mins" }` and `{ num: "Q002", name: "Jane Smith", service: "X-Ray", status: "Calling", time: "2 mins" }` as `useState` initial. Smaller impact than per-id fabrication: it's a 2-row fake roster, not per-row per-id. Future honest-stub lane can apply the same `HmsDataUnavailable` + audit footer pattern used in `ae38cca`.
+2. **`/spatial` (SpatialConsole.tsx)** — `App.tsx:498` mounts the page with `it.system.view` permission. Line 38 renders hardcoded `<h3>John Doe (PAT-1)</h3>` and line 54 renders `Jane Smith (PAT-2)`. Line 19 has a `Simulate Impact Vector` button (a demo console pattern). Clearly a demo IT/operations preview, but lacks an honest notice. Future lane can add `IntegrationShellNotice`-style disclosure.
+3. **`/billing/cashier-closing` (CashierClosing.tsx)** — `App.tsx:286` mounts with `allowedRoles={['Cashier']}`. Line 132 renders a `John Doe` preview row, BUT line 39-44 already carries an amber `Legacy Page — Redirects to Live Cashier Session` banner that honestly discloses the redirect. Not actively misleading.
+
+**Why deferred ≠ ignored:** The user said "exactly one last meaningful local lane" and the priority-1 bug (`/patients/:id`) is the worst of the four (per-id fabrication of identity for any patient ID). The other three are real but lower user-harm and lower production-readiness value. They can be honest-stub lanes in a future PR, or deprecated by removing the routes from `App.tsx`.
+
+### Updated Branch State Conclusion (Corrected from Prior Turn)
+
+- **All high-value local production-readiness and hardening lanes selected in this branch have been completed and committed locally.**
+- **Startup reliability/hardening, approvals hardening, retention index prep, topbar logout safety, and patient-profile honesty are all preserved in commit history.**
+- **The tracked tree is clean.**
+- **The next blocking phase for real deployment confidence is still staging/environment provisioning and verification.**
+
+**Fresh direct answers (per reviewer framing):**
+- Is the branch fully perfect? **No.**
+- Is the branch done for mandatory local hardening before staging? **Yes.**
+- What is next? **Merge/push path and then Platform/DevOps staging provisioning + real environment verification.**
+
+**Commits added in this session (3):**
+- `152a861e perf(dev): cut backend warm-start from 22s to 7s + reliable readiness signal`
+- `19398bc1 fix(ui): make top-right user control explicit + 2-step sign-out confirm`
+- `ae38cca fix(ui): replace hardcoded patient identity on /patients/:id with honest stub`
