@@ -93,15 +93,14 @@ export const PatientBillingPage = () => {
   const { data: handoffData } = usePatientBillingHandoff(patientId);
   const hasHandoff = !!handoffData;
 
-  const isRealUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(patientId);
-  const patientName = invoice?.order?.patient 
-    ? (isRealUuid ? '[REDACTED] (Access Restricted)' : `${invoice.order.patient.firstName} ${invoice.order.patient.lastName}`)
+  const patientName = invoice?.order?.patient
+    ? `${invoice.order.patient.firstName || '[REDACTED]'} ${invoice.order.patient.lastName || '[REDACTED]'}`
     : 'Walk-in Patient';
 
   const patient = {
     name: patientName,
-    mrn: invoice?.order?.patient?.patientNumber 
-      ? (isRealUuid ? '[REDACTED]' : invoice.order.patient.patientNumber) 
+    mrn: invoice?.order?.patient?.patientNumber
+      ? invoice.order.patient.patientNumber || '[REDACTED]'
       : 'WALK-IN',
     age: 'N/A',
     gender: 'N/A',

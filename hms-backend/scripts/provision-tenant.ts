@@ -168,7 +168,7 @@ async function main() {
           'billing.payment.create', 'billing.refund.request', 'billing.claim.view'
         ],
         'Nurse': [
-          'patient.view', 'queue.view', 'queue.manage', 'encounter.create', 'encounter.view'
+          'patient.view', 'patient.create', 'patient.update', 'queue.view', 'queue.manage', 'encounter.create', 'encounter.view'
         ]
       };
 

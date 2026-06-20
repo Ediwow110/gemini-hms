@@ -112,7 +112,7 @@ describe('ClinicalWorkflowService.saveDraftSOAP', () => {
   beforeEach(async () => {
     prisma = {
       $transaction: jest.fn(async (cb: any) => cb(prisma)),
-      encounter: { findUnique: jest.fn() },
+      encounter: { findUnique: jest.fn(), findFirst: jest.fn() },
       clinicalNote: {
         findFirst: jest.fn(),
         create: jest.fn(),
@@ -592,7 +592,7 @@ describe('ClinicalWorkflowService.saveDraftSOAP', () => {
     });
 
     it('should reject cross-branch fetch when encounter branch differs from user branch', async () => {
-      prisma.encounter.findUnique.mockResolvedValue(
+      prisma.encounter.findFirst.mockResolvedValue(
         mockEncounter({ branchId: 'other-branch' }),
       );
       await expect(
@@ -601,7 +601,7 @@ describe('ClinicalWorkflowService.saveDraftSOAP', () => {
     });
 
     it('should reject when encounter does not belong to patientId', async () => {
-      prisma.encounter.findUnique.mockResolvedValue(
+      prisma.encounter.findFirst.mockResolvedValue(
         mockEncounter({ patientId: 'other-patient' }),
       );
       await expect(
@@ -610,14 +610,14 @@ describe('ClinicalWorkflowService.saveDraftSOAP', () => {
     });
 
     it('should reject when encounter does not exist', async () => {
-      prisma.encounter.findUnique.mockResolvedValue(null);
+      prisma.encounter.findFirst.mockResolvedValue(null);
       await expect(
         service.getDraftSOAP(patientId, encounterId, tenantId, doctorUser),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should return null when ClinicalNote does not exist', async () => {
-      prisma.encounter.findUnique.mockResolvedValue(mockEncounter());
+      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
       prisma.clinicalNote.findFirst.mockResolvedValue(null);
 
       const result = await service.getDraftSOAP(
@@ -630,7 +630,7 @@ describe('ClinicalWorkflowService.saveDraftSOAP', () => {
     });
 
     it('should return mapped SoapDraftSummaryDto when ClinicalNote exists', async () => {
-      prisma.encounter.findUnique.mockResolvedValue(mockEncounter());
+      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
       prisma.clinicalNote.findFirst.mockResolvedValue(
         mockClinicalNote({
           subjective: 'Symptom check',
@@ -651,7 +651,7 @@ describe('ClinicalWorkflowService.saveDraftSOAP', () => {
     });
 
     it('should support Super Admin bypass of branch scoping', async () => {
-      prisma.encounter.findUnique.mockResolvedValue(
+      prisma.encounter.findFirst.mockResolvedValue(
         mockEncounter({ branchId: 'other-branch' }),
       );
       prisma.clinicalNote.findFirst.mockResolvedValue(mockClinicalNote());

@@ -7,7 +7,8 @@ import {
   Menu,
   X,
   User,
-  Clock
+  Clock,
+  LogOut
 } from 'lucide-react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useCallback, memo, useEffect } from 'react';
@@ -25,6 +26,7 @@ export const AppShell = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const user = useUser();
   const { logout } = useAuth();
   const { hasPermission, isSuperAdmin } = usePermissions();
@@ -77,7 +79,7 @@ export const AppShell = () => {
                 </div>
                 <span className="font-bold text-lg text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>HMS Core</span>
               </div>
-              <button onClick={closeMobileMenu} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+              <button onClick={closeMobileMenu} aria-label="Close mobile menu" className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
                 <X className="h-5 w-5 text-slate-500" />
               </button>
             </div>
@@ -170,24 +172,100 @@ export const AppShell = () => {
 
             <div className="h-7 w-px bg-slate-200 mx-1 hidden sm:block" />
 
-            {/* User */}
-            <button 
-              type="button"
-              onClick={logout}
-              aria-label="Logout"
-              className="flex items-center gap-3 pl-1 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-xl bg-transparent border-0 text-left"
-              title="Click to logout"
+            {/* User identity + explicit Sign out */}
+            <div
+              data-testid="user-control"
+              className="flex items-center gap-3 pl-1"
+              title={user?.email || 'Signed in'}
             >
               <div className="hidden sm:block">
-                <p className="text-sm font-semibold text-slate-900 leading-none group-hover:text-indigo-700 transition-colors">{user?.email}</p>
-                <p className="text-caption mt-0.5">{user?.roles?.[0]}</p>
+                <p
+                  data-testid="user-email"
+                  className="text-sm font-semibold text-slate-900 leading-none"
+                >
+                  {user?.email}
+                </p>
+                <p
+                  data-testid="user-role"
+                  className="text-caption mt-0.5"
+                >
+                  {user?.roles?.[0]}
+                </p>
               </div>
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-indigo-200/50 group-hover:shadow-lg group-hover:shadow-indigo-300/50 transition-all duration-200 uppercase">
+              <div
+                data-testid="user-avatar"
+                aria-hidden="true"
+                className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-indigo-200/50 uppercase"
+              >
                 {user?.email?.[0] || 'U'}
               </div>
-            </button>
+
+              {/* Explicit sign-out button — no longer a misleading avatar click target.
+                  Clicking opens an inline confirmation bar; only Confirm terminates the session. */}
+              <button
+                type="button"
+                data-testid="logout-button"
+                onClick={() => setShowLogoutConfirm(true)}
+                aria-label="Sign out"
+                className="ml-1 flex items-center gap-1.5 px-2.5 py-2 text-sm font-medium text-slate-700 hover:text-rose-700 hover:bg-rose-50 rounded-xl border border-slate-200/80 hover:border-rose-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            </div>
           </div>
         </header>
+
+        {/* Logout confirmation bar — appears just under the topbar when user clicks Sign out.
+            Prevents the prior silent hard-logout from a single avatar click. */}
+        {showLogoutConfirm && (
+          <div
+            role="alertdialog"
+            aria-labelledby="logout-confirm-title"
+            aria-describedby="logout-confirm-body"
+            data-testid="logout-confirm-bar"
+            className="bg-rose-50 border-b border-rose-200 px-4 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+          >
+            <div className="flex items-start gap-2">
+              <LogOut className="h-5 w-5 text-rose-600 mt-0.5 shrink-0" aria-hidden="true" />
+              <div>
+                <p
+                  id="logout-confirm-title"
+                  className="text-sm font-semibold text-rose-900"
+                >
+                  Sign out of HMS?
+                </p>
+                <p
+                  id="logout-confirm-body"
+                  className="text-xs text-rose-800 mt-0.5"
+                >
+                  You will need to log in again to access patient records, orders, and audit logs.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <button
+                type="button"
+                data-testid="logout-cancel"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-testid="logout-confirm"
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  logout();
+                }}
+                className="px-3 py-1.5 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 shadow-sm"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">

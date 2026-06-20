@@ -37,8 +37,8 @@ export const AccessReviewsPage: React.FC = () => {
     (u, i, arr) => arr.findIndex(x => x.id === u.id) === i
   );
 
-  const handleActionComplete = (_userId: string, status: 'APPROVED' | 'REVOKED', notes: string) => {
-    alert(`Access review action logged: Account status updated to ${status}. Notes: "${notes || 'None'}"`);
+  const handleActionComplete = (_userId: string, status: 'APPROVED' | 'REVOKED') => {
+    console.warn(`[Compliance Notice] Access review action attempted: ${status} for user ${_userId}. This operation is currently read-only.`);
   };
 
   const pendingCount = allUsers.filter(u => u.status === 'PENDING').length;

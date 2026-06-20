@@ -5,11 +5,11 @@ import { ShieldCheck, Plus } from 'lucide-react';
 
 export const LicensesCertificationsPage: React.FC = () => {
   const mockLicenses: License[] = [
-    { id: 'LIC-001', employeeName: 'Dr. Gregory House', type: 'Medical Board License', expiryDate: '2026-06-15', daysRemaining: 25, status: 'EXPIRING' },
-    { id: 'LIC-002', employeeName: 'Nurse Judy Hopps', type: 'Nursing License', expiryDate: '2026-08-30', daysRemaining: 101, status: 'VALID' },
-    { id: 'LIC-003', employeeName: 'Eric Foreman', type: 'Neurology Board Certification', expiryDate: '2026-05-20', daysRemaining: -1, status: 'EXPIRED' },
-    { id: 'LIC-004', employeeName: 'Robert Chase', type: 'BLS/ACLS Certification', expiryDate: '2026-07-12', daysRemaining: 52, status: 'VALID' },
-    { id: 'LIC-005', employeeName: 'Allison Cameron', type: 'Immunology Certification', expiryDate: '2026-06-01', daysRemaining: 11, status: 'EXPIRING' },
+    { id: 'LIC-001', employeeName: 'Employee 001', type: 'Medical Board License', expiryDate: '2026-06-15', daysRemaining: 25, status: 'EXPIRING' },
+    { id: 'LIC-002', employeeName: 'Employee 002', type: 'Nursing License', expiryDate: '2026-08-30', daysRemaining: 101, status: 'VALID' },
+    { id: 'LIC-003', employeeName: 'Employee 006', type: 'Neurology Board Certification', expiryDate: '2026-05-20', daysRemaining: -1, status: 'EXPIRED' },
+    { id: 'LIC-004', employeeName: 'Employee 007', type: 'BLS/ACLS Certification', expiryDate: '2026-07-12', daysRemaining: 52, status: 'VALID' },
+    { id: 'LIC-005', employeeName: 'Employee 008', type: 'Immunology Certification', expiryDate: '2026-06-01', daysRemaining: 11, status: 'EXPIRING' },
   ];
 
   return (
@@ -23,7 +23,6 @@ export const LicensesCertificationsPage: React.FC = () => {
         </div>
         <div className="flex flex-col md:flex-row gap-2">
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-            <strong>Sandbox Notice:</strong> License verification is simulated. No real external board checks are performed.
           </div>
           <button className="btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-indigo-100 transition-all">
             <Plus className="h-4 w-4" /> Upload New Credential

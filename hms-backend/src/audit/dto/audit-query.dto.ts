@@ -39,6 +39,14 @@ export class AuditQueryDto {
   endDate?: string;
 
   @IsOptional()
+  @IsString()
+  /**
+   * Free-text search across eventKey, recordType, and userId fields.
+   * Uses Prisma `contains` (case-insensitive at DB level).
+   */
+  search?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

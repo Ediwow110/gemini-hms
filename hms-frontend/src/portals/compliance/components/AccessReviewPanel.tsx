@@ -155,20 +155,22 @@ export const AccessReviewPanel: React.FC<AccessReviewPanelProps> = ({ users, onA
               </div>
 
               <div className="p-3 bg-slate-50 border rounded-xl text-[10px] text-slate-500">
-                <strong>Attestation Signature:</strong> Reviewer actions are logged to compliance trails in-memory. No backend tenant role revocations occur automatically.
+                <strong>Attestation Notice:</strong> This interface is currently in read-only mode. Reviewer actions are not yet synchronized with the backend tenant role system. Please record certifications in the Official Compliance Log.
               </div>
             </div>
 
             <div className="mt-5 flex gap-2">
               <button 
                 onClick={() => handleAction('APPROVED')}
-                className="w-full btn bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                className="w-full btn bg-slate-200 text-slate-500 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 cursor-not-allowed opacity-70"
+                disabled
               >
                 <CheckCircle className="h-4 w-4" /> Approve
               </button>
               <button 
                 onClick={() => handleAction('REVOKED')}
-                className="w-full btn bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                className="w-full btn bg-slate-200 text-slate-500 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 cursor-not-allowed opacity-70"
+                disabled
               >
                 <ShieldAlert className="h-4 w-4" /> Revoke
               </button>

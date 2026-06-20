@@ -14,7 +14,7 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'patients/new', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'patients/:id', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'queue', requiredPermission: PERMISSIONS.QUEUE_VIEW, zone: 'staff', isBranchScoped: true },
-  { path: 'emr', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'emr', requiredPermission: PERMISSIONS.ENCOUNTER_UPDATE, zone: 'staff', isBranchScoped: true },
   
   // Telehealth (Accessible by Staff and Patients, Branch Scoped)
   { path: 'telehealth', requiredPermission: PERMISSIONS.PATIENT_VIEW, allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse', 'Patient'], isBranchScoped: true },
@@ -36,7 +36,7 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'claims', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'inventory', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'inventory/:id', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff', isBranchScoped: true },
-  { path: 'inventory/receiving', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'inventory/receiving', requiredPermission: PERMISSIONS.INVENTORY_RECEIVE, zone: 'staff', isBranchScoped: true },
   
   // Orders & Approvals (Staff, Branch Scoped)
   { path: 'orders/new', requiredPermission: PERMISSIONS.ORDER_CREATE, zone: 'staff', isBranchScoped: true },
@@ -47,7 +47,7 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'admin/users/:id', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   { path: 'admin/roles', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   { path: 'admin/roles/:id', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
-  { path: 'admin/patient-merges', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
+  { path: 'admin/patient-merges', requiredPermission: PERMISSIONS.PATIENT_MERGE_APPROVE, zone: 'staff' },
   { path: 'settings', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   
   // Reports & Logs (Staff)
@@ -146,7 +146,6 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'lab/validated', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
   { path: 'lab/released', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
   { path: 'lab/released/:patientId/:orderId', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/release', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
   { path: 'lab/critical-results', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
   { path: 'lab/turnaround', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
 

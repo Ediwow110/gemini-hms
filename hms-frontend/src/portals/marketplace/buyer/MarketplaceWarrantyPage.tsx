@@ -1,14 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MarketplaceShellNotice from './components/MarketplaceShellNotice';
 import WarrantyStatusCard, { Warranty } from './components/WarrantyStatusCard';
 import { ShieldCheck } from 'lucide-react';
 
 export const MarketplaceWarrantyPage: React.FC = () => {
-  const mockWarranties: Warranty[] = [
-    { id: 'WR-GE-882', item: 'GE Voluson E10 Ultrasound', expires: '2029-05-18', status: 'ACTIVE', coverage: 'Full Parts & Labor' },
-    { id: 'WR-RO-412', item: 'Roche cobas c 311', expires: '2028-10-12', status: 'ACTIVE', coverage: 'Standard Manufacturer' },
-    { id: 'WR-PH-991', item: 'Philips Affiniti 70', expires: '2026-06-30', status: 'EXPIRING_SOON', coverage: 'Full Comprehensive' },
-  ];
+  // Buyer warranty tracking for purchased marketplace items is not implemented in backend.
+  const [warranties] = useState<Warranty[]>([]);
 
   return (
     <div className="space-y-6">
@@ -22,7 +19,9 @@ export const MarketplaceWarrantyPage: React.FC = () => {
       <MarketplaceShellNotice />
 
       <div className="grid grid-cols-1 gap-4">
-        {mockWarranties.map((w) => (
+        {warranties.length === 0 ? (
+          <div className="p-6 text-sm text-slate-500 border rounded">No warranties tracked. Buyer marketplace warranty surfaces are prototype shell (no live backend data or actions).</div>
+        ) : warranties.map((w) => (
           <WarrantyStatusCard key={w.id} warranty={w} />
         ))}
       </div>

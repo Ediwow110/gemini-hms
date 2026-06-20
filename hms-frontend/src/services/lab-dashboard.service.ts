@@ -1,10 +1,9 @@
 import { apiClient } from '../lib/api';
-import { demoData } from '../demo-data/dashboard-demo.data';
-import type { 
-  PendingSpecimenDto, 
-  ReleasableResultDto, 
-  CriticalResultDto, 
-  TurnaroundSummaryDto 
+import type {
+  PendingSpecimenDto,
+  ReleasableResultDto,
+  CriticalResultDto,
+  TurnaroundSummaryDto
 } from './lab.service';
 
 export interface LabDashboardKpi {
@@ -87,8 +86,8 @@ export const labDashboardService = {
           { label: 'Released', value: completedCount },
           { label: 'Critical', value: criticalCount },
         ],
-        workloadDistribution: demoData.lab.workloadDistribution,
-        topRequestedTests: demoData.lab.topRequestedTests,
+        workloadDistribution: [],
+        topRequestedTests: [],
         longestPending: specimens
           .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
           .slice(0, 5)

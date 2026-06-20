@@ -142,4 +142,37 @@ describe('DoctorDashboard Runtime Tests', () => {
 
     expect(screen.getByText('No active patients in queue')).toBeInTheDocument();
   });
+
+  it('does not make Pending Triage navigate to the nurse-only triage route', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: {
+        branchId: 'branch-1',
+        activePatients: 2,
+        pendingTriage: 3,
+        waitingForDoctor: 4,
+        pendingLabResults: 1,
+        completedEncountersToday: 5,
+        timestamp: new Date(),
+        accessLabel: 'PUBLIC',
+        isReadOnly: true,
+      },
+    });
+
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: [],
+    });
+
+    render(
+      <TestWrapper>
+        <DoctorDashboard />
+      </TestWrapper>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Pending Triage')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Assigned Patients').closest('button')).not.toBeNull();
+    expect(screen.getByText('Pending Triage').closest('button')).toBeNull();
+  });
 });

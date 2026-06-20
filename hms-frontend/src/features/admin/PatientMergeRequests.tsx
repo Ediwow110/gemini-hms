@@ -1,27 +1,28 @@
 import { useState, useEffect } from "react";
-import { useUser } from "../../hooks/use-user";
 import { apiClient } from "../../lib/api";
 import { PageHeader } from "../../components/ui/page-header";
-import { 
-  GitMerge, 
-  User, 
-  ShieldAlert, 
-  Trash2, 
-  CheckCircle2, 
+import {
+  GitMerge,
+  User,
+  ShieldAlert,
+  Trash2,
+  CheckCircle2,
   XCircle,
   HelpCircle,
   AlertTriangle,
-  RotateCw
+  RotateCw,
 } from "lucide-react";
 
 interface MergeRequest {
   id: string;
-  sourceId: string;
-  targetId: string;
+  sourcePatientId: string;
+  targetPatientId: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
-  risk: "HIGH";
-  requestedBy: string;
+  requesterId: string;
+  reason: string;
+  remarks?: string | null;
   createdAt: string;
+  updatedAt: string;
   sourcePatient: {
     patientNumber: string;
     firstName: string;
@@ -36,68 +37,34 @@ interface MergeRequest {
   };
 }
 
+type ActionKind = "APPROVE" | "REJECT" | null;
+
+function extractErrorMessage(err: unknown, fallback: string): string {
+  const e = err as { response?: { data?: { message?: string } }; message?: string };
+  return e?.response?.data?.message || e?.message || fallback;
+}
+
 export const PatientMergeRequests = () => {
-  const user = useUser();
   const [requests, setRequests] = useState<MergeRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<MergeRequest | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  const [modalAction, setModalAction] = useState<ActionKind>(null);
+  const [modalText, setModalText] = useState("");
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const fetchMergeRequests = async () => {
     try {
-      const res = await apiClient.get("/v1/admin/patient-merges");
-      setRequests(res.data || []);
-    } catch {
-      // Fallback premium mocks
-      const mockList: MergeRequest[] = [
-        {
-          id: "MRG-401",
-          sourceId: "PAT-088",
-          targetId: "PAT-002",
-          status: "PENDING",
-          risk: "HIGH",
-          requestedBy: "Nurse Kelly",
-          createdAt: "2026-05-17 09:12 AM",
-          sourcePatient: {
-            patientNumber: "P-2026-088",
-            firstName: "Jannette",
-            lastName: "Smythe",
-            dob: "1982-08-14"
-          },
-          targetPatient: {
-            patientNumber: "P-2026-002",
-            firstName: "Jane",
-            lastName: "Smith",
-            dob: "1982-08-14"
-          }
-        },
-        {
-          id: "MRG-402",
-          sourceId: "PAT-112",
-          targetId: "PAT-044",
-          status: "PENDING",
-          risk: "HIGH",
-          requestedBy: "Dr. Gregory",
-          createdAt: "2026-05-16 11:45 AM",
-          sourcePatient: {
-            patientNumber: "P-2026-112",
-            firstName: "Robert",
-            lastName: "Chase",
-            dob: "1979-05-20"
-          },
-          targetPatient: {
-            patientNumber: "P-2026-044",
-            firstName: "Rob",
-            lastName: "Chace",
-            dob: "1979-05-18"
-          }
-        }
-      ];
-      setRequests(mockList);
-      if (mockList.length > 0) {
-        setSelectedRequest(mockList[0]);
-      }
+      const res = await apiClient.get("/v1/patients/merge-requests");
+      const list = (res.data?.data ?? []) as MergeRequest[];
+      setRequests(list);
+      setFetchError(null);
+    } catch (err: unknown) {
+      setFetchError(extractErrorMessage(err, "Failed to fetch merge requests."));
+      setRequests([]);
     }
   };
 
@@ -105,60 +72,141 @@ export const PatientMergeRequests = () => {
     void fetchMergeRequests();
   }, []);
 
-  const handleOpenConfirm = () => {
-    setConfirmText("");
-    setShowConfirmModal(true);
+  const openActionModal = (action: ActionKind) => {
+    if (!selectedRequest) return;
+    setActionError(null);
+    setActionSuccess(null);
+    setModalError(null);
+    setModalText("");
+    setModalAction(action);
   };
 
-  const handleExecuteMerge = async () => {
-    if (!selectedRequest || confirmText !== "MERGE") return;
-    setIsProcessing(true);
-    try {
-      await apiClient.post(`/v1/admin/patient-merges/${selectedRequest.id}/execute`, {
-        tenantId: user?.tenantId
-      });
-    } catch {
-      // Mock local fallback
-    }
-
-    setRequests(requests.filter(r => r.id !== selectedRequest.id));
-    alert("Merge executed successfully! All records (encounters, bills, LIS) cascadingly re-routed to destination chart.");
-    setIsProcessing(false);
-    setShowConfirmModal(false);
-    setSelectedRequest(null);
+  const closeActionModal = () => {
+    if (isProcessing) return;
+    setModalAction(null);
+    setModalText("");
+    setModalError(null);
   };
 
-  const handleRejectMerge = async () => {
+  const handleApprove = async () => {
     if (!selectedRequest) return;
     setIsProcessing(true);
+    setActionError(null);
+    setActionSuccess(null);
+    setModalError(null);
     try {
-      await apiClient.post(`/v1/admin/patient-merges/${selectedRequest.id}/reject`, {
-        tenantId: user?.tenantId
-      });
-    } catch {
-      // Mock local fallback
+      await apiClient.post(
+        `/v1/patients/merge-requests/${selectedRequest.id}/approve`,
+        { remarks: modalText.trim() || undefined }
+      );
+      setActionSuccess(`Merge request ${selectedRequest.id} approved.`);
+      setRequests((rs) => rs.filter((r) => r.id !== selectedRequest.id));
+      setSelectedRequest(null);
+      setModalAction(null);
+      setModalText("");
+    } catch (err: unknown) {
+      setActionError(extractErrorMessage(err, "Failed to approve merge request."));
+    } finally {
+      setIsProcessing(false);
     }
-
-    setRequests(requests.filter(r => r.id !== selectedRequest.id));
-    alert("Merge request rejected successfully.");
-    setIsProcessing(false);
-    setSelectedRequest(null);
   };
+
+  const handleReject = async () => {
+    if (!selectedRequest) return;
+    const reason = modalText.trim();
+    if (!reason) {
+      setModalError("Reason is required to reject a merge request.");
+      return;
+    }
+    setIsProcessing(true);
+    setActionError(null);
+    setActionSuccess(null);
+    setModalError(null);
+    try {
+      await apiClient.post(
+        `/v1/patients/merge-requests/${selectedRequest.id}/reject`,
+        { reason }
+      );
+      setActionSuccess(`Merge request ${selectedRequest.id} rejected.`);
+      setRequests((rs) => rs.filter((r) => r.id !== selectedRequest.id));
+      setSelectedRequest(null);
+      setModalAction(null);
+      setModalText("");
+    } catch (err: unknown) {
+      setActionError(extractErrorMessage(err, "Failed to reject merge request."));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleConfirm = () => {
+    if (modalAction === "APPROVE") void handleApprove();
+    else if (modalAction === "REJECT") void handleReject();
+  };
+
+  const isPending = selectedRequest?.status !== "PENDING";
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <PageHeader 
-          title="Patient Identity Reconciliation Center" 
-          description="High-security administrative deduplication dashboard to resolve duplicate patient charts." 
+        <PageHeader
+          title="Patient Identity Reconciliation Center"
+          description="High-security administrative deduplication dashboard to resolve duplicate patient charts."
         />
-        <button onClick={fetchMergeRequests} className="btn btn-secondary flex items-center gap-1.5 text-xs py-2">
+        <button
+          onClick={fetchMergeRequests}
+          className="btn btn-secondary flex items-center gap-1.5 text-xs py-2"
+          data-testid="reload-merge-requests"
+        >
           <RotateCw className="h-3.5 w-3.5" /> Reload
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+        {/* Honest capability notice */}
+        <div className="lg:col-span-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
+          <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+          <span>
+            Approve and reject are live against the patient-merge-request backend.
+            Irreversible cascade merge execution is not yet implemented in this release — the controller only
+            flips a request to APPROVED. The actual chart merge is performed by a separate (not-yet-shipped) job.
+          </span>
+        </div>
+
+        {/* Fetch error */}
+        {fetchError && (
+          <div
+            className="lg:col-span-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium"
+            role="alert"
+            data-testid="fetch-error"
+          >
+            <ShieldAlert className="h-4 w-4 text-rose-600 flex-shrink-0" />
+            <span>{fetchError}</span>
+          </div>
+        )}
+
+        {/* Action feedback */}
+        {actionSuccess && (
+          <div
+            className="lg:col-span-3 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium"
+            role="status"
+            data-testid="action-success"
+          >
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+            <span>{actionSuccess}</span>
+          </div>
+        )}
+        {actionError && (
+          <div
+            className="lg:col-span-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium"
+            role="alert"
+            data-testid="action-error"
+          >
+            <ShieldAlert className="h-4 w-4 text-rose-600 flex-shrink-0" />
+            <span>{actionError}</span>
+          </div>
+        )}
+
         {/* Left Pane: Pending Queue */}
         <div className="card p-5 space-y-4 h-fit">
           <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase flex items-center gap-2 border-b pb-3 border-slate-100">
@@ -168,14 +216,19 @@ export const PatientMergeRequests = () => {
 
           <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
             {requests.length > 0 ? (
-              requests.map(req => {
+              requests.map((req) => {
                 const active = selectedRequest?.id === req.id;
                 return (
                   <div
                     key={req.id}
-                    onClick={() => setSelectedRequest(req)}
+                    onClick={() => {
+                      setSelectedRequest(req);
+                      setActionError(null);
+                      setActionSuccess(null);
+                    }}
+                    data-testid={`merge-request-${req.id}`}
                     className={`p-4 rounded-2xl border transition-all duration-250 cursor-pointer ${
-                      active 
+                      active
                         ? "border-indigo-500 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 shadow-sm"
                         : "border-slate-200/80 hover:bg-slate-50"
                     }`}
@@ -187,27 +240,37 @@ export const PatientMergeRequests = () => {
                         </p>
                         <p className="text-[10px] text-slate-400 font-mono mt-1">Ticket: {req.id}</p>
                       </div>
-                      <span className="bg-rose-50 text-rose-700 border border-rose-200 font-extrabold text-[9px] px-2 py-0.5 rounded">
-                        {req.risk} RISK
+                      <span
+                        className={`font-extrabold text-[9px] px-2 py-0.5 rounded ${
+                          req.status === "PENDING"
+                            ? "bg-rose-50 text-rose-700 border border-rose-200"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                        }`}
+                      >
+                        {req.status}
                       </span>
                     </div>
 
                     <div className="mt-3 flex justify-between items-center text-[10px] text-slate-400">
-                      <span>By: {req.requestedBy}</span>
+                      <span>By: {req.requesterId}</span>
                       <span>{req.createdAt}</span>
                     </div>
                   </div>
                 );
               })
             ) : (
-              <p className="text-center text-xs text-slate-400 py-8 font-medium">No pending deduplication requests found.</p>
+              <p
+                className="text-center text-xs text-slate-400 py-8 font-medium"
+                data-testid="empty-queue"
+              >
+                No pending deduplication requests found.
+              </p>
             )}
           </div>
         </div>
 
         {/* Right Pane: Structural Compare Box */}
         <div className="lg:col-span-2 card p-6 flex flex-col justify-between min-h-[500px]">
-          
           {selectedRequest ? (
             <div className="space-y-6 flex-1 flex flex-col justify-between">
               <div>
@@ -221,7 +284,9 @@ export const PatientMergeRequests = () => {
                   <div className="border border-amber-200 bg-amber-50/10 p-5 rounded-2xl space-y-4">
                     <div className="flex items-center gap-2 border-b border-amber-200/50 pb-2.5">
                       <Trash2 className="h-4 w-4 text-amber-600" />
-                      <h4 className="font-bold text-amber-800 text-xs uppercase tracking-wide">Source Chart (To Deprecate)</h4>
+                      <h4 className="font-bold text-amber-800 text-xs uppercase tracking-wide">
+                        Source Chart (To Deprecate)
+                      </h4>
                     </div>
 
                     <div className="text-xs space-y-2 text-slate-600">
@@ -229,7 +294,7 @@ export const PatientMergeRequests = () => {
                       <p><strong>Last Name:</strong> {selectedRequest.sourcePatient.lastName}</p>
                       <p><strong>Date of Birth:</strong> {selectedRequest.sourcePatient.dob}</p>
                       <p><strong>Patient Number:</strong> {selectedRequest.sourcePatient.patientNumber}</p>
-                      <p className="text-[10px] text-slate-400">UUID: {selectedRequest.sourceId}</p>
+                      <p className="text-[10px] text-slate-400">UUID: {selectedRequest.sourcePatientId}</p>
                     </div>
                   </div>
 
@@ -237,7 +302,9 @@ export const PatientMergeRequests = () => {
                   <div className="border border-indigo-200 bg-indigo-50/10 p-5 rounded-2xl space-y-4">
                     <div className="flex items-center gap-2 border-b border-indigo-200/50 pb-2.5">
                       <User className="h-4 w-4 text-indigo-600" />
-                      <h4 className="font-bold text-indigo-800 text-xs uppercase tracking-wide">Target Chart (To Retain)</h4>
+                      <h4 className="font-bold text-indigo-800 text-xs uppercase tracking-wide">
+                        Target Chart (To Retain)
+                      </h4>
                     </div>
 
                     <div className="text-xs space-y-2 text-slate-600">
@@ -245,37 +312,39 @@ export const PatientMergeRequests = () => {
                       <p><strong>Last Name:</strong> {selectedRequest.targetPatient.lastName}</p>
                       <p><strong>Date of Birth:</strong> {selectedRequest.targetPatient.dob}</p>
                       <p><strong>Patient Number:</strong> {selectedRequest.targetPatient.patientNumber}</p>
-                      <p className="text-[10px] text-slate-400">UUID: {selectedRequest.targetId}</p>
+                      <p className="text-[10px] text-slate-400">UUID: {selectedRequest.targetPatientId}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-6 bg-slate-50 border border-slate-200/60 p-4 rounded-2xl text-xs text-slate-500 leading-relaxed">
                   <span className="font-bold text-slate-700 flex items-center gap-1 mb-1">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" /> Administrative Notice:
+                    <AlertTriangle className="h-4 w-4 text-amber-500" /> Request reason:
                   </span>
-                  Executing this operation will merge the identity profiles. All clinical diagnostics, lab orders, invoices, and vitals associated with the source ID will be cascade-routed to the target ID, and the source record will be archived.
+                  {selectedRequest.reason}
                 </div>
               </div>
 
-              {/* ACTION LINKS */}
+              {/* Action buttons */}
               <div className="flex justify-between items-center border-t border-slate-100 pt-6 mt-6">
                 <button
-                  onClick={handleRejectMerge}
-                  disabled={isProcessing}
-                  className="btn bg-rose-50 hover:bg-rose-100/60 text-rose-600 text-xs px-4 py-2 border border-rose-200 flex items-center gap-1.5 font-bold"
+                  onClick={() => openActionModal("REJECT")}
+                  disabled={isProcessing || isPending}
+                  data-testid="reject-merge-button"
+                  className="btn bg-rose-50 hover:bg-rose-100/60 text-rose-600 text-xs px-4 py-2 border border-rose-200 flex items-center gap-1.5 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <XCircle className="h-4 w-4" />
-                  Reject Merge Request
+                  Reject Merge
                 </button>
 
                 <button
-                  onClick={handleOpenConfirm}
-                  disabled={isProcessing}
-                  className="btn bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm"
+                  onClick={() => openActionModal("APPROVE")}
+                  disabled={isProcessing || isPending}
+                  data-testid="approve-merge-button"
+                  className="btn bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  Authorize & Execute Merge
+                  Approve Merge
                 </button>
               </div>
             </div>
@@ -288,62 +357,104 @@ export const PatientMergeRequests = () => {
               </p>
             </div>
           )}
-
         </div>
-
       </div>
 
-      {/* TYPING CONFIRMATION MODAL OVERRIDE */}
-      {showConfirmModal && selectedRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      {/* Controlled remarks modal (approve or reject) */}
+      {modalAction && selectedRequest && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+          data-testid="action-modal"
+        >
           <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 animate-slide-up">
-            <h3 className="text-lg font-bold text-rose-700 flex items-center gap-2 border-b pb-3 border-rose-100">
-              <AlertTriangle className="h-5 w-5 text-rose-500" />
-              CRITICAL: Confirm Permanent Cascade Merge
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 border-b pb-3 border-slate-100">
+              {modalAction === "APPROVE" ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  Approve merge request
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-rose-600" />
+                  Reject merge request
+                </>
+              )}
             </h3>
-            
+
             <p className="text-xs text-slate-500 mt-3 leading-relaxed">
-              This action executes a permanent database cascade migration, rewriting records associated with 
-              <strong className="text-slate-900"> {selectedRequest.sourcePatient.firstName} {selectedRequest.sourcePatient.lastName} ({selectedRequest.sourcePatient.patientNumber})</strong>.
+              {modalAction === "APPROVE"
+                ? `Approving will set the request status to APPROVED. The irreversible cascade merge itself is not yet implemented in this release.`
+                : `Rejecting will set the request status to REJECTED. A reason is required for the audit trail.`}
             </p>
 
-            <div className="mt-4 p-3 bg-rose-50/50 border border-rose-100 rounded-xl">
-              <label className="block text-[10px] font-extrabold text-rose-800 uppercase">
-                Type "MERGE" to authorize this cascading mutation
+            <div className="mt-4">
+              <label
+                htmlFor="action-text"
+                className="block text-[10px] font-extrabold text-slate-700 uppercase"
+              >
+                {modalAction === "APPROVE" ? "Remarks (optional)" : "Reason (required)"}
               </label>
-              <input
-                type="text"
-                value={confirmText}
-                onChange={e => setConfirmText(e.target.value)}
-                placeholder="Type MERGE in uppercase..."
-                className="input mt-1.5 focus:border-rose-300"
+              <textarea
+                id="action-text"
+                value={modalText}
+                onChange={(e) => {
+                  setModalText(e.target.value);
+                  if (modalError) setModalError(null);
+                }}
+                placeholder={
+                  modalAction === "APPROVE"
+                    ? "Add remarks (optional)…"
+                    : "Add a reason for rejection…"
+                }
+                rows={3}
+                data-testid="action-text"
+                className="input mt-1.5 focus:border-indigo-300 w-full"
               />
+              {modalError && (
+                <p
+                  className="text-[10px] text-rose-600 mt-1 font-semibold"
+                  data-testid="modal-error"
+                  role="alert"
+                >
+                  {modalError}
+                </p>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
               <button
                 disabled={isProcessing}
-                onClick={() => setShowConfirmModal(false)}
+                onClick={closeActionModal}
+                data-testid="cancel-action"
                 className="btn btn-secondary text-xs px-4 py-2"
               >
                 Cancel
               </button>
               <button
-                disabled={isProcessing || confirmText !== "MERGE"}
-                onClick={handleExecuteMerge}
+                disabled={
+                  isProcessing ||
+                  (modalAction === "REJECT" && modalText.trim().length === 0)
+                }
+                onClick={handleConfirm}
+                data-testid={
+                  modalAction === "APPROVE" ? "confirm-approve" : "confirm-reject"
+                }
                 className={`btn text-xs px-4 py-2 ${
-                  confirmText === "MERGE" 
-                    ? "bg-rose-600 hover:bg-rose-700 text-white" 
-                    : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                }`}
+                  modalAction === "APPROVE"
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    : "bg-rose-600 hover:bg-rose-700 text-white"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {isProcessing ? "Processing..." : "Authorize and Execute"}
+                {isProcessing
+                  ? "Processing…"
+                  : modalAction === "APPROVE"
+                  ? "Confirm Approve"
+                  : "Confirm Reject"}
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };

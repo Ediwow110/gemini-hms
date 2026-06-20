@@ -8,9 +8,9 @@ export const MarketplaceAdminShellNotice: React.FC = () => {
         <ShieldAlert className="h-5 w-5 text-amber-600" />
       </div>
       <div>
-        <h4 className="text-sm font-black text-amber-900 tracking-tight">Marketplace Admin Sandbox</h4>
+        <h4 className="text-sm font-black text-amber-900 tracking-tight">Marketplace Admin — Mixed Availability</h4>
         <p className="text-xs text-amber-700 font-medium leading-relaxed mt-0.5">
-          This marketplace admin portal is a <strong>functional prototype shell</strong>. Supplier approvals, listing approvals, dispute resolutions, warranty claim decisions, commission/fee mutations, and report generation are mock-generated for demonstration purposes. No real business transactions or governance actions are processed in this phase.
+          Listing approval queue and KPI counts are live-wired to the backend. Supplier approvals, dispute resolutions, warranty claim decisions, commission/fee mutations, and report generation are still in development.
         </p>
       </div>
     </div>

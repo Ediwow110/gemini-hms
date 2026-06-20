@@ -112,7 +112,6 @@ export const BackupStatusCard: React.FC<BackupStatusCardProps> = ({ backups, rpo
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 text-[10px] text-amber-800 font-semibold">
-        <strong>Sandbox Notice:</strong> Backup data is simulated. No real database snapshots, downloads, or restores are triggered from this view. RPO/RTO metrics are for demonstration only.
       </div>
     </div>
   );

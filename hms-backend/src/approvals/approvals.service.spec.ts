@@ -171,17 +171,17 @@ describe('ApprovalsService write isolation', () => {
     });
   });
 
-  it('propagates branchId from request details into audit and persisted row when creating requests', async () => {
+  it('uses server-provided branchId (from controller JWT) and does not read branchId from details', async () => {
     prisma.approvalRequest.create.mockResolvedValue({
       id: requestId,
       tenantId,
-      branchId: 'branch-a',
+      branchId: 'server-branch',
       requesterId: userId,
       type: 'REFUND',
       riskLevel: 'HIGH',
       recordId: 'payment-1',
       status: 'PENDING',
-      details: { branchId: 'branch-a' },
+      details: { branchId: 'client-attempt', other: 'data' },
     });
 
     await service.createRequest(tenantId, userId, {
@@ -189,18 +189,60 @@ describe('ApprovalsService write isolation', () => {
       riskLevel: 'HIGH',
       recordId: 'payment-1',
       reason: 'Need approval',
-      details: { branchId: 'branch-a' },
+      branchId: 'server-branch',
+      details: { branchId: 'client-attempt', other: 'data' },
     });
 
     expect(prisma.approvalRequest.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ branchId: 'branch-a' }),
+        data: expect.objectContaining({ branchId: 'server-branch' }),
       }),
     );
     expect(audit.log).toHaveBeenCalledWith(
       expect.objectContaining({ eventKey: 'APPROVAL_REQUESTED' }),
       undefined,
-      'branch-a',
+      'server-branch',
+    );
+  });
+
+  it('SECURITY: ignores branchId inside details; server branchId always wins (prevents client override)', async () => {
+    prisma.approvalRequest.create.mockResolvedValue({
+      id: requestId,
+      tenantId,
+      branchId: 'server-branch',
+      requesterId: userId,
+      type: 'REFUND',
+      riskLevel: 'HIGH',
+      recordId: 'payment-1',
+      status: 'PENDING',
+      details: { branchId: 'malicious-client-branch' },
+    });
+
+    await service.createRequest(tenantId, userId, {
+      type: 'REFUND',
+      riskLevel: 'HIGH',
+      recordId: 'payment-1',
+      reason: 'Need approval',
+      branchId: 'server-branch',
+      details: { branchId: 'malicious-client-branch' },
+    });
+
+    // The persisted row and audit MUST use the server branchId, never the one from details.
+    expect(prisma.approvalRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ branchId: 'server-branch' }),
+      }),
+    );
+    expect(audit.log).toHaveBeenCalledWith(
+      expect.objectContaining({ eventKey: 'APPROVAL_REQUESTED' }),
+      undefined,
+      'server-branch',
+    );
+    // Explicitly ensure we did not fall back to the details value.
+    expect(prisma.approvalRequest.create).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ branchId: 'malicious-client-branch' }),
+      }),
     );
   });
 
@@ -231,6 +273,43 @@ describe('ApprovalsService write isolation', () => {
           branchId: undefined,
         },
       }),
+    );
+  });
+
+  it('applies default pagination cap (take <= 200) to prevent unbounded list on hot approvals path', async () => {
+    prisma.approvalRequest.findMany.mockResolvedValue([]);
+
+    await service.getRequests(tenantId, 'branch-a', false);
+
+    expect(prisma.approvalRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId, branchId: 'branch-a' },
+        take: 50,
+        skip: 0,
+      }),
+    );
+  });
+
+  it('respects caller-provided page/pageSize within hard cap of 200', async () => {
+    prisma.approvalRequest.findMany.mockResolvedValue([]);
+
+    await service.getRequests(tenantId, undefined, true, true, 3, 75);
+
+    expect(prisma.approvalRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 150,
+        take: 75,
+      }),
+    );
+  });
+
+  it('clamps pageSize to hard max 200 even if caller requests more', async () => {
+    prisma.approvalRequest.findMany.mockResolvedValue([]);
+
+    await service.getRequests(tenantId, undefined, true, false, 1, 9999);
+
+    expect(prisma.approvalRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 200 }),
     );
   });
 });

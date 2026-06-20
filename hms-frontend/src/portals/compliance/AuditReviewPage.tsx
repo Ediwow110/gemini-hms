@@ -7,7 +7,7 @@ import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const AuditReviewPage: React.FC = () => {
-  const [, setScope] = useState({ tenantId: 'all', branchId: 'all' });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRisk, setSelectedRisk] = useState('ALL');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,7 +51,7 @@ export const AuditReviewPage: React.FC = () => {
         />
 
       {/* Scope Selector */}
-      <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
+      <ComplianceScopeFilter />
 
       {/* Search Grid */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4 items-center">

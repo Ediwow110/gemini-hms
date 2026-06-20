@@ -14,6 +14,16 @@ if [ -z "${DATABASE_URL:-}" ] || [ -z "${JWT_SECRET:-}" ] || [ -z "${MASTER_MFA_
   exit 1
 fi
 
+if [ -z "${EMAIL_PROVIDER:-}" ] || [ -z "${SMS_PROVIDER:-}" ]; then
+  echo "❌ CRITICAL: EMAIL_PROVIDER and SMS_PROVIDER are required for production (NODE_ENV=production rejects mock providers at startup)."
+  exit 1
+fi
+
+if [ "${EMAIL_PROVIDER}" = "mock" ] || [ "${SMS_PROVIDER}" = "mock" ]; then
+  echo "❌ CRITICAL: mock notification providers are forbidden when NODE_ENV=production (see notification-providers.ts)."
+  exit 1
+fi
+
 echo "[CD] Validating docker-compose configuration..."
 docker compose -f docker-compose.prod.yml config -q || { echo "❌ Invalid compose config"; exit 1; }
 

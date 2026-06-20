@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { BillingDashboard } from '../BillingDashboard';
 import { billingDashboardService } from '../../../services/billing-dashboard.service';
@@ -26,9 +26,25 @@ vi.mock('../../../services/billing-dashboard.service', () => ({
   },
 }));
 
+const mockNavigate = vi.hoisted(() => vi.fn());
+const mockHasPermission = vi.hoisted(() => vi.fn<(permission: string) => boolean>(() => true));
+
+vi.mock('../../../hooks/use-user', () => ({
+  usePermissions: () => ({ hasPermission: mockHasPermission }),
+}));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 describe('BillingDashboard Unit Tests', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockHasPermission.mockReturnValue(true);
   });
 
   it('renders successfully with live dashboard data', async () => {
@@ -64,6 +80,130 @@ describe('BillingDashboard Unit Tests', () => {
       expect(screen.queryByText(/Live source unavailable/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Demo Preview/i)).not.toBeInTheDocument();
     });
+  });
+
+  it('routes invoice drilldowns to the live cashier invoice registry, not the legacy billing placeholder', async () => {
+    vi.mocked(billingDashboardService.getDashboardData).mockResolvedValue({
+      kpis: [
+        { title: 'Current Session', value: '₱5,000', description: 'Active cashier total', severity: 'success' },
+        { title: 'Unpaid Invoices', value: 3, description: 'Pending payment', severity: 'warning' },
+        { title: 'Overdue Bills', value: 1, description: 'Past due date', severity: 'critical' },
+        { title: 'Total Outstanding', value: '₱12,500', description: 'Total receivables', severity: 'info' },
+      ],
+      alerts: [],
+      invoiceStatusDistribution: [],
+      highestOutstanding: [],
+      recentPayments: [],
+      isUnavailable: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <BillingDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Invoice Registry')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Invoice Registry'));
+    expect(mockNavigate).toHaveBeenCalledWith('/cashier/invoices');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/billing');
+
+    mockNavigate.mockClear();
+    const unpaidDrilldown = screen
+      .getAllByText('Unpaid Invoices')
+      .map((element) => element.closest('[role="button"]'))
+      .find((element): element is HTMLElement => element !== null);
+
+    if (!unpaidDrilldown) {
+      throw new Error('Expected Unpaid Invoices drilldown to be interactive');
+    }
+
+    fireEvent.click(unpaidDrilldown);
+    expect(mockNavigate).toHaveBeenCalledWith('/cashier/invoices');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/billing');
+  });
+
+  it('only shows Claims Dashboard shortcut to users with claim-view permission', async () => {
+    mockHasPermission.mockImplementation((permission: string) => permission !== 'billing.claim.view');
+    vi.mocked(billingDashboardService.getDashboardData).mockResolvedValue({
+      kpis: [],
+      alerts: [],
+      invoiceStatusDistribution: [],
+      highestOutstanding: [],
+      recentPayments: [],
+      isUnavailable: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <BillingDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Invoice Registry')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Claims Dashboard')).not.toBeInTheDocument();
+    expect(mockHasPermission).toHaveBeenCalledWith('billing.claim.view');
+
+    mockHasPermission.mockReturnValue(true);
+    vi.mocked(billingDashboardService.getDashboardData).mockResolvedValue({
+      kpis: [],
+      alerts: [],
+      invoiceStatusDistribution: [],
+      highestOutstanding: [],
+      recentPayments: [],
+      isUnavailable: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <BillingDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Claims Dashboard')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Claims Dashboard'));
+    expect(mockNavigate).toHaveBeenCalledWith('/claims');
+  });
+
+  it('uses honest branch labels that match the actual request scope', async () => {
+    vi.mocked(billingDashboardService.getDashboardData).mockResolvedValue({
+      kpis: [],
+      alerts: [],
+      invoiceStatusDistribution: [],
+      highestOutstanding: [],
+      recentPayments: [],
+      isUnavailable: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <BillingDashboard />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(billingDashboardService.getDashboardData).toHaveBeenCalledWith('main-branch');
+    });
+
+    const branchSelect = screen.getByLabelText(/Select Branch/i);
+    expect(screen.queryByRole('option', { name: /All Branches/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Main Branch/i).length).toBeGreaterThan(0);
+
+    fireEvent.change(branchSelect, { target: { value: 'north-clinic' } });
+
+    await waitFor(() => {
+      expect(billingDashboardService.getDashboardData).toHaveBeenLastCalledWith('north-clinic');
+    });
+    expect(screen.getAllByText(/North Branch/i).length).toBeGreaterThan(0);
   });
 
   it('renders successfully with fallback demo data when API fails', async () => {

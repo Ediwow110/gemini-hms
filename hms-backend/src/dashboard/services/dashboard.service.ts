@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DashboardQueryDto } from '../dto/dashboard-query.dto';
 
@@ -46,6 +47,7 @@ export class DashboardService {
           tenantId,
           branchId,
           encounteredAt: { gte: start, lte: end },
+          archivedAt: null,
         },
       }),
       // Pending Labs
@@ -53,6 +55,7 @@ export class DashboardService {
         where: {
           tenantId,
           status: 'PENDING',
+          archivedAt: null,
         },
       }),
       // Low Stock (BranchStock quantity < reorderLevel)
@@ -70,6 +73,7 @@ export class DashboardService {
         where: {
           tenantId,
           createdAt: { gte: start, lte: end },
+          archivedAt: null,
         },
       }),
       // Security Alerts (Audit logs with high risk - simplified)
@@ -91,23 +95,49 @@ export class DashboardService {
     };
   }
 
-  async getAdminTrends(_query: DashboardQueryDto, tenantId: string) {
-    // Daily encounter count using DB-native date truncation
-    const rows = await this.prisma.$queryRaw<
-      Array<{ day: Date; count: bigint }>
-    >`
-      SELECT DATE_TRUNC('day', encountered_at) AS day, COUNT(*) AS count
-      FROM encounters
-      WHERE tenant_id = ${tenantId}::uuid
-      GROUP BY day
-      ORDER BY day DESC
-      LIMIT 90
-    `;
+  async getAdminTrends(query: DashboardQueryDto, tenantId: string) {
+    const { dimension = 'volume', branchId, dateFrom, dateTo } = query;
 
-    return rows.map((row) => ({
-      label: row.day.toISOString().split('T')[0],
-      value: Number(row.count),
-    }));
+    if (dimension === 'revenue') {
+      const rows = await this.prisma.$queryRaw<
+        Array<{ day: Date; value: number }>
+      >`
+        SELECT DATE_TRUNC('day', created_at) AS day, SUM(amount)::FLOAT AS value
+        FROM payments
+        WHERE tenant_id = ${tenantId}::uuid
+          AND status = 'POSTED'
+          AND archived_at IS NULL
+          ${branchId ? Prisma.sql`AND branch_id = ${branchId}::uuid` : Prisma.empty}
+          ${dateFrom ? Prisma.sql`AND created_at >= ${new Date(dateFrom)}` : Prisma.empty}
+          ${dateTo ? Prisma.sql`AND created_at <= ${new Date(dateTo)}` : Prisma.empty}
+        GROUP BY day
+        ORDER BY day DESC
+        LIMIT 90
+      `;
+      return rows.map((row) => ({
+        label: row.day.toISOString().split('T')[0],
+        value: row.value,
+      }));
+    } else {
+      const rows = await this.prisma.$queryRaw<
+        Array<{ day: Date; value: number }>
+      >`
+        SELECT DATE_TRUNC('day', encountered_at) AS day, COUNT(*)::FLOAT AS value
+        FROM encounters
+        WHERE tenant_id = ${tenantId}::uuid
+          AND archived_at IS NULL
+          ${branchId ? Prisma.sql`AND branch_id = ${branchId}::uuid` : Prisma.empty}
+          ${dateFrom ? Prisma.sql`AND encountered_at >= ${new Date(dateFrom)}` : Prisma.empty}
+          ${dateTo ? Prisma.sql`AND encountered_at <= ${new Date(dateTo)}` : Prisma.empty}
+        GROUP BY day
+        ORDER BY day DESC
+        LIMIT 90
+      `;
+      return rows.map((row) => ({
+        label: row.day.toISOString().split('T')[0],
+        value: row.value,
+      }));
+    }
   }
 
   async getAdminAlerts(tenantId: string) {
@@ -120,7 +150,7 @@ export class DashboardService {
 
     // 2. Critical Labs
     const criticalLabs = await this.prisma.labResult.findMany({
-      where: { tenantId, isCritical: true },
+      where: { tenantId, isCritical: true, archivedAt: null },
       take: 5,
       include: { order: { include: { patient: true } } },
     });
@@ -143,7 +173,7 @@ export class DashboardService {
     // Busiest Departments
     const depts = await this.prisma.encounter.groupBy({
       by: ['branchId'], // Simplified as we don't have deptId on Encounter in schema
-      where: { tenantId },
+      where: { tenantId, archivedAt: null },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
       take: 5,
@@ -151,7 +181,7 @@ export class DashboardService {
 
     // Unpaid Bills
     const bills = await this.prisma.invoice.findMany({
-      where: { tenantId, status: 'UNPAID' },
+      where: { tenantId, status: 'UNPAID', archivedAt: null },
       orderBy: { totalAmount: 'desc' },
       take: 5,
     });

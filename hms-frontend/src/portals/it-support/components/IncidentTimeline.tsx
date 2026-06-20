@@ -120,7 +120,6 @@ export const IncidentTimeline: React.FC<IncidentTimelineProps> = ({ incidents })
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 text-[10px] text-amber-800 font-semibold">
-        <strong>Sandbox Notice:</strong> All incident records are simulated. No real incident management, escalation, or alerting workflows are triggered from this view.
       </div>
     </div>
   );

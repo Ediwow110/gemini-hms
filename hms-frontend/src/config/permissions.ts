@@ -1,31 +1,39 @@
 export const PERMISSIONS = {
   PATIENT_VIEW: 'patient.view',
+  ENCOUNTER_UPDATE: 'encounter.update',
+  PATIENT_CREATE: 'patient.create',
   QUEUE_VIEW: 'queue.view',
   QUEUE_MANAGE: 'queue.manage',
   LAB_RESULT_VIEW: 'lab.result.view',
   INVENTORY_DISPENSE: 'inventory.stock.dispense',
   BILLING_VIEW: 'billing.invoice.view',
   INVENTORY_VIEW: 'inventory.item.view',
+  INVENTORY_RECEIVE: 'inventory.stock.receive',
   ORDER_CREATE: 'order.create',
   APPROVAL_VIEW: 'approval.request.view',
   ADMIN_ROLE_CHANGE: 'admin.role.change',
   REPORT_EXPORT: 'report.export',
   AUDIT_VIEW: 'audit.view',
-  HR_MANAGE: 'hr.manage',
-  PROCUREMENT_VIEW: 'procurement.view',
-  PROCUREMENT_MANAGE: 'procurement.manage',
+  AUDIT_SELF: 'audit.self',
+  AUDIT_EXPORT: 'audit.export',
+  COMPLIANCE_AUDIT_REVIEW: 'compliance.audit.review',
+  IT_SYSTEM_VIEW: 'it.system.view',
+  INTEGRATION_VIEW: 'integration.view',
+  HR_MANAGE: 'hr.employee.manage',
+  PROCUREMENT_VIEW: 'procurement.request.view',
+  PROCUREMENT_MANAGE: 'procurement.supplier.manage',
   PATIENT_SELF_SERVICE: 'patient.self_service',
+  PATIENT_MERGE_REQUEST: 'patient.merge.request',
+  PATIENT_MERGE_APPROVE: 'patient.merge.approve',
   MARKETPLACE_BUYER: 'marketplace.buyer',
   MARKETPLACE_SUPPLIER: 'marketplace.supplier',
   MARKETPLACE_ADMIN: 'marketplace.admin',
   FIELD_SERVICE_MANAGE: 'field_service.manage',
-  INTEGRATION_VIEW: 'integration.view',
-  AUDIT_SELF: 'audit.self',
-  AUDIT_EXPORT: 'audit.export',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
 
+// ROLE_DEFAULT_PERMISSIONS is a dev-reference map only; production RBAC is enforced server-side.
 export const ROLE_DEFAULT_PERMISSIONS: Record<string, Permission[]> = {
   'Super Admin': Object.values(PERMISSIONS),
   'Compliance Officer': [
@@ -83,6 +91,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<string, Permission[]> = {
     PERMISSIONS.INVENTORY_DISPENSE,
     PERMISSIONS.BILLING_VIEW,
     PERMISSIONS.INVENTORY_VIEW,
+    PERMISSIONS.INVENTORY_RECEIVE,
     PERMISSIONS.ORDER_CREATE,
     PERMISSIONS.APPROVAL_VIEW,
     PERMISSIONS.REPORT_EXPORT,

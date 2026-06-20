@@ -52,7 +52,7 @@ export function usePatientLabResults() {
     setError(null);
     try {
       const res = await patientPortalService.getLabResults();
-      setResults(res);
+      setResults(Array.isArray(res) ? res : []);
     } catch (err: unknown) {
       if (!handleAuthError(err)) {
         setError('Failed to load lab results');
@@ -77,7 +77,7 @@ export function usePatientPrescriptions() {
     setError(null);
     try {
       const res = await patientPortalService.getPrescriptions();
-      setPrescriptions(res);
+      setPrescriptions(Array.isArray(res) ? res : []);
     } catch (err: unknown) {
       if (!handleAuthError(err)) {
         setError('Failed to load prescriptions');

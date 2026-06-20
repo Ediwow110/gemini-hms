@@ -164,6 +164,12 @@ export class InventoryService {
       throw new NotFoundException('Inventory item not found');
     }
 
+    if (item.status === 'INACTIVE') {
+      throw new BadRequestException(
+        'Cannot receive stock for an inactive item',
+      );
+    }
+
     const stock = await this.prisma.branchStock.upsert({
       where: {
         tenantId_branchId_inventoryItemId: {
@@ -445,6 +451,19 @@ export class InventoryService {
       throw new BadRequestException(
         'validation_error: adjustment_reason_is_required',
       );
+    }
+
+    // Verify the item exists and is ACTIVE before adjusting stock
+    const item = await this.prisma.inventoryItem.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Inventory item not found');
+    }
+
+    if (item.status === 'INACTIVE') {
+      throw new BadRequestException('Cannot adjust stock for an inactive item');
     }
 
     const stock = await this.prisma.branchStock.findFirst({

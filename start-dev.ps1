@@ -34,29 +34,57 @@ function Start-Frontend {
   return $job
 }
 
-function Test-Port($port) {
+function Stop-PortOwner($port) {
+  $connections = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+  foreach ($conn in $connections) {
+    if ($conn.OwningProcess) {
+      Write-Host "Stopping process $($conn.OwningProcess) owning port $port..." -ForegroundColor Yellow
+      Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
+
+function Test-BackendReady {
   try {
-    $r = Invoke-WebRequest -Uri "http://localhost:$port" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
-    return $true
+    $tcp = Test-NetConnection -ComputerName 127.0.0.1 -Port 3000 -InformationLevel Quiet -WarningAction SilentlyContinue
+    if (-not $tcp) { return $false }
+    $r = Invoke-WebRequest -Uri "http://127.0.0.1:3000/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+    return $r.StatusCode -eq 200
   } catch {
     return $false
   }
 }
 
+function Test-FrontendReady {
+  try {
+    $tcp = Test-NetConnection -ComputerName 127.0.0.1 -Port 5173 -InformationLevel Quiet -WarningAction SilentlyContinue
+    if (-not $tcp) { return $false }
+    $r = Invoke-WebRequest -Uri "http://127.0.0.1:5173" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+    return ($r.StatusCode -lt 500)
+  } catch {
+    return $false
+  }
+}
+
+# Clean up any stale port owners before launching
+Write-Host "Checking ports 3000 and 5173..." -ForegroundColor Cyan
+Stop-PortOwner 3000
+Stop-PortOwner 5173
+Start-Sleep -Seconds 1
+
 # Start both services
 Write-Host "Starting backend..." -ForegroundColor Cyan
 $backendJob = Start-Backend
-Start-Sleep -Seconds 15
 
 Write-Host "Starting frontend..." -ForegroundColor Cyan
 $frontendJob = Start-Frontend
 
 # Wait for both to be ready
-$timeout = 60
+$timeout = 120
 $elapsed = 0
 while ($elapsed -lt $timeout) {
-  $be = if (Test-Port 3000) { "UP" } else { "DOWN" }
-  $fe = if (Test-Port 5173) { "UP" } else { "DOWN" }
+  $be = if (Test-BackendReady) { "UP" } else { "DOWN" }
+  $fe = if (Test-FrontendReady) { "UP" } else { "DOWN" }
 
   if ($be -eq "UP" -and $fe -eq "UP") {
     Write-Host "`nBoth services UP! ($($elapsed)s)" -ForegroundColor Green
@@ -64,8 +92,13 @@ while ($elapsed -lt $timeout) {
   }
 
   Write-Host "[${elapsed}s] Backend: $be | Frontend: $fe"
-  Start-Sleep -Seconds 3
-  $elapsed += 3
+  Start-Sleep -Seconds 1
+  $elapsed += 1
+}
+
+if (-not ($be -eq "UP" -and $fe -eq "UP")) {
+  Write-Host "`nERROR: services did not become ready within ${timeout}s." -ForegroundColor Red
+  Write-Host "Check logs in $LogDir for backend/frontend startup errors." -ForegroundColor Red
 }
 
 if ($Monitor) {
@@ -73,8 +106,8 @@ if ($Monitor) {
   Write-Host "`nMonitoring enabled. Press Ctrl+C to stop." -ForegroundColor Yellow
   while ($true) {
     Start-Sleep -Seconds 10
-    $be = Test-Port 3000
-    $fe = Test-Port 5173
+    $be = Test-BackendReady
+    $fe = Test-FrontendReady
     $now = Get-Date -Format "HH:mm:ss"
 
     if (-not $be) {

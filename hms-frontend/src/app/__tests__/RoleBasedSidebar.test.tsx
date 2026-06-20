@@ -208,4 +208,110 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     expect(securityLink).toHaveClass('bg-gradient-to-r'); // exact matched child should be active
     expect(overviewLink).not.toHaveClass('bg-gradient-to-r'); // Overview sibling should NOT be active!
   });
+
+  it('shows the "Catalog" inventory entry for Branch Admin (has INVENTORY_VIEW)', () => {
+    const user = {
+      id: 'ba-1',
+      email: 'branch-admin@hospital.com',
+      roles: ['Branch Admin'],
+      branchId: 'branch-1',
+    };
+    mockUseUser.mockReturnValue(user);
+    mockUsePermissions.mockReturnValue({
+      isSuperAdmin: false,
+      canAccess: (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
+        if (opts.permission === 'inventory.item.view') return true;
+        return false;
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/inventory']}>
+        <RoleBasedSidebar pathname="/inventory" />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Catalog')).toBeInTheDocument();
+  });
+
+  it('does not show the "Catalog" inventory entry for Doctor (no INVENTORY_VIEW)', () => {
+    const user = {
+      id: 'doc-1',
+      email: 'doctor@hospital.com',
+      roles: ['Doctor'],
+      branchId: 'branch-1',
+    };
+    mockUseUser.mockReturnValue(user);
+    mockUsePermissions.mockReturnValue({
+      isSuperAdmin: false,
+      canAccess: (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
+        if (opts.permission === 'inventory.item.view') return false;
+        if (opts.allowedRoles?.includes('Doctor')) return true;
+        return false;
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/doctor']}>
+        <RoleBasedSidebar pathname="/doctor" />
+      </MemoryRouter>
+    );
+
+    // Doctor should see "Patient Queue" (has allowedRoles ['Doctor']) but NOT "Catalog" (no inventory.item.view)
+    expect(screen.getByText('Patient Queue')).toBeInTheDocument();
+    expect(screen.queryByText('Catalog')).not.toBeInTheDocument();
+  });
+
+  it('shows the "Stock Receiving" inventory entry for Branch Admin (has INVENTORY_RECEIVE)', () => {
+    const user = {
+      id: 'ba-1',
+      email: 'branch-admin@hospital.com',
+      roles: ['Branch Admin'],
+      branchId: 'branch-1',
+    };
+    mockUseUser.mockReturnValue(user);
+    mockUsePermissions.mockReturnValue({
+      isSuperAdmin: false,
+      canAccess: (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
+        if (opts.permission === 'inventory.stock.receive') return true;
+        return false;
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/inventory/receiving']}>
+        <RoleBasedSidebar pathname="/inventory/receiving" />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Stock Receiving')).toBeInTheDocument();
+  });
+
+  it('does not show the "Stock Receiving" inventory entry for Pharmacist (no INVENTORY_RECEIVE)', () => {
+    const user = {
+      id: 'ph-1',
+      email: 'pharmacist@hospital.com',
+      roles: ['Pharmacist'],
+      branchId: 'branch-1',
+    };
+    mockUseUser.mockReturnValue(user);
+    mockUsePermissions.mockReturnValue({
+      isSuperAdmin: false,
+      canAccess: (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
+        if (opts.permission === 'inventory.item.view') return true;
+        if (opts.permission === 'inventory.stock.receive') return false;
+        return false;
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/inventory']}>
+        <RoleBasedSidebar pathname="/inventory" />
+      </MemoryRouter>
+    );
+
+    // Pharmacist should see "Catalog" (has inventory.item.view) but NOT "Stock Receiving" (no inventory.stock.receive)
+    expect(screen.getByText('Catalog')).toBeInTheDocument();
+    expect(screen.queryByText('Stock Receiving')).not.toBeInTheDocument();
+  });
 });

@@ -16,10 +16,22 @@ import {
 } from '../../components/hms-dashboard';
 import { pharmacyDashboardService } from '../../services/pharmacy-dashboard.service';
 import type { PharmacyDashboardData } from '../../services/pharmacy-dashboard.service';
+import { usePermissions } from '../../hooks/use-user';
+import { RequirePermission } from '../../components/ui/RequirePermission';
+
+const BRANCH_OPTIONS = [
+  { value: 'main-branch', label: 'Main Branch' },
+  { value: 'north-clinic', label: 'North Branch' },
+];
+
+const getBranchLabel = (branchId: string) =>
+  BRANCH_OPTIONS.find((branch) => branch.value === branchId)?.label ?? branchId;
 
 export const PharmacyDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedBranch, setSelectedBranch] = useState('all');
+  const { hasPermission } = usePermissions();
+  const canDispense = hasPermission('inventory.stock.dispense');
+  const [selectedBranch, setSelectedBranch] = useState('main-branch');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<PharmacyDashboardData | null>(null);
@@ -29,8 +41,7 @@ export const PharmacyDashboard: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const branchId = selectedBranch === 'all' ? 'main-branch' : selectedBranch;
-      const result = await pharmacyDashboardService.getDashboardData(branchId);
+      const result = await pharmacyDashboardService.getDashboardData(selectedBranch);
       setData(result);
       setLastUpdated(new Date());
     } catch {
@@ -95,7 +106,7 @@ export const PharmacyDashboard: React.FC = () => {
     <HmsDashboardShell
       toolbar={
         <HmsToolbar
-          branchName={selectedBranch === 'all' ? 'All Branches' : selectedBranch}
+          branchName={getBranchLabel(selectedBranch)}
           role="Pharmacy Dashboard"
           lastRefreshed={lastUpdated}
           onRefresh={fetchData}
@@ -108,9 +119,9 @@ export const PharmacyDashboard: React.FC = () => {
               onChange={(e) => setSelectedBranch(e.target.value)}
               className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-700 focus:border-blue-500 focus:outline-none"
             >
-              <option value="all">All Branches</option>
-              <option value="main-branch">Main Branch</option>
-              <option value="north-clinic">North Branch</option>
+              {BRANCH_OPTIONS.map((branch) => (
+                <option key={branch.value} value={branch.value}>{branch.label}</option>
+              ))}
             </select>
           </div>
         </HmsToolbar>
@@ -203,19 +214,21 @@ export const PharmacyDashboard: React.FC = () => {
                     header: '',
                     width: 'w-20',
                     render: () => (
-                      <button
-                        type="button"
-                        onClick={() => navigate('/pharmacy')}
-                        className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 focus:underline"
-                      >
-                        Dispense →
-                      </button>
+                      <RequirePermission permission="inventory.stock.dispense">
+                        <button
+                          type="button"
+                          onClick={() => navigate('/pharmacy')}
+                          className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 focus:underline"
+                        >
+                          Dispense →
+                        </button>
+                      </RequirePermission>
                     )
                   }
                 ]}
                 emptyMessage="No prescriptions currently waiting in the active queue"
                 maxRows={5}
-                viewAllLink="/pharmacy"
+                viewAllLink={canDispense ? '/pharmacy' : undefined}
                 viewAllLabel="Open Dispense Hub"
               />
             )}
@@ -263,7 +276,7 @@ export const PharmacyDashboard: React.FC = () => {
                 ]}
                 emptyMessage="All tracked inventory levels are healthy"
                 maxRows={5}
-                viewAllLink="/pharmacy"
+                viewAllLink={canDispense ? '/pharmacy' : undefined}
                 viewAllLabel="Open Inventory Manager"
               />
             )}
@@ -300,14 +313,14 @@ export const PharmacyDashboard: React.FC = () => {
                     label: 'Dispense Queue Backlog',
                     value: totalQueue,
                     status: totalQueue > 5 ? 'at_risk' : 'on_track',
-                    drilldownHref: '/pharmacy',
+                    drilldownHref: canDispense ? '/pharmacy' : undefined,
                   },
                   {
                     id: 'sla-stockout',
                     label: 'Critical Stockouts',
                     value: outOfStockCount,
                     status: outOfStockCount > 0 ? 'breached' : 'on_track',
-                    drilldownHref: '/pharmacy',
+                    drilldownHref: canDispense ? '/pharmacy' : undefined,
                   }
                 ]}
               />
@@ -331,8 +344,8 @@ export const PharmacyDashboard: React.FC = () => {
             <HmsQuickActions
               title="Quick Actions"
               actions={[
-                { id: 'disp-hub', label: 'Dispense Queue', icon: <Pill className="h-4 w-4 text-blue-500" />, href: '/pharmacy' },
-                { id: 'inv-mgr', label: 'Drug Inventory', icon: <Package className="h-4 w-4 text-emerald-500" />, href: '/pharmacy' },
+                { id: 'disp-hub', label: 'Dispense Queue', icon: <Pill className="h-4 w-4 text-blue-500" />, href: '/pharmacy', permission: 'inventory.stock.dispense' },
+                { id: 'inv-mgr', label: 'Drug Inventory', icon: <Package className="h-4 w-4 text-emerald-500" />, href: '/pharmacy', permission: 'inventory.stock.dispense' },
               ]}
             />
           </div>

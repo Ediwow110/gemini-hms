@@ -24,7 +24,6 @@ export const TerminationWorkflowPage: React.FC = () => {
           <p className="text-xs text-slate-500 font-medium">Standardized exit process and credential revocation</p>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          <strong>Sandbox Notice:</strong> Termination workflow is simulated. No real account deactivation or access revocation occurs.
         </div>
       </div>
 
@@ -65,7 +64,7 @@ export const TerminationWorkflowPage: React.FC = () => {
         </div>
 
         <div>
-          <TerminationChecklist employeeName="Charles McGill" items={mockChecklist} />
+          <TerminationChecklist employeeName="Employee 003" items={mockChecklist} />
         </div>
       </div>
     </div>

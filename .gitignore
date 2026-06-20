@@ -21,3 +21,10 @@ backups/
 
 # But allow Prisma migration SQL files (these are version-controlled)
 !hms-backend/prisma/migrations/**/migration.sql
+
+# Playwright MCP runtime artifacts (tool output, not project source)
+.playwright-mcp/
+
+# Local dev server logs
+**/backend-dev*.log
+**/frontend-dev*.log

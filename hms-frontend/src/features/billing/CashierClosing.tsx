@@ -30,21 +30,16 @@ export const CashierClosing = () => {
       remarks: remarks.trim()
     };
     
-    // In real app: POST /api/v1/billing/sessions/SESS-2026-0509/close
-    logger.info("Submitting session reconciliation:", payload);
-    navigate('/');
+    logger.info("Legacy cashier closing form validated locally; redirecting to live Shift Closure panel:", payload);
+    navigate('/cashier/session');
   };
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
-      {/* WIP Banner — no backend wiring */}
       <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-2.5 text-[12px] text-amber-800 animate-fade-in">
         <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
         <div>
-          <h5 className="font-bold uppercase text-[10px] tracking-wider font-sans">Legacy Page — Not Wired to Backend</h5>
-          <p className="font-medium font-sans">
-            This page uses hardcoded mock data and does not submit to the live API. Use the <strong>Shift Closure</strong> panel on the <strong>POS Teller Drawer Console</strong> (/cashier/session) for real reconciliation.
-          </p>
+          <h5 className="font-bold uppercase text-[10px] tracking-wider font-sans">Legacy Page — Redirects to Live Cashier Session</h5>
         </div>
       </div>
 
@@ -145,9 +140,9 @@ export const CashierClosing = () => {
       </div>
 
       <div className="flex justify-end gap-3 pt-6 animate-fade-in stagger-4">
-        <button onClick={() => navigate('/')} className="btn btn-secondary px-6">Save Draft</button>
+        <button onClick={() => navigate('/cashier/session')} className="btn btn-secondary px-6">Open Shift Closure</button>
         <RequirePermission permission="billing.payment.create">
-          <button onClick={handleSubmit} className="btn btn-primary px-6">Submit Closing</button>
+          <button onClick={handleSubmit} className="btn btn-primary px-6">Review in Shift Closure</button>
         </RequirePermission>
       </div>
     </div>

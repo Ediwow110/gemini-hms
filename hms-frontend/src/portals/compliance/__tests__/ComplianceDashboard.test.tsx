@@ -5,6 +5,12 @@ import { ComplianceDashboard } from '../ComplianceDashboard';
 import { useAuditEvents, useAccessReview } from '../../../hooks/use-compliance';
 
 const mockNavigate = vi.fn();
+const mockHasPermission = vi.fn<(permission: string) => boolean>(() => true);
+
+vi.mock('../../../hooks/use-user', () => ({
+  usePermissions: () => ({ hasPermission: mockHasPermission }),
+}));
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
@@ -29,6 +35,7 @@ vi.mock('../../components/analytics', () => ({
 describe('ComplianceDashboard Runtime Tests', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockHasPermission.mockReturnValue(true);
   });
 
   it('renders standardized shell/header and handles loading states correctly', () => {
@@ -148,6 +155,68 @@ describe('ComplianceDashboard Runtime Tests', () => {
     // Verify SOC2 Access Review summary card
     expect(screen.getByText('SOC2 Access Review')).toBeInTheDocument();
     expect(screen.getByText('Privilege Escalations')).toBeInTheDocument();
+  });
+
+  it('hides PHI monitor actions from compliance users without PHI-monitor permission', () => {
+    mockHasPermission.mockImplementation((permission: string) => permission !== 'compliance.phi.monitor');
+    vi.mocked(useAuditEvents).mockReturnValue({
+      events: [],
+      total: 0,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useAccessReview).mockReturnValue({
+      report: null,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <ComplianceDashboard />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole('button', { name: /View Alerts/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Review Access Logs/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Full Monitor/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Verify Integrity/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Run Access Reviews/i })).toBeInTheDocument();
+    expect(mockHasPermission).toHaveBeenCalledWith('compliance.phi.monitor');
+  });
+
+  it('allows navigating to PHI monitor destinations only when PHI-monitor permission is present', () => {
+    mockHasPermission.mockReturnValue(true);
+    vi.mocked(useAuditEvents).mockReturnValue({
+      events: [],
+      total: 0,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useAccessReview).mockReturnValue({
+      report: null,
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <ComplianceDashboard />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /View Alerts/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/compliance/breach-alerts');
+
+    fireEvent.click(screen.getByRole('button', { name: /Review Access Logs/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/compliance/phi-access');
+
+    fireEvent.click(screen.getByRole('button', { name: /Full Monitor/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/compliance/phi-access');
   });
 
   it('allows navigating to sub-features from quick actions', () => {

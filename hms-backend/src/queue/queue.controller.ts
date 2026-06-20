@@ -26,11 +26,12 @@ export class QueueController {
   @RequireBranchContext()
   join(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
     @GetUser('branchId') branchId: string,
     @Body() dto: JoinQueueDto,
   ) {
     // Open endpoint for public kiosk or reception
-    return this.queueService.joinQueue(tenantId, branchId, dto);
+    return this.queueService.joinQueue(tenantId, branchId, userId, dto);
   }
 
   @Get('display')

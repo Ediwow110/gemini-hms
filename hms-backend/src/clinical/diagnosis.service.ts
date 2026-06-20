@@ -27,7 +27,7 @@ export class DiagnosisService {
   ) {
     try {
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: encounterId, tenantId, branchId },
+        where: { id: encounterId, tenantId, branchId, archivedAt: null },
       });
 
       if (!encounter) {
@@ -110,7 +110,7 @@ export class DiagnosisService {
   ) {
     try {
       const encounter = await this.prisma.encounter.findFirst({
-        where: { id: encounterId, tenantId, branchId },
+        where: { id: encounterId, tenantId, branchId, archivedAt: null },
       });
 
       if (!encounter) {

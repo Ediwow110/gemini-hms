@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  NotImplementedException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface DrugInteractionWarning {
@@ -12,8 +16,8 @@ export class ErxService {
   constructor(private readonly prisma: PrismaService) {}
 
   async screenDrugInteractions(
-    tenantId: string,
-    patientId: string,
+    _tenantId: string,
+    _patientId: string,
     medications: string[],
   ): Promise<DrugInteractionWarning[]> {
     const warnings: DrugInteractionWarning[] = [];
@@ -48,7 +52,18 @@ export class ErxService {
     return warnings;
   }
 
-  async transmitPrescription(tenantId: string, prescriptionId: string) {
+  /**
+   * Transmit a prescription to an external pharmacy network (e.g. Surescripts).
+   *
+   * This is an honest, gated stub. The full Surescripts / NCPDP integration is
+   * not yet implemented in this release. Callers receive a 501-equivalent
+   * error so the production API never reports a fake TRANSMITTED status that
+   * a downstream pharmacy would never actually receive.
+   */
+  async transmitPrescription(
+    tenantId: string,
+    prescriptionId: string,
+  ): Promise<never> {
     const prescription = await this.prisma.prescription.findUnique({
       where: { id: prescriptionId },
       include: { patient: true },
@@ -58,43 +73,30 @@ export class ErxService {
       throw new NotFoundException('Prescription not found');
     }
 
-    const surescriptsRef = `NCPDP-TX-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    return {
-      prescriptionId,
-      surescriptsReference: surescriptsRef,
-      ncpdpStandardVersion: 'SCRIPT v2017071',
-      transmissionTimestamp: new Date().toISOString(),
-      recipientPharmacyNpi: '1982730192',
-      status: 'TRANSMITTED',
-      isStub: true,
-      warning: 'This is a mock transmission stub for testing.',
-      payloadStub: {
-        header: {
-          from: 'HMS-ERX-GATEWAY',
-          to: 'SURESCRIPTS-ROUTING-HUB',
-        },
-        body: {
-          patientName: `${prescription.patient.firstName} ${prescription.patient.lastName}`,
-          medication: prescription.medicationName,
-          dosage: prescription.dosage,
-          directions: prescription.notes,
-        },
-      },
-    };
+    throw new NotImplementedException(
+      'External e-prescription transmission (Surescripts / NCPDP) is not yet ' +
+        'implemented in this release. The prescription record exists, but no ' +
+        'pharmacy network has received it. Do not surface a TRANSMITTED status ' +
+        'to clinical staff until the real provider integration is wired.',
+    );
   }
 
-  async getTransmissionStatus(tenantId: string, transmissionId: string) {
-    // Mimic surescripts/NCPDP state machine tracking
-    const statuses = ['TRANSMITTED', 'RECEIVED', 'DISPENSED'];
-    // Deterministically pick a status based on transmissionId length to keep tests consistent
-    const idx = transmissionId.length % statuses.length;
-    return {
-      transmissionId,
-      status: statuses[idx],
-      updatedAt: new Date().toISOString(),
-      isStub: true,
-      remarks: `MOCK_STUB: Dispensing workflow tracked via mock Surescripts gateway routing.`,
-    };
+  /**
+   * Track the status of a previously transmitted prescription.
+   *
+   * This is an honest, gated stub. The full Surescripts state-machine
+   * integration is not yet implemented in this release. Callers receive a
+   * 501-equivalent error rather than a fabricated TRANSMITTED / RECEIVED /
+   * DISPENSED status.
+   */
+  async getTransmissionStatus(
+    _tenantId: string,
+    _transmissionId: string,
+  ): Promise<never> {
+    throw new NotImplementedException(
+      'External e-prescription transmission status (Surescripts / NCPDP) is ' +
+        'not yet implemented in this release. No transmission records can be ' +
+        'queried until the real provider integration is wired.',
+    );
   }
 }

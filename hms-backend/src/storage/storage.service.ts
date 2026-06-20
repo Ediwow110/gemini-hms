@@ -1,7 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotImplementedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class StorageService {
@@ -12,26 +11,25 @@ export class StorageService {
 
   /**
    * Generate a time-limited signed URL for file access.
-   * Stub implementation: returns a mock URL with expiry token.
+   *
+   * This is an honest, gated stub. The full provider-backed object-storage
+   * integration (S3 / GCS / Azure Blob) is not yet implemented in this release.
+   * Callers receive a 501-equivalent error so the production API never returns
+   * a fake signed URL that points to a non-existent host.
    */
   async generateSignedUrl(
     fileKey: string,
     userId: string,
     tenantId: string,
-    expiresInSeconds: number = 3600,
+    _expiresInSeconds: number = 3600,
   ): Promise<string> {
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET is not configured');
-    }
-    const expiry = Math.floor(Date.now() / 1000) + expiresInSeconds;
-    const signature = crypto
-      .createHash('sha256')
-      .update(`${fileKey}:${userId}:${expiry}:${jwtSecret}`)
-      .digest('hex')
-      .substring(0, 16);
-
-    return `https://storage.hms.local/files/${fileKey}?sig=${signature}&exp=${expiry}`;
+    void fileKey;
+    void userId;
+    void tenantId;
+    throw new NotImplementedException(
+      'Object storage signed URLs are not yet implemented in this release. ' +
+        'Wire a real S3/GCS/Azure provider before relying on this endpoint.',
+    );
   }
 
   /**

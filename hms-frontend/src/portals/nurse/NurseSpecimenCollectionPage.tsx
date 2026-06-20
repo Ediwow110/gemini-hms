@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FlaskConical, Barcode, Printer, Check, UserCheck, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { FlaskConical, Barcode, UserCheck, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
 import { useClinicalWorkQueue, usePatientLabResults } from '../../hooks/use-clinical-workflow';
 import axios from 'axios';
@@ -11,11 +10,6 @@ export const NurseSpecimenCollectionPage = () => {
 
   const { data: queueData, isLoading: isQueueLoading, error: queueError } = useClinicalWorkQueue();
   const { data: labResults, isLoading: isLabLoading, error: labError } = usePatientLabResults(activePatientId ?? '');
-
-  const [barcodePrinted, setBarcodePrinted] = useState(false);
-  const [labelConfirmed, setLabelConfirmed] = useState(false);
-  const [isCollecting, setIsCollecting] = useState(false);
-  const [localCollected, setLocalCollected] = useState<Record<string, boolean>>({});
 
   const isLoading = isQueueLoading || (!!activePatientId && isLabLoading);
   const errorObj = queueError || (activePatientId ? labError : null);
@@ -28,24 +22,6 @@ export const NurseSpecimenCollectionPage = () => {
 
   const handleSelectOrder = (patientId: string) => {
     setSearchParams({ patientId });
-    setBarcodePrinted(false);
-    setLabelConfirmed(false);
-  };
-
-  const handlePrintBarcode = () => {
-    setBarcodePrinted(true);
-    alert('Mock Barcode label dispatched to local laboratory printer.');
-  };
-
-  const handleCompleteCollection = () => {
-    if (!activePatientId) return;
-    setIsCollecting(true);
-    setTimeout(() => {
-      setLocalCollected(prev => ({ ...prev, [activePatientId]: true }));
-      setIsCollecting(false);
-      setSearchParams({});
-      alert('Specimen registered, barcode scanned, and transferred to Lab Intake Queue.');
-    }, 1000);
   };
 
   if (errorObj) {
@@ -84,7 +60,7 @@ export const NurseSpecimenCollectionPage = () => {
         <div>
           <h5 className="font-extrabold uppercase text-[10px] tracking-wider">UI Demonstration Sandbox Shell</h5>
           <p className="font-medium mt-0.5">
-            This phlebotomy and specimen collection desk runs in a hybrid read-only mode. Active orders are loaded from the clinical work queue, but barcode printing, sample collection logs, and queue routing actions remain mock/UI-only.
+            This phlebotomy and specimen collection desk runs in a hybrid read-only mode. Active orders are loaded from the clinical work queue, but barcode printing, sample collection registration, and queue routing actions are disabled because no nurse-side specimen collection endpoint exists. Container / specimen type / ordering clinician fields are not exposed by the work-queue payload and are therefore marked as data unavailable.
           </p>
         </div>
       </div>
@@ -109,13 +85,12 @@ export const NurseSpecimenCollectionPage = () => {
               ) : (
                 pendingOrders.map((ord) => {
                   const isActive = ord.patientId === activePatientId;
-                  const isCollected = localCollected[ord.patientId];
                   return (
                     <button
                       key={ord.id}
                       onClick={() => handleSelectOrder(ord.patientId)}
                       className={`w-full text-left p-3.5 rounded-xl border flex flex-col gap-1.5 transition-all duration-200 cursor-pointer ${
-                        isActive 
+                        isActive
                           ? 'bg-gradient-to-r from-indigo-50 to-violet-50 border-indigo-200 shadow-sm'
                           : 'bg-white border-slate-200/60 hover:bg-slate-50 hover:border-slate-300'
                       }`}
@@ -124,12 +99,8 @@ export const NurseSpecimenCollectionPage = () => {
                         <span className={`font-bold text-xs ${isActive ? 'text-indigo-800' : 'text-slate-800'}`}>
                           {ord.patientName || '[REDACTED]'}
                         </span>
-                        <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border ${
-                          isCollected
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-150'
-                            : 'bg-amber-50 text-amber-700 border-amber-150 animate-pulse'
-                        }`}>
-                          {isCollected ? 'collected' : ord.status.toLowerCase()}
+                        <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-150 animate-pulse">
+                          {ord.status.toLowerCase()}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-600 font-semibold">Order: {ord.queueNumber}</p>
@@ -162,8 +133,8 @@ export const NurseSpecimenCollectionPage = () => {
                     <h3 className="font-extrabold text-slate-800 text-sm">{activeQueueItem.patientName || '[REDACTED]'}</h3>
                     <p className="text-[10px] text-slate-400 font-semibold font-mono mt-0.5">MRN: {activeQueueItem.patientNumber} • Queue Ref: {activeQueueItem.queueNumber}</p>
                   </div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 text-center text-xs font-bold text-slate-700">
-                    Container: Lavender Top (EDTA) (Default)
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 text-center text-[10px] font-bold text-slate-400">
+                    Container: <span className="text-slate-500">Data unavailable</span>
                   </div>
                 </div>
               </div>
@@ -172,20 +143,20 @@ export const NurseSpecimenCollectionPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Specimen Type</span>
-                  <p className="text-xs font-bold text-slate-700">Whole Blood (Default)</p>
+                  <p className="text-xs font-bold text-slate-400">Data unavailable</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Test Requested</span>
-                  <p className="text-xs font-bold text-slate-700">Complete Blood Count (CBC) (Default)</p>
+                  <p className="text-xs font-bold text-slate-400">Data unavailable</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ordering Clinician</span>
-                  <p className="text-xs font-bold text-slate-700">Dr. Frankenstein (Default)</p>
+                  <p className="text-xs font-bold text-slate-400">Data unavailable</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Intake Status</span>
                   <p className="text-xs font-bold text-indigo-600 capitalize">
-                    {localCollected[activeQueueItem.patientId] ? 'collected' : activeQueueItem.status.toLowerCase()}
+                    {activeQueueItem.status.toLowerCase()}
                   </p>
                 </div>
               </div>
@@ -229,31 +200,28 @@ export const NurseSpecimenCollectionPage = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={handlePrintBarcode}
-                      className={`btn text-[10px] font-extrabold px-3 py-1.5 rounded-lg border flex items-center gap-1 transition-all ${
-                        barcodePrinted 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                          : 'bg-indigo-600 text-white hover:bg-indigo-700 border-transparent shadow-sm'
-                      }`}
+                      disabled
+                      data-testid="nursespecimen-print-label-disabled"
+                      title="Disabled: clinical barcode printing is not yet integrated. Use the specimen accessioning flow at the lab side for now."
+                      className="btn text-[10px] font-extrabold px-3 py-1.5 rounded-lg border flex items-center gap-1 bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-60"
                     >
-                      {barcodePrinted ? <Check className="h-3 w-3" /> : <Printer className="h-3.5 w-3.5" />}
-                      {barcodePrinted ? 'Printed' : 'Print Label'}
+                      <Barcode className="h-3.5 w-3.5" />
+                      Print Label
                     </button>
                   </div>
 
                   {/* Step 2: Confirm Label Attached */}
                   <div className="flex items-center justify-between gap-4 bg-white p-3 rounded-xl border border-slate-100">
-                    <label htmlFor="confirm-label-attached" className="space-y-0.5 cursor-pointer block select-none">
-                      <span className="text-[11px] font-bold text-slate-700 block">2. Affix and Verify Label</span>
+                    <div className="space-y-0.5">
+                      <span className="text-[11px] font-bold text-slate-400 block">2. Affix and Verify Label</span>
                       <p className="text-[10px] text-slate-400 font-medium">Confirm barcodes are scanned and securely attached to the container.</p>
-                    </label>
+                    </div>
                     <input
                       type="checkbox"
-                      id="confirm-label-attached"
-                      disabled={!barcodePrinted}
-                      checked={labelConfirmed}
-                      onChange={(e) => setLabelConfirmed(e.target.checked)}
-                      className="h-4.5 w-4.5 text-indigo-600 focus:ring-indigo-500 border-slate-350 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled
+                      data-testid="nursespecimen-confirm-label-disabled"
+                      title="Disabled: cannot confirm a label that was never printed. This step becomes available once barcode printing is integrated."
+                      className="h-4.5 w-4.5 text-indigo-600 focus:ring-indigo-500 border-slate-350 rounded cursor-not-allowed disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -267,12 +235,13 @@ export const NurseSpecimenCollectionPage = () => {
 
                 <button
                   type="button"
-                  disabled={!labelConfirmed || isCollecting || localCollected[activeQueueItem.patientId]}
-                  onClick={handleCompleteCollection}
-                  className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-transparent text-white text-xs px-5 py-2 font-extrabold flex items-center gap-1.5 rounded-xl shadow-md transition-all"
+                  disabled
+                  data-testid="nursespecimen-confirm-collection-disabled"
+                  title="Disabled: nurse-side specimen collection registration is not yet wired to a backend endpoint. Real chain-of-custody is recorded by the lab side via /lab/specimens (Med-Tech)."
+                  className="btn bg-slate-50 border border-slate-200 text-slate-400 text-xs px-5 py-2 font-extrabold flex items-center gap-1.5 rounded-xl cursor-not-allowed opacity-60"
                 >
                   <UserCheck className="h-4 w-4" />
-                  {isCollecting ? 'Filing Collection...' : 'Confirm Sample Collected'}
+                  Confirm Sample Collected
                 </button>
               </div>
             </div>

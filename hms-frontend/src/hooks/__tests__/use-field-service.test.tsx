@@ -139,12 +139,12 @@ describe('useUpdateInstallationStatus', () => {
   });
 });
 
-describe('useFieldServicePreventiveMaintenance (mock hook)', () => {
+describe('useFieldServicePreventiveMaintenance (empty default hook)', () => {
   beforeEach(() => {
     queryClient.clear();
   });
 
-  it('returns hardcoded mock data without calling any service', async () => {
+  it('returns empty array without calling any service', async () => {
     const Probe = () => {
       const { data, isLoading } = useFieldServicePreventiveMaintenance();
       if (isLoading) return <div>loading</div>;
@@ -152,6 +152,6 @@ describe('useFieldServicePreventiveMaintenance (mock hook)', () => {
     };
 
     render(<Probe />, { wrapper });
-    await waitFor(() => expect(screen.getByTestId('data')).toHaveTextContent('2 PM jobs'));
+    await waitFor(() => expect(screen.getByTestId('data')).toHaveTextContent('0 PM jobs'));
   });
 });

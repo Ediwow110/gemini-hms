@@ -31,6 +31,10 @@ describe('AdminController', () => {
 
   beforeEach(async () => {
     adminService = {
+      listUsers: jest.fn(),
+      getUser: jest.fn(),
+      listRoles: jest.fn(),
+      listPermissions: jest.fn(),
       createUser: jest.fn(),
       updateUser: jest.fn(),
       createCustomRole: jest.fn(),
@@ -46,15 +50,15 @@ describe('AdminController', () => {
       requestPrivilegedRoleRevocation: jest.fn(),
       approvePrivilegedRoleChange: jest.fn(),
       rejectPrivilegedRoleChange: jest.fn(),
+      requestPrivilegedRolePermissionGrant: jest.fn(),
+      requestPrivilegedRolePermissionRevoke: jest.fn(),
+      approvePrivilegedRolePermissionChange: jest.fn(),
+      rejectPrivilegedRolePermissionChange: jest.fn(),
       requestPrivilegedUserDeactivation: jest.fn(),
       requestPrivilegedUserActivation: jest.fn(),
       requestPrivilegedUserProfileUpdate: jest.fn(),
       approvePrivilegedUserChange: jest.fn(),
       rejectPrivilegedUserChange: jest.fn(),
-      requestPrivilegedRolePermissionGrant: jest.fn(),
-      requestPrivilegedRolePermissionRevoke: jest.fn(),
-      approvePrivilegedRolePermissionChange: jest.fn(),
-      rejectPrivilegedRolePermissionChange: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -338,24 +342,28 @@ describe('AdminController', () => {
   it('deactivateUser calls adminService.deactivateUser', async () => {
     adminService.deactivateUser.mockResolvedValue({ id: 'target-id' });
 
-    await controller.deactivateUser(actor, 'target-id', { reason: 'valid' });
+    await controller.deactivateUser(actor, 'target-id', {
+      reason: 'valid reason',
+    });
 
     expect(adminService.deactivateUser).toHaveBeenCalledWith(
       actor,
       'target-id',
-      'valid',
+      'valid reason',
     );
   });
 
   it('activate forwards actor, target, and reason to service', async () => {
     adminService.activateUser.mockResolvedValue({ id: 'target-id' });
 
-    await controller.activateUser(actor, 'target-id', { reason: 'valid' });
+    await controller.activateUser(actor, 'target-id', {
+      reason: 'valid reason',
+    });
 
     expect(adminService.activateUser).toHaveBeenCalledWith(
       actor,
       'target-id',
-      'valid',
+      'valid reason',
     );
   });
 
@@ -364,14 +372,14 @@ describe('AdminController', () => {
 
     await controller.assignUserRole(actor, 'target-id', {
       roleId: 'role-id',
-      reason: 'valid',
+      reason: 'valid reason',
     });
 
     expect(adminService.assignUserRole).toHaveBeenCalledWith(
       actor,
       'target-id',
       'role-id',
-      'valid',
+      'valid reason',
     );
   });
 
@@ -379,14 +387,14 @@ describe('AdminController', () => {
     adminService.revokeUserRole.mockResolvedValue({ userId: 'target-id' });
 
     await controller.revokeUserRole(actor, 'target-id', 'role-id', {
-      reason: 'valid',
+      reason: 'valid reason',
     });
 
     expect(adminService.revokeUserRole).toHaveBeenCalledWith(
       actor,
       'target-id',
       'role-id',
-      'valid',
+      'valid reason',
     );
   });
 
@@ -395,14 +403,14 @@ describe('AdminController', () => {
 
     await controller.grantRolePermission(actor, 'role-id', {
       permissionId: 'permission-id',
-      reason: 'valid',
+      reason: 'valid reason',
     });
 
     expect(adminService.grantRolePermission).toHaveBeenCalledWith(
       actor,
       'role-id',
       'permission-id',
-      'valid',
+      'valid reason',
     );
   });
 
@@ -410,14 +418,14 @@ describe('AdminController', () => {
     adminService.revokeRolePermission.mockResolvedValue({ roleId: 'role-id' });
 
     await controller.revokeRolePermission(actor, 'role-id', 'permission-id', {
-      reason: 'valid',
+      reason: 'valid reason',
     });
 
     expect(adminService.revokeRolePermission).toHaveBeenCalledWith(
       actor,
       'role-id',
       'permission-id',
-      'valid',
+      'valid reason',
     );
   });
 
@@ -428,14 +436,14 @@ describe('AdminController', () => {
 
     await controller.requestPrivilegedRoleAssignment(actor, 'target-id', {
       roleId: 'role-id',
-      reason: 'valid',
+      reason: 'valid reason',
     });
 
     expect(adminService.requestPrivilegedRoleAssignment).toHaveBeenCalledWith(
       actor,
       'target-id',
       'role-id',
-      'valid',
+      'valid reason',
     );
   });
 
@@ -448,14 +456,14 @@ describe('AdminController', () => {
       actor,
       'target-id',
       'role-id',
-      { reason: 'valid' },
+      { reason: 'valid reason' },
     );
 
     expect(adminService.requestPrivilegedRoleRevocation).toHaveBeenCalledWith(
       actor,
       'target-id',
       'role-id',
-      'valid',
+      'valid reason',
     );
   });
 
@@ -465,13 +473,13 @@ describe('AdminController', () => {
     });
 
     await controller.approvePrivilegedRoleChange(actor, 'request-id', {
-      reason: 'valid',
+      reason: 'valid reason',
     });
 
     expect(adminService.approvePrivilegedRoleChange).toHaveBeenCalledWith(
       actor,
       'request-id',
-      'valid',
+      'valid reason',
     );
   });
 
@@ -481,13 +489,13 @@ describe('AdminController', () => {
     });
 
     await controller.rejectPrivilegedRoleChange(actor, 'request-id', {
-      reason: 'valid',
+      reason: 'valid reason',
     });
 
     expect(adminService.rejectPrivilegedRoleChange).toHaveBeenCalledWith(
       actor,
       'request-id',
-      'valid',
+      'valid reason',
     );
   });
 
@@ -543,7 +551,7 @@ describe('AdminController', () => {
   it('privileged role request DTO rejects blank roleId', async () => {
     const dto = plainToInstance(PrivilegedRoleRequestDto, {
       roleId: '   ',
-      reason: 'valid',
+      reason: 'valid reason',
     });
 
     const errors = await validate(dto);
@@ -561,13 +569,13 @@ describe('AdminController', () => {
 
     await controller.updateCustomRole(actor, 'role-id', {
       name: 'New Name',
-      reason: 'valid',
+      reason: 'valid reason',
     });
 
     expect(adminService.updateCustomRole).toHaveBeenCalledWith(
       actor,
       'role-id',
-      'valid',
+      'valid reason',
       'New Name',
     );
   });
@@ -646,11 +654,11 @@ describe('AdminController', () => {
         requestId: 'req-id',
       });
       await controller.requestPrivilegedUserDeactivation(actor, 'user-id', {
-        reason: 'valid',
+        reason: 'valid reason',
       });
       expect(
         adminService.requestPrivilegedUserDeactivation,
-      ).toHaveBeenCalledWith(actor, 'user-id', 'valid');
+      ).toHaveBeenCalledWith(actor, 'user-id', 'valid reason');
     });
 
     it('requestPrivilegedUserActivation calls service', async () => {
@@ -658,19 +666,19 @@ describe('AdminController', () => {
         requestId: 'req-id',
       });
       await controller.requestPrivilegedUserActivation(actor, 'user-id', {
-        reason: 'valid',
+        reason: 'valid reason',
       });
       expect(adminService.requestPrivilegedUserActivation).toHaveBeenCalledWith(
         actor,
         'user-id',
-        'valid',
+        'valid reason',
       );
     });
 
     it('requestPrivilegedUserProfileUpdate calls service', async () => {
       const dto: PrivilegedUserProfileUpdateDto = {
         email: 'new@email.com',
-        reason: 'valid',
+        reason: 'valid reason',
       };
       adminService.requestPrivilegedUserProfileUpdate.mockResolvedValue({
         requestId: 'req-id',
@@ -690,12 +698,12 @@ describe('AdminController', () => {
         requestId: 'req-id',
       });
       await controller.approvePrivilegedUserChange(actor, 'req-id', {
-        reason: 'valid',
+        reason: 'valid reason',
       });
       expect(adminService.approvePrivilegedUserChange).toHaveBeenCalledWith(
         actor,
         'req-id',
-        'valid',
+        'valid reason',
       );
     });
 
@@ -704,13 +712,239 @@ describe('AdminController', () => {
         requestId: 'req-id',
       });
       await controller.rejectPrivilegedUserChange(actor, 'req-id', {
-        reason: 'valid',
+        reason: 'valid reason',
       });
       expect(adminService.rejectPrivilegedUserChange).toHaveBeenCalledWith(
         actor,
         'req-id',
-        'valid',
+        'valid reason',
       );
+    });
+  });
+
+  describe('User Query Endpoints', () => {
+    it('listUsers endpoint requires admin.health.view metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'listUsers',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+
+      expect(permissions).toEqual({
+        mode: 'any',
+        permissions: ['admin.health.view'],
+      });
+    });
+
+    it('listUsers calls adminService.listUsers', async () => {
+      adminService.listUsers.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 50,
+      });
+
+      await controller.listUsers(
+        actor,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      );
+
+      expect(adminService.listUsers).toHaveBeenCalledWith(actor, {
+        search: undefined,
+        status: undefined,
+        branchId: undefined,
+        page: undefined,
+        limit: undefined,
+      });
+    });
+
+    it('listUsers parses pagination params', async () => {
+      adminService.listUsers.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 2,
+        limit: 10,
+      });
+
+      await controller.listUsers(actor, '', 'ACTIVE', 'branch-id', '2', '10');
+
+      expect(adminService.listUsers).toHaveBeenCalledWith(actor, {
+        search: '',
+        status: 'ACTIVE',
+        branchId: 'branch-id',
+        page: 2,
+        limit: 10,
+      });
+    });
+
+    it('getUser endpoint requires admin.health.view metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'getUser',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+
+      expect(permissions).toEqual({
+        mode: 'any',
+        permissions: ['admin.health.view'],
+      });
+    });
+
+    it('listUsers calls adminService.listUsers with correct params', async () => {
+      adminService.listUsers.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 50,
+      });
+
+      await controller.listUsers(
+        actor,
+        'test',
+        'ACTIVE',
+        'branch-id',
+        '2',
+        '10',
+      );
+
+      expect(adminService.listUsers).toHaveBeenCalledWith(actor, {
+        search: 'test',
+        status: 'ACTIVE',
+        branchId: 'branch-id',
+        page: 2,
+        limit: 10,
+      });
+    });
+
+    it('listUsers handles NaN and invalid bounds for page and limit', async () => {
+      adminService.listUsers.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 50,
+      });
+
+      // Case 1: NaN and Negative
+      await controller.listUsers(
+        actor,
+        undefined,
+        undefined,
+        undefined,
+        'abc',
+        '-10',
+      );
+      expect(adminService.listUsers).toHaveBeenCalledWith(actor, {
+        search: undefined,
+        status: undefined,
+        branchId: undefined,
+        page: 1,
+        limit: 1,
+      });
+
+      // Case 2: Zeroes
+      await controller.listUsers(
+        actor,
+        undefined,
+        undefined,
+        undefined,
+        '0',
+        '0',
+      );
+      expect(adminService.listUsers).toHaveBeenCalledWith(actor, {
+        search: undefined,
+        status: undefined,
+        branchId: undefined,
+        page: 1,
+        limit: 1,
+      });
+
+      // Case 3: Empty/Undefined (should preserve undefined for defaults)
+      await controller.listUsers(
+        actor,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      );
+      expect(adminService.listUsers).toHaveBeenCalledWith(actor, {
+        search: undefined,
+        status: undefined,
+        branchId: undefined,
+        page: undefined,
+        limit: undefined,
+      });
+    });
+
+    it('getUser calls adminService.getUser', async () => {
+      adminService.getUser.mockResolvedValue({
+        id: 'user-id',
+        email: 'user@test.com',
+      });
+
+      await controller.getUser(actor, 'user-id');
+
+      expect(adminService.getUser).toHaveBeenCalledWith(actor, 'user-id');
+    });
+  });
+
+  describe('Role / Permission Query Endpoints', () => {
+    it('listRoles endpoint requires admin.health.view metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'listRoles',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+
+      expect(permissions).toEqual({
+        mode: 'any',
+        permissions: ['admin.health.view'],
+      });
+    });
+
+    it('listRoles calls adminService.listRoles', async () => {
+      adminService.listRoles.mockResolvedValue([]);
+
+      await controller.listRoles(actor);
+
+      expect(adminService.listRoles).toHaveBeenCalledWith(actor);
+    });
+
+    it('listPermissions endpoint requires admin.health.view metadata', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        AdminController.prototype,
+        'listPermissions',
+      );
+      const permissions = Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        descriptor?.value as object,
+      );
+
+      expect(permissions).toEqual({
+        mode: 'any',
+        permissions: ['admin.health.view'],
+      });
+    });
+
+    it('listPermissions calls adminService.listPermissions', async () => {
+      adminService.listPermissions.mockResolvedValue([]);
+
+      await controller.listPermissions(actor);
+
+      expect(adminService.listPermissions).toHaveBeenCalledWith(actor);
     });
   });
 
@@ -784,12 +1018,12 @@ describe('AdminController', () => {
         'role-id',
         'perm-id',
         {
-          reason: 'valid',
+          reason: 'valid reason',
         },
       );
       expect(
         adminService.requestPrivilegedRolePermissionGrant,
-      ).toHaveBeenCalledWith(actor, 'role-id', 'perm-id', 'valid');
+      ).toHaveBeenCalledWith(actor, 'role-id', 'perm-id', 'valid reason');
     });
 
     it('requestPrivilegedRolePermissionRevoke calls service', async () => {
@@ -801,12 +1035,12 @@ describe('AdminController', () => {
         'role-id',
         'perm-id',
         {
-          reason: 'valid',
+          reason: 'valid reason',
         },
       );
       expect(
         adminService.requestPrivilegedRolePermissionRevoke,
-      ).toHaveBeenCalledWith(actor, 'role-id', 'perm-id', 'valid');
+      ).toHaveBeenCalledWith(actor, 'role-id', 'perm-id', 'valid reason');
     });
 
     it('approvePrivilegedRolePermissionChange calls service', async () => {
@@ -814,11 +1048,11 @@ describe('AdminController', () => {
         requestId: 'req-id',
       });
       await controller.approvePrivilegedRolePermissionChange(actor, 'req-id', {
-        reason: 'valid',
+        reason: 'valid reason',
       });
       expect(
         adminService.approvePrivilegedRolePermissionChange,
-      ).toHaveBeenCalledWith(actor, 'req-id', 'valid');
+      ).toHaveBeenCalledWith(actor, 'req-id', 'valid reason');
     });
 
     it('rejectPrivilegedRolePermissionChange calls service', async () => {
@@ -826,11 +1060,11 @@ describe('AdminController', () => {
         requestId: 'req-id',
       });
       await controller.rejectPrivilegedRolePermissionChange(actor, 'req-id', {
-        reason: 'valid',
+        reason: 'valid reason',
       });
       expect(
         adminService.rejectPrivilegedRolePermissionChange,
-      ).toHaveBeenCalledWith(actor, 'req-id', 'valid');
+      ).toHaveBeenCalledWith(actor, 'req-id', 'valid reason');
     });
   });
 });

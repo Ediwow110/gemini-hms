@@ -2,19 +2,20 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiClient } from '../../lib/api';
 import { logger } from '../../lib/logger';
 import { PageHeader } from '../../components/ui/page-header';
-import { 
-  CheckSquare, 
-  Square, 
-  Activity, 
-  ShieldCheck, 
-  UserCheck, 
-  AlertTriangle, 
-  CloudOff, 
-  CloudLightning, 
-  RefreshCw, 
+import {
+  CheckSquare,
+  Square,
+  Activity,
+  ShieldCheck,
+  UserCheck,
+  AlertTriangle,
+  CloudOff,
+  CloudLightning,
+  RefreshCw,
   Wrench,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  ShieldAlert
 } from 'lucide-react';
 
 interface Asset {
@@ -47,15 +48,15 @@ const CHECKLIST_TEMPLATES: ChecklistItem[] = [
   { id: 'ventilation', label: 'HVAC & ventilation systems operational', phase: 'readiness' },
   { id: 'shielding', label: 'Lead lining / radiation shielding certified', phase: 'readiness' },
   { id: 'anchoring', label: 'Machine chassis anchored to slab foundation', phase: 'readiness' },
-  
+
   { id: 'unboxing', label: 'Chassis unboxed and structurally checked', phase: 'assembly' },
   { id: 'cabling', label: 'Fiber interconnects and power routing secured', phase: 'assembly' },
   { id: 'detector', label: 'Detector array & gantry cooling calibrated', phase: 'assembly' },
-  
+
   { id: 'calibration', label: 'Helical scan test patterns executed', phase: 'commissioning' },
   { id: 'interlocks', label: 'Door interlocks & emergency stops verified', phase: 'commissioning' },
   { id: 'laser', label: 'Alignment lasers mapped to iso-center', phase: 'commissioning' },
-  
+
   { id: 'training', label: 'On-site clinical team initial training completed', phase: 'handover' },
   { id: 'manuals', label: 'Technical manuals & safety decals delivered', phase: 'handover' },
   { id: 'signature', label: 'Sign-off documents signed by department head', phase: 'handover' },
@@ -66,13 +67,13 @@ export const InstallationChecklist: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<InstallationJob | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   
   // Offline-first State Mechanics
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
   const [lastSynced, setLastSynced] = useState<string | null>(localStorage.getItem('hms_logistics_last_synced'));
   const [checklistState, setChecklistState] = useState<Record<string, boolean>>({});
   const [technicianNote, setTechnicianNote] = useState<string>('');
-  const [syncingJobId, setSyncingJobId] = useState<string | null>(null);
 
 
 
@@ -80,7 +81,7 @@ export const InstallationChecklist: React.FC = () => {
   const selectJob = useCallback((job: InstallationJob) => {
     setSelectedJob(job);
     setTechnicianNote('');
-    
+
     // Attempt local checklist restoration
     const cachedStateKey = `hms_logistics_checklist_${job.id}`;
     const cachedState = localStorage.getItem(cachedStateKey);
@@ -105,10 +106,11 @@ export const InstallationChecklist: React.FC = () => {
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setFetchError(null);
     try {
       const response = await apiClient.get<InstallationJob[]>('/v1/logistics/installations');
       setJobs(response.data);
-      
+
       // Save fetch snapshot inside offline cache
       localStorage.setItem('hms_logistics_cached_jobs', JSON.stringify(response.data));
       const syncTime = new Date().toLocaleTimeString();
@@ -119,7 +121,12 @@ export const InstallationChecklist: React.FC = () => {
       if (response.data.length > 0 && !selectedJob) {
         selectJob(response.data[0]);
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      const errorMsg = error.response?.data?.message || 'No network connection and no local logistics cache discovered.';
+      setFetchError(errorMsg);
+      setError(errorMsg);
+
       logger.warn('Logistics API failed, falling back to local storage cache:', err);
       const cached = localStorage.getItem('hms_logistics_cached_jobs');
       if (cached) {
@@ -129,8 +136,6 @@ export const InstallationChecklist: React.FC = () => {
         if (parsedJobs.length > 0 && !selectedJob) {
           selectJob(parsedJobs[0]);
         }
-      } else {
-        setError('No network connection and no local logistics cache discovered.');
       }
     } finally {
       setLoading(false);
@@ -163,7 +168,6 @@ export const InstallationChecklist: React.FC = () => {
   // Outbox Synchronization mechanics for offline field tasks
   const handleSyncStatus = async (status: 'IN_PROGRESS' | 'COMMISSIONED' | 'COMPLETED') => {
     if (!selectedJob) return;
-    setSyncingJobId(selectedJob.id);
     setError(null);
 
     const payload = {
@@ -175,51 +179,47 @@ export const InstallationChecklist: React.FC = () => {
       // Buffer the job inside local offline outbox
       const outboxKey = 'hms_logistics_pending_outbox';
       const currentOutbox: Array<{ jobId: string; payload: unknown }> = JSON.parse(localStorage.getItem(outboxKey) || '[]');
-      
+
       // Upsert existing item in outbox queue
       const existingIdx = currentOutbox.findIndex((item) => item.jobId === selectedJob.id);
       const outboxItem = { jobId: selectedJob.id, payload };
-      
+
       if (existingIdx >= 0) {
         currentOutbox[existingIdx] = outboxItem;
       } else {
         currentOutbox.push(outboxItem);
       }
-      
+
       localStorage.setItem(outboxKey, JSON.stringify(currentOutbox));
-      
+
       // Optimistic visual feedback
       setSelectedJob({
         ...selectedJob,
         status
       });
-      
-      alert('Offline Outbox: Connection unavailable. Handover saved locally and queued for automatic sync!');
-      setSyncingJobId(null);
+
       return;
     }
 
     // Connect immediately to the live backend
-    try {
-      const response = await apiClient.patch(`/v1/logistics/installations/${selectedJob.id}/status`, payload);
+    try {      const response = await apiClient.patch(`/v1/logistics/installations/${selectedJob.id}/status`, payload);
       const updatedJob = response.data;
-      
+
       // Update local state list
       setJobs(prev => prev.map(j => j.id === selectedJob.id ? { ...j, status: updatedJob.status, asset: { ...j.asset, installationStatus: updatedJob.assetInstallStatus, warrantyStart: updatedJob.warrantyStart, warrantyEnd: updatedJob.warrantyEnd } } : j));
       setSelectedJob(prev => prev ? { ...prev, status: updatedJob.status, asset: { ...prev.asset, installationStatus: updatedJob.assetInstallStatus, warrantyStart: updatedJob.warrantyStart, warrantyEnd: updatedJob.warrantyEnd } } : null);
-      
+
       // Clean local storage cache flags
       localStorage.removeItem(`hms_logistics_checklist_${selectedJob.id}`);
       localStorage.removeItem(`hms_logistics_note_${selectedJob.id}`);
-      
+
       // Re-trigger live jobs list refresh
       await fetchJobs();
-      alert(`Handover signed successfully! Warranty clocks started: ${new Date(updatedJob.warrantyStart).toLocaleDateString()}`);
     } catch (err) {
       const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to dispatch status sync to the backend.';
       setError(errorMsg);
     } finally {
-      setSyncingJobId(null);
+      // No sync state to clear
     }
   };
 
@@ -247,10 +247,9 @@ export const InstallationChecklist: React.FC = () => {
     // Clean resolved outbox items
     const remainingOutbox = outbox.slice(successfulCount);
     localStorage.setItem(outboxKey, JSON.stringify(remainingOutbox));
-    
+
     if (successfulCount > 0) {
       await fetchJobs();
-      alert(`Connection Restored: Automatically synchronized ${successfulCount} pending field handovers to EMR database!`);
     }
   }, [fetchJobs]);
 
@@ -261,7 +260,7 @@ export const InstallationChecklist: React.FC = () => {
       void triggerOutboxSync();
     };
     const handleOffline = () => setIsOffline(true);
-    
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {
@@ -287,12 +286,12 @@ export const InstallationChecklist: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      
+
       {/* Premium Title Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200/80 pb-5 space-y-4 md:space-y-0">
-        <PageHeader 
-          title="Field Service & Logistics" 
-          description="Mobile-First Commissioning, Site Installation Checklists, & Handover Gates" 
+        <PageHeader
+          title="Field Service & Logistics"
+          description="Mobile-First Commissioning, Site Installation Checklists, & Handover Gates"
         />
 
         {/* Offline / Online System Sync Indicator */}
@@ -313,7 +312,7 @@ export const InstallationChecklist: React.FC = () => {
               Synced: {lastSynced}
             </span>
           )}
-          <button 
+          <button
             onClick={fetchJobs}
             disabled={loading}
             className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors shadow-sm cursor-pointer flex items-center justify-center min-h-[38px] min-w-[38px]"
@@ -323,8 +322,30 @@ export const InstallationChecklist: React.FC = () => {
         </div>
       </div>
 
+      {/* Global Notice — describes the real offline-first contract */}
+      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium">
+        <ShieldAlert className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+        <span>
+          <span className="font-bold">Live backend contract:</span>{' '}
+          status writes go to{' '}
+          <code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">PATCH /v1/logistics/installations/:id/status</code>
+          {' '}with{' '}
+          <code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">{`{ status, note? }`}</code>{' '}
+          (server-authoritative: tenant, branch, and actor are derived from the JWT).
+          When the device is offline, writes are buffered to{' '}
+          <code className="px-1 py-0.5 bg-emerald-100 rounded text-[11px]">localStorage</code>{' '}
+          and replayed on reconnect.
+        </span>
+      </div>
+      {fetchError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-sm font-semibold flex items-center space-x-3 animate-fade-in mt-4">
+          <ShieldAlert className="h-5 w-5 text-rose-500" />
+          <span>{fetchError}</span>
+        </div>
+      )}
+
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm font-semibold flex items-center space-x-3 animate-fade-in">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm font-semibold flex items-center space-x-3 animate-fade-in" role="alert" data-testid="logistics-update-error">
           <AlertTriangle className="h-5 w-5 text-red-500" />
           <span>{error}</span>
         </div>
@@ -340,7 +361,7 @@ export const InstallationChecklist: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
+
           {/* Left panel: assigned list (gloved hands compatible targets) */}
           <div className="lg:col-span-4 flex flex-col space-y-4">
             <h2 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
@@ -353,8 +374,8 @@ export const InstallationChecklist: React.FC = () => {
                   key={job.id}
                   onClick={() => selectJob(job)}
                   className={`w-full p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex flex-col justify-between group min-h-[105px] ${
-                    selectedJob?.id === job.id 
-                      ? 'bg-indigo-50/60 border-indigo-200 shadow-sm shadow-indigo-100' 
+                    selectedJob?.id === job.id
+                      ? 'bg-indigo-50/60 border-indigo-200 shadow-sm shadow-indigo-100'
                       : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 shadow-sm'
                   }`}
                 >
@@ -363,10 +384,10 @@ export const InstallationChecklist: React.FC = () => {
                       ID: {job.id.substring(0, 8)}...
                     </span>
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                      job.status === 'COMPLETED' 
-                        ? 'bg-emerald-50 text-emerald-700' 
-                        : job.status === 'IN_PROGRESS' 
-                        ? 'bg-amber-50 text-amber-700' 
+                      job.status === 'COMPLETED'
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : job.status === 'IN_PROGRESS'
+                        ? 'bg-amber-50 text-amber-700'
                         : 'bg-slate-100 text-slate-600'
                     }`}>
                       {job.status}
@@ -388,7 +409,7 @@ export const InstallationChecklist: React.FC = () => {
           {/* Right panel: Active Checklist (Dynamic touch fields) */}
           {selectedJob ? (
             <div className="lg:col-span-8 card p-6 lg:p-8 space-y-8 bg-white border border-slate-200/80 shadow-sm flex flex-col">
-              
+
               {/* Header Status Meta */}
               <div className="flex flex-col md:flex-row justify-between border-b border-slate-100 pb-5 space-y-4 md:space-y-0">
                 <div>
@@ -423,7 +444,7 @@ export const InstallationChecklist: React.FC = () => {
 
               {/* Dynamic Phases Group */}
               <div className="space-y-8">
-                
+
                 {/* Phase 1: Site Readiness */}
                 <div>
                   <div className="text-xs font-extrabold uppercase text-indigo-600 tracking-widest border-b border-indigo-50 pb-2 mb-4 flex items-center justify-between">
@@ -441,8 +462,8 @@ export const InstallationChecklist: React.FC = () => {
                         className={`w-full text-left p-4 border rounded-2xl transition-all duration-200 flex items-center justify-between min-h-[56px] group ${
                           selectedJob.status === 'COMPLETED' ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
                         } ${
-                          checklistState[item.id] 
-                            ? 'border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50/30' 
+                          checklistState[item.id]
+                            ? 'border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50/30'
                             : 'bg-slate-50 border-slate-200 hover:bg-slate-100/80 hover:border-slate-300'
                         }`}
                       >
@@ -478,8 +499,8 @@ export const InstallationChecklist: React.FC = () => {
                         className={`w-full text-left p-4 border rounded-2xl transition-all duration-200 flex items-center justify-between min-h-[56px] group ${
                           selectedJob.status === 'COMPLETED' ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
                         } ${
-                          checklistState[item.id] 
-                            ? 'border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50/30' 
+                          checklistState[item.id]
+                            ? 'border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50/30'
                             : 'bg-slate-50 border-slate-200 hover:bg-slate-100/80 hover:border-slate-300'
                         }`}
                       >
@@ -515,8 +536,8 @@ export const InstallationChecklist: React.FC = () => {
                         className={`w-full text-left p-4 border rounded-2xl transition-all duration-200 flex items-center justify-between min-h-[56px] group ${
                           selectedJob.status === 'COMPLETED' ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
                         } ${
-                          checklistState[item.id] 
-                            ? 'border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50/30' 
+                          checklistState[item.id]
+                            ? 'border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50/30'
                             : 'bg-slate-50 border-slate-200 hover:bg-slate-100/80 hover:border-slate-300'
                         }`}
                       >
@@ -552,8 +573,8 @@ export const InstallationChecklist: React.FC = () => {
                         className={`w-full text-left p-4 border rounded-2xl transition-all duration-200 flex items-center justify-between min-h-[56px] group ${
                           selectedJob.status === 'COMPLETED' ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
                         } ${
-                          checklistState[item.id] 
-                            ? 'border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50/30' 
+                          checklistState[item.id]
+                            ? 'border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50/30'
                             : 'bg-slate-50 border-slate-200 hover:bg-slate-100/80 hover:border-slate-300'
                         }`}
                       >
@@ -596,30 +617,30 @@ export const InstallationChecklist: React.FC = () => {
                   {selectedJob.status === 'ASSIGNED' && (
                     <button
                       onClick={() => handleSyncStatus('IN_PROGRESS')}
-                      disabled={syncingJobId !== null}
-                      className="flex-1 py-3 px-5 bg-slate-100 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 hover:bg-slate-200 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                      data-testid="start-assembly"
+                      className="flex-1 py-3 px-5 bg-indigo-600 hover:bg-indigo-700 border border-indigo-700 rounded-2xl text-xs font-bold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                     >
-                      <RefreshCw className={`h-4.5 w-4.5 ${syncingJobId !== null ? 'animate-spin' : ''}`} />
+                      <RefreshCw className="h-4.5 w-4.5" />
                       <span>Start Assembly (In Progress)</span>
                     </button>
                   )}
                   {selectedJob.status === 'IN_PROGRESS' && (
                     <button
                       onClick={() => handleSyncStatus('COMMISSIONED')}
-                      disabled={syncingJobId !== null}
-                      className="flex-1 py-3 px-5 bg-slate-100 border border-slate-200 rounded-2xl text-xs font-bold text-slate-700 hover:bg-slate-200 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                      data-testid="mark-commissioned"
+                      className="flex-1 py-3 px-5 bg-indigo-600 hover:bg-indigo-700 border border-indigo-700 rounded-2xl text-xs font-bold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                     >
-                      <ShieldCheck className={`h-4.5 w-4.5 ${syncingJobId !== null ? 'animate-spin' : ''}`} />
+                      <ShieldCheck className="h-4.5 w-4.5" />
                       <span>Mark Commissioned</span>
                     </button>
                   )}
-                  
+
                   <button
                     onClick={() => handleSyncStatus('COMPLETED')}
-                    disabled={syncingJobId !== null}
-                    className="flex-1 py-3.5 px-6 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl text-sm font-bold hover:shadow-lg hover:shadow-emerald-200 hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-100 disabled:opacity-50"
+                    data-testid="complete-handover"
+                    className="flex-1 py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 rounded-2xl text-sm font-bold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   >
-                    <UserCheck className={`h-5 w-5 ${syncingJobId !== null ? 'animate-spin' : ''}`} />
+                    <UserCheck className="h-5 w-5" />
                     <span>Complete Handover &amp; Start Warranty</span>
                   </button>
                 </div>

@@ -1,0 +1,82 @@
+services:
+  # NOTE (staging): Backend uses DATABASE_URL. DB_* vars configure only the postgres service.
+  # See docs/infrastructure/staging-provisioning-handoff.md and the plan 2026-06-20 for full secrets.
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:?DB_USER is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hms_staging
+
+  backend:
+    build:
+      context: ./hms-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      MASTER_MFA_KEY: ${MASTER_MFA_KEY:?MASTER_MFA_KEY is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      # Notification providers: mock is rejected at startup when NODE_ENV=production.
+      # Operator must set non-mock values (ses/mailrelay + semaphore) before deploy.
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:?EMAIL_PROVIDER is required (ses or mailrelay; mock forbidden in production)}
+      SMS_PROVIDER: ${SMS_PROVIDER:?SMS_PROVIDER is required (semaphore; mock forbidden in production)}
+      AWS_REGION: ${AWS_REGION:-}
+      SES_SENDER_EMAIL: ${SES_SENDER_EMAIL:-}
+      MAILRELAY_API_KEY: ${MAILRELAY_API_KEY:-}
+      MAILRELAY_SMTP_PASS: ${MAILRELAY_SMTP_PASS:-}
+      MAILRELAY_SENDER_EMAIL: ${MAILRELAY_SENDER_EMAIL:-}
+      MAILRELAY_SENDER_NAME: ${MAILRELAY_SENDER_NAME:-}
+      SEMAPHORE_API_KEY: ${SEMAPHORE_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    networks:
+      - hms_staging
+
+  frontend:
+    build:
+      context: ./hms-frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    networks:
+      - hms_staging
+
+volumes:
+  postgres_staging_data:
+
+networks:
+  hms_staging:
+    driver: bridge

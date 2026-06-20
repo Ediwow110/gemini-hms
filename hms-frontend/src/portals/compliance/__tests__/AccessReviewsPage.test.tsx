@@ -91,17 +91,22 @@ describe('AccessReviewsPage Runtime Tests', () => {
     expect(screen.getByText('Certify User Access')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter access justification or remediation notes...')).toBeInTheDocument();
 
-    // Type notes and approve
-    const textarea = screen.getByPlaceholderText('Enter access justification or remediation notes...');
-    fireEvent.change(textarea, { target: { value: 'Approved for Q2 operations' } });
-
+    // Verify buttons are disabled and show honest notice
     const approveBtn = screen.getByRole('button', { name: /Approve/i });
+    const revokeBtn = screen.getByRole('button', { name: /Revoke/i });
+    expect(approveBtn).toBeDisabled();
+    expect(revokeBtn).toBeDisabled();
+    expect(screen.getByText(/This interface is currently in read-only mode/i)).toBeInTheDocument();
+
+    // Try clicking disabled button
     fireEvent.click(approveBtn);
 
-    // Verify alert mock called
-    expect(window.alert).toHaveBeenCalledWith(
-      'Access review action logged: Account status updated to APPROVED. Notes: "Approved for Q2 operations"'
-    );
+    // Verify alert mock NOT called
+    expect(window.alert).not.toHaveBeenCalled();
+
+    // Modal closes via cancel
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
 
     // Modal is closed
     expect(screen.queryByText('Certify User Access')).not.toBeInTheDocument();

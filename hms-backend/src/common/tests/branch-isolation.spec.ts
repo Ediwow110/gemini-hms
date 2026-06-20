@@ -152,11 +152,12 @@ describe('Branch Isolation — LabService', () => {
     ).rejects.toThrow(NotFoundException);
     expect(prisma.labResult.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           id: 'result-b',
           order: { tenantId: TENANT_A, branchId: BRANCH_A },
           deletedAt: null,
-        },
+          archivedAt: null,
+        }),
       }),
     );
   });

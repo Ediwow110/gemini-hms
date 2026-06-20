@@ -7,7 +7,7 @@ import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const RetentionManagementPage: React.FC = () => {
-  const [scope, setScope] = useState({ tenantId: 'all', branchId: 'all' });
+  const scope = { tenantId: 'all', branchId: 'all' };
   const { status: retentionData, loading, error: retentionError } = useRetentionStatus();
 
   // Policies remain mock until a Policy Management API is implemented
@@ -85,7 +85,7 @@ export const RetentionManagementPage: React.FC = () => {
         />
 
         {/* Scope Selector */}
-        <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
+        <ComplianceScopeFilter />
 
         {/* Honest Labeling Banner */}
         <div className="p-4 bg-indigo-50 border border-indigo-150 rounded-2xl flex gap-3 text-xs text-indigo-900 leading-normal">

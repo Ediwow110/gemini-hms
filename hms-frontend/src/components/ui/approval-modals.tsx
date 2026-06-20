@@ -30,7 +30,7 @@ export const ConfirmationModal = ({ isOpen, title, warning, onConfirm, onClose, 
   );
 };
 
-export const ReasonModal = ({ isOpen, title, onConfirm, onClose, guidance }: { isOpen: boolean; title: string; onConfirm: (reason: string) => void; onClose: () => void; guidance: string; }) => {
+export const ReasonModal = ({ isOpen, title, onConfirm, onClose, guidance, error }: { isOpen: boolean; title: string; onConfirm: (reason: string) => void; onClose: () => void; guidance: string; error?: string | null; }) => {
   const [reason, setReason] = useState("");
   if (!isOpen) return null;
   return (
@@ -50,6 +50,11 @@ export const ReasonModal = ({ isOpen, title, onConfirm, onClose, guidance }: { i
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         />
+        {error && (
+          <p role="alert" className="mb-4 text-xs font-semibold text-rose-700">
+            {error}
+          </p>
+        )}
         <div className="flex justify-end gap-3 pt-2">
           <button onClick={onClose} className="btn btn-secondary px-4 py-2">Cancel</button>
           <button onClick={() => onConfirm(reason)} disabled={!reason} className="btn btn-danger px-4 py-2">Confirm</button>

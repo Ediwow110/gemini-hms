@@ -1,14 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Package, Truck, Clock, CheckCircle2, ChevronRight, Search } from 'lucide-react';
 import MarketplaceShellNotice from './components/MarketplaceShellNotice';
 import OrderTrackingTimeline from './components/OrderTrackingTimeline';
 
 export const MarketplaceOrdersPage: React.FC = () => {
-  const mockOrders = [
-    { id: 'ORD-2026-9918', items: 'GE Voluson E10, Probes (x2)', status: 'SHIPPED', total: 4550000, date: '2026-05-18' },
-    { id: 'ORD-2026-9812', items: 'Roche cobas c 311 analyzer', status: 'PROCESSING', total: 1850000, date: '2026-05-15' },
-    { id: 'ORD-2026-9744', items: 'Clinical Consumables - Bulk', status: 'DELIVERED', total: 125000, date: '2026-04-20' },
-  ];
+  // No backend orders endpoint wired for buyer order history in current release.
+  // Using honest empty state (no fake records).
+  interface ShellOrder { id: string; status: string; items: string; total: number; date: string }
+  const [orders] = useState<ShellOrder[]>([]);
+  const [loading] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -25,8 +25,11 @@ export const MarketplaceOrdersPage: React.FC = () => {
 
       <MarketplaceShellNotice />
 
+      {loading && <div className="text-xs px-1">Loading...</div>}
       <div className="space-y-4">
-        {mockOrders.map((order) => (
+        {orders.length === 0 ? (
+          <div className="p-6 border rounded-2xl text-sm text-slate-500 bg-white">No orders found. Buyer order history and tracking require additional backend endpoints not yet implemented.</div>
+        ) : orders.map((order) => (
           <div key={order.id} className="bg-white border border-slate-200 rounded-3xl p-5 hover:shadow-md transition-all group cursor-pointer">
             <div className="flex flex-col lg:flex-row lg:items-center gap-6">
               <div className="h-12 w-12 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400">

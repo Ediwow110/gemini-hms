@@ -6,7 +6,7 @@ interface ITScopeFilterProps {
   displayOnly?: boolean;
 }
 
-export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange, displayOnly }) => {
+export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange, displayOnly = true }) => {
   const [selectedTenant, setSelectedTenant] = useState('all');
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [selectedEnv, setSelectedEnv] = useState('production');
@@ -38,7 +38,7 @@ export const ITScopeFilter: React.FC<ITScopeFilterProps> = ({ onScopeChange, dis
   const environments = [
     { id: 'production', name: 'Production (Live)' },
     { id: 'staging', name: 'Staging (UAT)' },
-    { id: 'development', name: 'Development (Sandbox)' },
+    { id: 'development', name: 'Development' },
   ];
 
   const handleTenantChange = (tenantId: string) => {

@@ -83,12 +83,6 @@ const TriageAssessmentForm = ({
     });
   };
 
-  const handleEscalate = () => {
-    if (!selectedPatient) return;
-    setPriority(1); // Set to critical
-    alert(`Patient ${selectedPatient.firstName} ${selectedPatient.lastName} emergency notification broadcasted to ER Charge Nurse and Physician.`);
-  };
-
   const isFormValid = allergiesConfirmed && complaint.trim().length > 0;
 
   return (
@@ -119,8 +113,10 @@ const TriageAssessmentForm = ({
           <>
             <button
               type="button"
-              onClick={handleEscalate}
-              className="px-3 py-1.5 border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-[11px] font-bold flex items-center gap-1.5 rounded-lg transition-colors"
+              disabled
+              data-testid="nursetriage-broadcast-emergency-alert-disabled"
+              title="Disabled: emergency broadcast is not yet wired to a backend endpoint. Use direct ER Charge Nurse communication for now."
+              className="px-3 py-1.5 border border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed opacity-60 text-[11px] font-bold flex items-center gap-1.5 rounded-lg"
             >
               <ShieldAlert className="h-3.5 w-3.5" /> Broadcast Emergency Alert
             </button>

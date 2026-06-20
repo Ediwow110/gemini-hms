@@ -126,3 +126,17 @@ export class CreatePayslipDto {
   @Min(0)
   totalDeductions: number;
 }
+
+export class ListPayslipsFiltersDto {
+  @IsString()
+  @IsOptional()
+  status?: string;
+
+  @IsUUID()
+  @IsOptional()
+  branchId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  employeeId?: string;
+}

@@ -9,7 +9,7 @@ export const PatientMessagesPage: React.FC = () => {
   const mockMessages: Message[] = [
     { id: '1', sender: 'Care Team', role: 'Support', content: 'Hello! This is the Metro Central Hospital care team. How can we help you today?', timestamp: '09:00 AM', isMe: false, isRead: true },
     { id: '2', sender: 'Patient', role: 'You', content: 'Hi, I have a question about my laboratory results from yesterday.', timestamp: '09:15 AM', isMe: true, isRead: true },
-    { id: '3', sender: 'Dr. House', role: 'Physician', content: 'I have reviewed your CBC. Everything looks normal. You can download the report from the Results tab.', timestamp: '10:30 AM', isMe: false, isRead: false },
+    { id: '3', sender: 'Provider 003', role: 'Physician', content: 'I have reviewed your CBC. Everything looks normal. You can download the report from the Results tab.', timestamp: '10:30 AM', isMe: false, isRead: false },
   ];
 
   return (
@@ -41,7 +41,7 @@ export const PatientMessagesPage: React.FC = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-black text-slate-800 truncate">Care Team & Specialists</p>
-                  <p className="text-[10px] text-indigo-600 font-bold truncate">Dr. House: Everything looks normal...</p>
+                  <p className="text-[10px] text-indigo-600 font-bold truncate">Provider 003: Everything looks normal...</p>
                 </div>
                 <div className="h-2 w-2 bg-indigo-600 rounded-full" />
               </div>

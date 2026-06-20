@@ -65,7 +65,7 @@ describe('PatientsService write isolation', () => {
     ).rejects.toThrow(NotFoundException);
 
     expect(prisma.patient.updateMany).toHaveBeenCalledWith({
-      where: { id: patientId, tenantId },
+      where: { id: patientId, tenantId, archivedAt: null },
       data: expect.any(Object),
     });
   });
@@ -94,7 +94,7 @@ describe('PatientsService write isolation', () => {
 
       expect(prisma.patient.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { tenantId },
+          where: expect.objectContaining({ tenantId, archivedAt: null }),
         }),
       );
       expect(result).toHaveLength(2);
@@ -122,6 +122,7 @@ describe('PatientsService write isolation', () => {
                 firstName: { contains: 'john', mode: 'insensitive' },
               }),
             ]),
+            archivedAt: null,
           }),
         }),
       );
@@ -150,6 +151,77 @@ describe('PatientsService write isolation', () => {
       const result = await service.findAll(tenantId, 'nonexistent');
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('archived-record operational filtering', () => {
+    it('findAll excludes archived patients (where.archivedAt is null)', async () => {
+      prisma.patient.findMany = jest.fn().mockResolvedValue([]);
+
+      await service.findAll(tenantId);
+
+      expect(prisma.patient.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId,
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('findAll with search still excludes archived patients', async () => {
+      prisma.patient.findMany = jest.fn().mockResolvedValue([]);
+
+      await service.findAll(tenantId, 'john');
+
+      expect(prisma.patient.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId,
+            OR: expect.arrayContaining([
+              expect.objectContaining({
+                firstName: { contains: 'john', mode: 'insensitive' },
+              }),
+            ]),
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('findOne excludes archived patients from operational read', async () => {
+      prisma.patient.findFirst = jest.fn().mockResolvedValue(null);
+
+      await expect(service.findOne(tenantId, patientId)).rejects.toThrow(
+        NotFoundException,
+      );
+
+      expect(prisma.patient.findFirst).toHaveBeenCalledWith({
+        where: { id: patientId, tenantId, archivedAt: null },
+      });
+    });
+
+    it('update excludes archived patients from mutation', async () => {
+      prisma.patient.findFirst.mockResolvedValue({
+        id: patientId,
+        tenantId,
+        firstName: 'John',
+        lastName: 'Doe',
+        dob: new Date('1990-01-01'),
+        normalizedNameDobKey: 'john doe-1990-01-01',
+      });
+      prisma.patient.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.update(tenantId, 'user-1', patientId, { firstName: 'John' }),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.patient.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: patientId, tenantId, archivedAt: null },
+        }),
+      );
     });
   });
 });

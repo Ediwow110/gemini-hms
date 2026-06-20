@@ -24,7 +24,7 @@ This document defines exactly what must be provisioned to unblock staging verifi
 | Staging host / VM | ❌ |
 | Staging database | ❌ |
 | Staging secrets in GitHub | ❌ |
-| Staging deployment workflow | ❌ |
+| Staging deployment workflow | ⚠️ Exists (`.github/workflows/deploy-staging.yml`) — environment still NOT provisioned |
 
 ---
 
@@ -69,15 +69,17 @@ Create a GitHub environment named `Staging` with:
 - **Wait timer:** None (auto-deploy on push to main)
 - **Deployment branches:** `main` (auto-deploy) or a dedicated `staging` branch
 
+> **Note:** The existing `deploy.yml` `cd-deploy` job does not use `environment: Production` — production secrets are currently at the repository level. While this is out of scope for the staging pass, consider creating a `Production` environment and migrating production secrets to it for parity and defense-in-depth.
+
 ### 4.2 Required Secrets (Environment-Level)
 
 Add these to the `Staging` environment:
 
 | Secret | Purpose | Example Value |
 |--------|---------|---------------|
-| `SSH_HOST` | Staging host IP/hostname | `203.0.113.10` |
-| `SSH_USER` | SSH user | `deploy` |
-| `SSH_PRIVATE_KEY` | SSH deploy key | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
+| `STAGING_SSH_HOST` | Staging host IP/hostname | `203.0.113.10` |
+| `STAGING_SSH_USER` | SSH user | `deploy` |
+| `STAGING_SSH_PRIVATE_KEY` | SSH deploy key | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `STAGING_DATABASE_URL` | Full PostgreSQL connection string | `postgresql://staging_user:SafePass123@localhost:5432/hms_staging?schema=public` |
 | `STAGING_JWT_SECRET` | JWT signing key (different from prod) | `(64-char hex or base64)` |
 | `STAGING_JWT_REFRESH_SECRET` | JWT refresh key (different from prod) | `(64-char hex or base64)` |
@@ -86,6 +88,17 @@ Add these to the `Staging` environment:
 | `STAGING_DB_PASSWORD` | Database password | `(auto-generated)` |
 | `STAGING_DB_NAME` | Database name | `hms_staging` |
 | `STAGING_CORS_ORIGINS` | CORS origins for staging | `https://staging.gemini-hms.example.com` |
+| `STAGING_EMAIL_PROVIDER` | Email provider (non-mock) | `ses` or `mailrelay` |
+| `STAGING_SMS_PROVIDER` | SMS provider (non-mock) | `semaphore` |
+| `STAGING_AWS_REGION` | AWS region (if `EMAIL_PROVIDER=ses`) | `ap-southeast-1` |
+| `STAGING_SES_SENDER_EMAIL` | SES verified sender (if `EMAIL_PROVIDER=ses`) | `noreply@staging.example.com` |
+| `STAGING_SEMAPHORE_API_KEY` | Semaphore API key (if `SMS_PROVIDER=semaphore`) | `(api key)` |
+| `STAGING_MAILRELAY_API_KEY` | Mailrelay key (if `EMAIL_PROVIDER=mailrelay`) | `(api key)` |
+| `STAGING_MAILRELAY_SMTP_PASS` | Mailrelay SMTP pass (alt to API key) | `(password)` |
+| `STAGING_MAILRELAY_SENDER_EMAIL` | Mailrelay sender email | `noreply@staging.example.com` |
+| `STAGING_MAILRELAY_SENDER_NAME` | Mailrelay sender display name | `HMS Staging` |
+
+> **Notification launch boundary:** `NODE_ENV=production` (set in `docker-compose.staging.yml`) rejects `EMAIL_PROVIDER=mock` and `SMS_PROVIDER=mock` at backend startup (`notification-providers.ts:166-170`, `188-192`). Real provider classes (`SesProvider`, `SemaphoreProvider`, etc.) validate credentials at construction but their `sendEmail`/`sendSms` methods still throw `NotImplementedException` until external HTTP/SDK integration is wired (`notification-providers.ts:103-108`, `138-143`). Staging deploy requires non-mock provider **configuration** so the backend starts; actual email/SMS **delivery** remains blocked until provider send implementations are completed.
 
 ### 4.3 Secret Separation Rules
 
@@ -93,7 +106,7 @@ Add these to the `Staging` environment:
 |------|-------|----------------|-------|
 | **CI** | Repository-level | `CI_DATABASE_URL`, `CI_JWT_SECRET` | Test-only values, used in CI pipeline |
 | **Staging** | Environment `Staging` | `STAGING_DATABASE_URL`, `STAGING_JWT_SECRET` | Staging-only values, must differ from CI and prod |
-| **Production** | Environment `Production` | `DATABASE_URL`, `JWT_SECRET`, `SSH_HOST` | Production values, highest sensitivity |
+| **Production** | Environment `Production` | `DATABASE_URL`, `JWT_SECRET`, `SSH_HOST` | Production values, highest sensitivity. Actual workflow naming may differ (e.g., `deploy.yml` uses `PROD_DATABASE_URL`, `PROD_JWT_SECRET`). |
 
 **Rules:**
 - Never reuse CI secrets for staging
@@ -105,9 +118,21 @@ Add these to the `Staging` environment:
 
 ## 5. Required Workflow Structure
 
-### 5.1 Option A — Dedicated `deploy-staging.yml` (Recommended)
+### 5.0 Repo Status (code-ready, environment NOT provisioned)
 
-Create `.github/workflows/deploy-staging.yml`:
+The following repo artifacts **already exist** on `remediation/production-readiness-lane-2` (commit `72bd168` and later). Operator work is provisioning the host, database, DNS, and GitHub `Staging` environment secrets — not authoring these files:
+
+| Artifact | Path | Status |
+|----------|------|--------|
+| Staging deploy workflow | `.github/workflows/deploy-staging.yml` | ✅ Committed — `workflow_dispatch` only; uses `environment: Staging` and `STAGING_*` / `STAGING_SSH_*` secrets |
+| Staging compose topology | `docker-compose.staging.yml` | ✅ Committed — isolated volume/network |
+| Staging remote deploy script | `hms-backend/scripts/remote-deploy-staging.sh` | ✅ Committed — references `docker-compose.staging.yml` only |
+
+**Still missing (external):** staging VM/host, PostgreSQL 15 instance, DNS, GitHub `Staging` environment, and all `STAGING_*` secrets.
+
+### 5.1 Option A — Dedicated `deploy-staging.yml` (Recommended) — IMPLEMENTED
+
+Reference implementation (already in repo at `.github/workflows/deploy-staging.yml`):
 
 ```yaml
 name: Deploy Staging
@@ -237,10 +262,15 @@ Once staging is deployed, execute these checks:
 
 | File | Current State | Required Change |
 |------|---------------|-----------------|
-| `AGENTS.md` | Mentions missing staging | Update after staging provisioned |
-| `.github/workflows/deploy.yml` | Production-only | Add staging job OR create `deploy-staging.yml` |
-| (new) `docker-compose.staging.yml` | Does not exist | Create from `docker-compose.prod.yml` template with staging-specific env vars |
-| `hms-backend/scripts/remote-deploy.sh` | Production hardcoded | Either parameterize with `ENVIRONMENT` arg or copy to `remote-deploy-staging.sh` |
+| `AGENTS.md` | Notes staging blocked | Update after staging environment is provisioned and verified |
+| `.github/workflows/deploy.yml` | Production-only (`workflow_dispatch`) | No change required — staging uses separate `deploy-staging.yml` |
+| `.github/workflows/deploy-staging.yml` | ✅ Exists — `workflow_dispatch`, `environment: Staging` | Operator: add `Staging` environment + `STAGING_*` secrets, then run workflow |
+| `.github/workflows/deploy-gate.yml` | Manual pre-deploy validation gate | Optional: gate staging deploys through this or a parallel gate |
+| `.github/workflows/docker-build.yml` | Manual Docker build (GHCR push stubbed) | Optional consolidation — not blocking staging |
+| `.github/workflows/ci.yml` | Push/PR CI (4 jobs) + `typecheck:tests` | Deploy staging only from green CI commits (manual discipline) |
+| `docker-compose.staging.yml` | ✅ Exists | Operator: use as-is on staging host |
+| `hms-backend/scripts/remote-deploy-staging.sh` | ✅ Exists | Operator: invoked by `deploy-staging.yml` rsync step |
+| `hms-backend/scripts/remote-deploy.sh` | Production hardcoded | Unchanged — production isolation preserved |
 
 ---
 
@@ -254,9 +284,9 @@ Once staging is deployed, execute these checks:
 [ ] 5. Create GitHub `Staging` environment
 [ ] 6. Generate staging secrets (different from CI and prod)
 [ ] 7. Add secrets to GitHub `Staging` environment
-[ ] 8. Create `deploy-staging.yml` workflow OR modify `deploy.yml`
-[ ] 9. Create `docker-compose.staging.yml` if needed
-[ ] 10. Push to main → trigger staging deploy
+[x] 8. `deploy-staging.yml` workflow — **done in repo** (operator still must create GitHub `Staging` environment + secrets)
+[x] 9. `docker-compose.staging.yml` + `remote-deploy-staging.sh` — **done in repo**
+[ ] 10. Operator: `workflow_dispatch` on `deploy-staging.yml` after secrets exist (not auto on push)
 [ ] 11. Run verification checklist (Section 6)
 [ ] 12. Document staging URLs, access, and secrets location
 [ ] 13. Update AGENTS.md and handoff docs

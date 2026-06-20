@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApprovalsService } from './approvals.service';
@@ -24,13 +25,26 @@ import { RequireBranchContext } from '../auth/decorators/branch-context.decorato
 export class ApprovalsController {
   constructor(private readonly approvalsService: ApprovalsService) {}
 
+  /** Roles that are tenant-wide and bypass branchId requirement in BranchGuard. */
+  private static TENANT_WIDE_ROLES = [
+    'Super Admin',
+    'Compliance Officer',
+    'Tenant Admin',
+  ];
+
+  private isTenantWideUser(roles: string[] | undefined): boolean {
+    if (!roles) return false;
+    return roles.some((r) => ApprovalsController.TENANT_WIDE_ROLES.includes(r));
+  }
+
   @Post()
   @RequirePermissions('approval.request.create')
-  @RequireBranchContext()
+  @RequireBranchContext(['Super Admin', 'Compliance Officer', 'Tenant Admin'])
   create(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
     @GetUser('branchId') branchId: string | undefined,
+    @GetUser('roles') roles: string[] | undefined,
     @Body() dto: CreateApprovalRequestDto,
   ) {
     return this.approvalsService.createRequest(tenantId, userId, {
@@ -41,22 +55,29 @@ export class ApprovalsController {
 
   @Get()
   @RequirePermissions('approval.request.view')
-  @RequireBranchContext()
+  @RequireBranchContext(['Super Admin', 'Compliance Officer', 'Tenant Admin'])
   findAll(
     @GetUser('tenantId') tenantId: string,
     @GetUser('branchId') branchId: string | undefined,
     @GetUser('roles') roles: string[] | undefined,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
+    const p = page ? parseInt(page, 10) : 1;
+    const ps = pageSize ? parseInt(pageSize, 10) : 50;
     return this.approvalsService.getRequests(
       tenantId,
       branchId,
       roles?.includes('Super Admin') ?? false,
+      this.isTenantWideUser(roles),
+      Number.isFinite(p) && p > 0 ? p : 1,
+      Number.isFinite(ps) && ps > 0 ? ps : 50,
     );
   }
 
   @Patch(':id/approve')
   @RequirePermissions('approval.request.process')
-  @RequireBranchContext()
+  @RequireBranchContext(['Super Admin', 'Compliance Officer', 'Tenant Admin'])
   @UseGuards(SelfApprovalGuard)
   approve(
     @GetUser('tenantId') tenantId: string,
@@ -77,7 +98,7 @@ export class ApprovalsController {
 
   @Patch(':id/reject')
   @RequirePermissions('approval.request.process')
-  @RequireBranchContext()
+  @RequireBranchContext(['Super Admin', 'Compliance Officer', 'Tenant Admin'])
   reject(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,

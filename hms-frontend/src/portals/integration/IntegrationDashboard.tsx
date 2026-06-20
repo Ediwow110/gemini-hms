@@ -14,15 +14,43 @@ import { useIntegrationNotifications, useIntegrationApprovals, useIntegrationAct
 import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../components/hms-dashboard';
 
+type KpiListItem = { isMock?: boolean };
+
+/** Live-backed endpoints: undefined = unavailable; [] may be a real zero count. */
+function liveKpiDisplay(data: KpiListItem[] | undefined): { value: string; isMock: boolean } {
+  if (data === undefined) {
+    return { value: '—', isMock: true };
+  }
+  return {
+    value: data.length.toString(),
+    isMock: data[0]?.isMock ?? false,
+  };
+}
+
+/** Shell endpoints return HTTP 200 + []; empty must not masquerade as a real zero metric. */
+function shellKpiDisplay(data: KpiListItem[] | undefined): { value: string; isMock: boolean } {
+  if (!data || data.length === 0) {
+    return { value: '—', isMock: true };
+  }
+  return {
+    value: data.length.toString(),
+    isMock: data[0]?.isMock ?? false,
+  };
+}
+
 export const IntegrationDashboard: React.FC = () => {
   const { data: notifications, isLoading: notifLoading } = useIntegrationNotifications();
-  const { data: approvals, isLoading: apprLoading } = useIntegrationApprovals();
+  const { data: approvals, isLoading: apprLoading, error: apprError } = useIntegrationApprovals();
   const { data: audits, isLoading: auditLoading } = useIntegrationActivityAudit();
   const { data: issues, isLoading: recLoading } = useIntegrationReconciliation();
 
   const navigate = useNavigate();
 
   const isLoading = notifLoading || apprLoading || auditLoading || recLoading;
+  const notificationsKpi = liveKpiDisplay(notifications);
+  const approvalsKpi = liveKpiDisplay(approvals);
+  const activityKpi = liveKpiDisplay(audits);
+  const reconciliationKpi = shellKpiDisplay(issues);
 
   return (
     <HmsDashboardShell widthTier="full">
@@ -35,23 +63,6 @@ export const IntegrationDashboard: React.FC = () => {
 
         <IntegrationShellNotice />
 
-      {/* Alert Strip: Integration Link Failures */}
-      <div className="rounded-xl border border-rose-200 bg-rose-50/50 px-4 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-rose-600 flex-shrink-0" />
-          <div>
-            <span className="text-[12px] font-bold text-rose-900 block">HL7 ADAPTER ALERT: CENTRAL LIS LINK DOWN</span>
-            <span className="text-[10px] text-rose-700 font-semibold block mt-0.5">Connection to central Lab Information System (LIS) timed out. Auto-failover is retrying the sync adapter.</span>
-          </div>
-        </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="text-[11px] font-bold text-rose-700 bg-rose-100 hover:bg-rose-200 border border-rose-300 rounded-md px-2.5 py-1 cursor-pointer transition-colors"
-        >
-          Force HL7 Reconnect
-        </button>
-      </div>
-
       <div className="grid grid-cols-12 gap-6">
         {isLoading ? (
           <div className="col-span-12">
@@ -61,53 +72,62 @@ export const IntegrationDashboard: React.FC = () => {
           <>
             {/* KPI Metrics Row 1 */}
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Notifications Pending" value={notifications?.length.toString() || "0"} source="All Portals" icon={Bell} color="bg-indigo-50 text-indigo-600" isMock={notifications?.[0]?.isMock} />
+              <CrossDomainContextCard title="Notifications Pending" value={notificationsKpi.value} source="All Portals" icon={Bell} color="bg-indigo-50 text-indigo-600" isMock={notificationsKpi.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Approvals Pending" value={approvals?.length.toString() || "0"} source="Cross-Domain" icon={ShieldCheck} color="bg-emerald-50 text-emerald-600" isMock={approvals?.[0]?.isMock || true} />
+              <CrossDomainContextCard title="Approvals Pending" value={approvalsKpi.value} source="Cross-Domain" icon={ShieldCheck} color="bg-emerald-50 text-emerald-600" isMock={approvalsKpi.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Activity Events" value={audits?.length.toString() || "0"} source="Audit Trail" icon={AlertTriangle} color="bg-rose-50 text-rose-600" isMock={audits?.[0]?.isMock} />
+              <CrossDomainContextCard title="Activity Events" value={activityKpi.value} source="Audit Trail" icon={AlertTriangle} color="bg-rose-50 text-rose-600" isMock={activityKpi.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Patient Timeline Events" value="28" source="Clinical" icon={Users} color="bg-blue-50 text-blue-600" isMock />
+              <CrossDomainContextCard title="Patient Timeline Events" value="—" source="Clinical" icon={Users} color="bg-blue-50 text-blue-600" isMock />
             </div>
 
             {/* KPI Metrics Row 2 */}
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Asset Timeline Events" value="15" source="Marketplace" icon={Package} color="bg-violet-50 text-violet-600" isMock />
+              <CrossDomainContextCard title="Asset Timeline Events" value="—" source="Marketplace" icon={Package} color="bg-violet-50 text-violet-600" isMock />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Reconciliation Issues" value={issues?.length.toString() || "0"} source="Finance" icon={TrendingUp} color="bg-amber-50 text-amber-600" isMock={issues?.[0]?.isMock} />
+              <CrossDomainContextCard title="Reconciliation Issues" value={reconciliationKpi.value} source="Finance" icon={TrendingUp} color="bg-amber-50 text-amber-600" isMock={reconciliationKpi.isMock} />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Recent Cross Activity" value="47" source="All" icon={Activity} color="bg-indigo-50 text-indigo-600" isMock />
+              <CrossDomainContextCard title="Recent Cross Activity" value="—" source="All" icon={Activity} color="bg-indigo-50 text-indigo-600" isMock />
             </div>
             <div className="col-span-12 sm:col-span-6 xl:col-span-3">
-              <CrossDomainContextCard title="Integration Health" value="98.2%" source="System" icon={TrendingUp} color="bg-emerald-50 text-emerald-600" isMock />
+              <CrossDomainContextCard title="Integration Health" value="—" source="System" icon={TrendingUp} color="bg-emerald-50 text-emerald-600" isMock />
             </div>
           </>
         )}
 
-        {/* Primary Work Row: Notifications & Approvals (XL Card) + Cross-Domain Health (L Card) */}
+        {/* Primary Work Row: Notifications & Approvals (XL Card) + Cross-Domain Health (Honest Unavailable Stub) */}
         <div className="col-span-12 xl:col-span-8 space-y-6">
           <NotificationInbox />
-          <ApprovalQueuePanel />
+          <ApprovalQueuePanel approvals={approvals} isLoading={apprLoading} error={apprError} />
         </div>
 
         <div className="col-span-12 xl:col-span-4 flex flex-col">
-          <div className="bg-slate-900 rounded-[2rem] p-6 text-white space-y-6 shadow-xl flex-grow flex flex-col justify-between">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-slate-700 space-y-3 shadow-sm flex-grow flex flex-col justify-between">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cross-Domain Health (Mock)</p>
-              <p className="text-3xl font-black tracking-tight">98.2%</p>
-              <p className="text-[10px] text-emerald-400 font-bold uppercase mt-1">All bridges operational</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                Cross-Domain Bridge Health
+              </p>
+              <p className="text-xl font-extrabold text-slate-800 tracking-tight" data-testid="integration-health-value">
+                Not available
+              </p>
+              <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                Real bridge health not yet implemented
+              </p>
             </div>
-            <p className="text-xs text-slate-300 font-semibold leading-relaxed">
-              Standard secure routing pathways for FHIR resources and HL7 pipelines are active. Health monitoring detects zero frame loss in sync logs.
+            <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+              Live FHIR / HL7 bridge health monitoring is reserved for a future
+              release. The page-level shell notice describes what is currently
+              live. No health percentage is shown until the real provider
+              integration is wired and verified.
             </p>
             <button
               onClick={() => navigate('/integration/activity-audit')}
-              className="w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-black transition-colors flex items-center justify-center gap-2 cursor-pointer mt-4"
+              className="w-full py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-black text-slate-700 transition-colors flex items-center justify-center gap-2 cursor-pointer mt-4"
             >
               View Audit Trail <ArrowRight className="h-4 w-4" />
             </button>

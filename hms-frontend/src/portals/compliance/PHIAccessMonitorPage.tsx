@@ -7,7 +7,7 @@ import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboard';
 
 export const PHIAccessMonitorPage: React.FC = () => {
-  const [, setScope] = useState({ tenantId: 'all', branchId: 'all' });
+
   const [actorSearch, setActorSearch] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
   const [accessFilter, setAccessFilter] = useState('ALL');
@@ -48,7 +48,7 @@ export const PHIAccessMonitorPage: React.FC = () => {
         />
 
       {/* Scope Filtering */}
-      <ComplianceScopeFilter onScopeChange={(newScope) => setScope(newScope)} />
+      <ComplianceScopeFilter />
 
       {/* Search and Filters */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 items-center">

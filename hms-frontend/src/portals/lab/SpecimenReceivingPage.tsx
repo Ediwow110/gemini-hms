@@ -21,6 +21,7 @@ export const SpecimenReceivingPage = () => {
   const { specimens, isLoading, error, receiveSpecimen } = usePendingSpecimens();
   const [receivingId, setReceivingId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedSpecimenId, setSelectedSpecimenId] = useState<string | null>(null);
 
   const selectedSpecimen = specimens.find(s => s.id === selectedSpecimenId) || null;
@@ -28,14 +29,18 @@ export const SpecimenReceivingPage = () => {
   const handleReceive = useCallback(async (id: string) => {
     setReceivingId(id);
     setSuccessMsg(null);
+    setErrorMsg(null);
     try {
       await receiveSpecimen(id);
       setSuccessMsg(`Specimen received and logged successfully.`);
       if (selectedSpecimenId === id) {
         setSelectedSpecimenId(null);
       }
-    } catch {
+    } catch (err: unknown) {
       setSuccessMsg(null);
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      const serverMessage = axiosError.response?.data?.message;
+      setErrorMsg(serverMessage || 'Failed to receive specimen. Please try again.');
     } finally {
       setReceivingId(null);
     }
@@ -64,6 +69,12 @@ export const SpecimenReceivingPage = () => {
         <div className="p-2.5 bg-emerald-50 border border-emerald-250 rounded-lg text-[12px] text-emerald-800 font-semibold flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-emerald-600" />
           {successMsg}
+        </div>
+      )}
+      {errorMsg && (
+        <div className="p-2.5 bg-rose-50 border border-rose-250 rounded-lg text-[12px] text-rose-800 font-semibold flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-rose-600" />
+          {errorMsg}
         </div>
       )}
 

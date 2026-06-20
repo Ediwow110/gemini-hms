@@ -11,49 +11,35 @@ import { DoctorResultsPanel } from './components/DoctorResultsPanel';
 import { DoctorPrescriptionPanel } from './components/DoctorPrescriptionPanel';
 import { AlertCircle, UserCheck, Stethoscope, ChevronLeft } from 'lucide-react';
 import { usePatientEncounters } from '../../hooks/use-clinical-workflow';
+import {
+  clinicalWorkflowService,
+  type PatientClinicalSummaryDto,
+} from '../../services/clinicalWorkflow.service';
 import axios from 'axios';
 
-// Mock patient database for doctor lookup
-const mockPatientDb: Record<string, PatientSafetyInfo> = {
-  'P-101': {
-    id: 'P-101',
-    firstName: 'Eleanor',
-    lastName: 'Vance',
-    mrn: 'MRN-2026-0091',
-    dob: '1988-11-24',
-    gender: 'Female',
-    allergies: 'Penicillin, Strawberries',
-    diagnoses: ['Essential Hypertension', 'Type 2 Diabetes'],
-    warnings: ['Drug-drug interaction risk: NSAIDs with ACE inhibitors'],
-    insuranceProvider: 'Maxicare HMO',
-    insuranceNumber: 'MAX-8820-911',
-  },
-  'P-102': {
-    id: 'P-102',
-    firstName: 'Arthur',
-    lastName: 'Pendleton',
-    mrn: 'MRN-2026-0042',
-    dob: '1965-04-12',
-    gender: 'Male',
-    allergies: 'None',
-    diagnoses: ['Gastroesophageal Reflux Disease (GERD)'],
-    warnings: ['Severe abdominal pain - evaluate for acute appendicitis'],
-    insuranceProvider: 'Medicard HMO',
-    insuranceNumber: 'MED-1102-998',
-  },
-  'P-103': {
-    id: 'P-103',
-    firstName: 'Victor',
-    lastName: 'Frankenstein',
-    mrn: 'MRN-2026-0810',
-    dob: '1996-08-18',
-    gender: 'Male',
-    allergies: 'Sulfa Drugs',
+const mapSummaryToPatientSafetyInfo = (summary: PatientClinicalSummaryDto): PatientSafetyInfo => {
+  const nameParts = (summary.patientName ?? '').trim().split(/\s+/);
+  const firstName = nameParts[0] ?? '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+  const dobValue = summary.dob instanceof Date ? summary.dob : new Date(summary.dob);
+  const dob = Number.isNaN(dobValue.getTime()) ? '' : dobValue.toISOString().slice(0, 10);
+
+  return {
+    id: summary.patientId || summary.id,
+    firstName,
+    lastName,
+    mrn: summary.patientNumber || '',
+    dob,
+    gender: summary.gender || 'Unknown',
+    allergies: summary.allergies?.length ? summary.allergies.join(', ') : 'None',
     diagnoses: [],
     warnings: [],
-    insuranceProvider: 'PhilHealth Senior',
-    insuranceNumber: 'PH-4402-120',
-  },
+  };
+};
+
+const extractPatientLoadError = (err: unknown): string => {
+  const e = err as { response?: { data?: { message?: string } }; message?: string };
+  return e?.response?.data?.message || e?.message || 'Failed to load patient record.';
 };
 
 export const DoctorEMRPage = () => {
@@ -83,48 +69,42 @@ export const DoctorEMRPage = () => {
   );
 
   useEffect(() => {
-    if (patientId) {
-      // Defer all state synchronization updates to avoid synchronous render loop warnings
-      const initTimer = setTimeout(() => {
-        setError(null);
-        setIsLoading(true);
-      }, 0);
-
-      // Simulate API load latency safely, supporting lookup and standard fallback patients
-      const timer = setTimeout(() => {
-        let p = mockPatientDb[patientId];
-        if (!p) {
-          p = {
-            id: patientId,
-            firstName: patientId === 'patient-1' ? 'Eleanor' : 'Test',
-            lastName: patientId === 'patient-1' ? 'Vance' : 'Patient',
-            mrn: 'MRN-2026-9999',
-            dob: '1990-01-01',
-            gender: 'Female',
-            allergies: 'None',
-            diagnoses: [],
-            warnings: [],
-            insuranceProvider: 'Maxicare HMO',
-            insuranceNumber: 'MAX-9999-999',
-          };
-        }
-        setActivePatient(p);
-        setIsLoading(false);
-      }, 350);
-
-      return () => {
-        clearTimeout(initTimer);
-        clearTimeout(timer);
-      };
-    } else {
-      // Defer reset updates as well
-      const resetTimer = setTimeout(() => {
-        setActivePatient(null);
-        setError(null);
-        setIsLoading(false);
-      }, 0);
-      return () => clearTimeout(resetTimer);
+    if (!patientId) {
+      setActivePatient(null);
+      setError(null);
+      setIsLoading(false);
+      return;
     }
+
+    let cancelled = false;
+    setError(null);
+    setIsLoading(true);
+
+    clinicalWorkflowService
+      .getPatientSummary(patientId)
+      .then((summary) => {
+        if (cancelled) return;
+        if (!summary) {
+          setError('Patient record not found.');
+          setActivePatient(null);
+          return;
+        }
+        setActivePatient(mapSummaryToPatientSafetyInfo(summary));
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(extractPatientLoadError(err));
+        setActivePatient(null);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [patientId]);
 
   if (encountersError) {
@@ -173,7 +153,10 @@ export const DoctorEMRPage = () => {
         <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
         <div>
           <h5 className="font-bold uppercase text-[10px] tracking-wider">EMR Chart (WIP)</h5>
-          <p className="font-medium mt-0.5">Patient data displayed here is simulated for demonstration. The SOAP editor, vitals history, and patient alerts are mock data. Do not use for actual clinical decision-making.</p>
+          <p className="font-medium mt-0.5">
+            Patient safety header, encounters, SOAP notes, clinical orders, and prescriptions load from live HMS backend APIs.
+            Clinical Timeline and Released Diagnostic Results panels still use hardcoded demonstration data — do not use those panels for clinical decision-making.
+          </p>
         </div>
       </div>
       {/* Page Header */}

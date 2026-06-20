@@ -10,10 +10,12 @@ import {
   CreateEmployeeDto,
   CreateDepartmentDto,
   CreatePayslipDto,
+  ListPayslipsFiltersDto,
   CreateLeaveRequestDto,
   CreateLicenseRecordDto,
 } from './dto/hr.dto';
 import { AuditService } from '../audit/audit.service';
+import { NumberingService } from '../numbering/numbering.service';
 import { RequestUser } from '../common/types/authenticated-request.type';
 
 @Injectable()
@@ -21,6 +23,7 @@ export class HrService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private numbering: NumberingService,
   ) {}
 
   private isTenantWideHr(roles: string[]): boolean {
@@ -80,10 +83,14 @@ export class HrService {
       throw new ForbiddenException('Insufficient permissions');
     }
 
-    // 1. Generate employee number atomically within transaction to prevent race condition
+    // 1. Generate employee number atomically via NumberingService to prevent race conditions
     return await this.prisma.$transaction(async (tx) => {
-      const count = await tx.employee.count({ where: { tenantId } });
-      const employeeNumber = `EMP-${(count + 1).toString().padStart(5, '0')}`;
+      const employeeNumber = await this.numbering.generateNumber(
+        tenantId,
+        'EMPLOYEE',
+        undefined,
+        tx,
+      );
 
       // 2. Create Employee
       const employee = await tx.employee.create({
@@ -242,6 +249,65 @@ export class HrService {
     });
 
     return leave;
+  }
+
+  async getLeaveRequests(
+    tenantId: string,
+    user: RequestUser,
+    filters: { status?: string; employeeId?: string } = {},
+  ) {
+    const roles = user.roles || [];
+
+    const where: Record<string, unknown> = { tenantId };
+
+    let doctorOrNurseSelfId: string | null = null;
+    if (this.isBranchScopedHr(roles)) {
+      if (!user.branchId) {
+        throw new BadRequestException('Branch context required');
+      }
+      where.employee = { branchId: user.branchId };
+    } else if (roles.includes('Doctor') || roles.includes('Nurse')) {
+      const self = await this.prisma.employee.findFirst({
+        where: { tenantId, userId: user.userId },
+        select: { id: true },
+      });
+      if (!self) {
+        return [];
+      }
+      doctorOrNurseSelfId = self.id;
+      where.employeeId = self.id;
+    } else if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin')) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+    if (filters.employeeId) {
+      // Doctor/Nurse cannot widen scope via employeeId filter; self-only is enforced.
+      if (doctorOrNurseSelfId && filters.employeeId !== doctorOrNurseSelfId) {
+        throw new ForbiddenException(
+          'Doctor/Nurse can only view their own leave requests',
+        );
+      }
+      where.employeeId = filters.employeeId;
+    }
+
+    return this.prisma.leaveRequest.findMany({
+      where,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeNumber: true,
+            firstName: true,
+            lastName: true,
+            branchId: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async approveLeaveRequest(
@@ -476,6 +542,56 @@ export class HrService {
     });
 
     return payslip;
+  }
+
+  async listPayslips(
+    tenantId: string,
+    user: RequestUser,
+    filters: ListPayslipsFiltersDto = {},
+  ) {
+    const roles = user.roles || [];
+
+    const where: Record<string, unknown> = { tenantId };
+
+    if (this.isBranchScopedHr(roles)) {
+      if (!user.branchId) {
+        throw new BadRequestException('Branch context required');
+      }
+      if (filters.branchId && filters.branchId !== user.branchId) {
+        throw new ForbiddenException(
+          'Branch Admin can only view payslips for their own branch',
+        );
+      }
+      where.branchId = user.branchId;
+    } else if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin')) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+    if (filters.branchId) {
+      where.branchId = filters.branchId;
+    }
+    if (filters.employeeId) {
+      where.employeeId = filters.employeeId;
+    }
+
+    return this.prisma.payslip.findMany({
+      where,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeNumber: true,
+            firstName: true,
+            lastName: true,
+            branchId: true,
+          },
+        },
+      },
+      orderBy: [{ periodEnd: 'desc' }, { createdAt: 'desc' }],
+    });
   }
 
   async getEmployees(tenantId: string, user: RequestUser) {

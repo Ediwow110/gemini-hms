@@ -53,7 +53,10 @@ describe('BranchGuard', () => {
 
   describe('with @RequireBranchContext()', () => {
     beforeEach(() => {
-      (reflector.getAllAndOverride as jest.Mock).mockReturnValue(true);
+      // First call (REQUIRE_BRANCH_CONTEXT_KEY) => true, second call (BRANCH_BYPASS_ROLES_KEY) => undefined (no bypass)
+      (reflector.getAllAndOverride as jest.Mock)
+        .mockReturnValueOnce(true)
+        .mockReturnValue(undefined);
     });
 
     it('should deny when req.user is missing', () => {
@@ -166,6 +169,35 @@ describe('BranchGuard', () => {
         {},
       );
       expect(guard.canActivate(context)).toBe(true);
+    });
+
+    it('should allow bypass role user without branchId', () => {
+      // Reset mock: first call returns true (isRequired), second call returns bypass roles
+      (reflector.getAllAndOverride as jest.Mock)
+        .mockReset()
+        .mockReturnValueOnce(true)
+        .mockReturnValue(['Tenant Admin']);
+
+      const context = mockExecutionContext(
+        { userId: 'u1', tenantId: 't1', roles: ['Tenant Admin'] },
+        {},
+        {},
+      );
+      expect(guard.canActivate(context)).toBe(true);
+    });
+
+    it('should deny non-bypass-role user without branchId even when bypass roles defined', () => {
+      (reflector.getAllAndOverride as jest.Mock)
+        .mockReset()
+        .mockReturnValueOnce(true)
+        .mockReturnValue(['Tenant Admin']);
+
+      const context = mockExecutionContext(
+        { userId: 'u1', tenantId: 't1', roles: ['Branch Admin'] },
+        {},
+        {},
+      );
+      expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
     });
   });
 });

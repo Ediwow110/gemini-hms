@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException, NotImplementedException } from '@nestjs/common';
 import { ErxService } from '../erx.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { NotFoundException } from '@nestjs/common';
 
 describe('ErxService - Advanced Clinical Hardening', () => {
   let service: ErxService;
@@ -44,7 +44,7 @@ describe('ErxService - Advanced Clinical Hardening', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should return a payload with isStub indicating honest mocking', async () => {
+    it('should throw NotImplementedException instead of returning a fake TRANSMITTED status', async () => {
       (prisma.prescription.findUnique as jest.Mock).mockResolvedValue({
         id: 'presc-1',
         tenantId: 'tenant-1',
@@ -53,18 +53,17 @@ describe('ErxService - Advanced Clinical Hardening', () => {
         dosage: '500mg',
         notes: 'Take twice daily',
       });
-      const result = await service.transmitPrescription('tenant-1', 'presc-1');
-      expect(result.status).toBe('TRANSMITTED');
-      expect(result.isStub).toBe(true);
-      expect(result.warning).toContain('mock transmission');
+      await expect(
+        service.transmitPrescription('tenant-1', 'presc-1'),
+      ).rejects.toThrow(NotImplementedException);
     });
   });
 
   describe('getTransmissionStatus', () => {
-    it('should return honest mock status with isStub', async () => {
-      const result = await service.getTransmissionStatus('tenant-1', 'TX-123');
-      expect(result.isStub).toBe(true);
-      expect(result.remarks).toContain('MOCK_STUB');
+    it('should throw NotImplementedException instead of returning a fabricated status', async () => {
+      await expect(
+        service.getTransmissionStatus('tenant-1', 'TX-123'),
+      ).rejects.toThrow(NotImplementedException);
     });
   });
 });

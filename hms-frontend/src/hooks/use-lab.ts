@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../lib/api';
 import { labService, PendingSpecimenDto, CriticalResultDto, TurnaroundSummaryDto } from '../services/lab.service';
 
 // ──── Pending Specimens ────
@@ -41,26 +39,6 @@ export function usePendingSpecimens(): UsePendingSpecimensReturn {
 
   return { specimens, isLoading, error, refetch: fetch, receiveSpecimen };
 }
-
-// ──── Releasable Results ────
-
-export const useReleasableResults = () => {
-  return useQuery({
-    queryKey: ['lab', 'results', 'releasable'],
-    queryFn: () => labService.getReleasableResults(),
-  });
-};
-
-export const useReleaseResult = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (resultId: string) => apiClient.post(`/v1/lab/results/${resultId}/release`),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['lab', 'results', 'releasable'] });
-      void queryClient.invalidateQueries({ queryKey: ['lab', 'results', 'released'] });
-    },
-  });
-};
 
 // ──── Critical Results ────
 

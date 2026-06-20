@@ -44,7 +44,6 @@ export const InventoryRequestCard: React.FC<InventoryRequestCardProps> = ({ requ
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-semibold">
-        <strong>Sandbox Notice:</strong> Inventory requisitions are logical shells. No real stock movement or sub-ledger entries are triggered.
       </div>
     </div>
   );

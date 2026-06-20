@@ -1,6 +1,6 @@
 import type React from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SuperAdminDashboard } from '../../portals/admin/SuperAdminDashboard';
 import { ReportsAnalyticsPage } from '../../portals/admin/ReportsAnalyticsPage';
@@ -51,21 +51,30 @@ describe('dashboard intelligence pages', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.runAllTimers(); vi.useRealTimers(); });
 
-  it('SuperAdminDashboard renders KPIs, charts, insights, and drilldown table', () => {
+  it('SuperAdminDashboard is an honest "not yet implemented" stub (no mock analytics, link to /admin/executive)', () => {
     renderPage(<SuperAdminDashboard />);
-    act(() => { vi.advanceTimersByTime(800); });
     expect(screen.getByText('Platform Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Total Tenants')).toBeInTheDocument();
-    expect(screen.getByText('Risk and operations insights')).toBeInTheDocument();
-    expect(screen.getByText('Tenant health drilldown table')).toBeInTheDocument();
+    expect(screen.getByText(/Not yet implemented in this release/i)).toBeInTheDocument();
+    // No mock analytics exposed
+    expect(screen.queryByText('Total Tenants')).not.toBeInTheDocument();
+    expect(screen.queryByText('Risk and operations insights')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tenant health drilldown table')).not.toBeInTheDocument();
+    // No mock footer
+    expect(screen.queryByText(/Mock analytics \(sandbox\)/i)).not.toBeInTheDocument();
+    // Honest pointer to the live page
+    expect(screen.getByText(/Open Live Admin Executive/i)).toBeInTheDocument();
   });
 
-  it('ReportsAnalyticsPage uses disabled WIP export instead of fake export toast', () => {
+  it('ReportsAnalyticsPage is an honest "not yet implemented" stub (no fake export button, no fake data)', () => {
     renderPage(<ReportsAnalyticsPage />);
-    act(() => { vi.advanceTimersByTime(800); });
     expect(screen.getByText('System Reports & Performance Analytics')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Export operations summary WIP/i })).toBeDisabled();
+    expect(screen.getByText(/Not yet implemented in this release/i)).toBeInTheDocument();
+    // No fake export button (the old disabled "Export operations summary WIP" is gone)
+    expect(screen.queryByRole('button', { name: /Export operations summary WIP/i })).not.toBeInTheDocument();
+    // No fake "Generating simulated report bundle" toast
     expect(screen.queryByText(/Generating simulated report bundle/i)).not.toBeInTheDocument();
+    // No mock-data footer
+    expect(screen.queryByText(/Mock analytics \(sandbox\)/i)).not.toBeInTheDocument();
   });
 
   it('HRDashboard renders workforce analytics components', () => {
@@ -82,11 +91,15 @@ describe('dashboard intelligence pages', () => {
     expect(screen.getByText(/PR → RFQ → PO → Receiving funnel/i)).toBeInTheDocument();
   });
 
-  it('MarketplaceAdminDashboard renders governance metrics', () => {
+  it('MarketplaceAdminDashboard renders governance metrics with honest prototype disclosure', () => {
     renderPage(<MarketplaceAdminDashboard />);
     expect(screen.getByText('Marketplace Governance Command Center')).toBeInTheDocument();
     expect(screen.getByText('Pending Suppliers')).toBeInTheDocument();
     expect(screen.getByText('Marketplace fraud/SLA insights')).toBeInTheDocument();
+    expect(screen.queryByTestId('marketplace-admin-sandbox-notice')).not.toBeInTheDocument();
+    // Chart titles no longer carry misleading (mock) or sandbox language
+    // Honest audit footer indicates prototype
+    expect(screen.getByText(/UI prototype/i)).toBeInTheDocument();
   });
 
   it('ComplianceDashboard renders governance analytics and drilldown table', () => {

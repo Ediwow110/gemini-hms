@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -264,6 +265,56 @@ export interface CreateUserResponse {
 
 import { MetricsService } from './metrics.service';
 
+export interface AdminUserListItem {
+  id: string;
+  email: string;
+  tenantId: string;
+  mfaEnabled: boolean;
+  status: string;
+  deactivatedAt: Date | null;
+  lockedUntil: Date | null;
+  isSystem: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  roles: Array<{ id: string; name: string; status: string }>;
+  branches: Array<{ id: string; name: string; isActive: boolean }>;
+}
+
+export interface AdminUserListQuery {
+  search?: string;
+  status?: string;
+  branchId?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminRoleListItem {
+  id: string;
+  name: string;
+  status: string;
+  isSystem: boolean;
+  permissions: Array<{
+    id: string;
+    name: string;
+    scope: string | null;
+    riskLevel: string;
+  }>;
+}
+
+export interface AdminPermissionListItem {
+  id: string;
+  name: string;
+  scope: string | null;
+  riskLevel: string;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -284,9 +335,6 @@ export class AdminService {
     },
   ): Promise<CreateUserResponse> {
     const trimmedReason = this.validateReason(dto.reason);
-    if (trimmedReason.length < 8) {
-      throw new BadRequestException('Reason must be at least 8 characters');
-    }
 
     const email = dto.email.toLowerCase().trim();
     if (!email) {
@@ -1169,6 +1217,142 @@ export class AdminService {
     });
   }
 
+  async forceLogout(
+    actor: RequestUser,
+    targetUserId: string,
+    reason: string,
+  ): Promise<AdminUserLifecycleResponse> {
+    const trimmedReason = this.validateReason(reason);
+    this.assertActorCanTarget(actor, targetUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const target = await this.getScopedTarget(tx, actor, targetUserId);
+      this.assertNonPrivilegedTarget(target);
+
+      const updateResult = await tx.user.updateMany({
+        where: {
+          id: targetUserId,
+          tenantId: actor.tenantId,
+          ...this.getBranchMutationScope(actor),
+        },
+        data: {
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException(
+          'User access scope changed before logout could be enforced',
+        );
+      }
+
+      const changedAt = new Date();
+      const updated = await this.getUpdatedUser(
+        tx,
+        actor.tenantId,
+        targetUserId,
+      );
+      const branchId = this.getAuditBranchId(actor, target);
+
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'USER_FORCE_LOGOUT',
+          recordType: 'User',
+          recordId: targetUserId,
+          oldValues: this.buildAuditOldValues(target),
+          newValues: this.buildAuditNewValues(
+            actor,
+            targetUserId,
+            updated,
+            trimmedReason,
+            changedAt,
+          ),
+        },
+        tx,
+        branchId,
+      );
+
+      return this.toLifecycleResponse(updated, target);
+    });
+  }
+
+  async resetPassword(
+    actor: RequestUser,
+    targetUserId: string,
+    reason: string,
+  ): Promise<{ user: AdminUserLifecycleResponse; tempPassword: string }> {
+    const trimmedReason = this.validateReason(reason);
+    this.assertActorCanTarget(actor, targetUserId);
+
+    // Generate a cryptographically secure temporary password.
+    // 12 random bytes (96 bits of entropy) encoded as base64url = 16 chars.
+    // This matches the codebase's other security-sensitive generators
+    // (auth.service.ts uses crypto.randomUUID, mfa.service.ts uses
+    // crypto.randomBytes, auth.controller.ts uses crypto.randomBytes for
+    // CSRF tokens). Math.random is predictable and not suitable here.
+    const tempPassword =
+      'Temp' + crypto.randomBytes(12).toString('base64url') + '!';
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+    return this.prisma.$transaction(async (tx) => {
+      const target = await this.getScopedTarget(tx, actor, targetUserId);
+      this.assertNonPrivilegedTarget(target);
+
+      const updateResult = await tx.user.updateMany({
+        where: {
+          id: targetUserId,
+          tenantId: actor.tenantId,
+          ...this.getBranchMutationScope(actor),
+        },
+        data: {
+          passwordHash,
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException(
+          'User access scope changed before password reset could be enforced',
+        );
+      }
+
+      const changedAt = new Date();
+      const updated = await this.getUpdatedUser(
+        tx,
+        actor.tenantId,
+        targetUserId,
+      );
+      const branchId = this.getAuditBranchId(actor, target);
+
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'USER_PASSWORD_RESET',
+          recordType: 'User',
+          recordId: targetUserId,
+          oldValues: this.buildAuditOldValues(target),
+          newValues: this.buildAuditNewValues(
+            actor,
+            targetUserId,
+            updated,
+            trimmedReason,
+            changedAt,
+          ),
+        },
+        tx,
+        branchId,
+      );
+
+      return {
+        user: this.toLifecycleResponse(updated, target),
+        tempPassword,
+      };
+    });
+  }
+
   async assignUserRole(
     actor: RequestUser,
     targetUserId: string,
@@ -1860,8 +2044,8 @@ export class AdminService {
 
   private validateReason(reason: string): string {
     const trimmed = reason.trim();
-    if (!trimmed) {
-      throw new BadRequestException('Reason is required');
+    if (trimmed.length < 8) {
+      throw new BadRequestException('Reason must be at least 8 characters');
     }
     return trimmed;
   }
@@ -3878,5 +4062,193 @@ export class AdminService {
         timestamp,
       };
     }
+  }
+
+  async listUsers(
+    actor: RequestUser,
+    query: AdminUserListQuery = {},
+  ): Promise<PaginatedResult<AdminUserListItem>> {
+    const { search, status, branchId, page = 1, limit = 50 } = query;
+    const where: Prisma.UserWhereInput = { tenantId: actor.tenantId };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (search) {
+      where.OR = [{ email: { contains: search, mode: 'insensitive' } }];
+    }
+
+    if (branchId) {
+      where.userBranches = {
+        some: { branchId, isActive: true },
+      };
+    }
+
+    // Branch-scoped admins only see users in their branch
+    if (!this.isSuperAdmin(actor) && actor.branchId) {
+      where.userBranches = {
+        ...(where.userBranches as any),
+        some: {
+          ...((where.userBranches as any)?.some || {}),
+          branchId: actor.branchId,
+          isActive: true,
+        },
+      };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        include: {
+          userRoles: {
+            include: { role: { select: { id: true, name: true } } },
+            where: { status: 'ACTIVE' },
+          },
+          userBranches: {
+            include: { branch: { select: { id: true, name: true } } },
+            where: { isActive: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data: data.map((u) => ({
+        id: u.id,
+        email: u.email,
+        tenantId: u.tenantId,
+        mfaEnabled: u.mfaEnabled,
+        status: u.status,
+        deactivatedAt: u.deactivatedAt,
+        lockedUntil: u.lockedUntil,
+        isSystem: u.isSystem,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+        roles: u.userRoles.map((ur) => ({
+          id: ur.role.id,
+          name: ur.role.name,
+          status: ur.status,
+        })),
+        branches: u.userBranches.map((ub) => ({
+          id: ub.branch.id,
+          name: ub.branch.name,
+          isActive: ub.isActive,
+        })),
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getUser(
+    actor: RequestUser,
+    userId: string,
+  ): Promise<AdminUserListItem> {
+    const where: Prisma.UserWhereInput = {
+      id: userId,
+      tenantId: actor.tenantId,
+    };
+
+    if (!this.isSuperAdmin(actor) && actor.branchId) {
+      where.userBranches = {
+        some: { branchId: actor.branchId, isActive: true },
+      };
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where,
+      include: {
+        userRoles: {
+          include: { role: { select: { id: true, name: true } } },
+          where: { status: 'ACTIVE' },
+        },
+        userBranches: {
+          include: { branch: { select: { id: true, name: true } } },
+          where: { isActive: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      tenantId: user.tenantId,
+      mfaEnabled: user.mfaEnabled,
+      status: user.status,
+      deactivatedAt: user.deactivatedAt,
+      lockedUntil: user.lockedUntil,
+      isSystem: user.isSystem,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      roles: user.userRoles.map((ur) => ({
+        id: ur.role.id,
+        name: ur.role.name,
+        status: ur.status,
+      })),
+      branches: user.userBranches.map((ub) => ({
+        id: ub.branch.id,
+        name: ub.branch.name,
+        isActive: ub.isActive,
+      })),
+    };
+  }
+
+  async listRoles(actor: RequestUser): Promise<AdminRoleListItem[]> {
+    const roles = await this.prisma.role.findMany({
+      where: {
+        tenantId: actor.tenantId,
+        archivedAt: null,
+      },
+      include: {
+        rolePermissions: {
+          include: {
+            permission: {
+              select: {
+                id: true,
+                name: true,
+                scope: true,
+                riskLevel: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return roles.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: r.status,
+      isSystem: r.isSystem,
+      permissions: r.rolePermissions.map((rp) => rp.permission),
+    }));
+  }
+
+  async listPermissions(
+    actor: RequestUser,
+  ): Promise<AdminPermissionListItem[]> {
+    const permissions = await this.prisma.permission.findMany({
+      where: { tenantId: actor.tenantId },
+      select: {
+        id: true,
+        name: true,
+        scope: true,
+        riskLevel: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return permissions;
   }
 }

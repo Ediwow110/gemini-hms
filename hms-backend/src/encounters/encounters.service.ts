@@ -103,6 +103,7 @@ export class EncountersService {
         tenantId,
         branchId,
         patientId,
+        archivedAt: null,
       },
       orderBy: { startedAt: 'desc' },
       include: {
@@ -124,6 +125,7 @@ export class EncountersService {
         id,
         tenantId,
         branchId,
+        archivedAt: null,
       },
       include: {
         patient: true,
@@ -149,8 +151,8 @@ export class EncountersService {
       const existing = await this.findOne(tenantId, id, branchId);
 
       return await this.prisma.$transaction(async (tx) => {
-        const updated = await tx.encounter.update({
-          where: { id },
+        const updateResult = await tx.encounter.updateMany({
+          where: { id, tenantId, branchId, archivedAt: null },
           data: {
             ...dto,
             updatedBy: userId,
@@ -158,6 +160,18 @@ export class EncountersService {
               dto.status === EncounterStatus.FINISHED ? new Date() : undefined,
           },
         });
+
+        if (updateResult.count === 0) {
+          throw new NotFoundException('Encounter not found');
+        }
+
+        const updated = await tx.encounter.findFirst({
+          where: { id, tenantId, branchId, archivedAt: null },
+        });
+
+        if (!updated) {
+          throw new NotFoundException('Encounter not found');
+        }
 
         await this.audit.log(
           {

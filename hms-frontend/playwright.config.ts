@@ -6,6 +6,12 @@ export default defineConfig({
   expect: {
     timeout: 10000
   },
+  // Cap action-level waits so a stuck page/response surfaces a clear
+  // timeout error within 30s instead of consuming the 60min test budget.
+  // Without this, page.waitForResponse(predicate) and page.goto inherit
+  // the test timeout and a single hung network call stalls the job for
+  // the full GHA 25min job timeout. See: PR #229 Browser Smoke hang.
+  actionTimeout: 30_000,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

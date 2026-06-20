@@ -68,7 +68,7 @@ describe('ClinicalOperationsDashboard Unit Tests', () => {
     });
   });
 
-  it('renders successfully with fallback demo data when API fails', async () => {
+  it('renders truthful error state (NOT fake demo data) when API fails', async () => {
     vi.mocked(clinicalOpsDashboardService.getDashboardData).mockRejectedValue(new Error('Network error'));
 
     render(
@@ -77,10 +77,39 @@ describe('ClinicalOperationsDashboard Unit Tests', () => {
       </MemoryRouter>
     );
 
+    // Must show truthful error message
     await waitFor(() => {
-      expect(screen.getByText('Clinical Operations')).toBeInTheDocument();
-      expect(screen.getByText('Demo Preview Mode')).toBeInTheDocument();
-      expect(screen.getByText('Demo analytics preview — sample data for client walkthrough')).toBeInTheDocument();
+      expect(
+        screen.getByText('Unable to load clinical operations data. Please retry.'),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
     });
+
+    // Must NOT show any fabricated operational content
+    expect(screen.queryByText('Demo Preview Mode')).not.toBeInTheDocument();
+    expect(screen.queryByText('Demo analytics preview — sample data for client walkthrough')).not.toBeInTheDocument();
+    expect(screen.queryByText('Currently in clinic (Demo)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Awaiting initial assessment (Demo)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ready for consultation (Demo)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Open clinical actions (Demo)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Demo Patient A')).not.toBeInTheDocument();
+    expect(screen.queryByText('Demo Patient B')).not.toBeInTheDocument();
+    expect(screen.queryByText('Administer IV meds - Patient: Demo Patient A')).not.toBeInTheDocument();
+    expect(screen.queryByText('Patient Demo Patient B in Urgent Care queue')).not.toBeInTheDocument();
+    // Fake KPI values must not appear
+    expect(screen.queryByText('48')).not.toBeInTheDocument();
+    expect(screen.queryByText('3')).not.toBeInTheDocument();
+    expect(screen.queryByText('12')).not.toBeInTheDocument();
+    expect(screen.queryByText('15')).not.toBeInTheDocument();
+    // Fake queue rows must not appear
+    expect(screen.queryByText('Q-001')).not.toBeInTheDocument();
+    expect(screen.queryByText('Q-002')).not.toBeInTheDocument();
+    // Fake department pressure must not appear
+    expect(screen.queryByText('General Practice')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pediatrics')).not.toBeInTheDocument();
+    // Header and real sections must NOT show on error
+    expect(screen.queryByText('Patient Flow Distribution')).not.toBeInTheDocument();
+    expect(screen.queryByText('Workload by Specialty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Active Patient Queue')).not.toBeInTheDocument();
   });
 });

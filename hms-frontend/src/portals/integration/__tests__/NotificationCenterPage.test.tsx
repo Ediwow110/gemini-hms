@@ -15,12 +15,12 @@ const renderWithProviders = (ui: React.ReactElement) =>
     ),
   });
 
-describe('NotificationCenterPage Redesign', () => {
-  it('renders mock page with HMS shell and sandbox labeling', () => {
+describe('NotificationCenterPage — honest state (post-truth-alignment)', () => {
+  it('renders HMS shell, honest shell notice, and live-derived stats from notifications', () => {
     renderWithProviders(<NotificationCenterPage />);
     expect(screen.getByText('Notification Center')).toBeInTheDocument();
     expect(screen.getByText('Sandbox')).toBeInTheDocument();
-    expect(screen.getByText('Integration Bridges Sandbox')).toBeInTheDocument();
+    expect(screen.getByText(/Integration Bridges\s+[—-]\s+Mixed Availability/i)).toBeInTheDocument();
     expect(screen.getByText('Unread')).toBeInTheDocument();
   });
 });

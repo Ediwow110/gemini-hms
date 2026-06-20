@@ -113,6 +113,173 @@ describe('LabService — Phase 4D additions', () => {
     service = module.get<LabService>(LabService);
   });
 
+  describe('archived-record operational filtering', () => {
+    it('findOne excludes archived lab results (where.archivedAt is null)', async () => {
+      prisma.labResult.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.findOne(mockTenantId, mockBranchId, mockResultId),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.labResult.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockResultId,
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+            deletedAt: null,
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('getPendingWorklist excludes archived lab results', async () => {
+      prisma.labResult.findMany.mockResolvedValue([]);
+
+      await service.getPendingWorklist(mockTenantId, mockBranchId);
+
+      expect(prisma.labResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('getReleasableResults excludes archived lab results', async () => {
+      prisma.labResult.findMany.mockResolvedValue([]);
+
+      await service.getReleasableResults(mockTenantId, mockBranchId);
+
+      expect(prisma.labResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+            status: 'APPROVED',
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('getCriticalResults excludes archived lab results', async () => {
+      prisma.labResult.findMany.mockResolvedValue([]);
+
+      await service.getCriticalResults(mockTenantId, mockBranchId);
+
+      expect(prisma.labResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            isCritical: true,
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('encodeResult pre-read filters archived lab results (where.archivedAt is null)', async () => {
+      prisma.labResult.findFirst.mockResolvedValue(mockResult);
+      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+
+      await service.encodeResult(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+        mockResultId,
+        { results: { WBC: 7.5 } },
+      );
+
+      expect(prisma.labResult.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockResultId,
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+            deletedAt: null,
+            archivedAt: null,
+          }),
+        }),
+      );
+      expect(prisma.labResult.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockResultId,
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('encodeResult fails closed when updateMany count is zero (archived or stale)', async () => {
+      prisma.labResult.findFirst.mockResolvedValue(mockResult);
+      prisma.labResult.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.encodeResult(
+          mockTenantId,
+          mockUserId,
+          mockBranchId,
+          mockResultId,
+          { results: { WBC: 7.5 } },
+        ),
+      ).rejects.toThrow(ConflictException);
+
+      expect(audit.log).not.toHaveBeenCalled();
+    });
+
+    it('approveResult pre-read filters archived lab results (where.archivedAt is null)', async () => {
+      prisma.labResult.findFirst.mockResolvedValue(mockResult);
+      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+
+      await service.approveResult(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+        mockResultId,
+        { pathologistRemarks: 'ok' },
+      );
+
+      expect(prisma.labResult.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockResultId,
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('markResultAsCritical pre-read filters archived lab results (where.archivedAt is null)', async () => {
+      prisma.labResult.findFirst.mockResolvedValue(mockResult);
+      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
+      prisma.notificationOutbox.create.mockResolvedValue({});
+      prisma.labResult.findMany.mockResolvedValue([
+        { ...mockResult, isCritical: true, criticalStatus: 'OPEN' },
+      ]);
+
+      await service.markResultAsCritical(
+        mockTenantId,
+        mockUserId,
+        mockBranchId,
+        mockResultId,
+      );
+
+      expect(prisma.labResult.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockResultId,
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+  });
+
   describe('getPendingSpecimens', () => {
     it('should return pending specimens', async () => {
       prisma.labSpecimen.findMany.mockResolvedValue([mockSpecimen]);
@@ -235,14 +402,17 @@ describe('LabService — Phase 4D additions', () => {
 
   describe('releaseResult', () => {
     it('should release an APPROVED result', async () => {
-      prisma.labResult.findFirst.mockResolvedValue(mockResult);
-      prisma.labResult.update.mockResolvedValue({
+      const releasedResult = {
         ...mockResult,
         status: 'RELEASED',
         lockedAt: new Date(),
         releasedAt: new Date(),
         releasedById: mockUserId,
-      });
+      };
+      prisma.labResult.findFirst
+        .mockResolvedValueOnce(mockResult)
+        .mockResolvedValueOnce(releasedResult);
+      prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
       prisma.labResultSignature.create.mockResolvedValue({ id: 'sig-1' });
       prisma.notificationOutbox.create.mockResolvedValue({});
       prisma.order.update.mockResolvedValue({});
@@ -255,14 +425,20 @@ describe('LabService — Phase 4D additions', () => {
         mockResultId,
       );
 
-      expect(prisma.labResult.update).toHaveBeenCalledWith({
-        where: { id: mockResultId },
-        data: expect.objectContaining({
-          status: 'RELEASED',
-          releasedAt: expect.any(Date),
-          releasedById: mockUserId,
+      expect(prisma.labResult.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: mockResultId,
+            order: { tenantId: mockTenantId, branchId: mockBranchId },
+            archivedAt: null,
+          }),
+          data: expect.objectContaining({
+            status: 'RELEASED',
+            releasedAt: expect.any(Date),
+            releasedById: mockUserId,
+          }),
         }),
-      });
+      );
 
       expect(audit.log).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { HrService } from './hr.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NumberingService } from '../numbering/numbering.service';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { RequestUser } from '../common/types/authenticated-request.type';
 import { CreateEmployeeDto } from './dto/hr.dto';
@@ -44,11 +45,15 @@ describe('HrService', () => {
               findFirst: jest.fn(),
               findMany: jest.fn(),
             },
+            leaveRequest: {
+              findMany: jest.fn(),
+            },
             employeeBranch: {
               create: jest.fn(),
             },
             payslip: {
               create: jest.fn(),
+              findMany: jest.fn(),
             },
             department: {
               create: jest.fn(),
@@ -101,6 +106,12 @@ describe('HrService', () => {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: NumberingService,
+          useValue: {
+            generateNumber: jest.fn().mockResolvedValue('EMP-00001'),
           },
         },
       ],
@@ -323,6 +334,265 @@ describe('HrService', () => {
       await expect(
         service.getEmployees(mockTenantId, invalidBranchAdmin),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getLeaveRequests', () => {
+    it('should return tenant-wide leave requests for Super Admin', async () => {
+      (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue([
+        { id: 'lr-1' },
+        { id: 'lr-2' },
+      ]);
+
+      const result = await service.getLeaveRequests(
+        mockTenantId,
+        superAdminUser,
+      );
+
+      expect(prisma.leaveRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tenantId: mockTenantId },
+        }),
+      );
+      expect(result.length).toBe(2);
+    });
+
+    it('should scope to own branch for Branch Admin', async () => {
+      (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue([
+        { id: 'lr-1' },
+      ]);
+
+      await service.getLeaveRequests(mockTenantId, branchAdminUser);
+
+      expect(prisma.leaveRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: mockTenantId,
+            employee: { branchId: mockBranchId },
+          }),
+        }),
+      );
+    });
+
+    it('should reject Branch Admin without branch context', async () => {
+      const invalidBranchAdmin: RequestUser = {
+        tenantId: mockTenantId,
+        roles: ['Branch Admin'],
+      };
+      await expect(
+        service.getLeaveRequests(mockTenantId, invalidBranchAdmin),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should restrict Doctor to own employee record only', async () => {
+      const doctorUser: RequestUser = {
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        roles: ['Doctor'],
+      };
+      (prisma.employee.findFirst as jest.Mock).mockResolvedValue({
+        id: 'emp-doctor',
+      });
+      (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue([
+        { id: 'lr-1' },
+      ]);
+
+      const result = await service.getLeaveRequests(mockTenantId, doctorUser);
+
+      expect(prisma.leaveRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: mockTenantId,
+            employeeId: 'emp-doctor',
+          }),
+        }),
+      );
+      expect(result.length).toBe(1);
+    });
+
+    it('should return empty for Doctor with no linked employee record', async () => {
+      const doctorUser: RequestUser = {
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        roles: ['Doctor'],
+      };
+      (prisma.employee.findFirst as jest.Mock).mockResolvedValue(null);
+
+      const result = await service.getLeaveRequests(mockTenantId, doctorUser);
+
+      expect(result).toEqual([]);
+      expect(prisma.leaveRequest.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should reject Doctor using employeeId filter for someone else', async () => {
+      const doctorUser: RequestUser = {
+        tenantId: mockTenantId,
+        userId: mockUserId,
+        roles: ['Doctor'],
+      };
+      (prisma.employee.findFirst as jest.Mock).mockResolvedValue({
+        id: 'emp-doctor',
+      });
+
+      await expect(
+        service.getLeaveRequests(mockTenantId, doctorUser, {
+          employeeId: 'someone-else',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should pass status filter when provided', async () => {
+      (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue([]);
+
+      await service.getLeaveRequests(mockTenantId, superAdminUser, {
+        status: 'PENDING',
+      });
+
+      expect(prisma.leaveRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: 'PENDING' }),
+        }),
+      );
+    });
+
+    it('should reject roles without HR access', async () => {
+      const unprivilegedUser: RequestUser = {
+        tenantId: mockTenantId,
+        roles: ['Receptionist'],
+      };
+      await expect(
+        service.getLeaveRequests(mockTenantId, unprivilegedUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('listPayslips', () => {
+    it('should return tenant-wide payslips for Super Admin', async () => {
+      (prisma.payslip.findMany as jest.Mock).mockResolvedValue([
+        { id: 'ps-1' },
+        { id: 'ps-2' },
+      ]);
+
+      const result = await service.listPayslips(mockTenantId, superAdminUser);
+
+      expect(prisma.payslip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tenantId: mockTenantId },
+        }),
+      );
+      expect(result.length).toBe(2);
+    });
+
+    it('should scope to own branch for Branch Admin', async () => {
+      (prisma.payslip.findMany as jest.Mock).mockResolvedValue([
+        { id: 'ps-1' },
+      ]);
+
+      await service.listPayslips(mockTenantId, branchAdminUser);
+
+      expect(prisma.payslip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: mockTenantId,
+            branchId: mockBranchId,
+          }),
+        }),
+      );
+    });
+
+    it('should reject Branch Admin without branch context', async () => {
+      const invalidBranchAdmin: RequestUser = {
+        tenantId: mockTenantId,
+        roles: ['Branch Admin'],
+      };
+      await expect(
+        service.listPayslips(mockTenantId, invalidBranchAdmin),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject Branch Admin querying a different branch', async () => {
+      await expect(
+        service.listPayslips(mockTenantId, branchAdminUser, {
+          branchId: '00000000-0000-0000-0000-000000000099',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.payslip.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should pass status filter when provided', async () => {
+      (prisma.payslip.findMany as jest.Mock).mockResolvedValue([]);
+
+      await service.listPayslips(mockTenantId, superAdminUser, {
+        status: 'DRAFT',
+      });
+
+      expect(prisma.payslip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: 'DRAFT' }),
+        }),
+      );
+    });
+
+    it('should pass employeeId filter when provided', async () => {
+      (prisma.payslip.findMany as jest.Mock).mockResolvedValue([]);
+
+      await service.listPayslips(mockTenantId, superAdminUser, {
+        employeeId: '00000000-0000-0000-0000-000000000077',
+      });
+
+      expect(prisma.payslip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            employeeId: '00000000-0000-0000-0000-000000000077',
+          }),
+        }),
+      );
+    });
+
+    it('should always derive tenantId from the authenticated user, never from filters', async () => {
+      (prisma.payslip.findMany as jest.Mock).mockResolvedValue([]);
+
+      const crossTenantUser: RequestUser = {
+        tenantId: '00000000-0000-0000-0000-0000000000b9',
+        roles: ['Branch Admin'],
+        branchId: mockBranchId,
+      };
+      await service.listPayslips(
+        '00000000-0000-0000-0000-0000000000b9',
+        crossTenantUser,
+      );
+
+      expect(prisma.payslip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId: '00000000-0000-0000-0000-0000000000b9',
+          }),
+        }),
+      );
+    });
+
+    it('should include the employee relation in the response', async () => {
+      (prisma.payslip.findMany as jest.Mock).mockResolvedValue([]);
+
+      await service.listPayslips(mockTenantId, superAdminUser);
+
+      expect(prisma.payslip.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            employee: expect.any(Object),
+          }),
+        }),
+      );
+    });
+
+    it('should reject roles without HR access', async () => {
+      const unprivilegedUser: RequestUser = {
+        tenantId: mockTenantId,
+        roles: ['Receptionist'],
+      };
+      await expect(
+        service.listPayslips(mockTenantId, unprivilegedUser),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
@@ -37,6 +38,43 @@ export class AdminController {
   @RequirePermissions('admin.health.view')
   async getHealth() {
     return this.adminService.getHealth();
+  }
+
+  @Get('users')
+  @RequirePermissions('admin.health.view')
+  async listUsers(
+    @GetUser() actor: RequestUser,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('branchId') branchId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.listUsers(actor, {
+      search,
+      status,
+      branchId,
+      page: page ? Math.max(1, parseInt(page, 10) || 1) : undefined,
+      limit: limit ? Math.max(1, parseInt(limit, 10) || 1) : undefined,
+    });
+  }
+
+  @Get('users/:id')
+  @RequirePermissions('admin.health.view')
+  async getUser(@GetUser() actor: RequestUser, @Param('id') id: string) {
+    return this.adminService.getUser(actor, id);
+  }
+
+  @Get('roles')
+  @RequirePermissions('admin.health.view')
+  async listRoles(@GetUser() actor: RequestUser) {
+    return this.adminService.listRoles(actor);
+  }
+
+  @Get('permissions')
+  @RequirePermissions('admin.health.view')
+  async listPermissions(@GetUser() actor: RequestUser) {
+    return this.adminService.listPermissions(actor);
   }
 
   @Get('metrics')
@@ -124,6 +162,26 @@ export class AdminController {
     @Body() dto: UserLifecycleReasonDto,
   ) {
     return this.adminService.activateUser(actor, targetUserId, dto.reason);
+  }
+
+  @Post('users/:id/force-logout')
+  @RequirePermissions('admin.role.change')
+  async forceLogout(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.forceLogout(actor, targetUserId, dto.reason);
+  }
+
+  @Post('users/:id/reset-password')
+  @RequirePermissions('admin.role.change')
+  async resetPassword(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.resetPassword(actor, targetUserId, dto.reason);
   }
 
   @Post('users/:id/roles')

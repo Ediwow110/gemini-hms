@@ -45,6 +45,7 @@ export interface AuditQueryDto {
   branchId?: string;
   startDate?: string;
   endDate?: string;
+  search?: string;
   page?: number;
   pageSize?: number;
 }
@@ -298,6 +299,7 @@ export class AuditService {
       recordId,
       startDate,
       endDate,
+      search,
       page = 1,
       pageSize = 20,
     } = query;
@@ -328,6 +330,15 @@ export class AuditService {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = new Date(startDate);
       if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    // Free-text search across eventKey, recordType, and userId
+    if (search) {
+      where.OR = [
+        { eventKey: { contains: search } },
+        { recordType: { contains: search } },
+        { userId: { contains: search } },
+      ];
     }
 
     const total = await this.prisma.auditLog.count({ where });
@@ -378,6 +389,7 @@ export class AuditService {
       recordId,
       startDate,
       endDate,
+      search,
       page = 1,
       pageSize = 20,
     } = query;
@@ -392,6 +404,14 @@ export class AuditService {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = new Date(startDate);
       if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    // Free-text search across eventKey and recordType for self-events
+    if (search) {
+      where.OR = [
+        { eventKey: { contains: search } },
+        { recordType: { contains: search } },
+      ];
     }
 
     const total = await this.prisma.auditLog.count({ where });
@@ -887,6 +907,9 @@ export class AuditService {
     id: string,
   ) {
     const isSuperAdmin = userRoles.includes('Super Admin');
+    const isTenantWideViewer = userRoles.some((role) =>
+      ['Super Admin', 'Compliance Officer', 'Tenant Admin'].includes(role),
+    );
     const auditLog = await this.prisma.auditLog.findUnique({
       where: { id },
       select: {
@@ -914,8 +937,11 @@ export class AuditService {
       throw new NotFoundException('Audit log not found');
     }
 
+    // Tenant-wide viewers can see any branch's logs within the tenant.
+    // Branch-scoped users can only see logs for their own branch.
     if (
       !isSuperAdmin &&
+      !isTenantWideViewer &&
       auditLog.branchId !== null &&
       auditLog.branchId !== branchId
     ) {

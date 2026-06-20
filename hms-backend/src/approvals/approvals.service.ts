@@ -45,8 +45,9 @@ export class ApprovalsService {
     tx?: Prisma.TransactionClient,
   ) {
     const db = tx || this.prisma;
-    const requestBranchId =
-      dto.branchId ?? this.getRequestBranchId(dto.details);
+    // SECURITY: Always use server-derived branchId (from JWT via controller).
+    // Client-provided dto.details.branchId must NEVER influence the authoritative branchId on the record.
+    const requestBranchId = dto.branchId;
     const request = await db.approvalRequest.create({
       data: {
         tenantId,
@@ -77,11 +78,27 @@ export class ApprovalsService {
     return request;
   }
 
-  async getRequests(tenantId: string, branchId?: string, isSuperAdmin = false) {
+  async getRequests(
+    tenantId: string,
+    branchId?: string,
+    isSuperAdmin = false,
+    isTenantWide = false,
+    page = 1,
+    pageSize = 50,
+  ) {
+    // Tenant-wide users (no branch scope) see all requests for the tenant.
+    // Branch-scoped users see only their branch's requests.
+    const effectiveBranchId =
+      isSuperAdmin || isTenantWide ? undefined : branchId;
+
+    // SCALABILITY: bound the list to prevent unbounded findMany on hot approval list path.
+    const limit = Math.min(Math.max(pageSize, 1), 200);
+    const skip = Math.max((page - 1) * limit, 0);
+
     return this.prisma.approvalRequest.findMany({
       where: {
         tenantId,
-        branchId: isSuperAdmin ? undefined : branchId,
+        branchId: effectiveBranchId,
       },
       include: {
         requester: {
@@ -92,6 +109,8 @@ export class ApprovalsService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
     });
   }
 

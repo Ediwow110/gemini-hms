@@ -8,10 +8,10 @@ export const BranchAdminShellNotice: React.FC = () => {
         <ShieldAlert className="h-5 w-5 text-amber-600" />
       </div>
       <div>
-        <h4 className="text-sm font-black text-amber-900 tracking-tight">Branch Admin Sandbox</h4>
+        <h4 className="text-sm font-black text-amber-900 tracking-tight">Branch Admin — Prototype</h4>
         <p className="text-xs text-amber-700 font-medium leading-relaxed mt-0.5">
           This branch admin portal is a <strong>functional prototype shell</strong>. Branch analytics,
-          metrics, and operational data shown here are mock-generated for demonstration purposes. No real
+          metrics, and operational data shown here are generated for demonstration purposes. No real
           branch operations or live data is persisted in this phase.
         </p>
       </div>

@@ -347,4 +347,32 @@ describe('NurseTriageQueuePage', () => {
     // Modal should still be open - no mock fallback, no auto-close on error
     expect(screen.getByText('Mark Triage as Error')).toBeInTheDocument();
   });
+
+  // --- Dead action disable tests ---
+
+  it('disables the "Broadcast Emergency Alert" button because no emergency broadcast endpoint exists', async () => {
+    setupGetMock();
+
+    render(<NurseTriageQueuePage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText(/John Doe/)).toBeInTheDocument();
+    });
+
+    const broadcastBtn = screen.getByText(/Broadcast Emergency Alert/);
+    expect(broadcastBtn).toBeDisabled();
+  });
+
+  it('shows an explanatory title on the disabled "Broadcast Emergency Alert" button', async () => {
+    setupGetMock();
+
+    render(<NurseTriageQueuePage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText(/John Doe/)).toBeInTheDocument();
+    });
+
+    const broadcastBtn = screen.getByText(/Broadcast Emergency Alert/);
+    expect(broadcastBtn).toHaveAttribute('title', expect.stringMatching(/not.*wired|not.*available|not.*integrated|disabled|endpoint/i));
+  });
 });

@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
-import { 
-  UserPlus, 
-  UserCheck, 
-  CreditCard, 
-  ShieldAlert, 
-  Check, 
+import {
+  UserPlus,
+  UserCheck,
+  CreditCard,
+  ShieldAlert,
+  Check,
   User
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/page-header';
@@ -12,6 +12,8 @@ import { useAutoDraft } from '../../lib/autodraft/useAutoDraft';
 import { DraftRecoveryDialog } from '../../lib/autodraft/DraftRecoveryDialog';
 import { safeDeleteAutoDraft } from '../../lib/autodraft/indexedDbDraftStore';
 import { useUser } from '../../hooks/use-user';
+import { apiClient } from '../../lib/api';
+import axios from 'axios';
 
 type AppointmentDraftData = {
   firstName: string;
@@ -89,17 +91,43 @@ export const NursePatientIntakePage = () => {
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [successMsg, setSuccessMsg] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsRegistering(true);
-    setTimeout(() => {
-      setIsRegistering(false);
+    setErrorMsg(null);
+
+    try {
+      await apiClient.post('/v1/patients', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        dob: formData.dob,
+        gender: formData.gender || undefined,
+        contactNumber: formData.phone || undefined,
+        address: formData.address || undefined,
+      });
       setSuccessMsg(true);
       setIsDirty(false);
       safeDeleteAutoDraft(draftId, "appointment-registration-success");
       setFormData(EMPTY_FORM);
-    }, 1000);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const serverMessage = (err.response?.data as { message?: string } | undefined)?.message;
+        if (status === 403 || status === 401) {
+          setErrorMsg('Access Restricted: you do not have permission to register patients (patient.create). Contact your administrator.');
+        } else if (status && status >= 500) {
+          setErrorMsg(`System Error: ${serverMessage || 'Server error. Please try again later.'}`);
+        } else {
+          setErrorMsg(serverMessage || 'Failed to register patient. Please verify the form and try again.');
+        }
+      } else {
+        setErrorMsg('Failed to register patient. Please check your network connection and try again.');
+      }
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   return (
@@ -115,11 +143,11 @@ export const NursePatientIntakePage = () => {
             <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
               <Check className="h-6 w-6" />
             </div>
-            <h3 className="font-black text-emerald-800 text-base">Patient Checked In Successfully</h3>
+            <h3 className="font-black text-emerald-800 text-base">Patient Registered</h3>
             <p className="text-xs text-emerald-600 font-semibold max-w-md">
-              Demographic records have been registered, and the patient has been routed to the triage queues.
+              Demographic records have been saved to the patient record. Insurance, emergency contact, and visit-routing details are not yet saved to the patient record and must be captured separately if needed.
             </p>
-            <button 
+            <button
               onClick={() => setSuccessMsg(false)}
               className="btn btn-primary bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2 px-6 rounded-xl shadow-sm shadow-emerald-200"
             >
@@ -329,7 +357,16 @@ export const NursePatientIntakePage = () => {
             </div>
 
             {/* Submit */}
-            <div className="flex justify-end pt-4 border-t border-slate-100">
+            <div className="flex flex-col items-end gap-3 pt-4 border-t border-slate-100">
+              {errorMsg && (
+                <div
+                  data-testid="nurseintake-submit-error"
+                  role="alert"
+                  className="w-full text-left p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold animate-shake"
+                >
+                  {errorMsg}
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={isRegistering}

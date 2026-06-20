@@ -41,7 +41,7 @@ export const MarketplaceHomePage: React.FC = () => {
   useEffect(() => {
     const fetchListings = async () => {
       try {
-        const response = await apiClient.get('/marketplace/listings');
+        const response = await apiClient.get('/v1/marketplace/listings');
         setListings(response.data);
       } catch (err) {
         console.error('Failed to fetch marketplace listings:', err);

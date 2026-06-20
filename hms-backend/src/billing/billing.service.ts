@@ -232,11 +232,12 @@ export class BillingService {
     }
 
     try {
-      // 6. Verify invoice belongs to tenant AND branch
+      // 6. Verify invoice belongs to tenant AND branch AND is not archived
       const invoice = await this.prisma.invoice.findFirst({
         where: {
           id: dto.invoiceId,
           order: { tenantId, branchId },
+          archivedAt: null,
         },
         include: { order: true },
       });
@@ -275,6 +276,7 @@ export class BillingService {
             id: dto.invoiceId,
             order: { tenantId, branchId },
             status: { not: 'PAID' },
+            archivedAt: null,
           },
           data: {
             updatedAt: new Date(), // touch to acquire lock
@@ -394,17 +396,37 @@ export class BillingService {
               ? 'PAID'
               : 'PARTIALLY_PAID';
 
-            await tx.invoice.update({
-              where: { id: dto.invoiceId },
+            const invoiceUpdateResult = await tx.invoice.updateMany({
+              where: {
+                id: dto.invoiceId,
+                order: { tenantId, branchId },
+                archivedAt: null,
+              },
               data: {
                 paidAmount: newPaidAmount,
                 status: newStatus,
               },
             });
 
-            updatedInvoice = await tx.invoice.findUnique({
-              where: { id: dto.invoiceId },
+            if (invoiceUpdateResult.count === 0) {
+              throw new ConflictException(
+                'Invoice not found or was archived before payment could be applied',
+              );
+            }
+
+            updatedInvoice = await tx.invoice.findFirst({
+              where: {
+                id: dto.invoiceId,
+                order: { tenantId, branchId },
+                archivedAt: null,
+              },
             });
+
+            if (!updatedInvoice) {
+              throw new ConflictException(
+                'Invoice could not be re-loaded after update',
+              );
+            }
 
             // Update Order Status (Revenue Cycle Logic)
             if (newStatus === 'PAID') {
@@ -590,6 +612,7 @@ export class BillingService {
           tenantId,
           branchId,
         },
+        archivedAt: null,
       },
       include: { invoice: true },
     });
@@ -744,6 +767,7 @@ export class BillingService {
           tenantId,
           branchId,
         },
+        archivedAt: null,
       },
       include: { invoice: true },
     });
@@ -859,6 +883,7 @@ export class BillingService {
     return this.prisma.invoice.findMany({
       where: {
         order: { tenantId, branchId },
+        archivedAt: null,
       },
       include: {
         order: {
@@ -962,6 +987,7 @@ export class BillingService {
       where: {
         id: reversal.paymentId,
         cashierSession: { tenantId, branchId },
+        archivedAt: null,
       },
     });
 
@@ -990,6 +1016,7 @@ export class BillingService {
       where: {
         id: reversal.invoiceId,
         order: { tenantId, branchId },
+        archivedAt: null,
       },
     });
 
@@ -1003,7 +1030,11 @@ export class BillingService {
     const applyMutation = async (activeTx: Prisma.TransactionClient) => {
       // 4.1 Lock parent Payment row to serialize concurrent operations on this payment
       const lockResult = await activeTx.payment.updateMany({
-        where: { id: payment.id, status: 'POSTED' },
+        where: {
+          id: payment.id,
+          status: 'POSTED',
+          archivedAt: null,
+        },
         data: { updatedAt: new Date() },
       });
 
@@ -1097,7 +1128,11 @@ export class BillingService {
 
       // Update Invoice
       const invoiceUpdate = await activeTx.invoice.updateMany({
-        where: { id: invoice.id, order: { tenantId, branchId } },
+        where: {
+          id: invoice.id,
+          order: { tenantId, branchId },
+          archivedAt: null,
+        },
         data: {
           paidAmount: afterPaidAmount,
           status: newStatus,
@@ -1111,7 +1146,11 @@ export class BillingService {
       }
 
       const updatedInvoice = await activeTx.invoice.findFirst({
-        where: { id: invoice.id, order: { tenantId, branchId } },
+        where: {
+          id: invoice.id,
+          order: { tenantId, branchId },
+          archivedAt: null,
+        },
       });
 
       if (!updatedInvoice) {
@@ -1126,6 +1165,7 @@ export class BillingService {
           id: payment.id,
           status: 'POSTED',
           cashierSession: { tenantId, branchId },
+          archivedAt: null,
         },
         data: { status: 'VOIDED' },
       });
@@ -1295,6 +1335,7 @@ export class BillingService {
       where: {
         id: reversal.paymentId,
         cashierSession: { tenantId, branchId },
+        archivedAt: null,
       },
     });
 
@@ -1323,6 +1364,7 @@ export class BillingService {
       where: {
         id: reversal.invoiceId,
         order: { tenantId, branchId },
+        archivedAt: null,
       },
     });
 
@@ -1338,7 +1380,11 @@ export class BillingService {
       // Using activeTx.payment.updateMany so that Prisma routes through the transaction connection
       // and PostgreSQL acquires a row-level lock that blocks concurrent transactions.
       const lockResult = await activeTx.payment.updateMany({
-        where: { id: payment.id, status: 'POSTED' },
+        where: {
+          id: payment.id,
+          status: 'POSTED',
+          archivedAt: null,
+        },
         data: { updatedAt: new Date() },
       });
 
@@ -1350,7 +1396,11 @@ export class BillingService {
 
       // 4.2 Re-read Invoice inside the transaction (fresh paidAmount after any concurrent modifications)
       const currentInvoice = await activeTx.invoice.findFirst({
-        where: { id: invoice.id, order: { tenantId, branchId } },
+        where: {
+          id: invoice.id,
+          order: { tenantId, branchId },
+          archivedAt: null,
+        },
       });
       if (!currentInvoice) {
         throw new ConflictException(
@@ -1443,7 +1493,11 @@ export class BillingService {
 
       // Update Invoice
       const invoiceUpdate = await activeTx.invoice.updateMany({
-        where: { id: invoice.id, order: { tenantId, branchId } },
+        where: {
+          id: invoice.id,
+          order: { tenantId, branchId },
+          archivedAt: null,
+        },
         data: {
           paidAmount: afterPaidAmount,
           status: newStatus,
@@ -1457,7 +1511,11 @@ export class BillingService {
       }
 
       const updatedInvoice = await activeTx.invoice.findFirst({
-        where: { id: invoice.id, order: { tenantId, branchId } },
+        where: {
+          id: invoice.id,
+          order: { tenantId, branchId },
+          archivedAt: null,
+        },
       });
 
       if (!updatedInvoice) {
@@ -1928,7 +1986,12 @@ export class BillingService {
     },
   ) {
     const payment = await this.prisma.payment.findFirst({
-      where: { id: dto.paymentId, tenantId, branchId },
+      where: {
+        id: dto.paymentId,
+        tenantId,
+        branchId,
+        archivedAt: null,
+      },
     });
     if (!payment) {
       throw new NotFoundException('Payment not found');
@@ -1981,6 +2044,7 @@ export class BillingService {
       this.prisma.payment.findMany({
         where: {
           cashierSession: { tenantId, branchId },
+          archivedAt: null,
         },
         include: {
           invoice: {
@@ -1998,6 +2062,7 @@ export class BillingService {
       this.prisma.payment.count({
         where: {
           cashierSession: { tenantId, branchId },
+          archivedAt: null,
         },
       }),
     ]);
@@ -2016,6 +2081,7 @@ export class BillingService {
       where: {
         id: paymentId,
         cashierSession: { tenantId, branchId },
+        archivedAt: null,
       },
       include: { invoice: { include: { order: true } } },
     });
@@ -2189,6 +2255,7 @@ export class BillingService {
       where: {
         id: paymentId,
         cashierSession: { tenantId, branchId },
+        archivedAt: null,
       },
     });
 
@@ -2250,6 +2317,7 @@ export class BillingService {
       where: {
         id: paymentId,
         cashierSession: { tenantId, branchId },
+        archivedAt: null,
       },
     });
 

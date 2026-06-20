@@ -81,18 +81,23 @@ describe('LabService Audit Coupling (Batch 8)', () => {
   });
 
   it('should pass tx and branchId to audit.log in releaseResult', async () => {
-    prisma.labResult.findFirst.mockResolvedValue({
+    const releasedResult = {
       id: labResultId,
-      status: 'APPROVED',
+      status: 'RELEASED',
       orderId: 'order-1',
       order: { tenantId, branchId, patientId: 'patient-1' },
       lockedAt: new Date(),
-    });
-    prisma.labResult.update.mockResolvedValue({
-      id: labResultId,
-      status: 'RELEASED',
-      lockedAt: new Date(),
-    });
+    };
+    prisma.labResult.findFirst
+      .mockResolvedValueOnce({
+        id: labResultId,
+        status: 'APPROVED',
+        orderId: 'order-1',
+        order: { tenantId, branchId, patientId: 'patient-1' },
+        lockedAt: new Date(),
+      })
+      .mockResolvedValueOnce(releasedResult);
+    prisma.labResult.updateMany.mockResolvedValue({ count: 1 });
     prisma.labResultSignature.create.mockResolvedValue({ id: 'sig-1' });
     prisma.order.update.mockResolvedValue({ id: 'order-1' });
     prisma.notificationOutbox.create.mockResolvedValue({ id: 'notif-1' });

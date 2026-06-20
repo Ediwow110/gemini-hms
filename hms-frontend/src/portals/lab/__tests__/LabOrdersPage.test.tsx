@@ -357,4 +357,33 @@ describe('LabOrdersPage Unit Tests', () => {
 
     expect(screen.getByText('STAT')).toBeInTheDocument();
   });
+
+  it('disables the "Print Barcodes" button because barcode printing is not yet wired', () => {
+    mockSearchParamsValue = new URLSearchParams('patientId=queue-1');
+
+    render(
+      <MemoryRouter>
+        <LabOrdersPage />
+      </MemoryRouter>
+    );
+
+    const printButton = screen.getByTestId('laborders-print-barcodes-disabled');
+    expect(printButton).toBeDisabled();
+  });
+
+  it('shows an explanatory title on the disabled "Print Barcodes" button', () => {
+    mockSearchParamsValue = new URLSearchParams('patientId=queue-1');
+
+    render(
+      <MemoryRouter>
+        <LabOrdersPage />
+      </MemoryRouter>
+    );
+
+    const printButton = screen.getByTestId('laborders-print-barcodes-disabled');
+    expect(printButton).toHaveAttribute(
+      'title',
+      expect.stringMatching(/not yet wired|not available|not yet integrated|disabled/i)
+    );
+  });
 });

@@ -13,18 +13,30 @@ const normalize = (val: string) => {
   return val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
 };
 
+const getActionErrorMessage = (mode: string, error: unknown) => {
+  const fallback = `Failed to ${mode.toLowerCase()} request. Please try again.`;
+  const err = error as { response?: { data?: { message?: string } }; message?: string } | null;
+  return err?.response?.data?.message || err?.message || fallback;
+};
+
 export const ApprovalCenter = () => {
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [selected, setSelected] = useState<ApprovalRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [modals, setModals] = useState({ confirm: false, reason: false, mode: "" });
+  const [approvalAuthChecked, setApprovalAuthChecked] = useState(false);
+  const [approvalAuthError, setApprovalAuthError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
   const currentUser = useUser();
 
   const fetchRequests = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
+    setListError(null);
     try {
-      const data = await approvalService.getRequests();
+      // Explicit first-page fetch; server now caps at 200 to prevent unbounded lists.
+      const data = await approvalService.getRequests({ page: 1, pageSize: 50 });
       setRequests(data);
       // Update selected reference if it exists
       if (selected) {
@@ -33,6 +45,8 @@ export const ApprovalCenter = () => {
       }
     } catch (error) {
       console.error("Failed to fetch approvals:", error);
+      setListError('Failed to load approval requests. Please retry.');
+      setRequests([]);
     } finally {
       setIsLoading(false);
     }
@@ -42,9 +56,41 @@ export const ApprovalCenter = () => {
     fetchRequests(false);
   }, [fetchRequests]);
 
+  const resetApprovalConfirmation = () => {
+    setApprovalAuthChecked(false);
+    setApprovalAuthError(null);
+  };
+
+  const closeApprovalModal = () => {
+    resetApprovalConfirmation();
+    setActionError(null);
+    setModals({ ...modals, confirm: false });
+  };
+
+  const handleRefresh = () => {
+    void fetchRequests();
+  };
+
+  const openApprovalModal = () => {
+    resetApprovalConfirmation();
+    setActionError(null);
+    setModals({ confirm: true, reason: false, mode: "Approve" });
+  };
+
+  const openRejectModal = () => {
+    setActionError(null);
+    setModals({ confirm: false, reason: true, mode: "Reject" });
+  };
+
+  const closeRejectModal = () => {
+    setActionError(null);
+    setModals({ ...modals, reason: false });
+  };
+
   const handleAction = async (remarks: string) => {
     if (!selected) return;
     setIsProcessing(true);
+    setActionError(null);
     try {
       if (modals.mode === "Approve") {
         await approvalService.approveRequest(selected.id, selected.type, remarks, selected.details);
@@ -52,13 +98,29 @@ export const ApprovalCenter = () => {
         await approvalService.rejectRequest(selected.id, selected.type, remarks, selected.details);
       }
       await fetchRequests();
+      setActionError(null);
       setModals({ confirm: false, reason: false, mode: "" });
+      if (modals.mode === "Approve") {
+        resetApprovalConfirmation();
+      }
     } catch (error) {
       console.error(`Failed to ${modals.mode.toLowerCase()} request:`, error);
-      alert(`Failed to ${modals.mode.toLowerCase()} request. Please try again.`);
+      setActionError(getActionErrorMessage(modals.mode, error));
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleApproveConfirm = () => {
+    if (!approvalAuthChecked) {
+      setApprovalAuthError("Confirm policy authorization before approving this request.");
+      return;
+    }
+    void handleAction("Approved per policy");
+  };
+
+  const handleRetry = () => {
+    void fetchRequests(true);
   };
 
   return (
@@ -66,7 +128,7 @@ export const ApprovalCenter = () => {
       <div className="flex justify-between items-center">
         <PageHeader title="Approval Center" description="Review and authorize high-risk clinical and operational requests." />
         <button 
-          onClick={() => fetchRequests()} 
+          onClick={handleRefresh}
           disabled={isLoading}
           className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
           title="Refresh"
@@ -75,6 +137,11 @@ export const ApprovalCenter = () => {
         </button>
       </div>
       
+      {listError && (
+        <div role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+          {listError}
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 card overflow-hidden animate-slide-up stagger-1">
           {isLoading && requests.length === 0 ? (
@@ -219,14 +286,14 @@ export const ApprovalCenter = () => {
                   >
                     <div className="grid grid-cols-2 gap-3">
                       <button 
-                        onClick={() => setModals({ confirm: true, reason: false, mode: "Approve" })} 
+                        onClick={openApprovalModal}
                         disabled={isProcessing}
                         className="btn btn-success py-2.5 disabled:opacity-50"
                       >
                         {isProcessing && modals.mode === "Approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
                       </button>
                       <button 
-                        onClick={() => setModals({ confirm: false, reason: true, mode: "Reject" })} 
+                        onClick={openRejectModal}
                         disabled={isProcessing}
                         className="btn btn-danger py-2.5 disabled:opacity-50"
                       >
@@ -237,14 +304,17 @@ export const ApprovalCenter = () => {
                 )}
               </div>
             </div>
-          ) : (
-            <div className="py-12 text-center">
-              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <ShieldCheck className="h-6 w-6 text-slate-400" />
-              </div>
-              <p className="text-sm font-medium text-slate-500">Select a request to review details and take action.</p>
-            </div>
+      ) : (
+        <div className="py-20 flex flex-col items-center justify-center text-slate-400">
+          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <ShieldCheck className="h-8 w-8 text-slate-300" />
+          </div>
+          <p className="font-medium">No pending approval requests.</p>
+          {listError && (
+            <button onClick={handleRetry} className="mt-3 text-xs text-indigo-600 underline">Retry</button>
           )}
+        </div>
+      )}
         </div>
       </div>
 
@@ -252,16 +322,37 @@ export const ApprovalCenter = () => {
         isOpen={modals.confirm} 
         title="Approve Request" 
         warning="This action will be permanently recorded in the audit log and the change will be applied." 
-        onConfirm={() => handleAction("Approved per policy")} 
-        onClose={() => setModals({ ...modals, confirm: false })}
+        onConfirm={handleApproveConfirm}
+        onClose={closeApprovalModal}
       >
         <p className="mb-2">Are you sure you want to approve request <strong className="text-slate-900">{selected?.id}</strong>?</p>
         <div className="mt-4 flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
-          <input type="checkbox" id="auth-check" className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+          <input
+            type="checkbox"
+            id="auth-check"
+            checked={approvalAuthChecked}
+            onChange={(event) => {
+              setApprovalAuthChecked(event.target.checked);
+              if (event.target.checked) {
+                setApprovalAuthError(null);
+              }
+            }}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
           <label htmlFor="auth-check" className="text-xs text-slate-600 font-medium leading-tight">
             I confirm I have verified the details and am authorized to approve this request per hospital policy.
           </label>
         </div>
+        {approvalAuthError && (
+          <p role="alert" className="mt-2 text-xs font-semibold text-rose-700">
+            {approvalAuthError}
+          </p>
+        )}
+        {actionError && modals.mode === "Approve" && (
+          <p role="alert" className="mt-2 text-xs font-semibold text-rose-700">
+            {actionError}
+          </p>
+        )}
       </ConfirmationModal>
 
       <ReasonModal 
@@ -269,7 +360,8 @@ export const ApprovalCenter = () => {
         title="Reject Request" 
         guidance="Please provide a mandatory reason for rejection." 
         onConfirm={(remarks) => handleAction(remarks)} 
-        onClose={() => setModals({ ...modals, reason: false })} 
+        onClose={closeRejectModal}
+        error={modals.mode === "Reject" ? actionError : null}
       />
     </div>
   );

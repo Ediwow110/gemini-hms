@@ -150,7 +150,12 @@ describe('Clinical service branch isolation', () => {
     ).rejects.toThrow(NotFoundException);
 
     expect(prisma.encounter.findFirst).toHaveBeenCalledWith({
-      where: { id: 'enc-1', tenantId, branchId },
+      where: expect.objectContaining({
+        id: 'enc-1',
+        tenantId,
+        branchId,
+        archivedAt: null,
+      }),
     });
     expect(prisma.encounterDiagnosis.findFirst).not.toHaveBeenCalled();
   });

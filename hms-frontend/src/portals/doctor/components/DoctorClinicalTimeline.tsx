@@ -20,7 +20,7 @@ export const DoctorClinicalTimeline = ({ patientId }: DoctorClinicalTimelineProp
       date: '2026-05-10',
       type: 'OPD Encounter',
       title: 'Routine General Medicine Checkup',
-      provider: 'Dr. Gregory House (Internal Medicine)',
+      provider: 'Provider 001 (Internal Medicine)',
       details: 'Patient complained of episodic headaches and fatigue. Vitals normal. Advised hydration and follow up.',
     },
     {
@@ -28,7 +28,7 @@ export const DoctorClinicalTimeline = ({ patientId }: DoctorClinicalTimelineProp
       date: '2026-04-12',
       type: 'Rx Refill',
       title: 'Medication Refill: Metformin 500mg',
-      provider: 'Dr. Gregory House (Internal Medicine)',
+      provider: 'Provider 001 (Internal Medicine)',
       details: 'Refilled prescription for diabetes management. HbA1c checked (6.8%).',
     },
     {
@@ -36,7 +36,7 @@ export const DoctorClinicalTimeline = ({ patientId }: DoctorClinicalTimelineProp
       date: '2026-03-01',
       type: 'Lab Result',
       title: 'Lipid Profile & HbA1c Panel',
-      provider: 'Dr. Sarah Connor (Pathologist)',
+      provider: 'Provider 002 (Pathologist)',
       details: 'Cholesterol: 198 mg/dL (Normal). HbA1c: 6.8% (Stable). Triglycerides: 145 mg/dL.',
     },
   ];
@@ -52,6 +52,9 @@ export const DoctorClinicalTimeline = ({ patientId }: DoctorClinicalTimelineProp
         <span className="bg-indigo-50 text-indigo-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase">
           {events.length} Events
         </span>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 text-[10px] text-amber-800 font-semibold">
       </div>
 
       {/* Timeline items */}

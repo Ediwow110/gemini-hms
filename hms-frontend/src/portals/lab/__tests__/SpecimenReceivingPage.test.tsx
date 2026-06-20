@@ -114,4 +114,17 @@ describe('SpecimenReceivingPage Unit Tests', () => {
     expect(screen.getByText(/Specimen Receiving — data not available yet/i)).toBeInTheDocument();
     expect(screen.getByText(/GET \/api\/v1\/lab\/specimens\/pending/i)).toBeInTheDocument();
   });
+
+  it('surfaces receiveSpecimen errors to the user instead of swallowing them', async () => {
+    mockReceiveSpecimen.mockRejectedValueOnce(new Error('Network error'));
+    render(<SpecimenReceivingPage />);
+
+    fireEvent.click(screen.getByText('Jane Smith'));
+    const receiveBtn = screen.getByRole('button', { name: /Log Specimen Receipt/i });
+    fireEvent.click(receiveBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to receive specimen/i)).toBeInTheDocument();
+    });
+  });
 });

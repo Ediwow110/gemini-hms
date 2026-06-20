@@ -101,7 +101,7 @@ export const CashierDashboard = () => {
           </div>
         </div>
         <div className="col-span-12 md:col-span-6 xl:col-span-4">
-          <ChartCard title="Revenue by day" description="Sandbox trend for collection planning; invoice totals above are live API derived." height={280}>
+          <ChartCard title="Revenue by day" description="Trend for collection planning (prototype data); invoice totals above are live API derived." height={280}>
             <VolumeAreaChart data={cashierVolumeTrend} title="Revenue by day" valueLabel="Payments" />
           </ChartCard>
         </div>
@@ -124,7 +124,7 @@ export const CashierDashboard = () => {
               { label: 'Invoices', desc: 'View all invoices', icon: FileText, path: '/cashier/invoices', color: 'text-indigo-600 bg-indigo-50' },
               { label: 'Session Receipts', desc: 'View active session receipts', icon: CreditCard, path: '/cashier/payments', color: 'text-emerald-600 bg-emerald-50' },
               { label: 'Patient Billing', desc: 'Search patient bills', icon: Users, path: '/cashier/billing', color: 'text-blue-600 bg-blue-50' },
-              { label: 'Refunds & Voids', desc: 'Manage reversals (sandbox)', icon: TrendingUp, path: '/cashier/refunds-voids', color: 'text-rose-600 bg-rose-50' },
+              { label: 'Refunds & Voids', desc: 'Manage live reversal requests', icon: TrendingUp, path: '/cashier/refunds-voids', color: 'text-rose-600 bg-rose-50' },
             ].map(item => (
               <button key={item.path} onClick={() => navigate(item.path)}
                 className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 text-left hover:border-indigo-300 transition-all cursor-pointer group"

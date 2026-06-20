@@ -19,9 +19,19 @@ export interface ApprovalRequest {
   updatedAt: string;
 }
 
+export interface ApprovalListParams {
+  page?: number;
+  pageSize?: number;
+}
+
 export const approvalService = {
-  getRequests: async (): Promise<ApprovalRequest[]> => {
-    const response = await apiClient.get("/v1/approvals");
+  getRequests: async (params?: ApprovalListParams): Promise<ApprovalRequest[]> => {
+    const response = await apiClient.get("/v1/approvals", {
+      params: {
+        page: params?.page ?? 1,
+        pageSize: params?.pageSize ?? 50,
+      },
+    });
     return response.data;
   },
 

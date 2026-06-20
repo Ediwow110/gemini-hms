@@ -5,6 +5,7 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { HrService } from './hr.service';
@@ -12,6 +13,7 @@ import {
   CreateEmployeeDto,
   CreateDepartmentDto,
   CreatePayslipDto,
+  ListPayslipsFiltersDto,
   UpdateEmployeeStatusDto,
   CreateLeaveRequestDto,
   CreateLicenseRecordDto,
@@ -125,6 +127,27 @@ export class HrController {
     return this.hrService.createLeaveRequest(tenantId, userId, dto);
   }
 
+  @Get('leave-requests')
+  @Roles(
+    'Super Admin',
+    'HR Manager',
+    'HR Staff',
+    'Branch Admin',
+    'Doctor',
+    'Nurse',
+  )
+  getLeaveRequests(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser() user: AuthTypes.RequestUser,
+    @Query('status') status?: string,
+    @Query('employeeId') employeeId?: string,
+  ) {
+    return this.hrService.getLeaveRequests(tenantId, user, {
+      status,
+      employeeId,
+    });
+  }
+
   @Patch('leave-requests/:id/approve')
   @Roles('Super Admin', 'HR Manager', 'HR Staff', 'Branch Admin')
   approveLeaveRequest(
@@ -182,5 +205,15 @@ export class HrController {
     @Body() dto: CreatePayslipDto,
   ) {
     return this.hrService.generatePayslip(tenantId, userId, dto, user);
+  }
+
+  @Get('payslips')
+  @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff')
+  listPayslips(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser() user: AuthTypes.RequestUser,
+    @Query() filters: ListPayslipsFiltersDto,
+  ) {
+    return this.hrService.listPayslips(tenantId, user, filters);
   }
 }

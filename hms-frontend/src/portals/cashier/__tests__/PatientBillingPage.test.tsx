@@ -158,7 +158,7 @@ describe('PatientBillingPage Runtime Tests', () => {
     expect(mockPostPayment).toHaveBeenCalledTimes(2);
   });
 
-  it('renders redacted demographics when in real UUID patient mode', () => {
+  it('shows real patient demographics even with UUID patient id', () => {
     const uuidInvoice = {
       ...mockInvoice,
       order: {
@@ -183,7 +183,7 @@ describe('PatientBillingPage Runtime Tests', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('[REDACTED] (Access Restricted)')).toBeInTheDocument();
-    expect(screen.getByText('MRN: [REDACTED]')).toBeInTheDocument();
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByText('MRN: MRN-100')).toBeInTheDocument();
   });
 });

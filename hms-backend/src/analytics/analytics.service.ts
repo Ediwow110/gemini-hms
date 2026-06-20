@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotImplementedException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -57,13 +57,14 @@ export class AnalyticsService {
   }
 
   async getBedOccupancy(tenantId: string) {
-    // Bed utilization is mock analytics based on tenant scope
-    return {
-      tenantId,
-      totalBeds: 150,
-      occupiedBeds: 68,
-      utilizationRate: 0.4533,
-    };
+    // Honest stub: no real bed occupancy data is stored or computable from the current schema
+    // (Branch model has no beds field; clinical bed allocation is in-memory only and disabled in prod).
+    // Returning fabricated numbers would be deceptive on the live /api/v1/analytics/occupancy contract.
+    throw new NotImplementedException(
+      'Bed occupancy analytics is not yet implemented with real data. ' +
+        'No branch bed counts or live occupancy tracking exist in the current schema. ' +
+        'Do not rely on this endpoint until real data sources are wired.',
+    );
   }
 
   async getWaitTime(tenantId: string) {

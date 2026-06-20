@@ -168,6 +168,7 @@ describe('ClinicalWorkflowService (releaseLabResult)', () => {
       },
       labResult: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         updateMany: jest.fn(),
         findUniqueOrThrow: jest.fn(),
       },
@@ -1300,6 +1301,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
     prisma = {
       labResult: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
       },
     };
 
@@ -1318,7 +1320,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should allow Lab Technician to fetch released result detail in own branch', async () => {
-    prisma.labResult.findUnique.mockResolvedValue(baseReleasedDetailResult);
+    prisma.labResult.findFirst.mockResolvedValue(baseReleasedDetailResult);
     const result = await service.getReleasedLabResultDetail(
       mockPatientId,
       mockOrderId,
@@ -1330,7 +1332,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should allow Doctor to fetch released result detail in own branch', async () => {
-    prisma.labResult.findUnique.mockResolvedValue(baseReleasedDetailResult);
+    prisma.labResult.findFirst.mockResolvedValue(baseReleasedDetailResult);
     const result = await service.getReleasedLabResultDetail(
       mockPatientId,
       mockOrderId,
@@ -1342,7 +1344,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should allow Nurse to fetch released result detail in own branch', async () => {
-    prisma.labResult.findUnique.mockResolvedValue(baseReleasedDetailResult);
+    prisma.labResult.findFirst.mockResolvedValue(baseReleasedDetailResult);
     const result = await service.getReleasedLabResultDetail(
       mockPatientId,
       mockOrderId,
@@ -1353,7 +1355,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should allow Branch Admin to fetch released result detail in own branch', async () => {
-    prisma.labResult.findUnique.mockResolvedValue(baseReleasedDetailResult);
+    prisma.labResult.findFirst.mockResolvedValue(baseReleasedDetailResult);
     const result = await service.getReleasedLabResultDetail(
       mockPatientId,
       mockOrderId,
@@ -1364,7 +1366,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should allow Super Admin to fetch released result detail within tenant', async () => {
-    prisma.labResult.findUnique.mockResolvedValue(baseReleasedDetailResult);
+    prisma.labResult.findFirst.mockResolvedValue(baseReleasedDetailResult);
     const result = await service.getReleasedLabResultDetail(
       mockPatientId,
       mockOrderId,
@@ -1408,7 +1410,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should reject not found lab result', async () => {
-    prisma.labResult.findUnique.mockResolvedValue(null);
+    prisma.labResult.findFirst.mockResolvedValue(null);
     await expect(
       service.getReleasedLabResultDetail(
         mockPatientId,
@@ -1420,7 +1422,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should reject patient/order mismatch', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       order: { ...baseReleasedDetailResult.order, patientId: 'other-patient' },
     });
@@ -1435,7 +1437,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should reject ENCODED (not released) result', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       status: 'ENCODED',
     });
@@ -1450,7 +1452,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should reject VALIDATED (not released) result', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       status: 'VALIDATED',
     });
@@ -1465,7 +1467,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should reject non-LAB order', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       order: { ...baseReleasedDetailResult.order, orderType: 'IMAGING' },
     });
@@ -1480,7 +1482,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should reject cancelled order', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       order: { ...baseReleasedDetailResult.order, status: 'CANCELLED' },
     });
@@ -1495,7 +1497,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should reject archived result', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       archivedAt: new Date(),
     });
@@ -1510,7 +1512,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should reject deleted result', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       deletedAt: new Date(),
     });
@@ -1525,7 +1527,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should reject cross-branch result for branch-scoped user', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       order: { ...baseReleasedDetailResult.order, branchId: 'other-branch' },
     });
@@ -1545,7 +1547,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should reject cross-branch result from different branch than user', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       order: {
         ...baseReleasedDetailResult.order,
@@ -1563,7 +1565,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should DTO not leak tenantId or branchId', async () => {
-    prisma.labResult.findUnique.mockResolvedValue(baseReleasedDetailResult);
+    prisma.labResult.findFirst.mockResolvedValue(baseReleasedDetailResult);
     const result = await service.getReleasedLabResultDetail(
       mockPatientId,
       mockOrderId,
@@ -1578,7 +1580,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should perform no mutation', async () => {
-    prisma.labResult.findUnique.mockResolvedValue(baseReleasedDetailResult);
+    prisma.labResult.findFirst.mockResolvedValue(baseReleasedDetailResult);
     await service.getReleasedLabResultDetail(
       mockPatientId,
       mockOrderId,
@@ -1603,7 +1605,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   // --- PHI read audit ---
 
   it('should log LAB_RESULT_RELEASED_READ audit on successful read', async () => {
-    prisma.labResult.findUnique.mockResolvedValue(baseReleasedDetailResult);
+    prisma.labResult.findFirst.mockResolvedValue(baseReleasedDetailResult);
     await service.getReleasedLabResultDetail(
       mockPatientId,
       mockOrderId,
@@ -1625,7 +1627,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should log LAB_RESULT_RELEASED_READ with metadata only (no raw results/remarks)', async () => {
-    prisma.labResult.findUnique.mockResolvedValue(baseReleasedDetailResult);
+    prisma.labResult.findFirst.mockResolvedValue(baseReleasedDetailResult);
     await service.getReleasedLabResultDetail(
       mockPatientId,
       mockOrderId,
@@ -1661,7 +1663,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should not log LAB_RESULT_RELEASED_READ when result is ENCODED', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       status: 'ENCODED',
     });
@@ -1677,7 +1679,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should not log LAB_RESULT_RELEASED_READ when result is archived', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       archivedAt: new Date(),
     });
@@ -1693,7 +1695,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
   });
 
   it('should not log LAB_RESULT_RELEASED_READ when result is deleted', async () => {
-    prisma.labResult.findUnique.mockResolvedValue({
+    prisma.labResult.findFirst.mockResolvedValue({
       ...baseReleasedDetailResult,
       deletedAt: new Date(),
     });
@@ -1725,7 +1727,7 @@ describe('ClinicalWorkflowService (getReleasedLabResultDetail)', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {});
     audit.log.mockRejectedValue(new Error('audit_db_down'));
-    prisma.labResult.findUnique.mockResolvedValue(baseReleasedDetailResult);
+    prisma.labResult.findFirst.mockResolvedValue(baseReleasedDetailResult);
     const result = await service.getReleasedLabResultDetail(
       mockPatientId,
       mockOrderId,

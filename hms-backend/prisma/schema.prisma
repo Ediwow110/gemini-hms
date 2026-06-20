@@ -34,6 +34,7 @@ model Tenant {
   invoices             Invoice[]
   payments             Payment[]
   labResults           LabResult[]
+  radiologyReports     RadiologyReport[]
   auditLogs            AuditLog[]
   inventoryItems       InventoryItem[]
   branchStocks         BranchStock[]
@@ -314,6 +315,10 @@ model Encounter {
   archivedAt    DateTime? @map("archived_at")
   archiveReason String?   @map("archive_reason")
 
+  @@index([tenantId, branchId, status, encounteredAt])
+  @@index([tenantId, patientId, status])
+  @@index([tenantId, archivedAt, createdAt])
+
   vitals             Vitals[]
   diagnoses          Diagnosis[]
   encounterDiagnoses EncounterDiagnosis[]
@@ -491,6 +496,10 @@ model Patient {
   archivedAt           DateTime? @map("archived_at")
   archiveReason        String?   @map("archive_reason")
 
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, patientNumber])
+  @@index([tenantId, archivedAt, createdAt])
+
   tenant          Tenant           @relation(fields: [tenantId], references: [id])
   orders          Order[]
   encounters      Encounter[]
@@ -544,7 +553,8 @@ model Order {
   clinicalItems ClinicalOrderItem[]
   invoice       Invoice?
   labSpecimen   LabSpecimen?
-  labResult     LabResult?
+  labResult       LabResult?
+  radiologyReport RadiologyReport?
 
   @@unique([tenantId, orderNumber])
   @@index([encounterId])
@@ -552,6 +562,8 @@ model Order {
   @@index([cancelledById])
   @@index([tenantId, branchId, createdAt])
   @@index([tenantId, branchId, patientId])
+  @@index([tenantId, branchId, status, requestedAt])
+  @@index([tenantId, orderType, status])
   @@map("orders")
 }
 
@@ -717,6 +729,8 @@ model Invoice {
   @@unique([tenantId, invoiceNumber])
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, archivedAt, createdAt])
   @@map("invoices")
 }
 
@@ -756,6 +770,7 @@ model Payment {
   @@unique([tenantId, id, branchId])
   @@index([tenantId, cashierSessionId, status])
   @@index([tenantId, createdAt])
+  @@index([tenantId, archivedAt, createdAt])
   @@map("payments")
 }
 
@@ -824,6 +839,7 @@ model LabResult {
 
   @@index([tenantId, isCritical, criticalStatus])
   @@index([tenantId, status, archivedAt])
+  @@index([tenantId, archivedAt, createdAt])
   @@map("lab_results")
 }
 
@@ -852,6 +868,25 @@ model LabResultSignature {
   signatureHash String    @map("signature_hash")
 
   @@map("lab_result_signatures")
+}
+
+model RadiologyReport {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  orderId        String   @unique @map("order_id") @db.Uuid
+  interpretation String   @db.Text
+  status         String   @default("FINALIZED")
+  finalizedById  String   @map("finalized_by_id") @db.Uuid
+  finalizedAt    DateTime @map("finalized_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  order  Order  @relation(fields: [orderId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, finalizedAt])
+  @@map("radiology_reports")
 }
 
 model NotificationOutbox {

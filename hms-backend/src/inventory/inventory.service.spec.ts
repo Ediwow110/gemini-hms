@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InventoryService } from './inventory.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { InventoryStatus, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import {
   BadRequestException,
   ConflictException,

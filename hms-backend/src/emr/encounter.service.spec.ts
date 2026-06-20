@@ -54,9 +54,10 @@ describe('EncounterService', () => {
         findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
       vitals: { create: jest.fn() },
-      diagnosis: { create: jest.fn() },
+      diagnosis: { create: jest.fn(), findFirst: jest.fn(), delete: jest.fn() },
       clinicalNote: { create: jest.fn() },
     };
 
@@ -143,7 +144,12 @@ describe('EncounterService', () => {
       const result = await service.findOne(tenantId, encounterId, branchId);
       expect(result.id).toBe(encounterId);
       expect(prisma.encounter.findFirst).toHaveBeenCalledWith({
-        where: { id: encounterId, tenantId, branchId },
+        where: expect.objectContaining({
+          id: encounterId,
+          tenantId,
+          branchId,
+          archivedAt: null,
+        }),
         include: expect.any(Object),
       });
     });
@@ -285,12 +291,14 @@ describe('EncounterService', () => {
 
   describe('updateStatus', () => {
     it('should update status transactionally with audit log', async () => {
-      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
       const updated = mockEncounter({
         status: EncounterStatus.FINISHED,
         endedAt: new Date(),
       });
-      prisma.encounter.update.mockResolvedValue(updated);
+      prisma.encounter.findFirst
+        .mockResolvedValueOnce(mockEncounter())
+        .mockResolvedValueOnce(updated);
+      prisma.encounter.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.updateStatus(
         tenantId,
@@ -301,6 +309,16 @@ describe('EncounterService', () => {
       );
 
       expect(result.status).toBe(EncounterStatus.FINISHED);
+      expect(prisma.encounter.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: encounterId,
+            tenantId,
+            branchId,
+            archivedAt: null,
+          }),
+        }),
+      );
       expect(auditService.log).toHaveBeenCalledWith(
         expect.objectContaining({ eventKey: 'ENCOUNTER_STATUS_UPDATED' }),
         expect.objectContaining({ encounter: prisma.encounter }),
@@ -309,10 +327,13 @@ describe('EncounterService', () => {
     });
 
     it('should rollback if audit logging fails during status update', async () => {
-      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
-      prisma.encounter.update.mockResolvedValue(
-        mockEncounter({ status: EncounterStatus.FINISHED }),
-      );
+      const updated = mockEncounter({
+        status: EncounterStatus.FINISHED,
+      });
+      prisma.encounter.findFirst
+        .mockResolvedValueOnce(mockEncounter())
+        .mockResolvedValueOnce(updated);
+      prisma.encounter.updateMany.mockResolvedValue({ count: 1 });
       auditService.log.mockRejectedValue(new Error('Audit failure'));
 
       await expect(
@@ -324,6 +345,161 @@ describe('EncounterService', () => {
           branchId,
         ),
       ).rejects.toThrow('Audit failure');
+    });
+  });
+
+  describe('removeDiagnosis', () => {
+    const diagnosisId = 'diagnosis-1';
+
+    it('removes a diagnosis from an open encounter and emits audit', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
+      prisma.diagnosis.findFirst.mockResolvedValue({
+        id: diagnosisId,
+        tenantId,
+        encounterId,
+        icd10Code: 'I10',
+        description: 'Essential hypertension',
+        isPrimary: true,
+      });
+      prisma.diagnosis.delete.mockResolvedValue({ id: diagnosisId });
+
+      const result = await service.removeDiagnosis(
+        tenantId,
+        userId,
+        branchId,
+        encounterId,
+        diagnosisId,
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.diagnosis.delete).toHaveBeenCalledWith({
+        where: { id: diagnosisId },
+      });
+      expect(auditService.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventKey: 'DIAGNOSIS_REMOVED',
+          recordId: diagnosisId,
+        }),
+        prisma,
+        branchId,
+      );
+    });
+
+    it('rejects removal when diagnosis is not found', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
+      prisma.diagnosis.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.removeDiagnosis(
+          tenantId,
+          userId,
+          branchId,
+          encounterId,
+          diagnosisId,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.diagnosis.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejects removal from a finished encounter', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(
+        mockEncounter({ status: EncounterStatus.FINISHED }),
+      );
+
+      await expect(
+        service.removeDiagnosis(
+          tenantId,
+          userId,
+          branchId,
+          encounterId,
+          diagnosisId,
+        ),
+      ).rejects.toThrow(ConflictException);
+
+      expect(prisma.diagnosis.findFirst).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('archived-record operational filtering', () => {
+    it('findOne excludes archived encounters (where.archivedAt is null)', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.findOne(tenantId, encounterId, branchId),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.encounter.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: encounterId,
+            tenantId,
+            branchId,
+            archivedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it('getEncounterLocked rejects archived encounters (pre-read fail-closed)', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updateStatus(
+          tenantId,
+          userId,
+          encounterId,
+          EncounterStatus.FINISHED,
+          branchId,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.encounter.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: encounterId,
+            tenantId,
+            branchId,
+            archivedAt: null,
+          }),
+        }),
+      );
+      expect(prisma.encounter.update).not.toHaveBeenCalled();
+    });
+
+    it('addVitals rejects archived encounters via getEncounterLocked', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(null);
+
+      const dto: CreateVitalsDto = {
+        temperature: 37.0,
+        systolicBp: 120,
+        diastolicBp: 80,
+        heartRate: 72,
+        respiratory: 16,
+      };
+
+      await expect(
+        service.addVitals(tenantId, userId, branchId, encounterId, dto),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.vitals.create).not.toHaveBeenCalled();
+    });
+
+    it('updateStatus rejects archived encounter via updateMany count zero', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(mockEncounter());
+      prisma.encounter.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.updateStatus(
+          tenantId,
+          userId,
+          encounterId,
+          EncounterStatus.FINISHED,
+          branchId,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(auditService.log).not.toHaveBeenCalled();
     });
   });
 });
