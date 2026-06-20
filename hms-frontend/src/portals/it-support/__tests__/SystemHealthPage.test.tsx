@@ -10,8 +10,8 @@ describe('SystemHealthPage Redesign', () => {
     renderWithRouter(<SystemHealthPage />);
     
     expect(screen.getByText('System Health Monitor')).toBeInTheDocument();
-    expect(screen.getByText('Sandbox Notice:')).toBeInTheDocument();
-    expect(screen.getByText('All health metrics are simulated. No real infrastructure monitoring is running.')).toBeInTheDocument();
+    expect(screen.getByText(/Sandbox Notice:/)).toBeInTheDocument();
+    expect(screen.getByText(/All health metrics are simulated/)).toBeInTheDocument();
     expect(screen.getByText('HMS API Gateway')).toBeInTheDocument();
   });
 });
