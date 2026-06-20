@@ -242,6 +242,8 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
       .post(`/api/v1/clinical/erx/transmit/${prescriptionId}`)
       .expect(501)
       .expect((res) => {
+        expect(res.body.statusCode).toBe(501);
+        expect(res.body.error).toBe('Not Implemented');
         expect(res.body.message).toContain('Not Implemented');
         expect(res.body.message).toContain('NCPDP');
       });
@@ -250,6 +252,8 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
       .get(`/api/v1/clinical/erx/transmission/NCPDP-TX-12345/status`)
       .expect(501)
       .expect((res) => {
+        expect(res.body.statusCode).toBe(501);
+        expect(res.body.error).toBe('Not Implemented');
         expect(res.body.message).toContain('Not Implemented');
       });
   });

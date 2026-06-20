@@ -30,8 +30,9 @@ export const PatientList = () => {
         params: q ? { search: q } : undefined,
       });
       setPatients(res.data || []);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || "Failed to load patients.";
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg = e?.response?.data?.message || e?.message || "Failed to load patients.";
       setError(msg);
       setPatients([]);
     } finally {

@@ -6,7 +6,8 @@ import OrderTrackingTimeline from './components/OrderTrackingTimeline';
 export const MarketplaceOrdersPage: React.FC = () => {
   // No backend orders endpoint wired for buyer order history in current release.
   // Using honest empty state (no fake records).
-  const [orders] = useState<any[]>([]);
+  interface ShellOrder { id: string; status: string; items: string; total: number; date: string }
+  const [orders] = useState<ShellOrder[]>([]);
   const [loading] = useState(false);
 
   return (

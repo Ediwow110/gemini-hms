@@ -8,7 +8,9 @@ export const MarketplaceCartPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Cart is client-side only for now; no backend cart persistence or checkout flow implemented.
-  const [cartGroups] = useState<any[]>([]);
+  interface CartGroupItem { id: string; name: string; price: number; quantity: number; sku: string; hasInstallation: boolean; hasWarranty: boolean }
+  interface CartGroup { supplier: string; items: CartGroupItem[] }
+  const [cartGroups] = useState<CartGroup[]>([]);
 
   return (
     <div className="space-y-8">

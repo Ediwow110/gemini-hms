@@ -44,7 +44,7 @@ export const MarketplaceProductListingPage: React.FC = () => {
           category: l.serviceItem?.category?.name || 'General',
         }));
         setProducts(mapped);
-      } catch (e: any) {
+      } catch {
         setError('Backend listings endpoint returned error or no data. Showing honest empty state.');
         setProducts([]);
       } finally {

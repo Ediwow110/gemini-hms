@@ -77,7 +77,8 @@ export const NotificationCenter = () => {
         params: { status: filterStatus || undefined, category: filterCategory || undefined, search: search || undefined },
       });
       setNotifications(res.data || []);
-    } catch (e: any) {
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
       setError(e?.response?.data?.message || 'Failed to load notifications');
       setNotifications([]);
     } finally {
