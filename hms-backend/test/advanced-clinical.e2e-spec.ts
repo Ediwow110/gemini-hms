@@ -244,7 +244,7 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
       .expect((res) => {
         expect(res.body.statusCode).toBe(501);
         expect(res.body.error).toBe('Not Implemented');
-        expect(res.body.message).toContain('Not Implemented');
+        expect(res.body.message).toContain('not yet implemented');
         expect(res.body.message).toContain('NCPDP');
       });
 
@@ -254,7 +254,7 @@ describe('Advanced Clinical EMR Features (e2e)', () => {
       .expect((res) => {
         expect(res.body.statusCode).toBe(501);
         expect(res.body.error).toBe('Not Implemented');
-        expect(res.body.message).toContain('Not Implemented');
+        expect(res.body.message).toContain('not yet implemented');
       });
   });
 
