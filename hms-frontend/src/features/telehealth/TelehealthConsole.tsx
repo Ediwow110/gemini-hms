@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AlertCircle } from 'lucide-react';
 
 export const TelehealthConsole: React.FC = () => {
   const [packetLoss, setPacketLoss] = useState(0.05); // Nominal baseline simulation parameter (5%)
@@ -10,6 +11,23 @@ export const TelehealthConsole: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans flex flex-col">
       
+      {/* Body-level sandbox notice: Telehealth Console is a prototype UI demonstration.
+          The connection status, packet-loss simulation, SOAP chart forms, and video stream
+          visualizer are simulated — no real WebRTC or clinical data flows are connected
+          in this build. */}
+      <div
+        role="status"
+        data-testid="telehealth-console-notice"
+        className="bg-amber-50 border-b border-amber-200 px-8 py-3 flex gap-3 items-center"
+      >
+        <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" aria-hidden="true" />
+        <p className="text-xs font-semibold text-amber-800">
+          <span className="font-black uppercase tracking-wide mr-1">Sandbox Notice:</span>
+          Virtual Care Telehealth Suite is a prototype UI demonstration. Connection status,
+          packet-loss simulation, and SOAP chart forms are simulated demo elements — no real
+          WebRTC streaming or live clinical data is connected in this build.
+        </p>
+      </div>
       {/* Universal Workspace Header Array */}
       <header className="bg-[#0F172A] text-white px-8 py-5 flex items-center justify-between shadow-md z-10">
         <div>
