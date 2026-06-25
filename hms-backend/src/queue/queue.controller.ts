@@ -1,71 +1,55 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Patch,
-  UseGuards,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, BadRequestException, Req } from '@nestjs/common';
 import { QueueService } from './queue.service';
-import { JoinQueueDto, UpdateQueueStatusDto } from './dto/queue.dto';
-import { GetUser } from '../auth/decorators/get-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { BranchGuard } from '../auth/guards/branch.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
-import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
+import { User } from '@prisma/client';
+import type { Request } from 'express';
 
-@UseGuards(PermissionsGuard, BranchGuard)
-@Controller('api/v1/queue')
+@Controller('queue')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class QueueController {
   constructor(private readonly queueService: QueueService) {}
 
+  @Get()
+  async listQueue(@Req() req: Request, @Query('branchId') branchId: string) {
+    const user = req.user as any;
+    const bId = branchId || user.primaryBranchId;
+    if (!bId) throw new BadRequestException('Branch ID is required to view the queue.');
+    
+    return this.queueService.listActiveQueue(user.tenantId, bId);
+  }
+
   @Post('join')
-  @RequirePermissions('queue.manage')
-  @RequireBranchContext()
-  join(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
-    @GetUser('branchId') branchId: string,
-    @Body() dto: JoinQueueDto,
-  ) {
-    // Open endpoint for public kiosk or reception
-    return this.queueService.joinQueue(tenantId, branchId, userId, dto);
+  async joinQueue(@Req() req: Request, @Body() body: { patientId: string; serviceType: string; category?: string; branchId: string }) {
+    const user = req.user as any;
+    return this.queueService.joinQueue(user.tenantId, body.branchId, {
+      patientId: body.patientId,
+      serviceType: body.serviceType,
+      category: body.category || 'ROUTINE',
+    });
   }
 
-  @Get('display')
-  @RequirePermissions('queue.view')
-  @RequireBranchContext()
-  getDisplay(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('branchId') branchId: string,
-  ) {
-    // Polling endpoint for TV display - branch context enforced
-    return this.queueService.getActiveDisplay(tenantId, branchId);
+  @Patch('call-next')
+  async callNext(@Req() req: Request, @Query('branchId') branchId: string, @Query('serviceType') serviceType: string) {
+    const user = req.user as any;
+    const bId = branchId || user.primaryBranchId;
+    if (!bId) throw new BadRequestException('Branch ID is required.');
+    
+    return this.queueService.callNext(user.tenantId, bId, serviceType);
   }
 
-  @Get('worklist')
-  @RequirePermissions('queue.view')
-  @RequireBranchContext()
-  getWorklist(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('branchId') branchId: string,
-    @Query('serviceType') serviceType: string,
-  ) {
-    return this.queueService.getWorklist(tenantId, branchId, serviceType);
+  @Patch(':id/complete')
+  async completeEntry(@Req() req: Request, @Param('id') id: string) {
+    const user = req.user as any;
+    return this.queueService.completeEntry(user.tenantId, id);
   }
 
-  @Patch(':id/status')
-  @RequirePermissions('queue.manage')
-  @RequireBranchContext()
-  updateStatus(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
-    @GetUser('branchId') branchId: string,
-    @Param('id') id: string,
-    @Body() dto: UpdateQueueStatusDto,
-  ) {
-    return this.queueService.updateStatus(tenantId, userId, branchId, id, dto);
+  @Get('stats')
+  async getStats(@Req() req: Request, @Query('branchId') branchId: string) {
+    const user = req.user as any;
+    const bId = branchId || user.primaryBranchId;
+    if (!bId) throw new BadRequestException('Branch ID is required.');
+    
+    return this.queueService.getQueueStats(user.tenantId, bId);
   }
 }

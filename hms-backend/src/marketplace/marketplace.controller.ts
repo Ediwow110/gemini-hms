@@ -32,6 +32,21 @@ export class MarketplaceController {
 
   // --- Buyer Endpoints ---
 
+  @Post('checkout')
+  @RequirePermissions('marketplace.buyer.view')
+  async checkout(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: { items: { listingId: string, quantity: number }[], shippingAddress: string },
+  ) {
+    return this.marketplaceService.createOrder(req.user.tenantId, req.user.userId!, dto);
+  }
+
+  @Get('orders')
+  @RequirePermissions('marketplace.buyer.view')
+  async findBuyerOrders(@Req() req: AuthenticatedRequest) {
+    return this.marketplaceService.listBuyerOrders(req.user.tenantId, req.user.userId!);
+  }
+
   @Get('listings')
   @RequirePermissions('marketplace.buyer.view')
   async findAllBuyer(

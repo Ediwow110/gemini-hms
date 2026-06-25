@@ -14,6 +14,7 @@ import {
   CreatePurchaseRequestDto,
   CreatePurchaseOrderDto,
   ReceivePurchaseOrderDto,
+  CreateRFQDto,
 } from './dto/procurement.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -24,6 +25,46 @@ import type { RequestUser } from '../common/types/authenticated-request.type';
 @Controller('api/v1/procurement')
 export class ProcurementController {
   constructor(private readonly procurementService: ProcurementService) {}
+
+  @Get('suppliers/performance')
+  @RequirePermissions('procurement.supplier.view')
+  getVendorPerformance(@GetUser() user: RequestUser) {
+    return this.procurementService.getVendorPerformance(user);
+  }
+
+  @Post('rfqs')
+  @RequirePermissions('procurement.request.create')
+  createRFQ(@GetUser() user: RequestUser, @Body() dto: CreateRFQDto) {
+    return this.procurementService.createRFQ(user, dto);
+  }
+
+  @Get('rfqs')
+  @RequirePermissions('procurement.request.view')
+  listRFQs(
+    @GetUser() user: RequestUser,
+    @Query('status') status?: string,
+  ) {
+    return this.procurementService.listRFQs(user, { status });
+  }
+
+  @Post('rfqs/:id/quotes')
+  @RequirePermissions('procurement.supplier.manage')
+  submitQuote(
+    @GetUser() user: RequestUser,
+    @Param('id') rfqId: string,
+    @Body() dto: any,
+  ) {
+    return this.procurementService.submitQuote(user, rfqId, dto);
+  }
+
+  @Get('rfqs/:id/quotes')
+  @RequirePermissions('procurement.request.view')
+  listQuotes(
+    @GetUser() user: RequestUser,
+    @Param('id') rfqId: string,
+  ) {
+    return this.procurementService.listQuotes(user, rfqId);
+  }
 
   @Post('suppliers')
   @RequirePermissions('procurement.supplier.manage')
@@ -92,6 +133,15 @@ export class ProcurementController {
       status,
       branchId,
     });
+  }
+
+  @Get('receiving')
+  @RequirePermissions('procurement.receiving.post')
+  listReceivingRecords(
+    @GetUser() user: RequestUser,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.procurementService.listReceivingRecords(user, { branchId });
   }
 
   @Post('purchase-orders/:id/receive')

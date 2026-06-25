@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
 import { QueueService } from './queue.service';
 import { QueueController } from './queue.controller';
-import { NumberingModule } from '../numbering/numbering.module';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Module({
-  imports: [NumberingModule],
   controllers: [QueueController],
-  providers: [QueueService],
+  providers: [QueueService, PrismaService],
 })
 export class QueueModule {}

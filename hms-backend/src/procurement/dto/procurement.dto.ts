@@ -1,82 +1,72 @@
-import {
-  IsNotEmpty,
-  IsString,
-  IsOptional,
-  IsUUID,
-  IsArray,
-  ValidateNested,
-  IsNumber,
-  Min,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsUUID, IsArray, IsInt, IsNumber } from 'class-validator';
 
 export class CreateSupplierDto {
   @IsString()
-  @IsNotEmpty()
   name: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   contactName?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   contactEmail?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   contactPhone?: string;
 
-  @IsString()
   @IsOptional()
-  address?: string;
-}
-
-export class PurchaseRequestItemDto {
   @IsString()
-  @IsNotEmpty()
-  sku: string;
-
-  @IsNumber()
-  @Min(1)
-  quantity: number;
-
-  @IsNumber()
-  @Min(0)
-  unitPrice: number;
+  address?: string;
 }
 
 export class CreatePurchaseRequestDto {
   @IsUUID()
-  @IsNotEmpty()
   branchId: string;
 
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => PurchaseRequestItemDto)
-  items: PurchaseRequestItemDto[];
+  items: any[];
 
-  @IsString()
   @IsOptional()
+  @IsString()
   reason?: string;
 }
 
 export class CreatePurchaseOrderDto {
   @IsUUID()
-  @IsNotEmpty()
   branchId: string;
 
   @IsUUID()
-  @IsNotEmpty()
-  supplierId: string;
+  purchaseRequestId: string;
 
   @IsUUID()
-  @IsNotEmpty()
-  purchaseRequestId: string;
+  supplierId: string;
 }
 
 export class ReceivePurchaseOrderDto {
-  @IsString()
   @IsOptional()
+  @IsString()
   notes?: string;
+}
+
+export class CreateRFQDto {
+  @IsUUID()
+  itemId: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  warrantyTier?: string;
+
+  @IsOptional()
+  @IsString()
+  siteReadinessDetails?: string;
+
+  @IsOptional()
+  @IsString()
+  leasingOption?: string;
 }

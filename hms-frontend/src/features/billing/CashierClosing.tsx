@@ -129,7 +129,10 @@ export const CashierClosing = () => {
             <tr className="hover:bg-indigo-50/30 transition-colors cursor-pointer group">
               <td className="px-6 py-4 text-slate-500 font-medium text-xs">09:30 AM</td>
               <td className="px-6 py-4 font-mono font-bold text-indigo-600">RCP-001</td>
-              <td className="px-6 py-4 font-semibold text-slate-900 group-hover:text-indigo-700">John Doe</td>
+              <td className="px-6 py-4 font-semibold text-slate-900 group-hover:text-indigo-700 flex items-center gap-2">
+                John Doe
+                <span className="text-[8px] font-black px-1 py-0.5 bg-slate-200 text-slate-600 rounded uppercase tracking-tighter">Demo</span>
+              </td>
               <td className="px-6 py-4 font-bold text-slate-900 text-right">₱50.00</td>
               <td className="px-6 py-4 text-center">
                 <span className="text-[10px] font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-lg uppercase tracking-wider">Cash</span>

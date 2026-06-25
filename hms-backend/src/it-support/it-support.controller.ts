@@ -14,12 +14,59 @@ import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { QueryTicketDto } from './dto/query-ticket.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
 @Controller('api/v1/it-support')
 @UseGuards(PermissionsGuard)
 export class ItSupportController {
   constructor(private readonly itSupportService: ItSupportService) {}
+
+  @Get('sessions')
+  @RequirePermissions('it.system.view')
+  @RequireBranchContext()
+  async getSessions(
+    @GetUser('tenantId') tenantId: string,
+  ) {
+    return this.itSupportService.getActiveSessions(tenantId);
+  }
+
+  @Get('integrations')
+  @RequirePermissions('it.system.view')
+  @RequireBranchContext()
+  async getIntegrations(
+    @GetUser('tenantId') tenantId: string,
+  ) {
+    return this.itSupportService.getIntegrations(tenantId);
+  }
+
+  @Get('backups')
+  @RequirePermissions('it.system.view')
+  @RequireBranchContext()
+  async getBackups(
+    @GetUser('tenantId') tenantId: string,
+  ) {
+    return this.itSupportService.getBackups(tenantId);
+  }
+
+  @Get('logs')
+  @RequirePermissions('it.system.view')
+  @RequireBranchContext()
+  async getLogs(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+    @Query('branchId') queryBranchId?: string,
+  ) {
+    const bId = queryBranchId || branchId;
+    return this.itSupportService.getSystemLogs(tenantId, bId);
+  }
+
+  @Get('health')
+  @RequirePermissions('it.system.view')
+  @RequireBranchContext()
+  async getHealth() {
+    return this.itSupportService.getSystemHealth();
+  }
 
   @Post('tickets')
   @RequirePermissions('it.ticket.manage')

@@ -1,16 +1,27 @@
 import React from 'react';
 import HRScopeFilter from './components/HRScopeFilter';
-import { BranchAssignmentTable, Assignment } from './components/BranchAssignmentTable';
+import { BranchAssignmentTable } from './components/BranchAssignmentTable';
+import type { Assignment } from './components/BranchAssignmentTable';
 import { GitMerge, Plus } from 'lucide-react';
+import { useHr } from '../../hooks/use-hr';
+import { useUser } from '../../hooks/use-user';
 
 export const BranchAssignmentsPage: React.FC = () => {
-  const mockAssignments: Assignment[] = [
-    { id: 'ASN-001', employeeName: 'Employee 001', currentBranch: 'St. Jude Metro', role: 'Chief Diagnostician', assignmentDate: '2024-01-15', type: 'PERMANENT' },
-    { id: 'ASN-002', employeeName: 'Employee 002', currentBranch: 'St. Jude Metro', role: 'Head Nurse', assignmentDate: '2024-03-22', type: 'PERMANENT' },
-    { id: 'ASN-003', employeeName: 'Employee 006', currentBranch: 'St. Jude North', role: 'Neurologist', assignmentDate: '2024-05-01', type: 'ROTATION' },
-    { id: 'ASN-004', employeeName: 'Employee 007', currentBranch: 'St. Jude Metro', role: 'Surgeon', assignmentDate: '2024-02-10', type: 'PERMANENT' },
-    { id: 'ASN-005', employeeName: 'Employee 008', currentBranch: 'St. Jude North', role: 'Immunologist', assignmentDate: '2024-04-15', type: 'TEMPORARY' },
-  ];
+  const user = useUser();
+  const branchId = (user as any)?.primaryBranchId;
+  const { assignments, isLoading } = useHr(branchId);
+
+  const mappedAssignments: Assignment[] = (assignments || []).map(a => ({
+    id: a.id,
+    employeeName: `${a.employee.firstName} ${a.employee.lastName}`,
+    currentBranch: a.branch.name,
+    role: 'Staff',
+    assignmentDate: new Date(a.createdAt).toISOString().split('T')[0],
+    type: (a.isPrimary ? 'PERMANENT' : 'ROTATION') as Assignment['type'],
+  }));
+
+  if (!branchId) return <div className="p-10 text-center text-slate-500">No primary branch assigned.</div>;
+  if (isLoading) return <div className="p-10 text-center text-slate-400">Loading assignments...</div>;
 
   return (
     <div className="space-y-6">
@@ -22,8 +33,6 @@ export const BranchAssignmentsPage: React.FC = () => {
           <p className="text-xs text-slate-500 font-medium">Manage staff placement and facility-scoped credentials</p>
         </div>
         <div className="flex flex-col md:flex-row gap-2">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
-          </div>
           <button className="btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-indigo-100 transition-all">
             <Plus className="h-4 w-4" /> New Assignment
           </button>
@@ -34,7 +43,7 @@ export const BranchAssignmentsPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <BranchAssignmentTable assignments={mockAssignments} />
+          <BranchAssignmentTable assignments={mappedAssignments} />
         </div>
         
         <div className="space-y-6">
@@ -45,25 +54,10 @@ export const BranchAssignmentsPage: React.FC = () => {
             </h4>
             <div className="space-y-3">
               <div className="flex justify-between items-center text-[11px]">
-                <span className="text-slate-500 font-medium">St. Jude Metro</span>
-                <span className="text-slate-800 font-bold">842 Personnel</span>
-              </div>
-              <div className="flex justify-between items-center text-[11px]">
-                <span className="text-slate-500 font-medium">St. Jude North</span>
-                <span className="text-slate-800 font-bold">398 Personnel</span>
-              </div>
-              <div className="flex justify-between items-center text-[11px]">
-                <span className="text-slate-500 font-medium">Corporate HQ</span>
-                <span className="text-slate-800 font-bold">12 Personnel</span>
+                <span className="text-slate-500 font-medium">Active Assignments</span>
+                <span className="text-slate-800 font-bold">{assignments?.length || 0} Personnel</span>
               </div>
             </div>
-          </div>
-
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-            <h5 className="text-[10px] font-bold text-amber-900 uppercase tracking-wider mb-2">Branch Scoping Rule Shell</h5>
-            <p className="text-[10px] text-amber-800 leading-relaxed font-medium italic">
-              "Staff members assigned to a branch are granted logical access to that branch's EMR records, inventory, and billing queues. Cross-branch access requires explicit secondary assignment."
-            </p>
           </div>
         </div>
       </div>

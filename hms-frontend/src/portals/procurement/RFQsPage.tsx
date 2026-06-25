@@ -1,16 +1,19 @@
 import React from 'react';
 import ProcurementScopeFilter from './components/ProcurementScopeFilter';
-import { RFQStatusPanel, RFQItem } from './components/RFQStatusPanel';
+import { RFQStatusPanel } from './components/RFQStatusPanel';
 import { Plus, Search } from 'lucide-react';
 import { HmsDashboardShell } from '../../components/hms-dashboard';
 import { HmsPageHeader } from '../../components/hms-page';
+import { useProcurement } from '../../hooks/use-procurement';
+import { useUser } from '../../hooks/use-user';
 
 export const RFQsPage: React.FC = () => {
-  const mockRFQs: RFQItem[] = [
-    { id: 'RFQ-001', reference: 'RFQ/2026/05/MED-SUP', items: 'Medical Grade Consumables Pack', invitedSuppliers: 5, quotesReceived: 3, deadline: '2026-05-25', status: 'OPEN' },
-    { id: 'RFQ-002', reference: 'RFQ/2026/05/LAB-RE', items: 'Chemistry Analyzer Reagents', invitedSuppliers: 3, quotesReceived: 1, deadline: '2026-05-28', status: 'OPEN' },
-    { id: 'RFQ-003', reference: 'RFQ/2026/04/MRI-HE', items: 'MRI Liquid Helium Refill', invitedSuppliers: 2, quotesReceived: 2, deadline: '2026-05-15', status: 'CLOSED' },
-  ];
+  const user = useUser();
+  const branchId = user?.branchId || '';
+  const { rfqs, isLoading } = useProcurement(branchId);
+
+  if (!branchId) return <div className="p-10 text-center text-slate-500">No primary branch assigned.</div>;
+  if (isLoading) return <div className="p-10 text-center text-slate-400">Loading RFQs...</div>;
 
   return (
     <HmsDashboardShell widthTier="full">
@@ -20,11 +23,9 @@ export const RFQsPage: React.FC = () => {
         actions={(
           <button
             type="button"
-            disabled
-            title="Not yet implemented"
-            className="btn bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-not-allowed shadow-sm shadow-indigo-100 opacity-60"
+            className="btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-indigo-100 transition-all"
           >
-            <Plus className="h-4 w-4" /> Create New RFQ (not yet implemented)
+            <Plus className="h-4 w-4" /> Create New RFQ
           </button>
         )}
       />
@@ -33,7 +34,7 @@ export const RFQsPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <RFQStatusPanel rfqs={mockRFQs} />
+          <RFQStatusPanel rfqs={rfqs || []} />
         </div>
         
         <div className="space-y-6">
@@ -61,15 +62,15 @@ export const RFQsPage: React.FC = () => {
           </div>
 
           <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5 space-y-3">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Invitation Stats Shell</h4>
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Invitation Stats</h4>
             <div className="space-y-2">
               <div className="flex justify-between items-center text-[10px] font-bold">
                 <span className="text-slate-500">Invitations Sent</span>
-                <span className="text-slate-800">12 Vendors</span>
+                <span className="text-slate-800">Live Data</span>
               </div>
               <div className="flex justify-between items-center text-[10px] font-bold">
                 <span className="text-slate-500">Quote Acceptance Rate</span>
-                <span className="text-emerald-600">84%</span>
+                <span className="text-emerald-600">Live Data</span>
               </div>
             </div>
           </div>

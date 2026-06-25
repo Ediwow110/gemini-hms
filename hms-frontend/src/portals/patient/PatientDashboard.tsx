@@ -14,7 +14,6 @@ import { useNavigate } from 'react-router-dom';
 import PatientHomeCard from './components/PatientHomeCard';
 import AppointmentSummaryCard from './components/AppointmentSummaryCard';
 import ReleasedResultCard from './components/ReleasedResultCard';
-import PatientPortalShellNotice from './components/PatientPortalShellNotice';
 import { AnalyticsMetricCard } from '../../components/analytics';
 import { usePatientProfile, usePatientLabResults, usePatientPrescriptions } from '../../hooks/use-patient-portal';
 import { HmsPageHeader } from '../../components/hms-page';
@@ -80,8 +79,6 @@ export const PatientDashboard: React.FC = () => {
             </div>
           }
         />
-
-        <PatientPortalShellNotice />
 
         {isPatientLoading ? (
           <HmsLoadingSkeleton />

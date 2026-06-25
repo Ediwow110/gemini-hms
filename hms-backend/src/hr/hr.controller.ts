@@ -65,6 +65,38 @@ export class HrController {
     return this.hrService.getEmployees(tenantId, user);
   }
 
+  @Get('assignments')
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'HR Manager',
+    'HR Staff',
+    'Branch Manager',
+  )
+  getAssignments(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+    @GetUser() user: AuthTypes.RequestUser,
+  ) {
+    return this.hrService.getAssignments(tenantId, branchId, user);
+  }
+
+  @Get('attendance')
+  @Roles(
+    'Super Admin',
+    'Branch Admin',
+    'HR Manager',
+    'HR Staff',
+    'Branch Manager',
+  )
+  getAttendance(
+    @GetUser('tenantId') tenantId: string,
+    @GetUser('branchId') branchId: string,
+    @GetUser() user: AuthTypes.RequestUser,
+  ) {
+    return this.hrService.getAttendance(tenantId, branchId, user);
+  }
+
   @Post('employees')
   @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff')
   createEmployee(

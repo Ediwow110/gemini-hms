@@ -1,99 +1,99 @@
 import { useState } from "react";
 import { StatusBadge } from "../../components/ui/status-badge";
 import { PageHeader } from "../../components/ui/page-header";
-import { Clock, UserCheck, CheckCircle2, SkipForward, Plus, Megaphone } from "lucide-react";
+import { Clock, UserCheck, CheckCircle2, SkipForward, Plus, Megaphone, Search, X } from "lucide-react";
 import { RequirePermission } from "../../components/ui/RequirePermission";
 import { HmsDashboardShell, HmsToolbar, HmsAuditFooter } from "../../components/hms-dashboard";
+import { useQueue } from "../../hooks/use-queue";
+import { useUser } from "../../hooks/use-user";
+import { apiClient } from "../../lib/api";
 
-interface QueueEntry {
-  num: string;
-  name: string;
-  service: string;
-  status: string;
-  time: string;
-}
-
-interface ToastNotification {
-  message: string;
-  id: number;
+interface PatientSearchResult {
+  id: string;
+  firstName: string;
+  lastName: string;
 }
 
 export const Queue = () => {
-  const [queue, setQueue] = useState<QueueEntry[]>([
-    { num: "Q001", name: "John Doe", service: "CBC", status: "Waiting", time: "10 mins" },
-    { num: "Q002", name: "Jane Smith", service: "X-Ray", status: "Calling", time: "2 mins" },
-  ]);
+  const user = useUser();
+  const branchId = (user as any)?.primaryBranchId; // Simplified for this slice
+  const { queue, stats, isLoading, error, joinQueue, callNext, isUpdating } = useQueue(branchId);
 
-  const waitingCount = queue.filter(q => q.status.toUpperCase() === "WAITING").length;
-  const callingCount = queue.filter(q => q.status.toUpperCase() === "CALLING").length;
-  const servedCount = 42;
-  const skippedCount = 2;
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [patients, setPatients] = useState<PatientSearchResult[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState("GENERAL");
 
-  const derivedStats = [
-    { label: "Waiting", val: waitingCount.toString(), icon: Clock, color: "from-amber-500 to-orange-500 shadow-amber-200/50" },
-    { label: "Calling", val: callingCount.toString(), icon: UserCheck, color: "from-indigo-500 to-violet-500 shadow-indigo-200/50" },
-    { label: "Served", val: servedCount.toString(), icon: CheckCircle2, color: "from-emerald-500 to-teal-500 shadow-emerald-200/50" },
-    { label: "Skipped", val: skippedCount.toString(), icon: SkipForward, color: "from-slate-400 to-slate-500 shadow-slate-200/50" },
-  ];
-  const [toast, setToast] = useState<ToastNotification | null>(null);
-
-  const showToast = (message: string) => {
-    setToast({ message, id: Date.now() });
-    setTimeout(() => setToast(null), 4000);
-  };
-
-  const handleCallNext = () => {
-    const updated = [...queue];
-    const nextIdx = updated.findIndex(q => q.status.toUpperCase() === "WAITING");
-    if (nextIdx !== -1) {
-      const p = updated[nextIdx];
-      p.status = "Calling";
-      setQueue(updated);
-      showToast(`Now calling: ${p.num} - ${p.name}`);
-    } else {
-      showToast("No patients waiting in queue.");
+  const handleSearchPatients = async () => {
+    if (!searchQuery) return;
+    try {
+      const res = await apiClient.get(`/patients/search?q=${searchQuery}`);
+      setPatients(res.data);
+    } catch (e) {
+      console.error("Search failed", e);
     }
   };
 
-  const handleJoinQueue = () => {
-    // In real app, calls POST /api/v1/queue/join
-    setQueue([...queue, { 
-      num: `Q00${queue.length + 1}`, 
-      name: "Walk-in Patient", 
-      service: "General", 
-      status: "Waiting", 
-      time: "0 mins" 
-    }]);
+  const handleJoinQueue = async () => {
+    if (!selectedPatient) return;
+    try {
+      await joinQueue({
+        patientId: selectedPatient,
+        serviceType: selectedService,
+        category: 'REGULAR',
+        branchId: branchId,
+      });
+      setIsModalOpen(false);
+      setSelectedPatient(null);
+      setSearchQuery("");
+    } catch (e) {
+      alert("Failed to join queue");
+    }
   };
+
+  const handleCallNext = async () => {
+    try {
+      // In a real app, the user would select the service (e.g. "Triage" or "Doctor")
+      // For this slice, we default to "GENERAL" or a selected service
+      await callNext("GENERAL");
+    } catch (e: any) {
+      alert(e.response?.data?.message || "No patients waiting");
+    }
+  };
+
+  if (!branchId) {
+    return <div className="p-10 text-center text-slate-500">No primary branch assigned to your account.</div>;
+  }
+
+  const derivedStats = [
+    { label: "Waiting", val: stats?.waiting?.toString() || '0', icon: Clock, color: "from-amber-500 to-orange-500 shadow-amber-200/50" },
+    { label: "Calling", val: stats?.calling?.toString() || '0', icon: UserCheck, color: "from-indigo-500 to-violet-500 shadow-indigo-200/50" },
+    { label: "Served", val: stats?.served?.toString() || '0', icon: CheckCircle2, color: "from-emerald-500 to-teal-500 shadow-emerald-200/50" },
+    { label: "Skipped", val: stats?.skipped?.toString() || '0', icon: SkipForward, color: "from-slate-400 to-slate-500 shadow-slate-200/50" },
+  ];
 
   return (
     <HmsDashboardShell
       toolbar={<HmsToolbar role="Queue Manager" />}
-      footer={<HmsAuditFooter dataSource="Queue state (local demo - backend sync pending)" />}
+      footer={<HmsAuditFooter dataSource="Live API (Queue entries)" />}
     >
-      {/* Toast notification */}
-      {toast && (
-        <div className="fixed bottom-5 right-5 z-50 bg-indigo-600 text-white px-6 py-3.5 rounded-xl shadow-xl font-semibold text-sm animate-fade-in border border-indigo-500/30 flex items-center gap-2">
-          <Megaphone className="h-4 w-4 shrink-0" />
-          <span>{toast.message}</span>
-        </div>
-      )}
-      
       <div className="flex justify-between items-center bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
         <PageHeader title="Queue Monitor" description="Real-time patient queue status and progress." />
         <div className="flex items-center gap-4">
           <RequirePermission permission="queue.manage">
             <button
               onClick={handleCallNext}
-              className="px-5 py-3 bg-indigo-600 text-white rounded-xl text-sm font-extrabold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-250/50 flex items-center gap-2 cursor-pointer border-0"
+              disabled={isUpdating}
+              className="px-5 py-3 bg-indigo-600 text-white rounded-xl text-sm font-extrabold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-250/50 flex items-center gap-2 cursor-pointer border-0 disabled:opacity-50"
             >
               <Megaphone className="h-4 w-4" />
-              Call Next
+              {isUpdating ? 'Calling...' : 'Call Next'}
             </button>
           </RequirePermission>
           <RequirePermission permission="queue.manage">
             <button
-              onClick={handleJoinQueue}
+              onClick={() => setIsModalOpen(true)}
               className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
@@ -103,61 +103,152 @@ export const Queue = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-12 gap-6">
-        {/* KPI metrics - 4 S-size Cards (3 cols desktop, 6 tablet, 12 mobile) */}
-        {derivedStats.map((s, i) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className={`col-span-12 sm:col-span-6 xl:col-span-3 card-hover p-5 text-center animate-slide-up stagger-${i + 1}`}>
-              <div className={`mx-auto w-10 h-10 rounded-xl bg-gradient-to-br ${s.color} shadow-md flex items-center justify-center mb-3`}>
-                <Icon className="h-5 w-5 text-white" />
+      {isLoading ? (
+        <div className="p-20 text-center text-slate-400">Loading live queue data...</div>
+      ) : error ? (
+        <div className="p-20 text-center text-rose-500 font-bold">Error loading queue: {error instanceof Error ? error.message : 'Unknown error'}</div>
+      ) : (
+        <div className="grid grid-cols-12 gap-6">
+          {derivedStats.map((s, i) => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label} className={`col-span-12 sm:col-span-6 xl:col-span-3 card-hover p-5 text-center animate-slide-up stagger-${i + 1}`}>
+                <div className={`mx-auto w-10 h-10 rounded-xl bg-gradient-to-br ${s.color} shadow-md flex items-center justify-center mb-3`}>
+                  <Icon className="h-5 w-5 text-white" />
+                </div>
+                <p className="text-3xl font-extrabold text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{s.val}</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-1">{s.label}</p>
               </div>
-              <p className="text-3xl font-extrabold text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{s.val}</p>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-1">{s.label}</p>
-            </div>
-          );
-        })}
+            );
+          })}
 
-        {/* Queue Monitor Table (Full-Width Card - 12 cols) */}
-        <div className="col-span-12 card overflow-hidden">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50/80 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">#</th>
-                <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Patient</th>
-                <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Service</th>
-                <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Status</th>
-                <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Wait Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {queue.map(q => {
-                const initials = q.name.split(" ").map(n => n[0]).join("");
-                return (
-                  <tr key={q.num} className="hover:bg-indigo-50/30 transition-colors duration-150 cursor-pointer group">
-                    <td className="px-6 py-4 font-bold text-indigo-600">{q.num}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 group-hover:from-indigo-100 group-hover:to-violet-100 group-hover:text-indigo-700 transition-all duration-200">
-                          {initials}
-                        </div>
-                        <span className="font-semibold text-slate-900">{q.name}</span>
-                      </div>
+          <div className="col-span-12 card overflow-hidden">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50/80 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">#</th>
+                  <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Patient</th>
+                  <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Service</th>
+                  <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                  <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Wait Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {queue && queue.length > 0 ? (
+                  queue.map(q => {
+                    const initials = q.patientName?.split(" ").map(n => n[0]).join("") || "??";
+                    return (
+                      <tr key={q.id} className="hover:bg-indigo-50/30 transition-colors duration-150 cursor-pointer group">
+                        <td className="px-6 py-4 font-bold text-indigo-600">{q.queueNumber}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 group-hover:from-indigo-100 group-hover:to-violet-100 group-hover:text-indigo-700 transition-all duration-200">
+                              {initials}
+                            </div>
+                            <span className="font-semibold text-slate-900">{q.patientName}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-600">{q.serviceType}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex justify-center">
+                            <StatusBadge status={q.status} />
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-500 text-xs font-medium">
+                          {new Date(q.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
+                      No patients currently in queue.
                     </td>
-                    <td className="px-6 py-4 text-slate-600">{q.service}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center">
-                        <StatusBadge status={q.status} />
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-500 text-xs font-medium">{q.time}</td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Add to Queue Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-lg w-full animate-slide-up border border-slate-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-900">Add Patient to Queue</h3>
+              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                <X className="h-5 w-5 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search patient by name or ID..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearchPatients()}
+                />
+                <button 
+                  onClick={handleSearchPatients}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-lg"
+                >
+                  Search
+                </button>
+              </div>
+
+              <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-50">
+                {patients.length > 0 ? (
+                  patients.map(p => (
+                    <div 
+                      key={p.id} 
+                      onClick={() => setSelectedPatient(p.id)}
+                      className={`p-3 cursor-pointer transition-colors text-sm flex justify-between items-center ${selectedPatient === p.id ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-600'}`}
+                    >
+                      <span className="font-medium">{p.firstName} {p.lastName}</span>
+                      <span className="text-[10px] font-mono text-slate-400">{p.id.substring(0, 8)}...</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-xs text-slate-400">No patients found. Try searching.</div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Service Type</label>
+                <select 
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none"
+                  value={selectedService}
+                  onChange={(e) => setSelectedService(e.target.value)}
+                >
+                  <option value="GENERAL">General Consultation</option>
+                  <option value="LABORATORY">Laboratory</option>
+                  <option value="CASHIER">Cashier/Billing</option>
+                  <option value="DOCTOR">Specialist Doctor</option>
+                  <option value="PHARMACY">Pharmacy</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end gap-3">
+              <button onClick={() => setIsModalOpen(false)} className="btn btn-secondary px-6">Cancel</button>
+              <button 
+                onClick={handleJoinQueue} 
+                disabled={!selectedPatient || isUpdating}
+                className="btn btn-primary px-6 disabled:opacity-50"
+              >
+                Join Queue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </HmsDashboardShell>
   );
 };

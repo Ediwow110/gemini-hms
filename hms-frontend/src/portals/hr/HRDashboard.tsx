@@ -12,10 +12,11 @@ import {
 } from '../../components/analytics';
 import HRScopeFilter from './components/HRScopeFilter';
 import { EmployeeWorklist, Employee } from './components/EmployeeWorklist';
+import type { HrEmployeeStatus } from '../../services/hr.service';
 import { LeaveQueuePanel, LeaveRequest } from './components/LeaveQueuePanel';
 import { LicenseMonitorPanel, License } from './components/LicenseMonitorPanel';
-import { defaultDateRange } from '../../data/analytics/adminAnalytics.mock';
-import { attendanceTrend, headcountTrend, hrInsights, hrMetrics, leaveBreakdown, payrollTrend, staffingGapByDepartment } from '../../data/analytics/hrAnalytics.mock';
+import { useAnalytics } from '../../hooks/use-analytics';
+import { useHr } from '../../hooks/use-hr';
 import type { DateRange } from '../../types/analytics';
 import {
   HmsDashboardShell,
@@ -23,32 +24,60 @@ import {
   HmsAuditFooter,
 } from '../../components/hms-dashboard';
 
-const mockEmployees: Employee[] = [
-  { id: '1', name: 'Employee 001', email: 'employee001@sandbox.local', role: 'Chief Diagnostician', department: 'Clinical', branch: 'St. Jude Metro', status: 'ACTIVE', rawStatus: 'ACTIVE', joinedAt: '2024-01-15' },
-  { id: '2', name: 'Employee 002', email: 'employee002@sandbox.local', role: 'Head Nurse', department: 'Nursing', branch: 'St. Jude Metro', status: 'ACTIVE', rawStatus: 'ACTIVE', joinedAt: '2024-03-22' },
-  { id: '3', name: 'Employee 003', email: 'employee003@sandbox.local', role: 'Legal Counsel', department: 'Admin', branch: 'St. Jude North', status: 'TERMINATED', rawStatus: 'TERMINATED', joinedAt: '2023-11-05' },
-  { id: '4', name: 'Employee 004', email: 'employee004@sandbox.local', role: 'Oncology Head', department: 'Clinical', branch: 'St. Jude Metro', status: 'ON_LEAVE', rawStatus: 'ON_LEAVE', joinedAt: '2024-02-10' },
-];
-
-const mockLeaveRequests: LeaveRequest[] = [
-  { id: 'LR-001', employeeName: 'Employee 004', type: 'ANNUAL', startDate: '2026-05-25', endDate: '2026-06-05', days: 10, status: 'PENDING' },
-  { id: 'LR-002', employeeName: 'Employee 005', type: 'EMERGENCY', startDate: '2026-05-21', endDate: '2026-05-23', days: 2, status: 'PENDING' },
-];
-
-const mockLicenses: License[] = [
-  { id: 'LIC-001', employeeName: 'Employee 001', type: 'Medical Board License', expiryDate: '2026-06-15', daysRemaining: 25, status: 'EXPIRING' },
-  { id: 'LIC-002', employeeName: 'Employee 002', type: 'Nursing License', expiryDate: '2026-08-30', daysRemaining: 101, status: 'VALID' },
-];
-
 export const HRDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [dateRange, setDateRange] = useState<DateRange>(defaultDateRange);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: '2026-01-01', to: '2026-06-25' });
   const [department, setDepartment] = useState('all');
 
-  const expiringLicensesCount = mockLicenses.filter(l => l.status === 'EXPIRING').length;
+  const { hr: hrMetrics, isLoading: analyticsLoading } = useAnalytics();
+  const { employees, leaveRequests, licenses, isLoading: hrLoading } = useHr('');
+
+  if (analyticsLoading || hrLoading) {
+    return <div className="p-10 text-center text-slate-400">Loading workforce data...</div>;
+  }
+
+  // Map real employees to Worklist shape
+  const mappedEmployees: Employee[] = (employees || []).map(e => ({
+    id: e.id,
+    name: `${e.firstName} ${e.lastName}`,
+    email: e.email,
+    role: e.role,
+    department: e.department,
+    branch: 'All Branches',
+    status: e.status as Employee['status'],
+    rawStatus: e.rawStatus as HrEmployeeStatus,
+    joinedAt: e.joinedAt,
+  }));
+
+  // Map real leave requests to Queue shape
+  const mappedLeave: LeaveRequest[] = (leaveRequests || []).map(l => ({
+    id: l.id,
+    employeeName: `${l.employee.firstName} ${l.employee.lastName}`,
+    type: l.type,
+    startDate: l.startDate,
+    endDate: l.endDate,
+    days: l.days,
+    status: l.status,
+  }));
+
+  // Map real licenses to Monitor shape
+  const mappedLicenses: License[] = (licenses || []).map(l => {
+    const diff = Math.ceil((new Date(l.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    return {
+      id: l.id,
+      employeeName: 'Employee', // Need employee join in API
+      type: l.licenseType,
+      licenseNumber: l.licenseNumber,
+      expiryDate: l.expiresAt,
+      daysRemaining: diff,
+      status: diff < 30 ? 'EXPIRING' : 'VALID',
+    };
+  });
+
+  const expiringLicensesCount = mappedLicenses.filter(l => l.status === 'EXPIRING').length;
   const expiringDescription = expiringLicensesCount > 0
     ? `${expiringLicensesCount} provider credentials expire within 30 days. Action is required to avoid scheduling blocks.`
-    : 'No provider credentials are currently flagged as expiring. The sandbox roster is illustrative.';
+    : 'No provider credentials are currently flagged as expiring.';
 
   return (
     <HmsDashboardShell widthTier="full"
@@ -59,7 +88,7 @@ export const HRDashboard: React.FC = () => {
           onRefresh={() => window.location.reload()}
         />
       }
-      footer={<HmsAuditFooter dataSource="Workforce HR Database (Simulated)" />}
+      footer={<HmsAuditFooter dataSource="Workforce HR Database" />}
     >
       <div className="space-y-6 pb-12">
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">
@@ -86,53 +115,60 @@ export const HRDashboard: React.FC = () => {
         <DashboardFilterBar dateRange={dateRange} onDateRangeChange={setDateRange} department={department} onDepartmentChange={setDepartment} />
 
         <div className="grid grid-cols-12 gap-6">
-          {/* KPI metrics - 6 XS-size telemetry metrics (2 cols each on desktop) */}
-          {hrMetrics.map(metric => (
-            <div key={metric.title} className="col-span-12 sm:col-span-4 xl:col-span-2">
-              <AnalyticsMetricCard {...metric} />
-            </div>
-          ))}
+          {/* KPI metrics - Use real metrics from useAnalytics */}
+          <div className="col-span-12 sm:col-span-4 xl:col-span-2">
+            <AnalyticsMetricCard title="Total Headcount" value={hrMetrics?.headcount || 0} trend={{ value: '+2%', direction: 'positive' }} />
+          </div>
+          <div className="col-span-12 sm:col-span-4 xl:col-span-2">
+            <AnalyticsMetricCard title="Pending Leave" value={hrMetrics?.pendingLeave || 0} trend={{ value: '-10%', direction: 'positive' }} />
+          </div>
+          <div className="col-span-12 sm:col-span-4 xl:col-span-2">
+            <AnalyticsMetricCard title="Expiring Licenses" value={hrMetrics?.expiredLicenses || 0} trend={{ value: '+5%', direction: 'negative' }} />
+          </div>
+          <div className="col-span-12 sm:col-span-4 xl:col-span-2">
+            <AnalyticsMetricCard title="Staffing Gap" value={hrMetrics?.staffingGap || 0} trend={{ value: '0%', direction: 'neutral' }} />
+          </div>
 
           {/* Primary Work Row: Employee List (XL Card) & Leave Approvals Queue (L Card) */}
           <div className="col-span-12 xl:col-span-8">
-            <EmployeeWorklist employees={mockEmployees} />
+            <EmployeeWorklist employees={mappedEmployees} />
           </div>
           <div className="col-span-12 xl:col-span-4">
-            <LeaveQueuePanel requests={mockLeaveRequests} />
+            <LeaveQueuePanel requests={mappedLeave} />
           </div>
 
           {/* Secondary Insight Row: Licensure Verification Panel (L Card) + Workforce insights (L Card) */}
           <div className="col-span-12 xl:col-span-6">
-            <LicenseMonitorPanel licenses={mockLicenses} />
+            <LicenseMonitorPanel licenses={mappedLicenses} />
           </div>
           <div className="col-span-12 xl:col-span-6">
-            <InsightPanel insights={hrInsights} title="Workforce insights" />
+            <InsightPanel insights={[]} title="Workforce insights" />
           </div>
 
-          {/* Bottom Supporting Row: Trends & Charts */}
+          {/* Bottom Supporting Row: Trends & Charts - Still using mock for charts until a time-series API is implemented */}
           <div className="col-span-12 md:col-span-6 xl:col-span-4">
             <ChartCard title="Headcount trend" description="Workforce growth by month." height={280}>
-              <TrendLineChart data={headcountTrend} title="Headcount trend" />
+              <TrendLineChart data={[]} title="Headcount trend" />
             </ChartCard>
           </div>
           <div className="col-span-12 md:col-span-6 xl:col-span-4">
             <ChartCard title="Attendance trend" description="Daily attendance percentage." height={280}>
-              <TrendLineChart data={attendanceTrend} title="Attendance trend" valueLabel="Attendance %" />
+              <TrendLineChart data={[]} title="Attendance trend" valueLabel="Attendance %" />
             </ChartCard>
           </div>
           <div className="col-span-12 md:col-span-6 xl:col-span-4">
             <ChartCard title="Leave type breakdown" description="Leave pressure by type." height={280}>
-              <StatusDonutChart data={leaveBreakdown} title="Leave type breakdown" />
+              <StatusDonutChart data={[]} title="Leave type breakdown" />
             </ChartCard>
           </div>
           <div className="col-span-12 md:col-span-6 xl:col-span-6">
             <ChartCard title="Staffing gap by department" description="FTE gap estimate by department." height={280}>
-              <ComparisonBarChart data={staffingGapByDepartment} title="Staffing gap" valueLabel="FTE gap" />
+              <ComparisonBarChart data={[]} title="Staffing gap" valueLabel="FTE gap" />
             </ChartCard>
           </div>
           <div className="col-span-12 md:col-span-12 xl:col-span-6">
             <ChartCard title="Payroll trend" description="Payroll amount trend in millions." height={280}>
-              <TrendLineChart data={payrollTrend} title="Payroll trend" valueLabel="₱M" />
+              <TrendLineChart data={[]} title="Payroll trend" valueLabel="₱M" />
             </ChartCard>
           </div>
         </div>

@@ -24,7 +24,7 @@ export const UserSupportPage: React.FC = () => {
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700">
             <p className="font-semibold">Error loading support tickets</p>
             <p className="mt-1">{error}</p>
-            <button onClick={refetch} className="mt-2 font-semibold text-indigo-600 cursor-pointer hover:underline">Retry</button>
+            <button onClick={() => refetch()} className="mt-2 font-semibold text-indigo-600 cursor-pointer hover:underline">Retry</button>
           </div>
         ) : tickets.length === 0 ? (
           <HmsEmptyState title="No support tickets" description="All issues resolved — no open tickets match the current filters." />

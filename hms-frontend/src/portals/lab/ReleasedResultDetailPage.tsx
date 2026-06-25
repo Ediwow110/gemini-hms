@@ -387,7 +387,7 @@ export const ReleasedResultDetailPage = () => {
         <div className="grid grid-cols-2 gap-8 mt-16 pt-8 border-t border-slate-200">
           <div className="text-center">
             <div className="h-10 flex items-end justify-center mb-1 font-mono text-xs italic text-slate-500">
-              {result.validatedById ? `Digitally Signed: ${result.validatedById}` : 'Jane Smith, RMT'}
+              {result.validatedById ? `Digitally Signed: ${result.validatedById}` : 'NOT SIGNED'}
             </div>
             <div className="border-t border-slate-450 pt-1.5">
               <p className="font-bold text-xs">Medical Technologist</p>
@@ -396,7 +396,7 @@ export const ReleasedResultDetailPage = () => {
           </div>
           <div className="text-center">
             <div className="h-10 flex items-end justify-center mb-1 font-mono text-xs italic text-slate-500">
-              {result.releasedById ? `Authorized Release: ${result.releasedById}` : 'Dr. Alan Pathologist, MD'}
+              {result.releasedById ? `Authorized Release: ${result.releasedById}` : 'NOT SIGNED'}
             </div>
             <div className="border-t border-slate-455 pt-1.5">
               <p className="font-bold text-xs">Attending Pathologist</p>

@@ -57,6 +57,8 @@ export const BackgroundJobsPage: React.FC = () => {
             description="Scheduled tasks, async workers, cron jobs, and queue processing"
           />
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
+            <span className="font-black uppercase tracking-wide mr-1">Sandbox Notice:</span>
+            Background Job Monitor is a prototype IT view. Job schedules, durations, and status reports are fabricated demo examples — no real cron or worker state is connected.
           </div>
         </div>
 

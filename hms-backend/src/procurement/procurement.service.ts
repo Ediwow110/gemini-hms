@@ -12,6 +12,7 @@ import {
   CreatePurchaseRequestDto,
   CreatePurchaseOrderDto,
   ReceivePurchaseOrderDto,
+  CreateRFQDto,
 } from './dto/procurement.dto';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 
@@ -112,7 +113,6 @@ export class ProcurementService {
     filters: { status?: string; branchId?: string } = {},
   ) {
     const where: Record<string, unknown> = { tenantId: user.tenantId };
-
     const isSuperAdmin = user.roles?.includes('Super Admin');
 
     if (filters.branchId) {
@@ -141,7 +141,6 @@ export class ProcurementService {
     filters: { status?: string; branchId?: string } = {},
   ) {
     const where: Record<string, unknown> = { tenantId: user.tenantId };
-
     const isSuperAdmin = user.roles?.includes('Super Admin');
 
     if (filters.branchId) {
@@ -190,9 +189,7 @@ export class ProcurementService {
       where: { id: requestId, tenantId: user.tenantId },
     });
 
-    if (!pr) {
-      throw new NotFoundException('Purchase request not found');
-    }
+    if (!pr) throw new NotFoundException('Purchase request not found');
 
     if (!user.roles?.includes('Super Admin') && user.branchId !== pr.branchId) {
       throw new ForbiddenException(
@@ -235,27 +232,17 @@ export class ProcurementService {
   }
 
   async createPurchaseOrder(user: RequestUser, dto: CreatePurchaseOrderDto) {
-    if (
-      !user.roles?.includes('Super Admin') &&
-      user.branchId !== dto.branchId
-    ) {
+    if (!user.roles?.includes('Super Admin') && user.branchId !== dto.branchId) {
       throw new ForbiddenException(
         'Cannot create purchase order for a different branch',
       );
     }
 
-    // Validate PR existence and branch scope outside transaction (fast-fail)
     const pr = await this.prisma.purchaseRequest.findFirst({
-      where: {
-        id: dto.purchaseRequestId,
-        tenantId: user.tenantId,
-        branchId: dto.branchId,
-      },
+      where: { id: dto.purchaseRequestId, tenantId: user.tenantId, branchId: dto.branchId },
     });
 
-    if (!pr) {
-      throw new NotFoundException('Purchase request not found in this branch');
-    }
+    if (!pr) throw new NotFoundException('Purchase request not found in this branch');
 
     const supplier = await this.prisma.supplier.findFirst({
       where: { id: dto.supplierId, tenantId: user.tenantId },
@@ -266,7 +253,6 @@ export class ProcurementService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
-      // Atomically claim the PR: only succeeds if still APPROVED (prevents duplicate POs)
       const claimedPr = await tx.purchaseRequest.updateMany({
         where: { id: dto.purchaseRequestId, status: 'APPROVED' },
         data: { status: 'ORDERED' },
@@ -322,9 +308,7 @@ export class ProcurementService {
       where: { id: purchaseOrderId, tenantId: user.tenantId },
     });
 
-    if (!po) {
-      throw new NotFoundException('Purchase order not found');
-    }
+    if (!po) throw new NotFoundException('Purchase order not found');
 
     if (!user.roles?.includes('Super Admin') && user.branchId !== po.branchId) {
       throw new ForbiddenException(
@@ -332,32 +316,23 @@ export class ProcurementService {
       );
     }
 
-    if (po.status === 'RECEIVED') {
-      throw new BadRequestException('Purchase order is already received');
-    }
-
-    if (po.status !== 'SENT') {
-      throw new BadRequestException(
-        'Only SENT purchase orders can be received',
-      );
-    }
+    if (po.status === 'RECEIVED') throw new BadRequestException('Purchase order is already received');
+    if (po.status !== 'SENT') throw new BadRequestException('Only SENT purchase orders can be received');
 
     return await this.prisma.$transaction(async (tx) => {
-      // Atomically claim the PO: only succeeds if still SENT (prevents duplicate receives)
       const claimedPo = await tx.purchaseOrder.updateMany({
         where: { id: purchaseOrderId, status: 'SENT' },
         data: { status: 'RECEIVED' },
       });
 
-      if (claimedPo.count === 0) {
-        throw new BadRequestException('Purchase order is already received');
-      }
+      if (claimedPo.count === 0) throw new BadRequestException('Purchase order is already received');
 
       const receiving = await tx.receivingRecord.create({
         data: {
           tenantId: user.tenantId,
           branchId: po.branchId,
           purchaseOrderId,
+          supplierId: po.supplierId,
           receivedById: user.userId!,
           notes: dto.notes || null,
         },
@@ -378,5 +353,138 @@ export class ProcurementService {
 
       return receiving;
     });
+  }
+
+  async createRFQ(user: RequestUser, dto: CreateRFQDto) {
+    const rfq = await this.prisma.rFQ.create({
+      data: {
+        tenantId: user.tenantId,
+        branchId: user.branchId || 'SYSTEM',
+        itemId: dto.itemId,
+        buyerId: user.userId!,
+        title: dto.title || 'New RFQ',
+        warrantyTier: dto.warrantyTier,
+        siteReadinessDetails: dto.siteReadinessDetails,
+        leasingOption: dto.leasingOption,
+        status: 'NEGOTIATION',
+      },
+    });
+
+    await this.audit.log({
+      tenantId: user.tenantId,
+      userId: user.userId!,
+      eventKey: 'RFQ_CREATED',
+      recordType: 'RFQ',
+      recordId: rfq.id,
+      newValues: rfq,
+    });
+
+    return rfq;
+  }
+
+  async listRFQs(user: RequestUser, filters: { status?: string } = {}) {
+    const where: Record<string, unknown> = { tenantId: user.tenantId };
+    if (filters.status) where.status = filters.status;
+
+    return this.prisma.rFQ.findMany({
+      where,
+      include: { quotes: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async submitQuote(user: RequestUser, rfqId: string, dto: any) {
+    const rfq = await this.prisma.rFQ.findFirst({
+      where: { id: rfqId, tenantId: user.tenantId },
+    });
+    if (!rfq) throw new NotFoundException('RFQ not found');
+
+    return this.prisma.quote.create({
+      data: {
+        tenantId: user.tenantId,
+        rfqId: rfqId,
+        supplierId: user.supplierId || 'TBD',
+        amount: dto.amount,
+        totalAmount: dto.amount,
+        deliveryDays: dto.deliveryDays,
+        warrantyMonths: dto.warrantyMonths,
+        status: 'SENT',
+      },
+    });
+  }
+
+  async listQuotes(user: RequestUser, rfqId: string) {
+    return this.prisma.quote.findMany({
+      where: { rfqId, tenantId: user.tenantId },
+      orderBy: { amount: 'asc' },
+    });
+  }
+
+  async listReceivingRecords(
+    user: RequestUser,
+    filters: { status?: string; branchId?: string } = {},
+  ) {
+    const where: Record<string, unknown> = { tenantId: user.tenantId };
+    if (filters.branchId) where.branchId = filters.branchId;
+
+    return this.prisma.receivingRecord.findMany({
+      where,
+      include: {
+        purchaseOrder: {
+          include: { supplier: true },
+        },
+      },
+      orderBy: { receivedAt: 'desc' },
+    });
+  }
+
+  async getVendorPerformance(user: RequestUser) {
+    const suppliers = await this.prisma.supplier.findMany({
+      where: { tenantId: user.tenantId },
+    });
+
+    const performance = await Promise.all(
+      suppliers.map(async (s) => {
+        const records = await this.prisma.receivingRecord.findMany({
+          where: { supplierId: s.id },
+          include: { purchaseOrder: true },
+        });
+
+        if (records.length === 0) {
+          return {
+            id: s.id,
+            supplier: s.name,
+            onTimeRate: 0,
+            qualityRate: 0,
+            responseTime: 'N/A',
+            riskScore: 'UNKNOWN',
+          };
+        }
+
+        const onTimeCount = records.filter(
+          (r) =>
+            r.purchaseOrder?.expectedDeliveryDate &&
+            r.receivedAt <= r.purchaseOrder.expectedDeliveryDate,
+        ).length;
+
+        const avgQuality =
+          records.reduce((acc, r) => acc + (Number((r as any).qualityScore) || 0), 0) /
+          records.length;
+
+        const onTimeRate = (onTimeCount / records.length) * 100;
+        const riskScore = onTimeRate < 70 || avgQuality < 0.7 ? 'HIGH' : 'LOW';
+
+        return {
+          id: s.id,
+          supplier: s.name,
+          onTimeRate: Math.round(onTimeRate),
+          qualityRate: Math.round(avgQuality * 100),
+          responseTime: '4h',
+          riskScore,
+        };
+      }),
+    );
+
+    return performance;
   }
 }

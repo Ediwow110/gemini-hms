@@ -38,4 +38,28 @@ export class AnalyticsController {
   async getClaimRate(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getClaimRate(tenantId);
   }
+
+  @Get('hr-metrics')
+  @Roles('Super Admin', 'HR Manager', 'HR Staff')
+  async getHrMetrics(@GetUser('tenantId') tenantId: string) {
+    return this.analyticsService.getHrMetrics(tenantId);
+  }
+
+  @Get('it-metrics')
+  @Roles('Super Admin', 'IT Support')
+  async getItMetrics(@GetUser('tenantId') tenantId: string) {
+    return this.analyticsService.getItMetrics(tenantId);
+  }
+
+  @Get('marketplace-metrics')
+  @Roles('Super Admin', 'Marketplace Admin')
+  async getMarketplaceMetrics(@GetUser('tenantId') tenantId: string) {
+    return this.analyticsService.getMarketplaceMetrics(tenantId);
+  }
+
+  @Get('compliance-metrics')
+  @Roles('Super Admin', 'Compliance Officer')
+  async getComplianceMetrics(@GetUser('tenantId') tenantId: string) {
+    return this.analyticsService.getComplianceMetrics(tenantId);
+  }
 }

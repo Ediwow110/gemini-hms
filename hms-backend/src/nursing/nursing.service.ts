@@ -245,7 +245,7 @@ export class NursingService {
 
     const task = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.nurseTask.update({
-        where: { id: taskId },
+        where: { id: taskId, tenantId },
         data: updateData,
         include: TASK_INCLUDE,
       });
@@ -382,7 +382,7 @@ export class NursingService {
 
     const task = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.nurseTask.update({
-        where: { id: taskId },
+        where: { id: taskId, tenantId },
         data: updateData,
         include: TASK_INCLUDE,
       });

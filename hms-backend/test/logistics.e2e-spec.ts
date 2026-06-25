@@ -79,7 +79,14 @@ describe('Logistics & Field Service (e2e)', () => {
 
     const rfqId = randomUUID();
     await prisma.rFQ.create({
-      data: { id: rfqId, tenantId, branchId, title: 'Test RFQ' },
+      data: {
+        id: rfqId,
+        tenantId,
+        branchId,
+        itemId: randomUUID(),
+        buyerId: techA_Id,
+        title: 'Test RFQ',
+      },
     });
 
     const quoteId = randomUUID();
@@ -88,6 +95,7 @@ describe('Logistics & Field Service (e2e)', () => {
         id: quoteId,
         tenantId,
         rfqId,
+        amount: 1000,
         totalAmount: 1000,
         status: 'ACCEPTED',
       },

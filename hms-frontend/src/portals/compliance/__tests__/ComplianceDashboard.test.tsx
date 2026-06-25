@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ComplianceDashboard } from '../ComplianceDashboard';
 import { useAuditEvents, useAccessReview } from '../../../hooks/use-compliance';
 
@@ -24,6 +25,10 @@ vi.mock('../../../hooks/use-compliance', () => ({
   useAccessReview: vi.fn(),
 }));
 
+vi.mock('../../../hooks/use-analytics', () => ({
+  useAnalytics: () => ({ isLoading: false }),
+}));
+
 vi.mock('../../components/analytics', () => ({
   ChartCard: ({ children, title }: { children?: React.ReactNode; title?: string }) => <div>{title} {children}</div>,
   InsightPanel: ({ title }: { title?: string }) => <div>{title}</div>,
@@ -31,6 +36,18 @@ vi.mock('../../components/analytics', () => ({
   StatusDonutChart: () => <div>StatusDonutChart</div>,
   TrendLineChart: () => <div>TrendLineChart</div>,
 }));
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+function renderWithProviders(ui: React.ReactElement) {
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
 
 describe('ComplianceDashboard Runtime Tests', () => {
   beforeEach(() => {
@@ -54,11 +71,7 @@ describe('ComplianceDashboard Runtime Tests', () => {
       refetch: vi.fn(),
     });
 
-    render(
-      <MemoryRouter>
-        <ComplianceDashboard />
-      </MemoryRouter>
-    );
+    renderWithProviders(<ComplianceDashboard />);
 
     // Verify standardized page header presence
     expect(screen.getByText('Compliance & Governance Workspace')).toBeInTheDocument();
@@ -85,11 +98,7 @@ describe('ComplianceDashboard Runtime Tests', () => {
       refetch: vi.fn(),
     });
 
-    render(
-      <MemoryRouter>
-        <ComplianceDashboard />
-      </MemoryRouter>
-    );
+    renderWithProviders(<ComplianceDashboard />);
 
     // Verify fallback for empty PHI events
     expect(screen.getByText('No PHI access events found')).toBeInTheDocument();
@@ -137,11 +146,7 @@ describe('ComplianceDashboard Runtime Tests', () => {
       refetch: vi.fn(),
     });
 
-    render(
-      <MemoryRouter>
-        <ComplianceDashboard />
-      </MemoryRouter>
-    );
+    renderWithProviders(<ComplianceDashboard />);
 
     // Verify card values
     expect(screen.getByText('1 Active')).toBeInTheDocument(); // Critical Breach Alert (PATIENT_RECORD_VIEW_BREAK_GLASS risk score > 50)
@@ -173,11 +178,7 @@ describe('ComplianceDashboard Runtime Tests', () => {
       refetch: vi.fn(),
     });
 
-    render(
-      <MemoryRouter>
-        <ComplianceDashboard />
-      </MemoryRouter>
-    );
+    renderWithProviders(<ComplianceDashboard />);
 
     expect(screen.queryByRole('button', { name: /View Alerts/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Review Access Logs/i })).not.toBeInTheDocument();
@@ -203,11 +204,7 @@ describe('ComplianceDashboard Runtime Tests', () => {
       refetch: vi.fn(),
     });
 
-    render(
-      <MemoryRouter>
-        <ComplianceDashboard />
-      </MemoryRouter>
-    );
+    renderWithProviders(<ComplianceDashboard />);
 
     fireEvent.click(screen.getByRole('button', { name: /View Alerts/i }));
     expect(mockNavigate).toHaveBeenCalledWith('/compliance/breach-alerts');
@@ -234,11 +231,7 @@ describe('ComplianceDashboard Runtime Tests', () => {
       refetch: vi.fn(),
     });
 
-    render(
-      <MemoryRouter>
-        <ComplianceDashboard />
-      </MemoryRouter>
-    );
+    renderWithProviders(<ComplianceDashboard />);
 
     // Find and click the Export Logs button
     const exportLogsBtn = screen.getByRole('button', { name: /Export Logs/i });
