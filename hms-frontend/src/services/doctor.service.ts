@@ -35,12 +35,27 @@ export interface CreatePrescriptionPayload {
   notes?: string;
 }
 
+export interface PatientDetailDto {
+  id: string;
+  patientNumber: string;
+  firstName: string;
+  lastName: string;
+  dob: string;
+  status: string;
+  createdAt: string;
+}
+
 export const doctorService = {
   getPatients: async (search?: string): Promise<PatientSummaryDto[]> => {
     const params = search ? `?search=${encodeURIComponent(search)}` : '';
     const response: AxiosResponse<PatientSummaryDto[]> = await apiClient.get(
       `/v1/patients${params}`,
     );
+    return response.data;
+  },
+
+  getPatient: async (id: string): Promise<PatientDetailDto> => {
+    const response: AxiosResponse<PatientDetailDto> = await apiClient.get(`/v1/patients/${id}`);
     return response.data;
   },
 
