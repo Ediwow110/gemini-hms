@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Pill, AlertCircle } from 'lucide-react';
 import {
@@ -14,57 +14,30 @@ import {
   HmsDataUnavailable,
   HmsLoadingSkeleton,
 } from '../../components/hms-dashboard';
-import { pharmacyDashboardService } from '../../services/pharmacy-dashboard.service';
-import type { PharmacyDashboardData } from '../../services/pharmacy-dashboard.service';
+import { usePrescriptionQueue, useDrugCatalog, useLowStockAlerts } from '../../hooks/use-pharmacy';
 import { usePermissions } from '../../hooks/use-user';
 import { RequirePermission } from '../../components/ui/RequirePermission';
-
-const BRANCH_OPTIONS = [
-  { value: 'main-branch', label: 'Main Branch' },
-  { value: 'north-clinic', label: 'North Branch' },
-];
-
-const getBranchLabel = (branchId: string) =>
-  BRANCH_OPTIONS.find((branch) => branch.value === branchId)?.label ?? branchId;
 
 export const PharmacyDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const canDispense = hasPermission('inventory.stock.dispense');
-  const [selectedBranch, setSelectedBranch] = useState('main-branch');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<PharmacyDashboardData | null>(null);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await pharmacyDashboardService.getDashboardData(selectedBranch);
-      setData(result);
-      setLastUpdated(new Date());
-    } catch {
-      setError('Failed to load pharmacy dashboard data.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: prescriptionQueue, isLoading: queueLoading, error: queueError } = usePrescriptionQueue();
+  const { data: drugCatalog, isLoading: catalogLoading, error: catalogError } = useDrugCatalog();
+  const { data: lowStockAlerts, isLoading: alertsLoading, error: alertsError } = useLowStockAlerts();
 
-  /* eslint-disable react-hooks/exhaustive-deps */
-  useEffect(() => {
-    fetchData();
-  }, [selectedBranch]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+  const isLoading = queueLoading || catalogLoading || alertsLoading;
+  const errorObj = queueError || catalogError || alertsError;
 
-  if (error) {
+  if (errorObj && !isLoading) {
     return (
       <div className="flex h-screen items-center justify-center p-6 bg-slate-50">
         <div className="flex flex-col items-center gap-3 text-center max-w-md p-6 bg-white border border-slate-200 rounded-lg shadow-sm">
           <AlertCircle className="h-12 w-12 text-rose-500" />
-          <h2 className="text-lg font-bold text-slate-900">{error}</h2>
+          <h2 className="text-lg font-bold text-slate-900">Failed to load pharmacy dashboard data.</h2>
           <button
-            onClick={() => fetchData()}
+            onClick={() => window.location.reload()}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors"
           >
             Retry
@@ -74,89 +47,120 @@ export const PharmacyDashboard: React.FC = () => {
     );
   }
 
-  // Map alerts to AlertRail format
-  const railAlerts = data?.alerts.map((alert) => ({
+  // ── Derived KPIs ──
+  const queue = prescriptionQueue ?? [];
+  const catalog = drugCatalog ?? [];
+  const alerts = lowStockAlerts ?? [];
+
+  const totalInventory = catalog.length;
+  const lowStockItems = catalog.filter(item => item.quantity > 0 && item.quantity <= item.reorderLevel);
+  const outOfStockItems = catalog.filter(item => item.quantity === 0);
+  const dispenseQueueCount = queue.length;
+
+  // ── KPIs for strip ──
+  const kpis = [
+    {
+      id: 'inventory',
+      label: 'Total Inventory',
+      value: totalInventory,
+      severity: 'info' as const,
+    },
+    {
+      id: 'low-stock',
+      label: 'Low Stock',
+      value: lowStockItems.length,
+      severity: lowStockItems.length > 5 ? 'critical' as const : lowStockItems.length > 0 ? 'warning' as const : 'success' as const,
+    },
+    {
+      id: 'out-of-stock',
+      label: 'Out of Stock',
+      value: outOfStockItems.length,
+      severity: outOfStockItems.length > 0 ? 'critical' as const : 'success' as const,
+    },
+    {
+      id: 'dispense-queue',
+      label: 'Dispense Queue',
+      value: dispenseQueueCount,
+      severity: dispenseQueueCount > 10 ? 'warning' as const : 'info' as const,
+    },
+  ];
+
+  // ── Alerts from low stock ──
+  const railAlerts = alerts.slice(0, 3).map(alert => ({
     id: alert.id,
-    severity: (alert.severity === 'critical' || alert.severity === 'warning' || alert.severity === 'success') 
-      ? alert.severity 
-      : 'warning' as const,
-    title: alert.title,
-    message: alert.message,
+    severity: (alert.quantity === 0 ? 'critical' : 'warning') as 'critical' | 'warning' | 'success',
+    title: `Low Stock: ${alert.inventoryItem.name}`,
+    message: `${alert.quantity} remaining (reorder at ${alert.reorderLevel})`,
     timestamp: 'Real-time',
-  })) || [];
+  }));
 
-  // Map KPIs to KpiStrip format
-  const kpis = data?.kpis.map((kpi, idx) => ({
-    id: `kpi-${idx}`,
-    label: kpi.title,
-    value: kpi.value,
-    severity: (kpi.severity === 'info' || kpi.severity === 'success' || kpi.severity === 'warning' || kpi.severity === 'critical')
-      ? kpi.severity
-      : 'info' as const,
-  })) || [];
+  // ── Prescription queue items ──
+  const prescriptionItems = queue.slice(0, 8).map(item => ({
+    id: item.id,
+    patientName: item.patientName,
+    patientNumber: item.patientNumber,
+    medicationName: item.medicationName,
+    dosage: item.dosage,
+    frequency: item.frequency,
+    prescribedBy: item.prescribedBy,
+    prescribedByName: item.prescribedByName,
+  }));
 
-  // Get lowest stock items
-  const lowestStockData = data?.lowestStock || [];
-  
-  // Calculate SLA values
-  const totalQueue = data?.activePrescriptions?.length ?? 0;
-  const outOfStockCount = lowestStockData.filter(i => Number(i.value) === 0).length;
+  // ── Lowest stock items ──
+  const lowestStockItems = [...catalog]
+    .sort((a, b) => a.quantity - b.quantity)
+    .slice(0, 5)
+    .map(item => ({
+      id: item.id,
+      label: item.name,
+      value: item.quantity,
+    }));
+
+  // ── SLA items ──
+  const totalQueue = dispenseQueueCount;
+  const outOfStockCount = outOfStockItems.length;
+  const slaItems = [
+    {
+      id: 'sla-queue',
+      label: 'Dispense Queue Backlog',
+      value: totalQueue,
+      status: (totalQueue > 5 ? 'at_risk' : 'on_track') as 'at_risk' | 'on_track' | 'breached',
+      drilldownHref: canDispense ? '/pharmacy' : undefined,
+    },
+    {
+      id: 'sla-stockout',
+      label: 'Critical Stockouts',
+      value: outOfStockCount,
+      status: (outOfStockCount > 0 ? 'breached' : 'on_track') as 'at_risk' | 'on_track' | 'breached',
+      drilldownHref: canDispense ? '/pharmacy' : undefined,
+    },
+  ];
+
+  const lastUpdated = new Date();
 
   return (
     <HmsDashboardShell
       toolbar={
         <HmsToolbar
-          branchName={getBranchLabel(selectedBranch)}
           role="Pharmacy Dashboard"
           lastRefreshed={lastUpdated}
-          onRefresh={fetchData}
-        >
-          <div className="flex items-center gap-2">
-            <label htmlFor="branch-select" className="text-[11px] font-medium text-slate-400">Select Branch:</label>
-            <select
-              id="branch-select"
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-700 focus:border-blue-500 focus:outline-none"
-            >
-              {BRANCH_OPTIONS.map((branch) => (
-                <option key={branch.value} value={branch.value}>{branch.label}</option>
-              ))}
-            </select>
-          </div>
-        </HmsToolbar>
+          onRefresh={() => window.location.reload()}
+        />
       }
       footer={
         <HmsAuditFooter
           lastRefreshed={lastUpdated}
-          dataSource={data?.isUnavailable ? 'Live source unavailable' : 'Live Inventory/Pharmacy API'}
+          dataSource="Live Inventory/Pharmacy API"
         />
       }
     >
-      {data?.isUnavailable && (
-        <div className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50/50 px-3 py-2">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-rose-600" />
-            <span className="text-[12px] font-semibold text-rose-700">Live dashboard data could not be loaded — showing unavailable state for unsupported sections</span>
-          </div>
-          <span className="text-[10px] font-bold text-rose-600 font-mono">OFFLINE</span>
-        </div>
-      )}
-
       {/* Top Alert Rail for Stock Risks */}
-      <HmsAlertRail alerts={railAlerts} loading={loading} />
+      <HmsAlertRail alerts={railAlerts} loading={isLoading} />
 
       {/* KPI Strip */}
-      {data?.isUnavailable ? (
-        <HmsDataUnavailable
-          sectionName="Inventory & Dispense Key Metrics"
-          expectedApi="/v1/inventory/catalog, /v1/pharmacy/prescriptions"
-        />
-      ) : (
-        <HmsKpiStrip metrics={kpis} loading={loading} />
-      )}
+      <HmsKpiStrip metrics={kpis} loading={isLoading} />
 
-      {loading ? (
+      {isLoading ? (
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-12 xl:col-span-8 space-y-6">
             <HmsLoadingSkeleton variant="table" />
@@ -172,16 +176,11 @@ export const PharmacyDashboard: React.FC = () => {
           {/* Main Work Content (8/12 cols desktop, 12 cols tablet/mobile) */}
           <div className="col-span-12 xl:col-span-8 space-y-6">
             {/* Active Prescriptions Queue */}
-            {data?.isUnavailable ? (
-              <HmsDataUnavailable
-                sectionName="Prescriptions Waiting Dispense"
-                expectedApi="/v1/pharmacy/prescriptions"
-              />
-            ) : (
+            {prescriptionItems.length > 0 ? (
               <HmsWorkQueue
                 title="Prescriptions Waiting Dispense"
                 description="Active queue of prescription orders awaiting pharmacist fulfillment"
-                data={data?.activePrescriptions || []}
+                data={prescriptionItems}
                 keyExtractor={(item) => item.id}
                 columns={[
                   {
@@ -231,19 +230,20 @@ export const PharmacyDashboard: React.FC = () => {
                 viewAllLink={canDispense ? '/pharmacy' : undefined}
                 viewAllLabel="Open Dispense Hub"
               />
+            ) : (
+              <HmsDataUnavailable
+                sectionName="Prescriptions Waiting Dispense"
+                expectedApi="/v1/pharmacy/prescriptions"
+                expectedPhase="No active prescriptions"
+              />
             )}
 
             {/* Lowest Stock Items */}
-            {data?.isUnavailable ? (
-              <HmsDataUnavailable
-                sectionName="Lowest Stock Items"
-                expectedApi="/v1/inventory/catalog"
-              />
-            ) : (
+            {lowestStockItems.length > 0 ? (
               <HmsDrilldownTable
                 title="Lowest Stock Items"
                 description="Inventory items at critical levels or facing stock-outs"
-                data={lowestStockData}
+                data={lowestStockItems}
                 keyExtractor={(item) => item.id}
                 columns={[
                   {
@@ -279,6 +279,12 @@ export const PharmacyDashboard: React.FC = () => {
                 viewAllLink={canDispense ? '/pharmacy' : undefined}
                 viewAllLabel="Open Inventory Manager"
               />
+            ) : (
+              <HmsDataUnavailable
+                sectionName="Lowest Stock Items"
+                expectedApi="/v1/inventory/catalog"
+                expectedPhase="No low stock items"
+              />
             )}
 
             {/* Near Expiry — Unavailable */}
@@ -299,32 +305,10 @@ export const PharmacyDashboard: React.FC = () => {
           {/* Operational Metrics and Quick Actions (4/12 cols desktop, 12 cols tablet/mobile) */}
           <div className="col-span-12 xl:col-span-4 space-y-6">
             {/* SLA Risk Panel */}
-            {data?.isUnavailable ? (
-              <HmsDataUnavailable
-                sectionName="Operational Risks"
-                expectedApi="/v1/pharmacy/prescriptions, /v1/inventory/catalog"
-              />
-            ) : (
-              <HmsSlaPanel
-                title="Operational Risks"
-                items={[
-                  {
-                    id: 'sla-queue',
-                    label: 'Dispense Queue Backlog',
-                    value: totalQueue,
-                    status: totalQueue > 5 ? 'at_risk' : 'on_track',
-                    drilldownHref: canDispense ? '/pharmacy' : undefined,
-                  },
-                  {
-                    id: 'sla-stockout',
-                    label: 'Critical Stockouts',
-                    value: outOfStockCount,
-                    status: outOfStockCount > 0 ? 'breached' : 'on_track',
-                    drilldownHref: canDispense ? '/pharmacy' : undefined,
-                  }
-                ]}
-              />
-            )}
+            <HmsSlaPanel
+              title="Operational Risks"
+              items={slaItems}
+            />
 
             {/* Top Dispensed Meds — Unavailable */}
             <HmsDataUnavailable
