@@ -1,65 +1,69 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { PhiMaskingInterceptor } from './common/interceptors/phi-masking.interceptor';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './auth/auth.module';
-import { AuditModule } from './audit/audit.module';
-import { PatientsModule } from './patients/patients.module';
-import { OrdersModule } from './orders/orders.module';
-import { BillingModule } from './billing/billing.module';
-import { LabModule } from './lab/lab.module';
-import { InventoryModule } from './inventory/inventory.module';
-import { CatalogModule } from './catalog/catalog.module';
-import { HrModule } from './hr/hr.module';
-import { QueueModule } from './queue/queue.module';
-import { ClaimsModule } from './claims/claims.module';
-import { ApprovalsModule } from './approvals/approvals.module';
-import { NumberingModule } from './numbering/numbering.module';
-import { NotificationsModule } from './notifications/notifications.module';
-import { ReportsModule } from './reports/reports.module';
-import { AdminModule } from './admin/admin.module';
-import { EncountersModule } from './encounters/encounters.module';
-import { EmrModule } from './emr/emr.module';
-import { ClinicalModule } from './clinical/clinical.module';
-import { PatientPortalModule } from './patient-portal/patient-portal.module';
-import { LedgerModule } from './ledger/ledger.module';
-import { InsuranceModule } from './insurance/insurance.module';
-import { PrescriptionsModule } from './prescriptions/prescriptions.module';
-import { ProcurementModule } from './procurement/procurement.module';
-import { LogisticsModule } from './logistics/logistics.module';
-import { ReferralPartnersModule } from './referral-partners/referral-partners.module';
-import { AnalyticsModule } from './analytics/analytics.module';
-import { SlaAlertsModule } from './sla-alerts/sla-alerts.module';
-import { ComplianceModule } from './compliance/compliance.module';
-import { PharmacyModule } from './pharmacy/pharmacy.module';
-import { ReplicationModule } from './replication/replication.module';
-import { MarketplaceModule } from './marketplace/marketplace.module';
-import { NursingModule } from './nursing/nursing.module';
-import { ItSupportModule } from './it-support/it-support.module';
-import { BranchesModule } from './branches/branches.module';
-import { IntegrationBridgesModule } from './integration/integration.module';
-import { RadiologyModule } from './radiology/radiology.module';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
-import { MfaGuard } from './auth/guards/mfa.guard';
-import { TenantGuard } from './auth/guards/tenant.guard';
-import { CsrfGuard } from './auth/guards/csrf.guard';
-import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
-import { AuditContextMiddleware } from './audit/audit-context.middleware';
+import { Module, NestModule, MiddlewareConsumer } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { ScheduleModule } from "@nestjs/schedule";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
+import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from "@nestjs/core";
+import { PhiMaskingInterceptor } from "./common/interceptors/phi-masking.interceptor";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
+import { PrismaModule } from "./prisma/prisma.module";
+import { AuthModule } from "./auth/auth.module";
+import { AuditModule } from "./audit/audit.module";
+import { PatientsModule } from "./patients/patients.module";
+import { OrdersModule } from "./orders/orders.module";
+import { BillingModule } from "./billing/billing.module";
+import { LabModule } from "./lab/lab.module";
+import { InventoryModule } from "./inventory/inventory.module";
+import { CatalogModule } from "./catalog/catalog.module";
+import { HrModule } from "./hr/hr.module";
+import { QueueModule } from "./queue/queue.module";
+import { ClaimsModule } from "./claims/claims.module";
+import { ApprovalsModule } from "./approvals/approvals.module";
+import { NumberingModule } from "./numbering/numbering.module";
+import { NotificationsModule } from "./notifications/notifications.module";
+import { ReportsModule } from "./reports/reports.module";
+import { AdminModule } from "./admin/admin.module";
+import { EncountersModule } from "./encounters/encounters.module";
+import { EmrModule } from "./emr/emr.module";
+import { ClinicalModule } from "./clinical/clinical.module";
+import { PatientPortalModule } from "./patient-portal/patient-portal.module";
+import { LedgerModule } from "./ledger/ledger.module";
+import { InsuranceModule } from "./insurance/insurance.module";
+import { PrescriptionsModule } from "./prescriptions/prescriptions.module";
+import { ProcurementModule } from "./procurement/procurement.module";
+import { LogisticsModule } from "./logistics/logistics.module";
+import { ReferralPartnersModule } from "./referral-partners/referral-partners.module";
+import { AnalyticsModule } from "./analytics/analytics.module";
+import { SlaAlertsModule } from "./sla-alerts/sla-alerts.module";
+import { ComplianceModule } from "./compliance/compliance.module";
+import { PharmacyModule } from "./pharmacy/pharmacy.module";
+import { ReplicationModule } from "./replication/replication.module";
+import { MarketplaceModule } from "./marketplace/marketplace.module";
+import { NursingModule } from "./nursing/nursing.module";
+import { ItSupportModule } from "./it-support/it-support.module";
+import { BranchesModule } from "./branches/branches.module";
+import { IntegrationBridgesModule } from "./integration/integration.module";
+import { RadiologyModule } from "./radiology/radiology.module";
+import { JwtAuthGuard } from "./auth/guards/jwt-auth.guard";
+import { MfaGuard } from "./auth/guards/mfa.guard";
+import { TenantGuard } from "./auth/guards/tenant.guard";
+import { CsrfGuard } from "./auth/guards/csrf.guard";
+import { MetricsInterceptor } from "./common/interceptors/metrics.interceptor";
+import { AuditContextMiddleware } from "./audit/audit-context.middleware";
+import { LoggerModule } from "./common/logger/logger.module";
+import { RequestIdMiddleware } from "./common/logger/request-id.middleware";
+import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60000, limit: 100 },
-      { name: 'auth', ttl: 60000, limit: 5 },
-      { name: 'sensitive', ttl: 60000, limit: 20 },
+      { name: "default", ttl: 60000, limit: 100 },
+      { name: "auth", ttl: 60000, limit: 5 },
+      { name: "sensitive", ttl: 60000, limit: 20 },
     ]),
+    LoggerModule,
     PrismaModule,
     AuthModule,
     AuditModule,
@@ -110,10 +114,13 @@ import { AuditContextMiddleware } from './audit/audit-context.middleware';
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_INTERCEPTOR, useClass: PhiMaskingInterceptor },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
+    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuditContextMiddleware).forRoutes('*');
+    consumer
+      .apply(AuditContextMiddleware, RequestIdMiddleware)
+      .forRoutes("*");
   }
 }
