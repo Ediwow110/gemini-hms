@@ -17,7 +17,7 @@ export const QuotesPage: React.FC = () => {
     if (rfqId) {
       fetchQuotes(rfqId).then(setQuotes).catch(console.error);
     }
-  }, [rfqId]);
+  }, [rfqId, fetchQuotes]);
 
   if (isLoading) return <div className="p-10 text-center text-slate-400">Loading quotes...</div>;
 

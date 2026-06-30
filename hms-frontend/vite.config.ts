@@ -89,6 +89,8 @@ export default defineConfig({
           if (path.startsWith('/api/metrics')) return path.replace('/api/', '/');
           // /api/ledger/* → /ledger/* (restored to original path)
           if (path.startsWith('/api/ledger')) return path.replace('/api/', '/');
+          // /api/queue/* → /api/v1/queue/* (align route with v1 convention)
+          if (path.startsWith('/api/queue')) return path.replace('/api/', '/api/v1/');
           // Default: pass through
           return path;
         },

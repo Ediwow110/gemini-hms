@@ -26,7 +26,7 @@ export const useQueue = (branchId: string) => {
   const { data: queue, isLoading: queueLoading, error: queueError } = useQuery({
     queryKey: ['queue', branchId],
     queryFn: async () => {
-      const res = await apiClient.get(`/queue?branchId=${branchId}`);
+      const res = await apiClient.get(`/v1/queue?branchId=${branchId}`);
       return res.data as QueueEntry[];
     },
   });
@@ -34,14 +34,14 @@ export const useQueue = (branchId: string) => {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['queue-stats', branchId],
     queryFn: async () => {
-      const res = await apiClient.get(`/queue/stats?branchId=${branchId}`);
+      const res = await apiClient.get(`/v1/queue/stats?branchId=${branchId}`);
       return res.data as QueueStats;
     },
   });
 
   const joinMutation = useMutation({
     mutationFn: async (data: { patientId: string; serviceType: string; category: string; branchId: string }) => {
-      const res = await apiClient.post('/queue/join', data);
+      const res = await apiClient.post('/v1/queue/join', data);
       return res.data;
     },
     onSuccess: () => {
@@ -52,7 +52,7 @@ export const useQueue = (branchId: string) => {
 
   const callNextMutation = useMutation({
     mutationFn: async (serviceType: string) => {
-      const res = await apiClient.patch(`/queue/call-next?branchId=${branchId}&serviceType=${serviceType}`);
+      const res = await apiClient.patch(`/v1/queue/call-next?branchId=${branchId}&serviceType=${serviceType}`);
       return res.data;
     },
     onSuccess: () => {
@@ -63,7 +63,7 @@ export const useQueue = (branchId: string) => {
 
   const completeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await apiClient.patch(`/queue/${id}/complete`);
+      const res = await apiClient.patch(`/v1/queue/${id}/complete`);
       return res.data;
     },
     onSuccess: () => {
