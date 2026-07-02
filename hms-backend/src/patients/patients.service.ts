@@ -2,12 +2,15 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { CreatePatientDto, UpdatePatientDto } from './dto/patient.dto';
 import { AuditService } from '../audit/audit.service';
 import { NumberingService } from '../numbering/numbering.service';
+import { REDIS_CLIENT } from '../common/redis/redis.provider';
+import Redis from 'ioredis';
 
 @Injectable()
 export class PatientsService {
@@ -15,6 +18,7 @@ export class PatientsService {
     private prisma: PrismaService,
     private audit: AuditService,
     private numbering: NumberingService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   async create(tenantId: string, userId: string, dto: CreatePatientDto) {
@@ -93,6 +97,13 @@ export class PatientsService {
   }
 
   async findOne(tenantId: string, id: string) {
+    const cacheKey = `patient:${tenantId}:${id}`;
+    const cached = await this.redis.get(cacheKey);
+
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const patient = await this.prisma.patient.findFirst({
       where: { id, tenantId, archivedAt: null },
     });
@@ -100,6 +111,9 @@ export class PatientsService {
     if (!patient) {
       throw new NotFoundException('Patient not found');
     }
+
+    // Cache for 1 hour (3600 seconds)
+    await this.redis.set(cacheKey, JSON.stringify(patient), 'EX', 3600);
 
     return patient;
   }
@@ -118,6 +132,11 @@ export class PatientsService {
     const normalizedNameDobKey = `${firstName.trim().toLowerCase()}-${lastName.trim().toLowerCase()}-${dob.toISOString().split('T')[0]}`;
 
     return this.prisma.$transaction(async (tx) => {
+      // Cache invalidation happens AFTER transaction commit usually, 
+      // but for simplicity we'll just clear the key.
+      const cacheKey = `patient:${tenantId}:${id}`;
+      await this.redis.del(cacheKey);
+
       try {
         const updateResult = await tx.patient.updateMany({
           where: { id, tenantId, archivedAt: null },

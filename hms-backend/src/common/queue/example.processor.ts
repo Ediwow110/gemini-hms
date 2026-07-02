@@ -1,38 +1,51 @@
 import { Process, Processor } from "@nestjs/bull";
 import type { Job } from "bull";
 import { Logger } from "@nestjs/common";
+import { NotificationDispatcherService } from "../../notifications/notification-dispatcher.service";
+import { PrismaService } from "../../prisma/prisma.service";
 
 /**
  * Real async job processor for priority notification dispatch.
- *
- * When a service creates a time‑sensitive notification (e.g., MFA code,
- * password reset, critical lab result alert) it can add a job to the
- * "notifications" queue instead of waiting for the 1‑minute cron tick.
- *
- * Job data shape:
- *   { notificationId: string; tenantId: string }
+ * Bypasses the 1-minute cron tick for immediate delivery of critical alerts.
  */
 @Processor("notifications")
 export class NotificationProcessor {
   private readonly logger = new Logger(NotificationProcessor.name);
 
-  // We don't inject NotificationDispatcherService here because the
-  // dispatcher already runs every minute via its own @Cron.  Instead
-  // this processor marks the job arrival and the existing cron will
-  // pick it up on the next tick.  In a future lane we can wire direct
-  // dispatch through the dispatcher service in-process.
+  constructor(
+    private readonly dispatcher: NotificationDispatcherService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Process()
   async handle(job: Job<{ notificationId: string; tenantId: string }>) {
-    this.logger.log(
-      `[Bull] Priority notification job received: ${job.data.notificationId} ` +
-        `(tenant ${job.data.tenantId}, attempt ${job.attemptsMade + 1})`,
-    );
+    const { notificationId, tenantId } = job.data;
+    this.logger.log(`[Bull] Immediate dispatch for notification ${notificationId}`);
 
-    // For immediate dispatch in a future lane:
-    //   const dispatcher = this.moduleRef.get(NotificationDispatcherService);
-    //   await dispatcher.dispatchPending(job.data.tenantId);
+    try {
+      const notification = await this.prisma.notification.findUnique({
+        where: { id: notificationId },
+      });
 
-    return { acknowledged: true, notificationId: job.data.notificationId };
+      if (!notification) {
+        this.logger.warn(`Notification ${notificationId} not found in DB`);
+        return { success: false, error: "not_found" };
+      }
+
+      const result = await this.dispatcher.dispatchOne({
+        id: notification.id,
+        type: notification.type,
+        recipient: notification.recipient,
+        subject: notification.subject,
+        content: notification.content,
+        attempts: notification.attempts,
+        tenantId: notification.tenantId,
+      });
+
+      return { success: result };
+    } catch (err: unknown) {
+      this.logger.error(`Bull priority dispatch failed: ${err}`);
+      throw err;
+    }
   }
 }

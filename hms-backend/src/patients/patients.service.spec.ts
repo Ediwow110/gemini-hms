@@ -38,6 +38,14 @@ describe('PatientsService write isolation', () => {
             generateNumber: jest.fn().mockResolvedValue('PAT-000001'),
           },
         },
+        {
+          provide: 'REDIS_CLIENT',
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue('OK'),
+            del: jest.fn().mockResolvedValue(0),
+          },
+        },
       ],
     }).compile();
 
