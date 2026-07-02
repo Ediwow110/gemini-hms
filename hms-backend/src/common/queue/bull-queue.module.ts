@@ -1,25 +1,27 @@
 import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bull";
-import { ExampleProcessor } from "./example.processor";
+import { NotificationProcessor } from "./example.processor";
 
 /**
- * Bull queue module. Uses the same Redis instance defined in RedisModule via
- * the REDIS_URL env var. The queue name "example" is illustrative; replace with
- * real queue names as needed.
+ * Bull queue module backed by Redis (same REDIS_URL as RedisModule).
+ *
+ * Registered queues:
+ *   "notifications" — priority async dispatch for time‑sensitive notifications
+ *     (MFA codes, password resets, critical alerts). The NotificationProcessor
+ *     acknowledges each job; the existing NotificationDispatcherService cron
+ *     picks up PENDING notifications every minute.
  */
 @Module({
   imports: [
     BullModule.forRootAsync({
       useFactory: () => {
         const url = process.env.REDIS_URL || "redis://127.0.0.1:6379";
-        // The BullModule expects the redis option to be either a connection string
-        // or an object compatible with ioredis. Here we provide the connection string.
         return { redis: url };
       },
     }),
-    BullModule.registerQueue({ name: "example" }),
+    BullModule.registerQueue({ name: "notifications" }),
   ],
-  providers: [ExampleProcessor],
+  providers: [NotificationProcessor],
   exports: [],
 })
 export class BullQueueModule {}
