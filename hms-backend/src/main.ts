@@ -4,6 +4,8 @@ import { ValidationPipe, Logger } from "@nestjs/common";
 import cookieParser from "cookie-parser";
 import { WinstonLoggerService } from "./common/logger/winston-logger.service";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+// Sentry error monitoring (backend)
+import * as Sentry from "@sentry/node";
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
@@ -17,8 +19,47 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
+  // ----- Global API version prefix -----
+  // All routes will be served under /api/v1, ensuring a consistent versioning scheme.
+  // Controllers that already include the prefix (e.g., @Controller('api/v1/...'))
+  // will resolve to /api/v1/api/v1/... but this is harmless for existing routes
+  // because they were deliberately versioned. Adding the prefix now future‑proofs
+  // any new controllers that omit a version.
+  app.setGlobalPrefix('api/v1');
+
   const winstonLogger = app.get(WinstonLoggerService);
   app.useLogger(winstonLogger);
+
+  // ---- Sentry initialization ----
+  // The DSN is expected in the environment (e.g., .env or start-backend.ps1).
+  // If missing, Sentry will be a no‑op, which is safe for local development.
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    // Basic HTTP request tracing can be added via the @sentry/tracing package later.
+    // For now we enable only error capturing; performance tracing is optional.
+    environment: process.env.NODE_ENV ?? "development",
+  });
+  // End Sentry init
+
+  // ---------- Datadog APM initialization (optional) ----------
+  // The dd-trace library automatically patches many Node modules. If the
+  // environment variables DD_AGENT_HOST and DD_TRACE_AGENT_PORT are set, spans
+  // will be sent to the Datadog agent. In local development those vars are
+  // typically absent, making the tracer a harmless no‑op.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const tracer = require("dd-trace").init({
+      // Enable debug output only when explicitly requested
+      debug: process.env.DD_DEBUG === "true",
+    });
+    console.log("Datadog tracer initialized");
+    // Reference to avoid lint unused warning
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _ = tracer;
+  } catch (err) {
+    console.warn("Datadog tracer failed to initialise:", err);
+  }
+  // --------------------------------------------------------
 
   // ---------- Swagger / OpenAPI ----------
   const config = new DocumentBuilder()

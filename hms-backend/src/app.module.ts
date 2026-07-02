@@ -16,7 +16,12 @@ import { LabModule } from "./lab/lab.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { HrModule } from "./hr/hr.module";
+// Domain QueueModule (business logic) remains imported as is.
 import { QueueModule } from "./queue/queue.module";
+// New infrastructure modules
+import { RedisModule } from "./common/redis/redis.module";
+import { BullQueueModule } from "./common/queue/bull-queue.module";
+import { MaintenanceModule } from "./common/maintenance/maintenance.module";
 import { ClaimsModule } from "./claims/claims.module";
 import { ApprovalsModule } from "./approvals/approvals.module";
 import { NumberingModule } from "./numbering/numbering.module";
@@ -53,6 +58,7 @@ import { AuditContextMiddleware } from "./audit/audit-context.middleware";
 import { LoggerModule } from "./common/logger/logger.module";
 import { RequestIdMiddleware } from "./common/logger/request-id.middleware";
 import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";
+import { SentryExceptionFilter } from "./common/filters/sentry-exception.filter";
 import { HealthModule } from "./common/health/health.module";
 
 @Module({
@@ -76,6 +82,10 @@ import { HealthModule } from "./common/health/health.module";
     CatalogModule,
     HrModule,
     QueueModule,
+    // Infrastructure modules
+    RedisModule,
+    BullQueueModule,
+    MaintenanceModule,
     ClaimsModule,
     ApprovalsModule,
     NumberingModule,
@@ -117,6 +127,8 @@ import { HealthModule } from "./common/health/health.module";
     { provide: APP_INTERCEPTOR, useClass: PhiMaskingInterceptor },
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+    // Sentry capture for any uncaught exception before the generic filter formats the response
+    { provide: APP_FILTER, useClass: SentryExceptionFilter },
   ],
 })
 export class AppModule implements NestModule {
