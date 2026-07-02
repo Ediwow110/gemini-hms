@@ -3,6 +3,7 @@ import { AppModule } from "./app.module";
 import { ValidationPipe, Logger } from "@nestjs/common";
 import cookieParser from "cookie-parser";
 import { WinstonLoggerService } from "./common/logger/winston-logger.service";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
@@ -14,13 +15,27 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const app = await NestFactory.create(AppModule, {
-    bufferLogs: true,
-  });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   const winstonLogger = app.get(WinstonLoggerService);
   app.useLogger(winstonLogger);
 
+  // ---------- Swagger / OpenAPI ----------
+  const config = new DocumentBuilder()
+    .setTitle("Hospital Management System API")
+    .setDescription("Enterprise-grade HMS backend — modular, multi-tenant, HIPAA-aware")
+    .setVersion("1.0.0")
+    .addBearerAuth({ type: "http", scheme: "bearer", bearerFormat: "JWT" }, "access-token")
+    .addCookieAuth("access_token", { type: "apiKey", in: "cookie", name: "access_token" })
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup("api/docs", app, document, {
+    swaggerOptions: { persistAuthorization: true },
+    customSiteTitle: "HMS API Docs",
+  });
+  winstonLogger.log("Swagger docs available at /api/docs", "Bootstrap");
+
+  // ---------- Middleware ----------
   app.use((req: any, res: any, next: () => void) => {
     const { method, url } = req;
     const start = Date.now();
@@ -44,11 +59,7 @@ async function bootstrap() {
   });
 
   app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
+    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
 
   app.use(cookieParser());

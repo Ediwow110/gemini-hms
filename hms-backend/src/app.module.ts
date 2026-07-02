@@ -53,6 +53,7 @@ import { AuditContextMiddleware } from "./audit/audit-context.middleware";
 import { LoggerModule } from "./common/logger/logger.module";
 import { RequestIdMiddleware } from "./common/logger/request-id.middleware";
 import { GlobalExceptionFilter } from "./common/filters/global-exception.filter";
+import { HealthModule } from "./common/health/health.module";
 
 @Module({
   imports: [
@@ -102,6 +103,7 @@ import { GlobalExceptionFilter } from "./common/filters/global-exception.filter"
     BranchesModule,
     IntegrationBridgesModule,
     RadiologyModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
