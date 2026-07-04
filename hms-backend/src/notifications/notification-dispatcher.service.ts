@@ -82,7 +82,9 @@ export class NotificationDispatcherService {
    * Bypasses the 1-minute cron batch tick.
    */
   async enqueuePriorityNotification(notificationId: string, tenantId: string) {
-    this.logger.log(`Enqueuing priority dispatch for notification ${notificationId}`);
+    this.logger.log(
+      `Enqueuing priority dispatch for notification ${notificationId}`,
+    );
     await this.priorityQueue.add(
       'priority-dispatch',
       { notificationId, tenantId },

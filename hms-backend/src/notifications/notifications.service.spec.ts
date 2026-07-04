@@ -190,7 +190,9 @@ describe('Provider Validation', () => {
     process.env.NODE_ENV = 'production';
     expect(() => {
       NotificationProviderFactory.createEmailProvider();
-    }).toThrow('EMAIL_PROVIDER=mock is not allowed in production environment. Configure a real provider (mailrelay, ses) before proceeding to staging or production.');
+    }).toThrow(
+      'EMAIL_PROVIDER=mock is not allowed in production environment. Configure a real provider (mailrelay, ses) before proceeding to staging or production.',
+    );
   });
 
   it('rejects mock SMS provider in production', () => {
@@ -198,7 +200,9 @@ describe('Provider Validation', () => {
     process.env.NODE_ENV = 'production';
     expect(() => {
       NotificationProviderFactory.createSmsProvider();
-    }).toThrow('SMS_PROVIDER=mock is not allowed in production environment. Configure a real provider (semaphore) before proceeding to staging or production.');
+    }).toThrow(
+      'SMS_PROVIDER=mock is not allowed in production environment. Configure a real provider (semaphore) before proceeding to staging or production.',
+    );
   });
 
   it('fails if mailrelay is missing credentials', () => {

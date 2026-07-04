@@ -60,19 +60,25 @@ export class MarketplaceService {
         ...(supplierId ? { supplierId } : {}),
         serviceItem: {
           ...(categoryId ? { categoryId } : {}),
-          ...(search ? {
-            OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { code: { contains: search, mode: 'insensitive' } },
-            ],
-          } : {}),
+          ...(search
+            ? {
+                OR: [
+                  { name: { contains: search, mode: 'insensitive' } },
+                  { code: { contains: search, mode: 'insensitive' } },
+                ],
+              }
+            : {}),
         },
       },
       include: {
         serviceItem: {
           include: {
             category: true,
-            prices: { where: { isActive: true }, orderBy: { effectiveDate: 'desc' }, take: 1 },
+            prices: {
+              where: { isActive: true },
+              orderBy: { effectiveDate: 'desc' },
+              take: 1,
+            },
           },
         },
         supplier: true,
@@ -81,14 +87,24 @@ export class MarketplaceService {
     });
   }
 
-  async createOrder(tenantId: string, userId: string, dto: { items: { listingId: string, quantity: number }[], shippingAddress: string }) {
+  async createOrder(
+    tenantId: string,
+    userId: string,
+    dto: {
+      items: { listingId: string; quantity: number }[];
+      shippingAddress: string;
+    },
+  ) {
     return this.prisma.$transaction(async (tx) => {
       let totalAmount = 0;
       const orderItems = [];
 
       for (const item of dto.items) {
-        const listing = await tx.marketplaceListing.findUnique({ where: { id: item.listingId } });
-        if (!listing) throw new NotFoundException(`Listing ${item.listingId} not found`);
+        const listing = await tx.marketplaceListing.findUnique({
+          where: { id: item.listingId },
+        });
+        if (!listing)
+          throw new NotFoundException(`Listing ${item.listingId} not found`);
 
         const subtotal = Number(listing.basePrice) * item.quantity;
         totalAmount += subtotal;
@@ -105,7 +121,9 @@ export class MarketplaceService {
             data: { stockCount: { decrement: item.quantity } },
           });
         } catch (err) {
-          throw new BadRequestException(`Insufficient stock for ${listing.name}`);
+          throw new BadRequestException(
+            `Insufficient stock for ${listing.name}`,
+          );
         }
       }
 
@@ -119,14 +137,17 @@ export class MarketplaceService {
         },
       });
 
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'MARKETPLACE_ORDER_CREATED',
-        recordType: 'MarketplaceOrder',
-        recordId: order.id,
-        newValues: order,
-      }, tx);
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'MARKETPLACE_ORDER_CREATED',
+          recordType: 'MarketplaceOrder',
+          recordId: order.id,
+          newValues: order,
+        },
+        tx,
+      );
 
       return order;
     });
@@ -147,7 +168,10 @@ export class MarketplaceService {
         serviceItem: {
           include: {
             category: true,
-            prices: { where: { isActive: true }, orderBy: { effectiveDate: 'desc' } },
+            prices: {
+              where: { isActive: true },
+              orderBy: { effectiveDate: 'desc' },
+            },
           },
         },
         supplier: true,
@@ -157,10 +181,18 @@ export class MarketplaceService {
     return listing;
   }
 
-  async moderateListing(tenantId: string, userId: string, id: string, dto: ModerateListingDto) {
+  async moderateListing(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: ModerateListingDto,
+  ) {
     return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.marketplaceListing.findFirst({ where: { id, tenantId } });
-      if (!existing) throw new NotFoundException('Marketplace listing not found');
+      const existing = await tx.marketplaceListing.findFirst({
+        where: { id, tenantId },
+      });
+      if (!existing)
+        throw new NotFoundException('Marketplace listing not found');
 
       const updated = await tx.marketplaceListing.update({
         where: { id, tenantId },
@@ -172,61 +204,89 @@ export class MarketplaceService {
         },
       });
 
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'MARKETPLACE_LISTING_MODERATED',
-        recordType: 'MarketplaceListing',
-        recordId: id,
-        oldValues: existing,
-        newValues: updated,
-      }, tx);
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'MARKETPLACE_LISTING_MODERATED',
+          recordType: 'MarketplaceListing',
+          recordId: id,
+          oldValues: existing,
+          newValues: updated,
+        },
+        tx,
+      );
 
       return updated;
     });
   }
 
-  async updateListing(tenantId: string, userId: string, id: string, dto: UpdateListingDto, supplierId?: string) {
+  async updateListing(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: UpdateListingDto,
+    supplierId?: string,
+  ) {
     return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.marketplaceListing.findFirst({ where: { id, tenantId } });
-      if (!existing) throw new NotFoundException('Marketplace listing not found');
-      if (supplierId && existing.supplierId !== supplierId) throw new ForbiddenException('You do not own this listing');
+      const existing = await tx.marketplaceListing.findFirst({
+        where: { id, tenantId },
+      });
+      if (!existing)
+        throw new NotFoundException('Marketplace listing not found');
+      if (supplierId && existing.supplierId !== supplierId)
+        throw new ForbiddenException('You do not own this listing');
 
       const updated = await tx.marketplaceListing.update({
         where: { id, tenantId },
         data: { ...dto },
       });
 
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'MARKETPLACE_LISTING_UPDATED',
-        recordType: 'MarketplaceListing',
-        recordId: id,
-        oldValues: existing,
-        newValues: updated,
-      }, tx);
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'MARKETPLACE_LISTING_UPDATED',
+          recordType: 'MarketplaceListing',
+          recordId: id,
+          oldValues: existing,
+          newValues: updated,
+        },
+        tx,
+      );
 
       return updated;
     });
   }
 
-  async deleteListing(tenantId: string, userId: string, id: string, supplierId?: string) {
+  async deleteListing(
+    tenantId: string,
+    userId: string,
+    id: string,
+    supplierId?: string,
+  ) {
     return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.marketplaceListing.findFirst({ where: { id, tenantId } });
-      if (!existing) throw new NotFoundException('Marketplace listing not found');
-      if (supplierId && existing.supplierId !== supplierId) throw new ForbiddenException('You do not own this listing');
+      const existing = await tx.marketplaceListing.findFirst({
+        where: { id, tenantId },
+      });
+      if (!existing)
+        throw new NotFoundException('Marketplace listing not found');
+      if (supplierId && existing.supplierId !== supplierId)
+        throw new ForbiddenException('You do not own this listing');
 
       await tx.marketplaceListing.delete({ where: { id, tenantId } });
 
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'MARKETPLACE_LISTING_DELETED',
-        recordType: 'MarketplaceListing',
-        recordId: id,
-        oldValues: existing,
-      }, tx);
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'MARKETPLACE_LISTING_DELETED',
+          recordType: 'MarketplaceListing',
+          recordId: id,
+          oldValues: existing,
+        },
+        tx,
+      );
 
       return { success: true };
     });
@@ -273,8 +333,15 @@ export class MarketplaceService {
     });
   }
 
-  async createQuote(tenantId: string, userId: string, supplierId: string, dto: CreateQuoteDto) {
-    const rfq = await this.prisma.rFQ.findFirst({ where: { id: dto.rfqId, tenantId } });
+  async createQuote(
+    tenantId: string,
+    userId: string,
+    supplierId: string,
+    dto: CreateQuoteDto,
+  ) {
+    const rfq = await this.prisma.rFQ.findFirst({
+      where: { id: dto.rfqId, tenantId },
+    });
     if (!rfq) throw new NotFoundException('RFQ not found');
 
     const quote = await this.prisma.quote.create({

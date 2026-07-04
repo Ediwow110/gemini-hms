@@ -173,6 +173,7 @@ export const PharmacyHub = () => {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-semibold text-slate-500 uppercase border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Patient</th>
+                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase border-b border-slate-200">Rx ID</th>
                     <th className="px-4 py-3 font-semibold text-slate-500 uppercase border-b border-slate-200">Medication</th>
                     <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-center border-b border-slate-200">Status</th>
                     <th className="px-4 py-3 text-right border-b border-slate-200">Action</th>
@@ -187,8 +188,11 @@ export const PharmacyHub = () => {
                         <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/50 px-4 py-3 border-b border-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                           <p className="font-bold text-slate-800">{order.patientName}</p>
                           <p className="text-[10px] text-slate-400">
-                            {order.patientNumber} &middot; Rx: {order.id.slice(0, 8)}
+                            {order.patientNumber}
                           </p>
+                        </td>
+                        <td className="px-4 py-3 border-b border-slate-100">
+                          <span className="text-xs font-mono text-slate-500" title={order.id}>{order.id.length > 8 ? `${order.id.slice(0, 8)}\u2026` : order.id}</span>
                         </td>
                         <td className="px-4 py-3 border-b border-slate-100">
                           <p className="font-semibold text-slate-700 flex items-center gap-1.5">
@@ -246,6 +250,7 @@ export const PharmacyHub = () => {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-semibold text-slate-500 uppercase border-b border-slate-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Item</th>
+                    <th className="px-4 py-3 font-semibold text-slate-500 uppercase border-b border-slate-200">ID</th>
                     <th className="px-4 py-3 font-semibold text-slate-500 uppercase border-b border-slate-200">SKU</th>
                     <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-right border-b border-slate-200">Stock</th>
                     <th className="px-4 py-3 font-semibold text-slate-500 uppercase text-right border-b border-slate-200">Reorder</th>
@@ -275,6 +280,9 @@ export const PharmacyHub = () => {
                               />
                               <p className="font-bold text-slate-800">{item.name}</p>
                             </div>
+                          </td>
+                          <td className="px-4 py-3 border-b border-slate-100">
+                            <span className="text-xs font-mono text-slate-500" title={item.id}>{item.id.length > 8 ? `${item.id.slice(0, 8)}\u2026` : item.id}</span>
                           </td>
                           <td className="px-4 py-3 text-slate-500 font-mono text-[10px] border-b border-slate-100">
                             {item.sku}

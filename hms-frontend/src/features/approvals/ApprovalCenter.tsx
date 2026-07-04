@@ -161,6 +161,7 @@ export const ApprovalCenter = () => {
               <thead className="bg-slate-50/80 text-slate-500 font-medium border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-center">Risk</th>
+                  <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider">ID</th>
                   <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider">Requester</th>
                   <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-center">Status</th>
@@ -181,6 +182,9 @@ export const ApprovalCenter = () => {
                           a.riskLevel === 'MEDIUM' ? 'bg-amber-500' : 'bg-slate-300'
                         }`} title={a.riskLevel} />
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-xs font-mono text-slate-500" title={a.id}>{a.id.length > 8 ? `${a.id.slice(0, 8)}\u2026` : a.id}</span>
                     </td>
                     <td className="px-6 py-4 font-semibold text-slate-900">
                       {a.type.replace(/_/g, ' ')}

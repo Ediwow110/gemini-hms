@@ -34,6 +34,12 @@ export class AdminController {
     private readonly metricsService: MetricsService,
   ) {}
 
+  @Get('tenants')
+  @RequirePermissions('admin.health.view')
+  async listTenants(@GetUser() actor: RequestUser) {
+    return this.adminService.listTenants(actor);
+  }
+
   @Get('health')
   @RequirePermissions('admin.health.view')
   async getHealth() {
@@ -182,6 +188,16 @@ export class AdminController {
     @Body() dto: UserLifecycleReasonDto,
   ) {
     return this.adminService.resetPassword(actor, targetUserId, dto.reason);
+  }
+
+  @Post('users/:id/reset-mfa')
+  @RequirePermissions('admin.role.change')
+  async resetUserMfa(
+    @GetUser() actor: RequestUser,
+    @Param('id') targetUserId: string,
+    @Body() dto: UserLifecycleReasonDto,
+  ) {
+    return this.adminService.resetUserMfa(actor, targetUserId, dto.reason);
   }
 
   @Post('users/:id/roles')

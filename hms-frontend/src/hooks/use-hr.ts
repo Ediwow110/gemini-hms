@@ -76,7 +76,7 @@ export const useHr = (branchId: string) => {
   const { data: employees, isLoading: employeesLoading } = useQuery({
     queryKey: ['hr-employees'],
     queryFn: async () => {
-      const res = await apiClient.get('/hr/employees');
+      const res = await apiClient.get('/v1/hr/employees');
       return res.data as HrEmployee[];
     },
   });
@@ -84,7 +84,7 @@ export const useHr = (branchId: string) => {
   const { data: leaveRequests, isLoading: leaveLoading } = useQuery({
     queryKey: ['hr-leave'],
     queryFn: async () => {
-      const res = await apiClient.get('/hr/leave');
+      const res = await apiClient.get('/v1/hr/leave');
       return res.data as HrLeaveRequest[];
     },
   });
@@ -92,7 +92,7 @@ export const useHr = (branchId: string) => {
   const { data: licenses, isLoading: licensesLoading } = useQuery({
     queryKey: ['hr-licenses'],
     queryFn: async () => {
-      const res = await apiClient.get('/hr/licenses');
+      const res = await apiClient.get('/v1/hr/licenses');
       return res.data as HrLicense[];
     },
   });
@@ -100,7 +100,7 @@ export const useHr = (branchId: string) => {
   const { data: assignments, isLoading: assignmentsLoading, error: assignmentsError } = useQuery({
     queryKey: ['hr-assignments', branchId],
     queryFn: async () => {
-      const res = await apiClient.get(`/hr/assignments?branchId=${branchId}`);
+      const res = await apiClient.get(`/v1/hr/assignments?branchId=${branchId}`);
       return res.data as HrAssignment[];
     },
     enabled: !!branchId,
@@ -109,14 +109,14 @@ export const useHr = (branchId: string) => {
   const { data: attendance, isLoading: attendanceLoading, error: attendanceError } = useQuery({
     queryKey: ['hr-attendance', branchId],
     queryFn: async () => {
-      const res = await apiClient.get(`/hr/attendance?branchId=${branchId}`);
+      const res = await apiClient.get(`/v1/hr/attendance?branchId=${branchId}`);
       return res.data as HrAttendanceRecord[];
     },
     enabled: !!branchId,
   });
 
   const fetchLicenses = async (employeeId: string) => {
-    const res = await apiClient.get(`/hr/licenses/${employeeId}`);
+    const res = await apiClient.get(`/v1/hr/licenses/${employeeId}`);
     return res.data as HrLicense[];
   };
 

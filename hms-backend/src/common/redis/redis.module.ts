@@ -1,5 +1,5 @@
-import { Module } from "@nestjs/common";
-import { RedisProvider } from "./redis.provider";
+import { Module } from '@nestjs/common';
+import { RedisProvider } from './redis.provider';
 
 /**
  * Minimal Redis module exposing a singleton ioredis client.
@@ -10,4 +10,3 @@ import { RedisProvider } from "./redis.provider";
   exports: [RedisProvider],
 })
 export class RedisModule {}
-

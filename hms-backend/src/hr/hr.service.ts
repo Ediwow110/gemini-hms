@@ -622,7 +622,11 @@ export class HrService {
 
   async getAssignments(tenantId: string, branchId: string, user: RequestUser) {
     const roles = user.roles || [];
-    if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin') && !this.isBranchScopedHr(roles)) {
+    if (
+      !this.isTenantWideHr(roles) &&
+      !roles.includes('Super Admin') &&
+      !this.isBranchScopedHr(roles)
+    ) {
       throw new ForbiddenException('Insufficient permissions');
     }
 
@@ -641,7 +645,11 @@ export class HrService {
 
   async getAttendance(tenantId: string, branchId: string, user: RequestUser) {
     const roles = user.roles || [];
-    if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin') && !this.isBranchScopedHr(roles)) {
+    if (
+      !this.isTenantWideHr(roles) &&
+      !roles.includes('Super Admin') &&
+      !this.isBranchScopedHr(roles)
+    ) {
       throw new ForbiddenException('Insufficient permissions');
     }
 

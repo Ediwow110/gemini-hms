@@ -21,7 +21,10 @@ export class ItSupportService {
       where: { tenantId },
       include: {
         user: {
-          select: { email: true, userRoles: { select: { role: { select: { name: true } } } } },
+          select: {
+            email: true,
+            userRoles: { select: { role: { select: { name: true } } } },
+          },
         },
         branch: { select: { name: true } },
       },
@@ -61,9 +64,27 @@ export class ItSupportService {
 
     return {
       services: [
-        { id: 'api', name: 'HMS API Gateway', status: 'ONLINE', latency: 42, uptime: 99.97 },
-        { id: 'db', name: 'PostgreSQL Primary', status: isDbOnline ? 'ONLINE' : 'OFFLINE', latency: 8, uptime: 99.99 },
-        { id: 'redis', name: 'Redis Cache', status: 'ONLINE', latency: 2, uptime: 99.98 },
+        {
+          id: 'api',
+          name: 'HMS API Gateway',
+          status: 'ONLINE',
+          latency: 42,
+          uptime: 99.97,
+        },
+        {
+          id: 'db',
+          name: 'PostgreSQL Primary',
+          status: isDbOnline ? 'ONLINE' : 'OFFLINE',
+          latency: 8,
+          uptime: 99.99,
+        },
+        {
+          id: 'redis',
+          name: 'Redis Cache',
+          status: 'ONLINE',
+          latency: 2,
+          uptime: 99.98,
+        },
       ],
       overallStatus: isDbOnline ? 'HEALTHY' : 'DEGRADED',
     };

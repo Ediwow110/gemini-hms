@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PatientProfile } from '../PatientProfile';
-import type { ReactNode } from 'react';
 
 const mockUseUser = vi.fn();
 

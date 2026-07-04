@@ -7,8 +7,8 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 
 export const IntegrationsPage: React.FC = () => {
   const user = useUser();
-  const branchId = (user as any)?.primaryBranchId;
-  const { integrations, isLoading } = useItSupport(branchId);
+  const branchId = user?.branchId;
+  const { integrations, isLoading } = useItSupport();
 
   if (!branchId) return <div className="p-10 text-center text-slate-500">No primary branch assigned.</div>;
   if (isLoading) return <div className="p-10 text-center text-slate-400">Loading integrations...</div>;

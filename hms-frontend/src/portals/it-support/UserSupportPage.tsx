@@ -6,7 +6,7 @@ import { HmsPageHeader } from '../../components/hms-page';
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
 
 export const UserSupportPage: React.FC = () => {
-  const { tickets, loading, error, refetch } = useSupportTickets({ pageSize: 50 });
+  const { tickets, loading, error, refetch } = useSupportTickets();
 
   return (
     <HmsDashboardShell widthTier="full">

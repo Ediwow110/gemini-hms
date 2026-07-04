@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Inject,
   NotFoundException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
@@ -12,6 +13,9 @@ import { AuditService } from '../audit/audit.service';
 import type { RequestUser } from '../common/types/authenticated-request.type';
 import * as bcrypt from 'bcrypt';
 import { PrivilegedUserProfileUpdateDto } from './dto/user-lifecycle.dto';
+
+import { REDIS_CLIENT } from '../common/redis/redis.provider';
+import Redis from 'ioredis';
 
 const USER_STATUS_ACTIVE = 'ACTIVE';
 const USER_STATUS_INACTIVE = 'INACTIVE';
@@ -321,6 +325,7 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly metricsService: MetricsService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   async createUser(
@@ -1353,6 +1358,83 @@ export class AdminService {
     });
   }
 
+  async resetUserMfa(
+    actor: RequestUser,
+    targetUserId: string,
+    reason: string,
+  ): Promise<AdminUserLifecycleResponse> {
+    const trimmedReason = this.validateReason(reason);
+    this.assertActorCanTarget(actor, targetUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const target = await this.getScopedTarget(tx, actor, targetUserId);
+      this.assertNonPrivilegedTarget(target);
+
+      if (!target.mfaEnabled && !target.mfaSecret) {
+        throw new ConflictException('User does not have MFA enabled');
+      }
+
+      const updateResult = await tx.user.updateMany({
+        where: {
+          id: targetUserId,
+          tenantId: actor.tenantId,
+          ...this.getBranchMutationScope(actor),
+        },
+        data: {
+          mfaEnabled: false,
+          mfaSecret: null,
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictException(
+          'User access scope changed before MFA reset could be enforced',
+        );
+      }
+
+      // Clear all recovery codes
+      await tx.userMfaRecoveryCode.deleteMany({
+        where: { userId: targetUserId },
+      });
+
+      const changedAt = new Date();
+      const updated = await this.getUpdatedUser(
+        tx,
+        actor.tenantId,
+        targetUserId,
+      );
+      const branchId = this.getAuditBranchId(actor, target);
+
+      await this.audit.log(
+        {
+          tenantId: actor.tenantId,
+          userId: actor.userId!,
+          eventKey: 'MFA_DISABLED',
+          recordType: 'User',
+          recordId: targetUserId,
+          oldValues: {
+            mfaEnabled: target.mfaEnabled,
+            hadRecoveryCodes: true,
+          },
+          newValues: {
+            actorId: actor.userId,
+            targetUserId,
+            reason: trimmedReason,
+            changedAt: changedAt.toISOString(),
+            mfaEnabled: false,
+            recoveryCodesCleared: true,
+            after: this.sanitizeAuditUser(updated),
+          },
+        },
+        tx,
+        branchId,
+      );
+
+      return this.toLifecycleResponse(updated, target);
+    });
+  }
+
   async assignUserRole(
     actor: RequestUser,
     targetUserId: string,
@@ -1572,80 +1654,85 @@ export class AdminService {
     const normalizedPermissionId = this.validatePermissionId(permissionId);
     this.assertTenantWideRoleMutationActor(actor);
 
-    return this.prisma.$transaction(async (tx) => {
-      const role = await this.getRoleForDirectMutation(
-        tx,
-        actor.tenantId,
-        normalizedRoleId,
-      );
-      const permission = await this.getPermissionForDirectMutation(
-        tx,
-        actor.tenantId,
-        normalizedPermissionId,
-      );
-      const existingPermission = role.rolePermissions.find(
-        (assignment) => assignment.permissionId === normalizedPermissionId,
-      );
-
-      if (existingPermission) {
-        throw new ConflictException(
-          'Permission is already assigned to this role',
+    return this.prisma
+      .$transaction(async (tx) => {
+        const role = await this.getRoleForDirectMutation(
+          tx,
+          actor.tenantId,
+          normalizedRoleId,
         );
-      }
+        const permission = await this.getPermissionForDirectMutation(
+          tx,
+          actor.tenantId,
+          normalizedPermissionId,
+        );
+        const existingPermission = role.rolePermissions.find(
+          (assignment) => assignment.permissionId === normalizedPermissionId,
+        );
 
-      const changedAt = new Date();
-      await tx.rolePermission.create({
-        data: {
-          roleId: role.id,
-          permissionId: permission.id,
-        },
+        if (existingPermission) {
+          throw new ConflictException(
+            'Permission is already assigned to this role',
+          );
+        }
+
+        const changedAt = new Date();
+        await tx.rolePermission.create({
+          data: {
+            roleId: role.id,
+            permissionId: permission.id,
+          },
+        });
+
+        const affectedUsersBefore = await this.getAffectedActiveUsersForRole(
+          tx,
+          actor.tenantId,
+          role.id,
+        );
+        await this.incrementAffectedUsersTokenVersion(tx, affectedUsersBefore);
+
+        const updatedRole = await this.getRoleForDirectMutation(
+          tx,
+          actor.tenantId,
+          normalizedRoleId,
+        );
+        const affectedUsersAfter =
+          this.mapAfterTokenVersions(affectedUsersBefore);
+
+        await this.audit.log(
+          {
+            tenantId: actor.tenantId,
+            userId: actor.userId!,
+            eventKey: 'ROLE_PERMISSION_GRANTED',
+            recordType: 'RolePermission',
+            recordId: `${role.id}:${permission.id}`,
+            oldValues: this.buildRolePermissionAuditOldValues(
+              role,
+              affectedUsersBefore,
+            ),
+            newValues: this.buildRolePermissionAuditNewValues(
+              actor,
+              updatedRole,
+              permission,
+              trimmedReason,
+              changedAt,
+              affectedUsersBefore,
+              affectedUsersAfter,
+            ),
+          },
+          tx,
+        );
+
+        return this.toRolePermissionMutationResponse(
+          updatedRole,
+          permission,
+          affectedUsersAfter.map((user) => user.id),
+        );
+      })
+      .then(async (res) => {
+        await this.redis.del(`admin:roles:${actor.tenantId}`);
+        return res;
       });
-
-      const affectedUsersBefore = await this.getAffectedActiveUsersForRole(
-        tx,
-        actor.tenantId,
-        role.id,
-      );
-      await this.incrementAffectedUsersTokenVersion(tx, affectedUsersBefore);
-
-      const updatedRole = await this.getRoleForDirectMutation(
-        tx,
-        actor.tenantId,
-        normalizedRoleId,
-      );
-      const affectedUsersAfter =
-        this.mapAfterTokenVersions(affectedUsersBefore);
-
-      await this.audit.log(
-        {
-          tenantId: actor.tenantId,
-          userId: actor.userId!,
-          eventKey: 'ROLE_PERMISSION_GRANTED',
-          recordType: 'RolePermission',
-          recordId: `${role.id}:${permission.id}`,
-          oldValues: this.buildRolePermissionAuditOldValues(
-            role,
-            affectedUsersBefore,
-          ),
-          newValues: this.buildRolePermissionAuditNewValues(
-            actor,
-            updatedRole,
-            permission,
-            trimmedReason,
-            changedAt,
-            affectedUsersBefore,
-            affectedUsersAfter,
-          ),
-        },
-        tx,
-      );
-
-      return this.toRolePermissionMutationResponse(
-        updatedRole,
-        permission,
-        affectedUsersAfter.map((user) => user.id),
-      );
-    });
   }
 
   async revokeRolePermission(
@@ -1659,84 +1746,91 @@ export class AdminService {
     const normalizedPermissionId = this.validatePermissionId(permissionId);
     this.assertTenantWideRoleMutationActor(actor);
 
-    return this.prisma.$transaction(async (tx) => {
-      const role = await this.getRoleForDirectMutation(
-        tx,
-        actor.tenantId,
-        normalizedRoleId,
-      );
-      const permission = await this.getPermissionForDirectMutation(
-        tx,
-        actor.tenantId,
-        normalizedPermissionId,
-      );
-      const existingPermission = role.rolePermissions.find(
-        (assignment) => assignment.permissionId === normalizedPermissionId,
-      );
-
-      if (!existingPermission) {
-        throw new ConflictException('Permission is not assigned to this role');
-      }
-
-      const changedAt = new Date();
-      const deleteResult = await tx.rolePermission.deleteMany({
-        where: {
-          roleId: role.id,
-          permissionId: permission.id,
-        },
-      });
-
-      if (deleteResult.count === 0) {
-        throw new ConflictException(
-          'Role permission changed before revocation',
+    return this.prisma
+      .$transaction(async (tx) => {
+        const role = await this.getRoleForDirectMutation(
+          tx,
+          actor.tenantId,
+          normalizedRoleId,
         );
-      }
+        const permission = await this.getPermissionForDirectMutation(
+          tx,
+          actor.tenantId,
+          normalizedPermissionId,
+        );
+        const existingPermission = role.rolePermissions.find(
+          (assignment) => assignment.permissionId === normalizedPermissionId,
+        );
 
-      const affectedUsersBefore = await this.getAffectedActiveUsersForRole(
-        tx,
-        actor.tenantId,
-        role.id,
-      );
-      await this.incrementAffectedUsersTokenVersion(tx, affectedUsersBefore);
+        if (!existingPermission) {
+          throw new ConflictException(
+            'Permission is not assigned to this role',
+          );
+        }
 
-      const updatedRole = await this.getRoleForDirectMutation(
-        tx,
-        actor.tenantId,
-        normalizedRoleId,
-      );
-      const affectedUsersAfter =
-        this.mapAfterTokenVersions(affectedUsersBefore);
+        const changedAt = new Date();
+        const deleteResult = await tx.rolePermission.deleteMany({
+          where: {
+            roleId: role.id,
+            permissionId: permission.id,
+          },
+        });
 
-      await this.audit.log(
-        {
-          tenantId: actor.tenantId,
-          userId: actor.userId!,
-          eventKey: 'ROLE_PERMISSION_REVOKED',
-          recordType: 'RolePermission',
-          recordId: `${role.id}:${permission.id}`,
-          oldValues: this.buildRolePermissionAuditOldValues(
-            role,
-            affectedUsersBefore,
-          ),
-          newValues: this.buildRolePermissionAuditNewValues(
-            actor,
-            updatedRole,
-            permission,
-            trimmedReason,
-            changedAt,
-            affectedUsersBefore,
-            affectedUsersAfter,
-          ),
-        },
-        tx,
-      );
+        if (deleteResult.count === 0) {
+          throw new ConflictException(
+            'Role permission changed before revocation',
+          );
+        }
 
-      return this.toRolePermissionMutationResponse(
-        updatedRole,
-        permission,
-        affectedUsersAfter.map((user) => user.id),
-      );
-    });
+        const affectedUsersBefore = await this.getAffectedActiveUsersForRole(
+          tx,
+          actor.tenantId,
+          role.id,
+        );
+        await this.incrementAffectedUsersTokenVersion(tx, affectedUsersBefore);
+
+        const updatedRole = await this.getRoleForDirectMutation(
+          tx,
+          actor.tenantId,
+          normalizedRoleId,
+        );
+        const affectedUsersAfter =
+          this.mapAfterTokenVersions(affectedUsersBefore);
+
+        await this.audit.log(
+          {
+            tenantId: actor.tenantId,
+            userId: actor.userId!,
+            eventKey: 'ROLE_PERMISSION_REVOKED',
+            recordType: 'RolePermission',
+            recordId: `${role.id}:${permission.id}`,
+            oldValues: this.buildRolePermissionAuditOldValues(
+              role,
+              affectedUsersBefore,
+            ),
+            newValues: this.buildRolePermissionAuditNewValues(
+              actor,
+              updatedRole,
+              permission,
+              trimmedReason,
+              changedAt,
+              affectedUsersBefore,
+              affectedUsersAfter,
+            ),
+          },
+          tx,
+        );
+
+        return this.toRolePermissionMutationResponse(
+          updatedRole,
+          permission,
+          affectedUsersAfter.map((user) => user.id),
+        );
+      })
+      .then(async (res) => {
+        await this.redis.del(`admin:roles:${actor.tenantId}`);
+        return res;
+      });
   }
 
   async updateCustomRole(
@@ -1759,109 +1853,114 @@ export class AdminService {
 
     this.assertTenantWideRoleMutationActor(actor);
 
-    return this.prisma.$transaction(async (tx) => {
-      // Fetch role with tenant scoping and permissions for privilege check
-      const role = await tx.role.findFirst({
-        where: {
-          id: normalizedRoleId,
-          tenantId: actor.tenantId,
-        },
-        include: {
-          rolePermissions: {
-            include: { permission: true },
-          },
-        },
-      });
-
-      if (!role) {
-        throw new NotFoundException('Role not found');
-      }
-
-      // 1. Forbidden: System roles
-      if (role.isSystem) {
-        throw new ForbiddenException('System roles cannot be updated');
-      }
-
-      // 2. Forbidden: Super Admin
-      if (role.name === 'Super Admin') {
-        throw new ForbiddenException('Super Admin role cannot be updated');
-      }
-
-      // 3. Forbidden: Inactive/Archived roles
-      if (role.status !== USER_STATUS_ACTIVE || role.archivedAt !== null) {
-        throw new ForbiddenException(
-          'Only active, non-archived roles can be updated',
-        );
-      }
-
-      // 4. Forbidden: Roles carrying admin.role.change (Privileged)
-      if (
-        role.rolePermissions.some(
-          (rp) => rp.permission.name === PRIVILEGED_PERMISSION,
-        )
-      ) {
-        throw new ForbiddenException(
-          'Roles carrying admin.role.change cannot be updated in this slice',
-        );
-      }
-
-      // 5. Uniqueness check if name is changing
-      if (
-        trimmedName &&
-        trimmedName.toLowerCase() !== role.name.toLowerCase()
-      ) {
-        const duplicate = await tx.role.findFirst({
+    return this.prisma
+      .$transaction(async (tx) => {
+        // Fetch role with tenant scoping and permissions for privilege check
+        const role = await tx.role.findFirst({
           where: {
+            id: normalizedRoleId,
             tenantId: actor.tenantId,
-            name: { equals: trimmedName, mode: 'insensitive' },
-            id: { not: normalizedRoleId },
+          },
+          include: {
+            rolePermissions: {
+              include: { permission: true },
+            },
           },
         });
 
-        if (duplicate) {
-          throw new ConflictException(
-            'A role with this name already exists in the tenant',
+        if (!role) {
+          throw new NotFoundException('Role not found');
+        }
+
+        // 1. Forbidden: System roles
+        if (role.isSystem) {
+          throw new ForbiddenException('System roles cannot be updated');
+        }
+
+        // 2. Forbidden: Super Admin
+        if (role.name === 'Super Admin') {
+          throw new ForbiddenException('Super Admin role cannot be updated');
+        }
+
+        // 3. Forbidden: Inactive/Archived roles
+        if (role.status !== USER_STATUS_ACTIVE || role.archivedAt !== null) {
+          throw new ForbiddenException(
+            'Only active, non-archived roles can be updated',
           );
         }
-      }
 
-      const updatedRole = await tx.role.update({
-        where: { id: normalizedRoleId },
-        data: {
-          name: trimmedName ?? role.name,
-        },
-      });
+        // 4. Forbidden: Roles carrying admin.role.change (Privileged)
+        if (
+          role.rolePermissions.some(
+            (rp) => rp.permission.name === PRIVILEGED_PERMISSION,
+          )
+        ) {
+          throw new ForbiddenException(
+            'Roles carrying admin.role.change cannot be updated in this slice',
+          );
+        }
 
-      await this.audit.log(
-        {
-          tenantId: actor.tenantId,
-          userId: actor.userId!,
-          eventKey: 'ROLE_UPDATED',
-          recordType: 'Role',
-          recordId: normalizedRoleId,
-          oldValues: {
-            name: role.name,
+        // 5. Uniqueness check if name is changing
+        if (
+          trimmedName &&
+          trimmedName.toLowerCase() !== role.name.toLowerCase()
+        ) {
+          const duplicate = await tx.role.findFirst({
+            where: {
+              tenantId: actor.tenantId,
+              name: { equals: trimmedName, mode: 'insensitive' },
+              id: { not: normalizedRoleId },
+            },
+          });
+
+          if (duplicate) {
+            throw new ConflictException(
+              'A role with this name already exists in the tenant',
+            );
+          }
+        }
+
+        const updatedRole = await tx.role.update({
+          where: { id: normalizedRoleId },
+          data: {
+            name: trimmedName ?? role.name,
           },
-          newValues: {
-            actorId: actor.userId,
-            name: updatedRole.name,
-            reason: trimmedReason,
+        });
+
+        await this.audit.log(
+          {
             tenantId: actor.tenantId,
-            branchId: actor.branchId ?? null,
-            changedFields: ['name'],
+            userId: actor.userId!,
+            eventKey: 'ROLE_UPDATED',
+            recordType: 'Role',
+            recordId: normalizedRoleId,
+            oldValues: {
+              name: role.name,
+            },
+            newValues: {
+              actorId: actor.userId,
+              name: updatedRole.name,
+              reason: trimmedReason,
+              tenantId: actor.tenantId,
+              branchId: actor.branchId ?? null,
+              changedFields: ['name'],
+            },
           },
-        },
-        tx,
-        actor.branchId ?? undefined,
-      );
+          tx,
+          actor.branchId ?? undefined,
+        );
 
-      return {
-        roleId: updatedRole.id,
-        name: updatedRole.name,
-        status: updatedRole.status,
-        isSystem: updatedRole.isSystem,
-      };
-    });
+        return {
+          roleId: updatedRole.id,
+          name: updatedRole.name,
+          status: updatedRole.status,
+          isSystem: updatedRole.isSystem,
+        };
+      })
+      .then(async (res) => {
+        await this.redis.del(`admin:roles:${actor.tenantId}`);
+        return res;
+      });
   }
 
   async archiveCustomRole(
@@ -1880,166 +1979,171 @@ export class AdminService {
     const normalizedRoleId = this.validateRoleId(roleId);
     this.assertTenantWideRoleMutationActor(actor);
 
-    return this.prisma.$transaction(async (tx) => {
-      // Fetch the role with tenant scoping
-      const role = await tx.role.findFirst({
-        where: {
-          id: normalizedRoleId,
-          tenantId: actor.tenantId,
-        },
-      });
-
-      if (!role) {
-        throw new NotFoundException('Role not found');
-      }
-
-      // Validate role can be archived
-      if (role.isSystem) {
-        throw new ForbiddenException('System roles cannot be archived');
-      }
-
-      // Check if role is Super Admin by name
-      if (role.name === 'Super Admin') {
-        throw new ForbiddenException('Super Admin role cannot be archived');
-      }
-
-      // Check if role already archived
-      if (role.archivedAt !== null) {
-        throw new ConflictException('Role is already archived');
-      }
-
-      if (role.status !== USER_STATUS_ACTIVE) {
-        throw new ForbiddenException('Only active roles can be archived');
-      }
-
-      // Check if role carries admin.role.change permission
-      const roleWithPermissions = await tx.role.findFirst({
-        where: {
-          id: normalizedRoleId,
-          tenantId: actor.tenantId,
-        },
-        include: {
-          rolePermissions: {
-            include: { permission: true },
+    return this.prisma
+      .$transaction(async (tx) => {
+        // Fetch the role with tenant scoping
+        const role = await tx.role.findFirst({
+          where: {
+            id: normalizedRoleId,
+            tenantId: actor.tenantId,
           },
-        },
-      });
+        });
 
-      if (
-        roleWithPermissions?.rolePermissions.some(
-          (rp) => rp.permission.name === 'admin.role.change',
-        )
-      ) {
-        throw new ForbiddenException(
-          'Roles carrying admin.role.change cannot be archived in this slice',
-        );
-      }
+        if (!role) {
+          throw new NotFoundException('Role not found');
+        }
 
-      // Get active users with this role
-      const affectedUsers = await tx.user.findMany({
-        where: {
-          tenantId: actor.tenantId,
-          status: USER_STATUS_ACTIVE,
-          deactivatedAt: null,
-          userRoles: {
-            some: {
-              roleId: normalizedRoleId,
-              status: USER_ROLE_STATUS_ACTIVE,
+        // Validate role can be archived
+        if (role.isSystem) {
+          throw new ForbiddenException('System roles cannot be archived');
+        }
+
+        // Check if role is Super Admin by name
+        if (role.name === 'Super Admin') {
+          throw new ForbiddenException('Super Admin role cannot be archived');
+        }
+
+        // Check if role already archived
+        if (role.archivedAt !== null) {
+          throw new ConflictException('Role is already archived');
+        }
+
+        if (role.status !== USER_STATUS_ACTIVE) {
+          throw new ForbiddenException('Only active roles can be archived');
+        }
+
+        // Check if role carries admin.role.change permission
+        const roleWithPermissions = await tx.role.findFirst({
+          where: {
+            id: normalizedRoleId,
+            tenantId: actor.tenantId,
+          },
+          include: {
+            rolePermissions: {
+              include: { permission: true },
             },
           },
-        },
-        select: {
-          id: true,
-          tokenVersion: true,
-        },
-      });
+        });
 
-      const changedAt = new Date();
-      const archivedAt = changedAt;
+        if (
+          roleWithPermissions?.rolePermissions.some(
+            (rp) => rp.permission.name === 'admin.role.change',
+          )
+        ) {
+          throw new ForbiddenException(
+            'Roles carrying admin.role.change cannot be archived in this slice',
+          );
+        }
 
-      // Archive the role
-      const updateResult = await tx.role.updateMany({
-        where: {
-          id: normalizedRoleId,
-          tenantId: actor.tenantId,
-          archivedAt: null, // Only archive if not already archived
-        },
-        data: {
-          status: USER_STATUS_INACTIVE, // Using INACTIVE status for archived roles
-          archivedAt,
-          archivedReason: trimmedReason,
-        },
-      });
-
-      if (updateResult.count === 0) {
-        throw new ConflictException(
-          'Role archival failed - role may have been archived concurrently',
-        );
-      }
-
-      // Increment tokenVersion for affected active users
-      if (affectedUsers.length > 0) {
-        await this.incrementAffectedUsersTokenVersion(
-          tx,
-          affectedUsers.map((user) => ({
-            id: user.id,
-            tokenVersion: user.tokenVersion,
-          })),
-        );
-      }
-
-      // Create audit log
-      await this.audit.log(
-        {
-          tenantId: actor.tenantId,
-          userId: actor.userId!,
-          eventKey: 'ROLE_ARCHIVED',
-          recordType: 'Role',
-          recordId: normalizedRoleId,
-          oldValues: {
-            roleId: role.id,
-            roleName: role.name,
-            status: role.status,
-            isSystem: role.isSystem,
-            archivedAt: role.archivedAt,
-            archivedReason: role.archivedReason,
-          },
-          newValues: {
-            actorId: actor.userId,
-            roleId: role.id,
-            roleName: role.name,
-            reason: trimmedReason,
-            archivedAt: archivedAt.toISOString(),
+        // Get active users with this role
+        const affectedUsers = await tx.user.findMany({
+          where: {
             tenantId: actor.tenantId,
-            branchId: actor.branchId ?? null,
-            isSystem: false,
-            previousStatus: role.status,
-            newStatus: USER_STATUS_INACTIVE,
-            affectedUserIds: affectedUsers.map((user) => user.id),
-            affectedUserCount: affectedUsers.length,
-            beforeTokenVersions: affectedUsers.map((user) => ({
+            status: USER_STATUS_ACTIVE,
+            deactivatedAt: null,
+            userRoles: {
+              some: {
+                roleId: normalizedRoleId,
+                status: USER_ROLE_STATUS_ACTIVE,
+              },
+            },
+          },
+          select: {
+            id: true,
+            tokenVersion: true,
+          },
+        });
+
+        const changedAt = new Date();
+        const archivedAt = changedAt;
+
+        // Archive the role
+        const updateResult = await tx.role.updateMany({
+          where: {
+            id: normalizedRoleId,
+            tenantId: actor.tenantId,
+            archivedAt: null, // Only archive if not already archived
+          },
+          data: {
+            status: USER_STATUS_INACTIVE, // Using INACTIVE status for archived roles
+            archivedAt,
+            archivedReason: trimmedReason,
+          },
+        });
+
+        if (updateResult.count === 0) {
+          throw new ConflictException(
+            'Role archival failed - role may have been archived concurrently',
+          );
+        }
+
+        // Increment tokenVersion for affected active users
+        if (affectedUsers.length > 0) {
+          await this.incrementAffectedUsersTokenVersion(
+            tx,
+            affectedUsers.map((user) => ({
               id: user.id,
               tokenVersion: user.tokenVersion,
             })),
-            afterTokenVersions: affectedUsers.map((user) => ({
-              id: user.id,
-              tokenVersion: user.tokenVersion + 1,
-            })),
-          },
-        },
-        tx,
-        actor.branchId ?? undefined,
-      );
+          );
+        }
 
-      return {
-        roleId: role.id,
-        name: role.name,
-        status: USER_STATUS_INACTIVE,
-        isSystem: role.isSystem,
-        archivedAt,
-        affectedUserCount: affectedUsers.length,
-      };
-    });
+        // Create audit log
+        await this.audit.log(
+          {
+            tenantId: actor.tenantId,
+            userId: actor.userId!,
+            eventKey: 'ROLE_ARCHIVED',
+            recordType: 'Role',
+            recordId: normalizedRoleId,
+            oldValues: {
+              roleId: role.id,
+              roleName: role.name,
+              status: role.status,
+              isSystem: role.isSystem,
+              archivedAt: role.archivedAt,
+              archivedReason: role.archivedReason,
+            },
+            newValues: {
+              actorId: actor.userId,
+              roleId: role.id,
+              roleName: role.name,
+              reason: trimmedReason,
+              archivedAt: archivedAt.toISOString(),
+              tenantId: actor.tenantId,
+              branchId: actor.branchId ?? null,
+              isSystem: false,
+              previousStatus: role.status,
+              newStatus: USER_STATUS_INACTIVE,
+              affectedUserIds: affectedUsers.map((user) => user.id),
+              affectedUserCount: affectedUsers.length,
+              beforeTokenVersions: affectedUsers.map((user) => ({
+                id: user.id,
+                tokenVersion: user.tokenVersion,
+              })),
+              afterTokenVersions: affectedUsers.map((user) => ({
+                id: user.id,
+                tokenVersion: user.tokenVersion + 1,
+              })),
+            },
+          },
+          tx,
+          actor.branchId ?? undefined,
+        );
+
+        return {
+          roleId: role.id,
+          name: role.name,
+          status: USER_STATUS_INACTIVE,
+          isSystem: role.isSystem,
+          archivedAt,
+          affectedUserCount: affectedUsers.length,
+        };
+      })
+      .then(async (res) => {
+        await this.redis.del(`admin:roles:${actor.tenantId}`);
+        return res;
+      });
   }
 
   private validateReason(reason: string): string {
@@ -4235,9 +4339,32 @@ export class AdminService {
     }));
   }
 
+  async listTenants(actor: RequestUser) {
+    const isSuperAdmin = actor.roles?.includes('Super Admin');
+    const where = isSuperAdmin ? {} : { id: actor.tenantId };
+    const tenants = await this.prisma.tenant.findMany({
+      where,
+      select: { id: true, name: true, status: true },
+    });
+    const enriched = await Promise.all(
+      tenants.map(async (t) => ({
+        ...t,
+        userCount: await this.prisma.user.count({ where: { tenantId: t.id } }),
+        branchCount: await this.prisma.branch.count({
+          where: { tenantId: t.id },
+        }),
+      })),
+    );
+    return enriched;
+  }
+
   async listPermissions(
     actor: RequestUser,
   ): Promise<AdminPermissionListItem[]> {
+    const cacheKey = `admin:permissions:${actor.tenantId}`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     const permissions = await this.prisma.permission.findMany({
       where: { tenantId: actor.tenantId },
       select: {
@@ -4249,6 +4376,7 @@ export class AdminService {
       orderBy: { name: 'asc' },
     });
 
+    await this.redis.set(cacheKey, JSON.stringify(permissions), 'EX', 3600);
     return permissions;
   }
 }

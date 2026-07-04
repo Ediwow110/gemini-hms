@@ -40,10 +40,7 @@ export class ProcurementController {
 
   @Get('rfqs')
   @RequirePermissions('procurement.request.view')
-  listRFQs(
-    @GetUser() user: RequestUser,
-    @Query('status') status?: string,
-  ) {
+  listRFQs(@GetUser() user: RequestUser, @Query('status') status?: string) {
     return this.procurementService.listRFQs(user, { status });
   }
 
@@ -59,10 +56,7 @@ export class ProcurementController {
 
   @Get('rfqs/:id/quotes')
   @RequirePermissions('procurement.request.view')
-  listQuotes(
-    @GetUser() user: RequestUser,
-    @Param('id') rfqId: string,
-  ) {
+  listQuotes(@GetUser() user: RequestUser, @Param('id') rfqId: string) {
     return this.procurementService.listQuotes(user, rfqId);
   }
 

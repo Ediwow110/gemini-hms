@@ -113,6 +113,60 @@ export interface AdminUserRoleMutationResponse {
   status: string;
 }
 
+export interface AdminTenantItem {
+  id: string;
+  name: string;
+  status: string;
+  userCount: number;
+  branchCount: number;
+}
+
+export interface CreateRolePayload {
+  name: string;
+  permissionIds?: string[];
+  reason: string;
+}
+
+export interface UpdateRolePayload {
+  name?: string;
+  reason: string;
+}
+
+export interface CreateRoleResponse {
+  roleId: string;
+  name: string;
+  status: string;
+  isSystem: boolean;
+  permissions: Array<{ id: string; name: string; riskLevel: string }>;
+}
+
+export interface GrantPermissionPayload {
+  permissionId: string;
+  reason: string;
+}
+
+export interface RolePermissionMutationResponse {
+  roleId: string;
+  roleName: string;
+  permissionId: string;
+  permissionName: string;
+  affectedUserIds: string[];
+  affectedUserCount: number;
+}
+
+export interface ArchiveRoleResponse {
+  roleId: string;
+  name: string;
+  archivedAt: string;
+}
+
+export interface UpdateRoleResponse {
+  roleId: string;
+  name: string;
+  status: string;
+  isSystem: boolean;
+}
+
 export const adminService = {
   async listUsers(params?: AdminUserListParams): Promise<AdminUserListResponse> {
     const queryParams: Record<string, string> = {};
@@ -151,6 +205,11 @@ export const adminService = {
 
   async resetPassword(id: string, reason: string): Promise<{ tempPassword: string }> {
     const response = await apiClient.post(`/v1/admin/users/${id}/reset-password`, { reason });
+    return response.data;
+  },
+
+  async resetUserMfa(id: string, reason: string): Promise<AdminUserLifecycleResponse> {
+    const response = await apiClient.post(`/v1/admin/users/${id}/reset-mfa`, { reason });
     return response.data;
   },
 
@@ -198,6 +257,43 @@ export const adminService = {
 
   async getBranch(id: string): Promise<AdminBranchItem> {
     const response = await apiClient.get(`/v1/admin/branches/${id}`);
+    return response.data;
+  },
+
+  async listTenants(): Promise<AdminTenantItem[]> {
+    const response = await apiClient.get('/v1/admin/tenants');
+    return response.data;
+  },
+
+  async createRole(payload: CreateRolePayload): Promise<CreateRoleResponse> {
+    const response = await apiClient.post('/v1/admin/roles', {
+      name: payload.name,
+      permissionIds: payload.permissionIds,
+      reason: payload.reason,
+    });
+    return response.data;
+  },
+
+  async updateRole(roleId: string, payload: UpdateRolePayload): Promise<UpdateRoleResponse> {
+    const response = await apiClient.patch(`/v1/admin/roles/${roleId}`, {
+      name: payload.name,
+      reason: payload.reason,
+    });
+    return response.data;
+  },
+
+  async archiveRole(roleId: string, reason: string): Promise<ArchiveRoleResponse> {
+    const response = await apiClient.post(`/v1/admin/roles/${roleId}/archive`, { reason });
+    return response.data;
+  },
+
+  async grantRolePermission(roleId: string, permissionId: string, reason: string): Promise<RolePermissionMutationResponse> {
+    const response = await apiClient.post(`/v1/admin/roles/${roleId}/permissions`, { permissionId, reason });
+    return response.data;
+  },
+
+  async revokeRolePermission(roleId: string, permissionId: string, reason: string): Promise<RolePermissionMutationResponse> {
+    const response = await apiClient.post(`/v1/admin/roles/${roleId}/permissions/${permissionId}/revoke`, { reason });
     return response.data;
   },
 };

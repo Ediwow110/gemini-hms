@@ -7,6 +7,7 @@ import { HmsDashboardShell, HmsToolbar, HmsAuditFooter } from "../../components/
 import { useQueue } from "../../hooks/use-queue";
 import { useUser } from "../../hooks/use-user";
 import { apiClient } from "../../lib/api";
+import type { AxiosError } from "axios";
 
 interface PatientSearchResult {
   id: string;
@@ -16,22 +17,29 @@ interface PatientSearchResult {
 
 export const Queue = () => {
   const user = useUser();
-  const branchId = (user as any)?.primaryBranchId; // Simplified for this slice
-  const { queue, stats, isLoading, error, joinQueue, callNext, isUpdating } = useQueue(branchId);
+  const branchId = user?.branchId;
+  const { queue, stats, isLoading, error, joinQueue, callNext, isUpdating } = useQueue(branchId ?? '');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [patients, setPatients] = useState<PatientSearchResult[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState("GENERAL");
 
   const handleSearchPatients = async () => {
     if (!searchQuery) return;
+    setSearchError(null);
     try {
-      const res = await apiClient.get(`/patients/search?q=${searchQuery}`);
+      const res = await apiClient.get(`/v1/patients/search?q=${searchQuery}`);
       setPatients(res.data);
     } catch (e) {
-      console.error("Search failed", e);
+      const err = e as AxiosError;
+      const msg = err.response?.status === 404
+        ? 'Patient search is not available (endpoint not implemented)'
+        : err.message || 'Search failed';
+      setSearchError(msg);
+      setPatients([]);
     }
   };
 
@@ -42,12 +50,12 @@ export const Queue = () => {
         patientId: selectedPatient,
         serviceType: selectedService,
         category: 'REGULAR',
-        branchId: branchId,
+        branchId: branchId!,
       });
       setIsModalOpen(false);
       setSelectedPatient(null);
       setSearchQuery("");
-    } catch (e) {
+    } catch {
       alert("Failed to join queue");
     }
   };
@@ -57,8 +65,9 @@ export const Queue = () => {
       // In a real app, the user would select the service (e.g. "Triage" or "Doctor")
       // For this slice, we default to "GENERAL" or a selected service
       await callNext("GENERAL");
-    } catch (e: any) {
-      alert(e.response?.data?.message || "No patients waiting");
+    } catch (e) {
+      const err = e as AxiosError<{ message?: string }>;
+      alert(err.response?.data?.message || "No patients waiting");
     }
   };
 
@@ -126,6 +135,7 @@ export const Queue = () => {
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
+                  <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">ID</th>
                   <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">#</th>
                   <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Patient</th>
                   <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Service</th>
@@ -139,6 +149,9 @@ export const Queue = () => {
                     const initials = q.patientName?.split(" ").map(n => n[0]).join("") || "??";
                     return (
                       <tr key={q.id} className="hover:bg-indigo-50/30 transition-colors duration-150 cursor-pointer group">
+                        <td className="px-6 py-4">
+                          <span className="text-xs font-mono text-slate-500" title={q.id}>{q.id.length > 8 ? `${q.id.slice(0, 8)}\u2026` : q.id}</span>
+                        </td>
                         <td className="px-6 py-4 font-bold text-indigo-600">{q.queueNumber}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -162,7 +175,7 @@ export const Queue = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-slate-400 font-medium">
+                    <td colSpan={6} className="px-6 py-10 text-center text-slate-400 font-medium">
                       No patients currently in queue.
                     </td>
                   </tr>
@@ -203,6 +216,11 @@ export const Queue = () => {
                 </button>
               </div>
 
+              {searchError && (
+                <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 font-bold text-rose-700 text-xs">
+                  {searchError}
+                </p>
+              )}
               <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-50">
                 {patients.length > 0 ? (
                   patients.map(p => (

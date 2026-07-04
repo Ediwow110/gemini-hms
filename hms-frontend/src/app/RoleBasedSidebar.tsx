@@ -12,6 +12,8 @@ interface ActiveItemMatch {
 /**
  * Helper to normalize paths by stripping a trailing slash if present (except for root /).
  */
+const getItemKey = (item: NavItemConfig): string => `${item.label}::${item.to}`;
+
 const normalizePath = (path: string): string => {
   if (path.length > 1 && path.endsWith('/')) {
     return path.slice(0, -1);
@@ -144,16 +146,20 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
 
   const isExpanded = (item: NavItemConfig) => {
     const auto = Boolean(item.children?.length) && (isActive(item) || hasActiveDescendant(item));
-    if (manuallyExpanded.has(item.to)) return !auto;
-    return auto;
+    if (auto) return true;
+    return manuallyExpanded.has(getItemKey(item));
   };
 
   const handleNavClick = (item: NavItemConfig) => {
     if (item.children?.length) {
+      // Don't toggle if auto-expanded — prevents silently polluting
+      // manuallyExpanded when the click has no visible effect.
+      if (isActive(item) || hasActiveDescendant(item)) return;
+      const key = getItemKey(item);
       setManuallyExpanded(prev => {
         const next = new Set(prev);
-        if (next.has(item.to)) next.delete(item.to);
-        else next.add(item.to);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
         return next;
       });
     } else {
@@ -195,7 +201,7 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
     } ${depth > 0 ? 'ml-4 py-2 text-[12px]' : ''}`;
 
     return (
-      <div key={item.to} className="space-y-1">
+      <div key={getItemKey(item)} className="space-y-1">
         {hasChildren ? (
           <button
             type="button"
@@ -210,6 +216,7 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
             to={item.to}
             onClick={() => handleNavClick(item)}
             className={navItemClassName}
+            aria-current={active ? 'page' : undefined}
           >
             {navItemContent}
           </Link>

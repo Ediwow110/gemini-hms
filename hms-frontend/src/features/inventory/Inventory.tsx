@@ -148,6 +148,7 @@ export const Inventory = () => {
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
+                  <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">ID</th>
                   <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Item</th>
                   <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">SKU</th>
                   <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Qty</th>
@@ -161,6 +162,9 @@ export const Inventory = () => {
                   const label = computeStatus(item);
                   return (
                     <tr key={item.id} className="hover:bg-indigo-50/30 transition-colors duration-150 cursor-pointer group">
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-mono text-slate-500" title={item.id}>{item.id.length > 8 ? `${item.id.slice(0, 8)}\u2026` : item.id}</span>
+                      </td>
                       <td className="px-6 py-4">
                         <div>
                           <p className="font-semibold text-slate-900">{item.name}</p>

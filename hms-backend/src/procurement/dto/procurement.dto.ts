@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsUUID, IsArray, IsInt, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsArray,
+  IsInt,
+  IsNumber,
+} from 'class-validator';
 
 export class CreateSupplierDto {
   @IsString()

@@ -9,8 +9,8 @@ import { useUser } from '../../hooks/use-user';
 
 export const InventoryRequestsPage: React.FC = () => {
   const user = useUser();
-  const branchId = (user as any)?.primaryBranchId;
-  const { requests, isLoading } = useProcurement(branchId);
+  const branchId = user?.branchId;
+  const { requests, isLoading } = useProcurement(branchId ?? '');
 
   if (!branchId) return <div className="p-10 text-center text-slate-500">No primary branch assigned.</div>;
   if (isLoading) return <div className="p-10 text-center text-slate-400">Loading requests...</div>;

@@ -146,6 +146,7 @@ export const BranchesPage: React.FC = () => {
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
+                  <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">ID</th>
                   <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Branch Details</th>
                   <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Code</th>
                   <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Tenant</th>
@@ -158,10 +159,13 @@ export const BranchesPage: React.FC = () => {
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredBranches.map((b) => (
                   <tr key={b.id} className="hover:bg-indigo-50/10">
+                    <td className="px-6 py-4">
+                      <span className="text-xs font-mono text-slate-500" title={b.id}>{b.id.length > 8 ? `${b.id.slice(0, 8)}\u2026` : b.id}</span>
+                    </td>
                     <td className="px-6 py-4 font-bold text-slate-800">
                       <div>
                         <p>{b.name}</p>
-                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">Director: {b.director} | ID: {b.id}</p>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">Director: {b.director}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4 font-mono font-bold text-slate-600">{b.code}</td>

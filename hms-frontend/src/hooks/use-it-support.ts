@@ -49,8 +49,8 @@ export interface ItLog {
   eventKey: string;
   recordType: string;
   recordId: string;
-  oldValues: any;
-  newValues: any;
+  oldValues: Record<string, unknown>;
+  newValues: Record<string, unknown>;
   createdAt: string;
   ipAddress: string;
   userAgent: string;
@@ -98,7 +98,7 @@ export const useTicketStats = () => {
   };
 };
 
-export const useSupportTickets = (_opts?: { pageSize?: number; priority?: string }) => {
+export const useSupportTickets = () => {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['it-support-tickets'],
     queryFn: async () => {
@@ -115,7 +115,7 @@ export const useSupportTickets = (_opts?: { pageSize?: number; priority?: string
   };
 };
 
-export const useItSupport = (_branchId: string) => {
+export const useItSupport = () => {
   const { data: sessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ['it-sessions'],
     queryFn: async () => {

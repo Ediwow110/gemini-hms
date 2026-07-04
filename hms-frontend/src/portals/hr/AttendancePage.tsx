@@ -8,8 +8,8 @@ import { useUser } from '../../hooks/use-user';
 
 export const AttendancePage: React.FC = () => {
   const user = useUser();
-  const branchId = (user as any)?.primaryBranchId;
-  const { attendance, isLoading } = useHr(branchId);
+  const branchId = user?.branchId;
+  const { attendance, isLoading } = useHr(branchId ?? '');
 
   const mappedRecords: AttendanceRecord[] = (attendance || []).map(a => ({
     id: a.id,

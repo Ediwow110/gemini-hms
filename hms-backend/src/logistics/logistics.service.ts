@@ -94,14 +94,17 @@ export class LogisticsService {
         });
       }
 
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'SHIPMENT_STATUS_UPDATED',
-        recordType: 'Shipment',
-        recordId: id,
-        newValues: { status: dto.status, note: dto.note },
-      }, tx);
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'SHIPMENT_STATUS_UPDATED',
+          recordType: 'Shipment',
+          recordId: id,
+          newValues: { status: dto.status, note: dto.note },
+        },
+        tx,
+      );
 
       return updated;
     });
@@ -200,14 +203,17 @@ export class LogisticsService {
         },
       });
 
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'DELIVERY_JOB_STATUS_UPDATED',
-        recordType: 'DeliveryJob',
-        recordId: id,
-        newValues: { status: dto.status, notes: dto.notes },
-      }, tx);
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'DELIVERY_JOB_STATUS_UPDATED',
+          recordType: 'DeliveryJob',
+          recordId: id,
+          newValues: { status: dto.status, notes: dto.notes },
+        },
+        tx,
+      );
 
       return updatedJob;
     });

@@ -64,6 +64,7 @@ export const AuditEventTable: React.FC<AuditEventTableProps> = ({
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-50/80 border-b border-slate-200">
               <tr>
+                <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Event ID</th>
                 <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Timestamp</th>
                 {showActor && <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Actor / Role</th>}
                 <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Event</th>
@@ -79,6 +80,9 @@ export const AuditEventTable: React.FC<AuditEventTableProps> = ({
                   className={`hover:bg-indigo-50/10 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                   onClick={() => onRowClick?.(e)}
                 >
+                  <td className="px-5 py-4 whitespace-nowrap text-xs font-mono text-slate-500">
+                    <span title={e.id}>{e.id.length > 8 ? `${e.id.slice(0, 8)}\u2026` : e.id}</span>
+                  </td>
                   <td className="px-5 py-4 whitespace-nowrap text-xs font-mono text-slate-500">
                     {new Date(e.createdAt).toLocaleString()}
                   </td>

@@ -25,19 +25,14 @@ describe('IncidentReportsPage Redesign', () => {
   });
 
   it('renders incidents mapped from real ticket data', () => {
-    vi.mocked(useSupportTickets).mockImplementation((params) => {
-      if (params?.priority === 'URGENT') {
-        return {
-          tickets: [{
-            id: 'TKT-999', summary: 'Database down', status: 'OPEN', priority: 'URGENT',
-            issueType: 'INFRA', createdAt: '2026-05-21T10:00:00Z', description: '',
-            branch: { id: 'b1', name: 'Main Branch' }, tenant: { id: 't1', name: 'System' },
-            reportedBy: { id: 'u1', email: 'admin@example.com' }, logs: []
-          } as unknown as SupportTicketDto],
-          total: 1, loading: false, error: null, refetch: vi.fn()
-        };
-      }
-      return { tickets: [], total: 0, loading: false, error: null, refetch: vi.fn() };
+    vi.mocked(useSupportTickets).mockReturnValue({
+      tickets: [{
+        id: 'TKT-999', summary: 'Database down', status: 'OPEN', priority: 'URGENT',
+        issueType: 'INFRA', createdAt: '2026-05-21T10:00:00Z', description: '',
+        branch: { id: 'b1', name: 'Main Branch' }, tenant: { id: 't1', name: 'System' },
+        reportedBy: { id: 'u1', email: 'admin@example.com' }, logs: []
+      } as unknown as SupportTicketDto],
+      total: 1, loading: false, error: null, refetch: vi.fn()
     });
     
     renderWithRouter(<IncidentReportsPage />);

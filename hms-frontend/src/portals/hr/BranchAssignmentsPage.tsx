@@ -8,8 +8,8 @@ import { useUser } from '../../hooks/use-user';
 
 export const BranchAssignmentsPage: React.FC = () => {
   const user = useUser();
-  const branchId = (user as any)?.primaryBranchId;
-  const { assignments, isLoading } = useHr(branchId);
+  const branchId = user?.branchId;
+  const { assignments, isLoading } = useHr(branchId ?? '');
 
   const mappedAssignments: Assignment[] = (assignments || []).map(a => ({
     id: a.id,

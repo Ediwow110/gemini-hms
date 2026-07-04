@@ -626,6 +626,14 @@ describe('Tenant Isolation — AdminService', () => {
           provide: MetricsService,
           useValue: { getMetrics: jest.fn().mockResolvedValue({}) },
         },
+        {
+          provide: 'REDIS_CLIENT',
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue('OK'),
+            del: jest.fn().mockResolvedValue(0),
+          },
+        },
       ],
     }).compile();
     service = module.get(AdminService);

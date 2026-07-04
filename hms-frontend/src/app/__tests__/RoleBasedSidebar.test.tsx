@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { RoleBasedSidebar } from '../RoleBasedSidebar';
@@ -285,6 +285,130 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     );
 
     expect(screen.getByText('Stock Receiving')).toBeInTheDocument();
+  });
+
+  it('auto-expanded parent collapses via aria-expanded when navigating to unrelated route', () => {
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/settings/security']}>
+        <RoleBasedSidebar pathname="/settings/security" />
+      </MemoryRouter>
+    );
+
+    // On child route — Organization Settings parent button is expanded
+    const orgBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+    expect(orgBtns[0]).toHaveAttribute('aria-expanded', 'true');
+
+    // Re-render with /admin pathname (same MemoryRouter, preserve state)
+    rerender(
+      <MemoryRouter initialEntries={['/settings/security']}>
+        <RoleBasedSidebar pathname="/admin" />
+      </MemoryRouter>
+    );
+
+    // Parent should no longer be expanded
+    const orgBtns2 = screen.getAllByRole('button', { name: /Organization Settings/ });
+    expect(orgBtns2[0]).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('clicking an auto-expanded parent does not corrupt manuallyExpanded', () => {
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+    });
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/settings/security']}>
+        <RoleBasedSidebar pathname="/settings/security" />
+      </MemoryRouter>
+    );
+
+    // Click auto-expanded parent — should be a no-op
+    const orgBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+    orgBtns[0].click();
+
+    // Navigate to unrelated route
+    rerender(
+      <MemoryRouter initialEntries={['/settings/security']}>
+        <RoleBasedSidebar pathname="/admin" />
+      </MemoryRouter>
+    );
+
+    // Parent should have collapsed (manuallyExpanded was NOT corrupted)
+    const orgBtns2 = screen.getAllByRole('button', { name: /Organization Settings/ });
+    expect(orgBtns2[0]).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('duplicate /settings entries (Organization Settings + Branch Settings) have independent expansion state', async () => {
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <RoleBasedSidebar pathname="/admin" />
+      </MemoryRouter>
+    );
+
+    // Both labels should be rendered
+    expect(screen.getByText('Organization Settings')).toBeInTheDocument();
+    expect(screen.getByText('Branch Settings')).toBeInTheDocument();
+
+    // Neither is expanded initially (not on /settings route)
+    let orgBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+    let branchBtns = screen.getAllByRole('button', { name: /Branch Settings/ });
+    expect(orgBtns[0]).toHaveAttribute('aria-expanded', 'false');
+    expect(branchBtns[0]).toHaveAttribute('aria-expanded', 'false');
+
+    // Manually expand Organization Settings
+    orgBtns[0].click();
+
+    // Re-query after state update
+    await waitFor(() => {
+      const updatedOrgBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+      expect(updatedOrgBtns[0]).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    // Branch Settings should remain collapsed (independent state)
+    branchBtns = screen.getAllByRole('button', { name: /Branch Settings/ });
+    expect(branchBtns[0]).toHaveAttribute('aria-expanded', 'false');
+
+    // Collapse Organization Settings again
+    orgBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+    orgBtns[0].click();
+
+    await waitFor(() => {
+      const collapsedOrgBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+      expect(collapsedOrgBtns[0]).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
+
+  it('duplicate /settings entries both auto-expand when on a shared child route', () => {
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/settings/branches']}>
+        <RoleBasedSidebar pathname="/settings/branches" />
+      </MemoryRouter>
+    );
+
+    // Both parents auto-expand because both have children at /settings/branches
+    const orgBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+    const branchBtns = screen.getAllByRole('button', { name: /Branch Settings/ });
+    expect(orgBtns[0]).toHaveAttribute('aria-expanded', 'true');
+    expect(branchBtns[0]).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('does not show the "Stock Receiving" inventory entry for Pharmacist (no INVENTORY_RECEIVE)', () => {

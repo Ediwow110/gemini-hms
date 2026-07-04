@@ -9,7 +9,7 @@ vi.mock('../../../hooks/use-user', () => ({
     id: 'user-1',
     email: 'it@hospital.com',
     role: 'IT Support',
-    primaryBranchId: 'branch-1',
+    branchId: 'branch-1',
   }),
 }));
 
