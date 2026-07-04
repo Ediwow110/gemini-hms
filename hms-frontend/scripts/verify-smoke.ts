@@ -72,7 +72,7 @@ function terminateProcessTree(pid: number) {
 async function isBackendUp(): Promise<boolean> {
   return new Promise((resolve) => {
     http
-      .get('http://localhost:3000/health', (res) => {
+      .get('http://localhost:3000/api/v1/health', (res) => {
         resolve(res.statusCode === 200);
       })
       .on('error', () => resolve(false));
@@ -91,7 +91,7 @@ async function main() {
       cwd: BACKEND_DIR,
       shell: true,
     });
-    await waitForServer('http://localhost:3000/health', 90000);
+    await waitForServer('http://localhost:3000/api/v1/health', 90000);
   }
 
   const viteBin = path.join(FRONTEND_DIR, 'node_modules', 'vite', 'bin', 'vite.js');
