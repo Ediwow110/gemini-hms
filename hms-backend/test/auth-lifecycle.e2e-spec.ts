@@ -21,6 +21,7 @@ describe('Auth Lifecycle & Lockout (e2e)', () => {
   beforeAll(async () => {
     process.env.JWT_SECRET = 'test-secret-for-lockout-e2e-that-is-long-enough';
     process.env.MASTER_MFA_KEY = 'master-key-for-lockout-e2e-long-enough';
+    process.env.DISABLE_AUTH_VERIFICATION = 'false';
 
     const moduleRef = await Test.createTestingModule({
       imports: [

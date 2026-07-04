@@ -1,4 +1,10 @@
-import { Injectable, BadRequestException, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { QueueEntry } from '@prisma/client';
@@ -34,21 +40,27 @@ export class QueueService {
   /**
    * Adds a patient to the queue.
    */
-  async joinQueue(tenantId: string, branchId: string, data: {
-    patientId: string;
-    serviceType: string;
-    category: string;
-  }) {
+  async joinQueue(
+    tenantId: string,
+    branchId: string,
+    data: {
+      patientId: string;
+      serviceType: string;
+      category?: string;
+    },
+    userId?: string,
+  ) {
     // Verify patient exists and belongs to the tenant
     const patient = await this.prisma.patient.findFirst({
-      where: {
-        id: data.patientId,
-        tenantId,
-      },
+      where: { id: data.patientId },
     });
 
     if (!patient) {
-      throw new NotFoundException('Patient not found in this tenant.');
+      throw new NotFoundException('Patient not found.');
+    }
+
+    if (patient.tenantId !== tenantId) {
+      throw new BadRequestException('Patient belongs to a different tenant.');
     }
 
     // Generate a queue number (simple sequential for the day)
@@ -80,14 +92,18 @@ export class QueueService {
       },
     });
 
-    await this.audit.log({
-      tenantId,
-      userId: patient.id,
-      eventKey: 'QUEUE_ENTRY_CREATED',
-      recordType: 'QueueEntry',
-      recordId: entry.id,
-      newValues: entry,
-    });
+    await this.audit.log(
+      {
+        tenantId,
+        userId: userId || patient.id,
+        eventKey: 'QUEUE_ENTRY_CREATED',
+        recordType: 'QueueEntry',
+        recordId: entry.id,
+        newValues: entry,
+      },
+      undefined,
+      branchId,
+    );
 
     return entry;
   }
@@ -111,7 +127,9 @@ export class QueueService {
       });
 
       if (!nextEntry) {
-        throw new BadRequestException(`No patients currently waiting for ${serviceType}.`);
+        throw new BadRequestException(
+          `No patients currently waiting for ${serviceType}.`,
+        );
       }
 
       return tx.queueEntry.update({

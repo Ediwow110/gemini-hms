@@ -61,9 +61,9 @@ describe('QueueService write isolation', () => {
   it('should reject completeEntry when queue entry does not exist', async () => {
     prisma.queueEntry.findFirst.mockResolvedValue(null);
 
-    await expect(
-      service.completeEntry(tenantId, entryId),
-    ).rejects.toThrow(NotFoundException);
+    await expect(service.completeEntry(tenantId, entryId)).rejects.toThrow(
+      NotFoundException,
+    );
 
     expect(prisma.queueEntry.update).not.toHaveBeenCalled();
   });
@@ -99,30 +99,34 @@ describe('QueueService write isolation', () => {
     });
 
     it('should reject join when patientId belongs to a different tenant', async () => {
-      prisma.patient.findFirst.mockResolvedValue(null);
+      prisma.patient.findFirst.mockResolvedValue({
+        id: 'patient-1',
+        tenantId: 'different-tenant',
+      } as any);
 
       await expect(
         service.joinQueue(tenantId, branchId, makeDto()),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(BadRequestException);
 
       expect(prisma.queueEntry.create).not.toHaveBeenCalled();
       expect(audit.log).not.toHaveBeenCalled();
     });
 
     it('should allow join when patientId belongs to the same tenant', async () => {
-      prisma.patient.findFirst.mockResolvedValue({ ...makePatient(), firstName: 'Walk-in', lastName: 'Patient' });
+      prisma.patient.findFirst.mockResolvedValue({
+        ...makePatient(),
+        tenantId,
+        firstName: 'Walk-in',
+        lastName: 'Patient',
+      } as any);
       prisma.queueEntry.count.mockResolvedValue(0);
       prisma.queueEntry.create.mockResolvedValue(makeCreatedEntry());
 
-      const result = await service.joinQueue(
-        tenantId,
-        branchId,
-        makeDto(),
-      );
+      const result = await service.joinQueue(tenantId, branchId, makeDto());
 
       expect(result.patientId).toBe('patient-1');
       expect(prisma.patient.findFirst).toHaveBeenCalledWith({
-        where: { id: 'patient-1', tenantId },
+        where: { id: 'patient-1' },
       });
     });
   });

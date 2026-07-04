@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
   BadRequestException,
+  ForbiddenException,
   Req,
 } from '@nestjs/common';
 import { QueueService } from './queue.service';
@@ -43,11 +44,20 @@ export class QueueController {
     },
   ) {
     const user = req.user as any;
-    return this.queueService.joinQueue(user.tenantId, body.branchId, {
-      patientId: body.patientId,
-      serviceType: body.serviceType,
-      category: body.category || 'ROUTINE',
-    });
+    const userBranchId = user.branchId || user.primaryBranchId;
+    if (body.branchId && userBranchId && body.branchId !== userBranchId) {
+      throw new ForbiddenException('Branch mismatch.');
+    }
+    return this.queueService.joinQueue(
+      user.tenantId,
+      body.branchId,
+      {
+        patientId: body.patientId,
+        serviceType: body.serviceType,
+        category: body.category || 'ROUTINE',
+      },
+      user.userId || user.id,
+    );
   }
 
   @Patch('call-next')
