@@ -1,6 +1,6 @@
-import { Injectable, LoggerService } from "@nestjs/common";
-import * as winston from "winston";
-import { RequestContextService } from "./request-context.service";
+import { Injectable, LoggerService } from '@nestjs/common';
+import * as winston from 'winston';
+import { RequestContextService } from './request-context.service';
 
 const { combine, timestamp, printf, json, colorize } = winston.format;
 
@@ -9,21 +9,34 @@ export class WinstonLoggerService implements LoggerService {
   private readonly logger: winston.Logger;
 
   constructor(private readonly context: RequestContextService) {
-    const isProd = process.env.NODE_ENV === "production";
+    const isProd = process.env.NODE_ENV === 'production';
 
     this.logger = winston.createLogger({
-      level: process.env.LOG_LEVEL || (isProd ? "info" : "debug"),
+      level: process.env.LOG_LEVEL || (isProd ? 'info' : 'debug'),
       format: isProd
         ? combine(timestamp(), json())
         : combine(
             colorize(),
-            timestamp({ format: "HH:mm:ss.SSS" }),
-            printf(({ level, message, timestamp, context: ctx, requestId, ...meta }) => {
-              const rid = requestId || this.context.getRequestId() || "-";
-              const ctxStr = ctx ? `[${ctx}]` : "";
-              const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : "";
-              return `${timestamp} ${rid} ${level} ${ctxStr} ${message}${metaStr}`;
-            }),
+            timestamp({ format: 'HH:mm:ss.SSS' }),
+            printf(
+              ({
+                level,
+                message,
+                timestamp,
+                context: ctx,
+                requestId,
+                ...meta
+              }) => {
+                const rid = String(
+                  (requestId || this.context.getRequestId() || '-') as any,
+                );
+                const ctxStr = ctx ? `[${String(ctx as any)}]` : '';
+                const metaStr = Object.keys(meta).length
+                  ? ` ${JSON.stringify(meta)}`
+                  : '';
+                return `${String(timestamp)} ${rid} ${String(level)} ${ctxStr} ${String(message)}${metaStr}`;
+              },
+            ),
           ),
       transports: [new winston.transports.Console()],
     });
