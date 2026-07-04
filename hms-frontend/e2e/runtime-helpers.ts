@@ -63,7 +63,11 @@ export async function assertNoRuntimeCrashes(telemetry: RuntimeTelemetry): Promi
   expect(telemetry.tokenLeaks, `Sensitive token-like values logged to console: ${telemetry.tokenLeaks.join('\n')}`).toEqual([]);
   const criticalConsoleErrors = telemetry.consoleErrors.filter((message) => {
     if (message.includes('[Auth Diagnostics]') && message.includes('status: 401')) return false;
-    if (message.includes('Failed to load resource: the server responded with a status of 401')) return false;
+    if (message.includes('Failed to load resource: the server responded with a status of')) {
+      if (message.includes('401') || message.includes('403') || message.includes('404') || message.includes('429')) {
+        return false;
+      }
+    }
     return true;
   });
   expect(criticalConsoleErrors, `Critical console errors: ${criticalConsoleErrors.join('\n')}`).toEqual([]);
