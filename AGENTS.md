@@ -515,3 +515,12 @@ None. All known local production-readiness issues have been addressed.
 - **Startup reliability/hardening, approvals hardening, retention index prep, topbar logout safety, patient-profile honesty, admin feature completeness (role/permission CRUD, MFA reset, force logout, reset password), and seed hardening are all complete.**
 - **The tracked tree is clean.**
 - **The next blocking phase for real deployment confidence is staging/environment provisioning and verification.**
+
+### This Session (CI Fixes + Render Deployment — Commits db14d0f..0b2d039)
+- **`db14d0f`**: Changed synchronous queries to `await screen.findByTestId` in `UserAccessTable.test.tsx` to fix flaky frontend tests.
+- **`00da6e3`**: Added missing `20260626021912_sync_schema` database migration to fix DB seed errors on CI.
+- **`2abd472`**: Set Throttler/Rate-Limit limits to 10000 in `app.module.ts` when `NODE_ENV === 'test'` to bypass Playwright console request blocks.
+- **`0b2d039`**: Added `COPY prisma.config.js ./` to the production stage of `Dockerfile` so that container migrations find the Prisma configuration and database URL.
+- **Health Check Alignment**: Updated `ci.yml`, `docker-compose.prod.yml`, `docker-compose.staging.yml`, `Dockerfile`, and verification scripts to query `http://localhost:3000/api/v1/health` (aligning with the NestJS global prefix).
+- **Deployment Verification**: Monitored the Render build lifecycle, resolved environment configuration issues, and verified that the NestJS backend and Neon PostgreSQL database are fully operational (health status `UP`).
+
