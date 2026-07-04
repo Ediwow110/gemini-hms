@@ -217,7 +217,7 @@ describe('UserAccessTable privileged-action tests', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 
     await waitFor(() => expect(adminService.resetUserMfa).toHaveBeenCalledWith('U001', 'Lost device replacement'));
-    const outcome = screen.getByTestId('useraccess-outcome');
+    const outcome = await screen.findByTestId('useraccess-outcome');
     expect(outcome.getAttribute('data-outcome')).toBe('wired_success');
     expect(outcome.textContent || '').toMatch(/MFA reset successful/i);
     expect(adminService.activateUser).not.toHaveBeenCalled();
@@ -307,7 +307,7 @@ describe('UserAccessTable privileged-action tests', () => {
     resolveMutation();
 
     await waitFor(() => expect(onUsersChanged).toHaveBeenCalledTimes(1));
-    const outcome = screen.getByTestId('useraccess-outcome');
+    const outcome = await screen.findByTestId('useraccess-outcome');
     expect(outcome.getAttribute('data-outcome')).toBe('wired_success');
     expect(outcome.textContent || '').toMatch(/live admin lifecycle API/i);
   });
