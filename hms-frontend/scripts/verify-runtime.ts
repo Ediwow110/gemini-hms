@@ -83,7 +83,7 @@ function terminateProcessTree(pid: number) {
 
 async function isBackendUp(): Promise<boolean> {
   return new Promise((resolve) => {
-    http.get('http://localhost:3000/health', (res) => {
+    http.get('http://localhost:3000/api/v1/health', (res) => {
       resolve(res.statusCode === 200);
     }).on('error', () => {
       resolve(false);
@@ -118,7 +118,7 @@ async function main() {
 
     console.log('Waiting for backend server to be ready...');
     try {
-      await waitForServer('http://localhost:3000/health', 90000);
+      await waitForServer('http://localhost:3000/api/v1/health', 90000);
       console.log('Backend server is ready.');
     } catch (e) {
       console.error('Backend server failed to start within timeout.');

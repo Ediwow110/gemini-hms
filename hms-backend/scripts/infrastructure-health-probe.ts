@@ -64,7 +64,7 @@ async function main() {
     }> = [
       {
         name: 'Public Health Endpoint',
-        url: 'http://localhost:3000/health',
+        url: 'http://localhost:3000/api/v1/health',
         headers: { 'x-tenant-id': tenantId },
       },
     ];
