@@ -232,17 +232,25 @@ export class ProcurementService {
   }
 
   async createPurchaseOrder(user: RequestUser, dto: CreatePurchaseOrderDto) {
-    if (!user.roles?.includes('Super Admin') && user.branchId !== dto.branchId) {
+    if (
+      !user.roles?.includes('Super Admin') &&
+      user.branchId !== dto.branchId
+    ) {
       throw new ForbiddenException(
         'Cannot create purchase order for a different branch',
       );
     }
 
     const pr = await this.prisma.purchaseRequest.findFirst({
-      where: { id: dto.purchaseRequestId, tenantId: user.tenantId, branchId: dto.branchId },
+      where: {
+        id: dto.purchaseRequestId,
+        tenantId: user.tenantId,
+        branchId: dto.branchId,
+      },
     });
 
-    if (!pr) throw new NotFoundException('Purchase request not found in this branch');
+    if (!pr)
+      throw new NotFoundException('Purchase request not found in this branch');
 
     const supplier = await this.prisma.supplier.findFirst({
       where: { id: dto.supplierId, tenantId: user.tenantId },
@@ -316,8 +324,12 @@ export class ProcurementService {
       );
     }
 
-    if (po.status === 'RECEIVED') throw new BadRequestException('Purchase order is already received');
-    if (po.status !== 'SENT') throw new BadRequestException('Only SENT purchase orders can be received');
+    if (po.status === 'RECEIVED')
+      throw new BadRequestException('Purchase order is already received');
+    if (po.status !== 'SENT')
+      throw new BadRequestException(
+        'Only SENT purchase orders can be received',
+      );
 
     return await this.prisma.$transaction(async (tx) => {
       const claimedPo = await tx.purchaseOrder.updateMany({
@@ -325,7 +337,8 @@ export class ProcurementService {
         data: { status: 'RECEIVED' },
       });
 
-      if (claimedPo.count === 0) throw new BadRequestException('Purchase order is already received');
+      if (claimedPo.count === 0)
+        throw new BadRequestException('Purchase order is already received');
 
       const receiving = await tx.receivingRecord.create({
         data: {
@@ -468,8 +481,10 @@ export class ProcurementService {
         ).length;
 
         const avgQuality =
-          records.reduce((acc, r) => acc + (Number((r as any).qualityScore) || 0), 0) /
-          records.length;
+          records.reduce(
+            (acc, r) => acc + (Number((r as any).qualityScore) || 0),
+            0,
+          ) / records.length;
 
         const onTimeRate = (onTimeCount / records.length) * 100;
         const riskScore = onTimeRate < 70 || avgQuality < 0.7 ? 'HIGH' : 'LOW';

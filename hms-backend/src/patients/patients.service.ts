@@ -131,12 +131,7 @@ export class PatientsService {
     const dob = dto.dob ? new Date(dto.dob) : existing.dob;
     const normalizedNameDobKey = `${firstName.trim().toLowerCase()}-${lastName.trim().toLowerCase()}-${dob.toISOString().split('T')[0]}`;
 
-    return this.prisma.$transaction(async (tx) => {
-      // Cache invalidation happens AFTER transaction commit usually, 
-      // but for simplicity we'll just clear the key.
-      const cacheKey = `patient:${tenantId}:${id}`;
-      await this.redis.del(cacheKey);
-
+    const updated = await this.prisma.$transaction(async (tx) => {
       try {
         const updateResult = await tx.patient.updateMany({
           where: { id, tenantId, archivedAt: null },
@@ -159,11 +154,11 @@ export class PatientsService {
         throw e;
       }
 
-      const updated = await tx.patient.findFirst({
+      const updatedRow = await tx.patient.findFirst({
         where: { id, tenantId, archivedAt: null },
       });
 
-      if (!updated) {
+      if (!updatedRow) {
         throw new NotFoundException('Patient not found');
       }
 
@@ -175,12 +170,17 @@ export class PatientsService {
           recordType: 'Patient',
           recordId: id,
           oldValues: existing,
-          newValues: updated,
+          newValues: updatedRow,
         },
         tx,
       );
 
-      return updated;
+      return updatedRow;
     });
+
+    const cacheKey = `patient:${tenantId}:${id}`;
+    await this.redis.del(cacheKey);
+
+    return updated;
   }
 }

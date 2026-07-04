@@ -178,6 +178,7 @@ export const RadiologyCanvas = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
+                <th className="px-5 py-3 font-semibold text-slate-500 uppercase">ID</th>
                 <th className="px-5 py-3 font-semibold text-slate-500 uppercase">Order Ref</th>
                 <th className="px-5 py-3 font-semibold text-slate-500 uppercase">Patient Name</th>
                 <th className="px-5 py-3 font-semibold text-slate-500 uppercase">Specific Procedure</th>
@@ -189,7 +190,7 @@ export const RadiologyCanvas = () => {
             <tbody className="divide-y divide-slate-100">
               {orders.length === 0 && !fetchError && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-slate-400 text-xs font-medium">
+                  <td colSpan={7} className="px-5 py-8 text-center text-slate-400 text-xs font-medium">
                     No IMAGING orders in worklist for this branch. Orders appear here when clinicians create IMAGING clinical orders.
                   </td>
                 </tr>
@@ -206,6 +207,9 @@ export const RadiologyCanvas = () => {
                         : "hover:bg-slate-50"
                     }`}
                   >
+                    <td className="px-5 py-3.5">
+                      <span className="text-xs font-mono text-slate-500" title={o.id}>{o.id.length > 8 ? `${o.id.slice(0, 8)}\u2026` : o.id}</span>
+                    </td>
                     <td className="px-5 py-3.5 font-bold text-indigo-600 font-mono">{o.orderNumber}</td>
                     <td className="px-5 py-3.5 font-semibold text-slate-800">{o.patientName}</td>
                     <td className="px-5 py-3.5 text-slate-700 font-semibold">{o.procedure}</td>

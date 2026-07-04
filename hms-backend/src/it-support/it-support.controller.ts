@@ -25,27 +25,21 @@ export class ItSupportController {
   @Get('sessions')
   @RequirePermissions('it.system.view')
   @RequireBranchContext()
-  async getSessions(
-    @GetUser('tenantId') tenantId: string,
-  ) {
+  async getSessions(@GetUser('tenantId') tenantId: string) {
     return this.itSupportService.getActiveSessions(tenantId);
   }
 
   @Get('integrations')
   @RequirePermissions('it.system.view')
   @RequireBranchContext()
-  async getIntegrations(
-    @GetUser('tenantId') tenantId: string,
-  ) {
+  async getIntegrations(@GetUser('tenantId') tenantId: string) {
     return this.itSupportService.getIntegrations(tenantId);
   }
 
   @Get('backups')
   @RequirePermissions('it.system.view')
   @RequireBranchContext()
-  async getBackups(
-    @GetUser('tenantId') tenantId: string,
-  ) {
+  async getBackups(@GetUser('tenantId') tenantId: string) {
     return this.itSupportService.getBackups(tenantId);
   }
 

@@ -8,7 +8,7 @@ import { apiClient } from '../../lib/api';
 
 export const LicensesCertificationsPage: React.FC = () => {
   const user = useUser();
-  const { fetchLicenses } = useHr((user as any)?.primaryBranchId);
+  const { fetchLicenses } = useHr(user?.branchId ?? '');
   const [licenses, setLicenses] = useState<License[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -19,7 +19,7 @@ export const LicensesCertificationsPage: React.FC = () => {
     if (!searchQuery) return;
     try {
       const res = await apiClient.get(`/hr/employees?q=${searchQuery}`);
-      setEmployees(res.data.map((e: any) => ({ id: e.id, name: `${e.firstName} ${e.lastName}` })));
+      setEmployees(res.data.map((e: { id: string; firstName: string; lastName: string }) => ({ id: e.id, name: `${e.firstName} ${e.lastName}` })));
     } catch (e) {
       console.error("Employee search failed", e);
     }

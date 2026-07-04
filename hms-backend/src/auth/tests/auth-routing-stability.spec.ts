@@ -74,6 +74,12 @@ describe('Auth Routing Stability', () => {
           provide: AuditService,
           useValue: { log: jest.fn().mockResolvedValue(undefined) },
         },
+        {
+          provide: 'BullQueue_notifications',
+          useValue: {
+            add: jest.fn().mockResolvedValue({ id: 'job-id' }),
+          },
+        },
       ],
     }).compile();
 

@@ -60,7 +60,7 @@ export const AppShell = () => {
             <Stethoscope className="h-5 w-5 text-white" />
           </div>
           <div>
-            <span className="font-bold text-lg text-slate-900 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>HMS Core</span>
+            <span className="font-bold text-lg text-slate-900 tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>HMS Core</span>
             <p className="text-caption -mt-0.5">Healthcare Platform</p>
           </div>
         </div>

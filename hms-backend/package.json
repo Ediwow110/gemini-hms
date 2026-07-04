@@ -28,6 +28,7 @@
     "verify:public-routes": "node ../scripts/verify-public-routes.js"
   },
   "dependencies": {
+    "@nestjs/bull": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -39,10 +40,14 @@
     "@nestjs/throttler": "^6.5.0",
     "@prisma/adapter-pg": "7.8.0",
     "@prisma/client": "7.8.0",
+    "@sentry/node": "^10.63.0",
+    "@sentry/profiling-node": "^10.63.0",
     "bcrypt": "^6.0.0",
+    "bull": "^4.16.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
+    "dd-trace": "^5.110.0",
     "dotenv": "^17.4.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

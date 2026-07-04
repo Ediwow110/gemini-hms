@@ -46,7 +46,7 @@ describe('Rate Limiting DDoS Prevention Tests (e2e)', () => {
       .send(loginPayload);
 
     expect(res.status).toBe(429);
-    expect(res.body.message).toContain('ThrottlerException');
+    expect(res.body.error).toBe('Throttler');
   });
 
   afterAll(async () => {

@@ -9,12 +9,14 @@ import { JwtStrategy } from './jwt.strategy';
 import { SessionService } from './session.service';
 import { MfaService } from './mfa.service';
 import { CsrfGuard } from './guards/csrf.guard';
+import { BullQueueModule } from '../common/queue/bull-queue.module';
 
 @Module({
   imports: [
     PassportModule,
     ConfigModule,
     AuditModule,
+    BullQueueModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {

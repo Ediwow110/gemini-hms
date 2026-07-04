@@ -54,7 +54,7 @@ export const useProcurement = (branchId: string) => {
   const { data: vendors, isLoading: vendorsLoading } = useQuery({
     queryKey: ['procurement-vendors'],
     queryFn: async () => {
-      const res = await apiClient.get('/procurement/suppliers');
+      const res = await apiClient.get('/v1/procurement/suppliers');
       return res.data;
     },
   });
@@ -62,7 +62,7 @@ export const useProcurement = (branchId: string) => {
   const { data: performance, isLoading: perfLoading } = useQuery({
     queryKey: ['procurement-performance'],
     queryFn: async () => {
-      const res = await apiClient.get('/procurement/suppliers/performance');
+      const res = await apiClient.get('/v1/procurement/suppliers/performance');
       return res.data as VendorPerformance[];
     },
   });
@@ -70,7 +70,7 @@ export const useProcurement = (branchId: string) => {
   const { data: rfqs, isLoading: rfqsLoading } = useQuery({
     queryKey: ['procurement-rfqs'],
     queryFn: async () => {
-      const res = await apiClient.get('/procurement/rfqs');
+      const res = await apiClient.get('/v1/procurement/rfqs');
       return res.data as RFQItem[];
     },
   });
@@ -78,7 +78,7 @@ export const useProcurement = (branchId: string) => {
   const { data: receiving, isLoading: receivingLoading } = useQuery({
     queryKey: ['procurement-receiving', branchId],
     queryFn: async () => {
-      const res = await apiClient.get(`/procurement/receiving?branchId=${branchId}`);
+      const res = await apiClient.get(`/v1/procurement/receiving?branchId=${branchId}`);
       return res.data as ReceivingItem[];
     },
     enabled: !!branchId,
@@ -87,14 +87,14 @@ export const useProcurement = (branchId: string) => {
   const { data: requests, isLoading: requestsLoading } = useQuery({
     queryKey: ['procurement-requests', branchId],
     queryFn: async () => {
-      const res = await apiClient.get(`/procurement/purchase-requests?branchId=${branchId}`);
+      const res = await apiClient.get(`/v1/procurement/purchase-requests?branchId=${branchId}`);
       return res.data as PurchaseRequest[];
     },
     enabled: !!branchId,
   });
 
   const fetchQuotes = async (rfqId: string) => {
-    const res = await apiClient.get(`/procurement/rfqs/${rfqId}/quotes`);
+    const res = await apiClient.get(`/v1/procurement/rfqs/${rfqId}/quotes`);
     return res.data as Quote[];
   };
 

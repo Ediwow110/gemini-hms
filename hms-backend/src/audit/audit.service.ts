@@ -107,7 +107,11 @@ export class AuditService {
     if (process.env.AUDIT_CHAIN_SECRET) {
       return process.env.AUDIT_CHAIN_SECRET;
     }
-    if (process.env.JWT_SECRET) {
+    const isDevOrTest =
+      process.env.NODE_ENV === 'development' ||
+      process.env.NODE_ENV === 'test' ||
+      process.env.JEST_WORKER_ID !== undefined;
+    if (isDevOrTest && process.env.JWT_SECRET) {
       Logger.warn(
         'AUDIT_CHAIN_SECRET not set — falling back to JWT_SECRET for audit HMAC. Set AUDIT_CHAIN_SECRET for proper secret isolation.',
         'AuditService',
@@ -115,7 +119,7 @@ export class AuditService {
       return process.env.JWT_SECRET;
     }
     throw new Error(
-      'AUDIT_CHAIN_SECRET or JWT_SECRET must be defined for audit signing',
+      'AUDIT_CHAIN_SECRET must be defined in production/staging environments for audit signing.',
     );
   }
 
@@ -166,17 +170,42 @@ export class AuditService {
       );
     }
 
-    // Fetch the latest head in the tenant chain
+    const isTransient = data.eventKey.startsWith('READ_ACCESS_');
+    const createdAt = new Date();
+
+    if (isTransient) {
+      return db.auditLog.create({
+        data: {
+          tenantId: data.tenantId,
+          branchId: branchId,
+          userId: userId,
+          eventKey: data.eventKey,
+          recordType: data.recordType,
+          recordId: data.recordId,
+          oldValues: data.oldValues,
+          newValues: data.newValues,
+          ipAddress: ipAddress || null,
+          userAgent: userAgent || null,
+          activeRole: activeRole || null,
+          sessionId: sessionId || null,
+          createdAt,
+          previousHash: null,
+          hash: null,
+          signature: null,
+        },
+      });
+    }
+
+    // Fetch the latest head in the tenant chain (ignoring transient logs)
     const lastLog =
       typeof db.auditLog?.findFirst === 'function'
         ? await db.auditLog.findFirst({
-            where: { tenantId: data.tenantId },
+            where: { tenantId: data.tenantId, hash: { not: null } },
             orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           })
         : null;
 
     const previousHash = lastLog ? lastLog.hash : null;
-    const createdAt = new Date();
 
     const hash = this.computeHash({
       tenantId: data.tenantId,
@@ -229,7 +258,7 @@ export class AuditService {
 
     while (hasMore) {
       const logs: any[] = await this.prisma.auditLog.findMany({
-        where: { tenantId },
+        where: { tenantId, hash: { not: null } },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         take: batchSize,
         skip: cursorId ? 1 : 0,
@@ -595,17 +624,42 @@ export class AuditService {
 
     const userId = await this.resolveSystemActor(data.tenantId, tx);
 
-    // Fetch the latest head in the tenant chain
+    const isTransient = data.eventKey.startsWith('READ_ACCESS_');
+    const createdAt = new Date();
+
+    if (isTransient) {
+      return db.auditLog.create({
+        data: {
+          tenantId: data.tenantId,
+          branchId: branchId,
+          userId: userId,
+          eventKey: data.eventKey,
+          recordType: data.recordType,
+          recordId: data.recordId,
+          oldValues: data.oldValues,
+          newValues: data.newValues,
+          ipAddress: ipAddress || null,
+          userAgent: userAgent || null,
+          activeRole: activeRole || null,
+          sessionId: sessionId || null,
+          createdAt,
+          previousHash: null,
+          hash: null,
+          signature: null,
+        },
+      });
+    }
+
+    // Fetch the latest head in the tenant chain (ignoring transient logs)
     const lastLog =
       typeof (db as any).auditLog?.findFirst === 'function'
         ? await (db as any).auditLog.findFirst({
-            where: { tenantId: data.tenantId },
+            where: { tenantId: data.tenantId, hash: { not: null } },
             orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           })
         : null;
 
     const previousHash = lastLog ? lastLog.hash : null;
-    const createdAt = new Date();
 
     const hash = this.computeHash({
       tenantId: data.tenantId,

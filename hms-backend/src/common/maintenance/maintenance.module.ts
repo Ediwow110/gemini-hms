@@ -1,7 +1,7 @@
-import { Module } from "@nestjs/common";
-import { RetentionService } from "./retention.service";
-import { PrismaModule } from "../../prisma/prisma.module";
-import { ComplianceModule } from "../../compliance/compliance.module";
+import { Module } from '@nestjs/common';
+import { RetentionService } from './retention.service';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { ComplianceModule } from '../../compliance/compliance.module';
 
 /**
  * Module bundling scheduled maintenance tasks.

@@ -1,6 +1,6 @@
-import { Injectable, OnModuleDestroy } from "@nestjs/common";
-import { AsyncLocalStorage } from "async_hooks";
-import * as crypto from "crypto";
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { AsyncLocalStorage } from 'async_hooks';
+import * as crypto from 'crypto';
 
 export interface RequestContextData {
   requestId: string;
@@ -21,10 +21,10 @@ export class RequestContextService implements OnModuleDestroy {
   }
 
   getRequestId(): string {
-    return this.als.getStore()?.requestId ?? "no-request-id";
+    return this.als.getStore()?.requestId ?? 'no-request-id';
   }
 
-  run(data: Omit<RequestContextData, "startTime">, cb: () => void): void {
+  run(data: Omit<RequestContextData, 'startTime'>, cb: () => void): void {
     this.als.run({ ...data, startTime: Date.now() }, cb);
   }
 

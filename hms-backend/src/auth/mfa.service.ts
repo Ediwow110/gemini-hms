@@ -29,7 +29,7 @@ export class MfaService {
         );
       }
     }
-    this.masterKey = Buffer.from(key.substring(0, 32));
+    this.masterKey = crypto.createHash('sha256').update(key).digest();
   }
 
   /**

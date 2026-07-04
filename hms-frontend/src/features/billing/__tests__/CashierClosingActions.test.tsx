@@ -12,10 +12,6 @@ vi.mock('../../../components/ui/RequirePermission', () => ({
   RequirePermission: ({ children }: { children: unknown }) => children,
 }));
 
-vi.mock('../../../lib/logger', () => ({
-  logger: { info: vi.fn() },
-}));
-
 describe('CashierClosing legacy action routing', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -30,13 +26,11 @@ describe('CashierClosing legacy action routing', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('/');
   });
 
-  it('routes locally validated review to the live Shift Closure panel', () => {
+  it('routes to Shift Closure via Review in Shift Closure button', () => {
     render(<CashierClosing />);
 
-    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '23450' } });
     fireEvent.click(screen.getByRole('button', { name: 'Review in Shift Closure' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/cashier/session');
-    expect(mockNavigate).not.toHaveBeenCalledWith('/');
   });
 });

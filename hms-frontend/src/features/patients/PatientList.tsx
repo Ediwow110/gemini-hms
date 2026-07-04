@@ -103,6 +103,7 @@ export const PatientList = () => {
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
+                  <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">ID</th>
                   <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Patient</th>
                   <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Number</th>
                   <th className="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Status</th>
@@ -118,6 +119,9 @@ export const PatientList = () => {
                       onClick={() => navigate(`/patients/${p.id}`)}
                       className="hover:bg-indigo-50/30 transition-colors duration-150 cursor-pointer group"
                     >
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-mono text-slate-500" title={p.id}>{p.id.length > 8 ? `${p.id.slice(0, 8)}\u2026` : p.id}</span>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 group-hover:from-indigo-100 group-hover:to-violet-100 group-hover:text-indigo-700 transition-all duration-200">

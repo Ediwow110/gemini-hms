@@ -234,7 +234,7 @@ export const UsersPage: React.FC = () => {
           <p className="text-sm font-bold text-slate-700">{error}</p>
           <button
             onClick={fetchUsers}
-            className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl"
+            className="btn btn-primary font-bold text-xs py-2 px-4"
           >
             Retry
           </button>
@@ -255,7 +255,7 @@ export const UsersPage: React.FC = () => {
         />
         <button
           onClick={openCreateModal}
-          className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 w-fit"
+          className="btn btn-primary font-bold text-xs py-2 px-4 flex items-center gap-1.5 w-fit"
         >
           <UserPlus className="h-4 w-4" /> Register New Account
         </button>
@@ -286,7 +286,7 @@ export const UsersPage: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'Active' | 'Suspended' | 'Locked')}
-            className="appearance-none btn border border-slate-200 bg-white text-slate-655 hover:bg-slate-50 pl-9 pr-8 py-2.5 text-xs font-bold rounded-xl cursor-pointer focus:outline-none"
+            className="appearance-none btn border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 pl-9 pr-8 py-2.5 text-xs font-bold rounded-xl cursor-pointer focus:outline-none"
           >
             <option value="ALL">All Statuses</option>
             <option value="Active">Active</option>
@@ -304,7 +304,7 @@ export const UsersPage: React.FC = () => {
           icon={<Users className="h-6 w-6" />}
         />
       ) : (
-        <UserAccessTable users={filteredUsers} onUsersChanged={fetchUsers} />
+        <UserAccessTable users={filteredUsers} onUsersChanged={fetchUsers} availableRoles={roles} />
       )}
 
       {showCreateModal && (
@@ -416,14 +416,14 @@ export const UsersPage: React.FC = () => {
                 type="button"
                 onClick={closeCreateModal}
                 disabled={createSubmitting}
-                className="w-full btn border border-slate-200 hover:bg-slate-50 font-bold py-2 rounded-xl text-slate-700 transition-colors disabled:opacity-60"
+                className="w-full btn btn-secondary font-bold py-2"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={createSubmitting}
-                className="w-full btn bg-indigo-600 hover:bg-indigo-700 font-bold py-2 rounded-xl text-white transition-colors disabled:opacity-60"
+                className="w-full btn btn-primary font-bold py-2"
               >
                 {createSubmitting ? 'Creating…' : 'Create Account'}
               </button>

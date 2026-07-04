@@ -50,6 +50,35 @@ vi.mock('../../hooks/use-analytics', () => ({
   useAnalytics: () => ({ isLoading: false }),
 }));
 
+vi.mock('../../services/dashboard.service', () => ({
+  dashboardService: {
+    getAdminSummary: () => Promise.resolve({ activePatients: 150, todaysAppointments: 42, pendingLabs: 7, lowStock: 3, revenue: 250000, securityAlerts: 1 }),
+    getAdminTrends: () => Promise.resolve([]),
+    getAdminAlerts: () => Promise.resolve({ lowStock: [], criticalLabs: [] }),
+    getAdminTopLists: () => Promise.resolve({ busiestDepts: [], unpaidBills: [] }),
+    buildQueryParams: () => ({}),
+  },
+}));
+
+vi.mock('../../services/admin.service', () => ({
+  adminService: {
+    listTenants: () => Promise.resolve([{ id: 't1', name: 'Central Hospital', status: 'ACTIVE', userCount: 21, branchCount: 2 }]),
+    listUsers: () => Promise.resolve({ data: [], total: 0, page: 1, limit: 10 }),
+    getUser: () => Promise.resolve(null),
+    listRoles: () => Promise.resolve([]),
+    listPermissions: () => Promise.resolve([]),
+    listBranches: () => Promise.resolve({ data: [], total: 0, page: 1, limit: 10 }),
+    getBranch: () => Promise.resolve(null),
+    createUser: () => Promise.resolve(null),
+    activateUser: () => Promise.resolve(null),
+    deactivateUser: () => Promise.resolve(null),
+    forceLogout: () => Promise.resolve(),
+    resetPassword: () => Promise.resolve({ tempPassword: '' }),
+    assignUserRole: () => Promise.resolve(null),
+    revokeUserRole: () => Promise.resolve(null),
+  },
+}));
+
 vi.mock('../../hooks/use-hr', () => ({
   useHr: () => ({
     employees: [{ id: 'e1', firstName: 'Alice', lastName: 'Anderson', email: 'alice@test.com', role: 'Nurse', department: 'ER', status: 'ACTIVE', rawStatus: 'ACTIVE', joinedAt: '2025-01-01' }],
@@ -79,32 +108,21 @@ const renderPage = (ui: React.ReactElement) => render(
 
 describe('dashboard intelligence pages', () => {
   beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.runAllTimers(); vi.useRealTimers(); });
+  afterEach(() => { try { vi.runAllTimers(); } catch { /* ok if not mocked */ } vi.useRealTimers(); });
 
-  it('SuperAdminDashboard is an honest "not yet implemented" stub (no mock analytics, link to /admin/executive)', () => {
+  it('SuperAdminDashboard renders live platform command center with KPIs and tenant overview', async () => {
+    vi.useRealTimers();
     renderPage(<SuperAdminDashboard />);
     expect(screen.getByText('Platform Command Center')).toBeInTheDocument();
-    expect(screen.getByText(/Not yet implemented in this release/i)).toBeInTheDocument();
-    // No mock analytics exposed
-    expect(screen.queryByText('Total Tenants')).not.toBeInTheDocument();
-    expect(screen.queryByText('Risk and operations insights')).not.toBeInTheDocument();
-    expect(screen.queryByText('Tenant health drilldown table')).not.toBeInTheDocument();
-    // No mock footer
-    expect(screen.queryByText(/Mock analytics \(sandbox\)/i)).not.toBeInTheDocument();
-    // Honest pointer to the live page
-    expect(screen.getByText(/Open Live Admin Executive/i)).toBeInTheDocument();
+    expect(await screen.findByText('Tenant Overview')).toBeInTheDocument();
+    expect(screen.queryByText(/Not yet implemented in this release/i)).not.toBeInTheDocument();
   });
 
-  it('ReportsAnalyticsPage is an honest "not yet implemented" stub (no fake export button, no fake data)', () => {
+  it('ReportsAnalyticsPage renders live system reports and analytics', async () => {
+    vi.useRealTimers();
     renderPage(<ReportsAnalyticsPage />);
     expect(screen.getByText('System Reports & Performance Analytics')).toBeInTheDocument();
-    expect(screen.getByText(/Not yet implemented in this release/i)).toBeInTheDocument();
-    // No fake export button (the old disabled "Export operations summary WIP" is gone)
-    expect(screen.queryByRole('button', { name: /Export operations summary WIP/i })).not.toBeInTheDocument();
-    // No fake "Generating simulated report bundle" toast
-    expect(screen.queryByText(/Generating simulated report bundle/i)).not.toBeInTheDocument();
-    // No mock-data footer
-    expect(screen.queryByText(/Mock analytics \(sandbox\)/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Not yet implemented in this release/i)).not.toBeInTheDocument();
   });
 
   it('HRDashboard renders workforce analytics components', () => {

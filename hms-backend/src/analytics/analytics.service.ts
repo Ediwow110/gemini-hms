@@ -99,7 +99,7 @@ export class AnalyticsService {
     return {
       totalAuditEvents,
       securityAlerts: breachAlerts,
-      complianceScore: 100 - (breachAlerts * 5), // Simple synthetic score
+      complianceScore: 100 - breachAlerts * 5, // Simple synthetic score
     };
   }
 

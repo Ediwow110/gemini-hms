@@ -160,7 +160,10 @@ export class NotificationProviderFactory {
     }
 
     if (providerStr === 'mock') {
-      if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
+      if (
+        process.env.NODE_ENV !== 'development' &&
+        process.env.NODE_ENV !== 'test'
+      ) {
         throw new InternalServerErrorException(
           `EMAIL_PROVIDER=mock is not allowed in ${process.env.NODE_ENV || 'current'} environment. ` +
             'Configure a real provider (mailrelay, ses) before proceeding to staging or production.',
@@ -182,7 +185,10 @@ export class NotificationProviderFactory {
     }
 
     if (providerStr === 'mock') {
-      if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
+      if (
+        process.env.NODE_ENV !== 'development' &&
+        process.env.NODE_ENV !== 'test'
+      ) {
         throw new InternalServerErrorException(
           `SMS_PROVIDER=mock is not allowed in ${process.env.NODE_ENV || 'current'} environment. ` +
             'Configure a real provider (semaphore) before proceeding to staging or production.',

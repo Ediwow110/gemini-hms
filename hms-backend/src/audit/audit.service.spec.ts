@@ -692,7 +692,7 @@ describe('AuditService', () => {
       await service.verifyChain(mockTenantId);
       expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { tenantId: mockTenantId },
+          where: { tenantId: mockTenantId, hash: { not: null } },
         }),
       );
     });

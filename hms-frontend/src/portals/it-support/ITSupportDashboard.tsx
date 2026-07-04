@@ -22,7 +22,7 @@ import { RequirePermission } from '../../components/ui/RequirePermission';
 
 export const ITSupportDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { tickets, loading: ticketsLoading, error: ticketsError, refetch } = useSupportTickets({ pageSize: 3 });
+  const { tickets, loading: ticketsLoading, error: ticketsError, refetch } = useSupportTickets();
   const { stats, loading: statsLoading, statsError } = useTicketStats();
   const { it: itMetrics, isLoading: analyticsLoading } = useAnalytics();
   const [renderCharts, setRenderCharts] = React.useState(false);

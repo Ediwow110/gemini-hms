@@ -36,7 +36,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         });
       })
       .filter((item, index, self) =>
-        self.findIndex((t) => t.to === item.to) === index
+        self.findIndex((t) => `${t.label}::${t.to}` === `${item.label}::${item.to}`) === index
       );
   }, [canAccess]);
 
