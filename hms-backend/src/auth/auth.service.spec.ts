@@ -54,6 +54,9 @@ describe('AuthService', () => {
             session: {
               update: jest.fn().mockResolvedValue(undefined),
             },
+            notification: {
+              create: jest.fn().mockResolvedValue({}),
+            },
             $transaction: jest.fn(async (cb) => cb({})),
           },
         },
@@ -87,6 +90,12 @@ describe('AuthService', () => {
           provide: AuditService,
           useValue: {
             log: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: 'BullQueue_notifications',
+          useValue: {
+            add: jest.fn(),
           },
         },
       ],
@@ -841,6 +850,7 @@ describe('AuthService Refresh Token Boundaries', () => {
     userRole: { findMany: jest.Mock };
     rolePermission: { findFirst: jest.Mock };
     session: { update: jest.Mock };
+    notification?: { create: jest.Mock };
     $transaction: jest.Mock;
   };
   let auditService: { log: jest.Mock };
@@ -866,6 +876,7 @@ describe('AuthService Refresh Token Boundaries', () => {
       userRole: { findMany: jest.fn() },
       rolePermission: { findFirst: jest.fn() },
       session: { update: jest.fn() },
+      notification: { create: jest.fn().mockResolvedValue({}) },
       $transaction: jest.fn(async (cb: any) => cb({})),
     };
 
@@ -888,6 +899,12 @@ describe('AuthService Refresh Token Boundaries', () => {
           },
         },
         { provide: AuditService, useValue: auditService },
+        {
+          provide: 'BullQueue_notifications',
+          useValue: {
+            add: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -993,6 +1010,7 @@ describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
     userRole: { findMany: jest.Mock };
     rolePermission: { findFirst: jest.Mock };
     session: { update: jest.Mock };
+    notification?: { create: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -1026,6 +1044,7 @@ describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
       userRole: { findMany: jest.fn() },
       rolePermission: { findFirst: jest.fn() },
       session: { update: jest.fn() },
+      notification: { create: jest.fn().mockResolvedValue({}) },
       $transaction: jest.fn(async (cb: any) => cb({})),
     };
 
@@ -1058,6 +1077,12 @@ describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
           },
         },
         { provide: AuditService, useValue: { log: jest.fn() } },
+        {
+          provide: 'BullQueue_notifications',
+          useValue: {
+            add: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

@@ -1,19 +1,25 @@
 import React from 'react';
-import { ShieldAlert } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 export const PatientPortalShellNotice: React.FC = () => {
   return (
-    <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex gap-4 items-start shadow-sm">
-      <div className="p-2 bg-indigo-100 rounded-xl">
-        <ShieldAlert className="h-5 w-5 text-indigo-600" />
+    <div
+      role="status"
+      data-testid="patient-portal-shell-notice"
+      className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex gap-4 items-start shadow-sm"
+    >
+      <div className="p-2 bg-slate-100 rounded-xl">
+        <Info className="h-5 w-5 text-slate-500" aria-hidden="true" />
       </div>
       <div>
-        <h4 className="text-sm font-black text-indigo-900 tracking-tight">Patient Portal</h4>
-        <p className="text-xs text-indigo-700 font-medium leading-relaxed mt-0.5">
-          <strong>Real data:</strong> Lab results, prescriptions, billing invoices, and your profile are loaded from live records.
-        </p>
-        <p className="text-xs text-indigo-700 font-medium leading-relaxed mt-0.5">
-          <strong>In development:</strong> Appointment booking, medical records, messaging, and online payments.
+        <h4 className="text-sm font-black text-slate-800 tracking-tight">
+          Patient Portal — sandbox preview
+        </h4>
+        <p className="text-xs text-slate-600 font-medium leading-relaxed mt-0.5">
+          This patient portal is a prototype. Lab results, prescriptions, appointments,
+          billing, and messaging features show placeholder data and have no backend
+          implementation yet. Real patient portal functionality will be available in a
+          future release.
         </p>
       </div>
     </div>

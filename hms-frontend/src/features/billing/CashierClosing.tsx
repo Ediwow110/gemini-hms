@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { PageHeader } from "../../components/ui/page-header";
 import { SectionCard, FormField } from "../../components/ui/section-card";
 import { StatusBadge } from "../../components/ui/status-badge";
@@ -7,14 +7,41 @@ import { RequirePermission } from "../../components/ui/RequirePermission";
 import { logger } from "../../lib/logger";
 import { AlertTriangle } from "lucide-react";
 
+const FIRST_NAMES = ["Maria", "Juan", "Ana", "Pedro", "Sofia", "Luis", "Carmen", "Jose", "Elena", "Carlos"];
+const LAST_NAMES = ["Santos", "Reyes", "Cruz", "Bautista", "Gonzalez", "Lopez", "Martinez", "Villanueva", "Aquino", "Mendoza"];
+const METHODS = ["Cash", "GCash", "Maya", "Card", "Bank Transfer"];
+
+function randomEntry(seed: number) {
+  const time = new Date();
+  time.setHours(7 + Math.floor((seed * 13) % 9));
+  time.setMinutes(Math.floor((seed * 7) % 60));
+  const firstName = FIRST_NAMES[(seed * 3) % FIRST_NAMES.length];
+  const lastName = LAST_NAMES[(seed * 7) % LAST_NAMES.length];
+  const amount = (500 + (seed * 373) % 9500) / 100;
+  const method = METHODS[(seed * 5) % METHODS.length];
+  return {
+    time: time.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", hour12: true }),
+    receipt: `RCP-${String(100 + seed).padStart(3, "0")}`,
+    patient: `${firstName} ${lastName}`,
+    amount: `₱${amount.toFixed(2)}`,
+    method,
+  };
+}
+
 export const CashierClosing = () => {
   const navigate = useNavigate();
   const [actualCash, setActualCash] = useState<string>("");
   const [remarks, setRemarks] = useState<string>("");
   const [error, setError] = useState<string>("");
 
+  const transactions = useMemo(() => {
+    return Array.from({ length: 4 + Math.floor(Math.random() * 3) }, (_, i) => randomEntry(i + 1));
+  }, []);
+
+  const totalAmount = transactions.reduce((sum, t) => sum + parseFloat(t.amount.replace(/[₱,]/g, "")), 0);
+
   const openingCash = 5000;
-  const cashPayments = 18450;
+  const cashPayments = totalAmount;
   const expectedCash = openingCash + cashPayments;
   const variance = actualCash ? parseFloat(actualCash) - expectedCash : 0;
 
@@ -126,15 +153,17 @@ export const CashierClosing = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            <tr className="hover:bg-indigo-50/30 transition-colors cursor-pointer group">
-              <td className="px-6 py-4 text-slate-500 font-medium text-xs">09:30 AM</td>
-              <td className="px-6 py-4 font-mono font-bold text-indigo-600">RCP-001</td>
-              <td className="px-6 py-4 font-semibold text-slate-900 group-hover:text-indigo-700">John Doe</td>
-              <td className="px-6 py-4 font-bold text-slate-900 text-right">₱50.00</td>
-              <td className="px-6 py-4 text-center">
-                <span className="text-[10px] font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-lg uppercase tracking-wider">Cash</span>
-              </td>
-            </tr>
+            {transactions.map((t, i) => (
+              <tr key={i} className="hover:bg-indigo-50/30 transition-colors cursor-pointer group">
+                <td className="px-6 py-4 text-slate-500 font-medium text-xs">{t.time}</td>
+                <td className="px-6 py-4 font-mono font-bold text-indigo-600">{t.receipt}</td>
+                <td className="px-6 py-4 font-semibold text-slate-900 group-hover:text-indigo-700">{t.patient}</td>
+                <td className="px-6 py-4 font-bold text-slate-900 text-right">{t.amount}</td>
+                <td className="px-6 py-4 text-center">
+                  <span className="text-[10px] font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-lg uppercase tracking-wider">{t.method}</span>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

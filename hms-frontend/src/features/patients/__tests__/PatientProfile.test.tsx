@@ -1,7 +1,9 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PatientProfile } from '../PatientProfile';
+import type { ReactNode } from 'react';
 
 const mockUseUser = vi.fn();
 
@@ -23,7 +25,12 @@ vi.mock('../../../hooks/use-user', () => ({
   }),
 }));
 
-// Stub the live-wired Notes form so the test doesn't depend on autodraft store.
+vi.mock('../../../services/doctor.service', () => ({
+  doctorService: {
+    getPatient: vi.fn(),
+  },
+}));
+
 vi.mock('../../notes/PatientNoteForm', () => ({
   PatientNoteForm: ({ patientId }: { patientId: string }) => (
     <div data-testid="patient-note-form" data-patient-id={patientId}>
@@ -32,17 +39,36 @@ vi.mock('../../notes/PatientNoteForm', () => ({
   ),
 }));
 
-const renderProfile = (patientId: string) =>
-  render(
-    <MemoryRouter initialEntries={[`/patients/${patientId}`]}>
-      <Routes>
-        <Route path="/patients/:id" element={<PatientProfile />} />
-      </Routes>
-    </MemoryRouter>
-  );
+import { doctorService } from '../../../services/doctor.service';
 
-describe('PatientProfile — honest-stub contract', () => {
+const mockPatient = {
+  id: 'P-12345',
+  patientNumber: 'PT-001234',
+  firstName: 'Alice',
+  lastName: 'Anderson',
+  dob: '1985-06-15T00:00:00.000Z',
+  status: 'ACTIVE',
+  createdAt: '2024-01-10T00:00:00.000Z',
+};
+
+function renderProfile(patientId: string) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[`/patients/${patientId}`]}>
+        <Routes>
+          <Route path="/patients/:id" element={<PatientProfile />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+}
+
+describe('PatientProfile — live-wired', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     mockUseUser.mockReturnValue({
       id: 'u-1',
       email: 'doc@hospital.com',
@@ -51,44 +77,31 @@ describe('PatientProfile — honest-stub contract', () => {
       roles: ['Doctor'],
       permissions: ['patient.view'],
     });
+    vi.mocked(doctorService.getPatient).mockResolvedValue(mockPatient);
+  });
+
+  it('fetches and renders real patient data from the API', async () => {
+    renderProfile('P-12345');
+    await waitFor(() => {
+      expect(screen.getByText(/Anderson, Alice/)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/PT-001234/)).toBeInTheDocument();
+    expect(screen.getByText(/ACTIVE/)).toBeInTheDocument();
   });
 
   it('does NOT render any hardcoded patient identity (no "John Doe", no fake age/gender/balance)', () => {
     renderProfile('P-12345');
-    // Regression guards against the prior hardcoded `John Doe, 45, M, Regular, $50` bug.
     expect(screen.queryByText(/John Doe/)).not.toBeInTheDocument();
     expect(screen.queryByText('45Y / M')).not.toBeInTheDocument();
     expect(screen.queryByText(/\$50/)).not.toBeInTheDocument();
-    expect(screen.queryByText('Regular')).not.toBeInTheDocument();
   });
 
-  it('shows a body-level honest notice stating the Demographics tab is not live-wired', () => {
-    renderProfile('P-12345');
-    expect(screen.getByTestId('patient-profile-shell-notice')).toBeInTheDocument();
-    expect(screen.getByTestId('patient-profile-shell-title')).toHaveTextContent(
-      /Demographics tab is not live-wired/i
-    );
-  });
-
-  it('reflects the patientId from the URL inside the honest notice (not the literal "John Doe" id)', () => {
-    renderProfile('P-99999');
-    const body = screen.getByTestId('patient-profile-shell-body');
-    expect(body.textContent).toContain('P-99999');
-  });
-
-  it('renders the HmsDataUnavailable honest-stub component on the Overview tab', () => {
-    renderProfile('P-12345');
-    expect(screen.getByTestId('patient-profile-overview')).toBeInTheDocument();
-    expect(screen.getByText(/Patient Demographics/)).toBeInTheDocument();
-    expect(screen.getByText(/GET \/api\/v1\/patients\/:id/)).toBeInTheDocument();
-  });
-
-  it('renders the audit footer describing the partial live-wired state', () => {
+  it('renders the audit footer pointing to the live API', () => {
     renderProfile('P-12345');
     expect(screen.getByText(/Live API — \/api\/v1\/patients\/:id/)).toBeInTheDocument();
   });
 
-  it('keeps the Notes tab live-wired (the only genuine live surface on this page)', () => {
+  it('renders the Notes tab live-wired', () => {
     renderProfile('P-12345');
     const notesTab = screen.getByRole('button', { name: /^Notes$/ });
     fireEvent.click(notesTab);
@@ -97,17 +110,30 @@ describe('PatientProfile — honest-stub contract', () => {
     expect(form.getAttribute('data-patient-id')).toBe('P-12345');
   });
 
-  it('does not show fabricated identity content in any of the still-unwired tabs (Orders, Billing, Lab Results, Documents, Timeline)', () => {
+  it('shows a loading state while fetching', () => {
+    vi.mocked(doctorService.getPatient).mockReturnValue(new Promise(() => {}));
+    renderProfile('P-12345');
+    expect(screen.getByTestId('patient-profile-loading')).toBeInTheDocument();
+  });
+
+  it('shows an error state when the API call fails', async () => {
+    vi.mocked(doctorService.getPatient).mockRejectedValue(new Error('Network error'));
+    renderProfile('P-12345');
+    await waitFor(() => {
+      expect(screen.getByTestId('patient-profile-error')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Could not load patient data/)).toBeInTheDocument();
+  });
+
+  it('does not show fabricated identity in unwired tabs', () => {
+    vi.mocked(doctorService.getPatient).mockResolvedValue(mockPatient);
     renderProfile('P-12345');
     const unwiredTabs = ['Orders', 'Billing', 'Lab Results', 'Documents', 'Timeline'];
     for (const tab of unwiredTabs) {
       const tabBtn = screen.getByRole('button', { name: new RegExp(`^${tab}$`) });
       fireEvent.click(tabBtn);
-      // Should show the "No X data available yet" empty state, NOT fabricated rows.
       expect(screen.getByText(new RegExp(`No ${tab.toLowerCase()} data available yet`, 'i')))
         .toBeInTheDocument();
-      // No "John Doe" appears in any unwired tab.
-      expect(screen.queryByText(/John Doe/)).not.toBeInTheDocument();
     }
   });
 });

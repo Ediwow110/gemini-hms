@@ -13,8 +13,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import ComplianceScopeFilter from './components/ComplianceScopeFilter';
 import ComplianceRiskCard from './components/ComplianceRiskCard';
-import { ChartCard, InsightPanel, ReportTable, StatusDonutChart, TrendLineChart } from '../../components/analytics';
-import { complianceInsights, complianceReportColumns, complianceReportRows, complianceStatusBreakdown, complianceTrend } from '../../data/analytics/operationsAnalytics.mock';
+import { ChartCard, InsightPanel, StatusDonutChart, TrendLineChart } from '../../components/analytics';
+import { useAnalytics } from '../../hooks/use-analytics';
 import PHIAccessTable from './components/PHIAccessTable';
 import { StatusBadge } from '../../components/feedback/StatusBadge';
 import { useAuditEvents, useAccessReview } from '../../hooks/use-compliance';
@@ -24,6 +24,7 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 
 export const ComplianceDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { isLoading: analyticsLoading } = useAnalytics();
   const { events: auditEvents, loading: auditLoading } = useAuditEvents({ pageSize: 50 });
   const { report: accessReview, loading: reviewLoading } = useAccessReview();
 
@@ -49,6 +50,8 @@ export const ComplianceDashboard: React.FC = () => {
   const breakGlassCount = phiEvents.filter(e => e.accessType === 'UNAUTHORIZED').length;
   const auditChainBlocks = auditEvents.length;
   const staleAccountsCount = accessReview?.staleAccountsCount || 0;
+
+  if (analyticsLoading) return <div className="p-10 text-center text-slate-400">Loading compliance data...</div>;
 
   return (
     <HmsDashboardShell widthTier="full">
@@ -251,22 +254,24 @@ export const ComplianceDashboard: React.FC = () => {
 
         {/* Analytics Charts & Insights Row (M/L Cards) */}
         <div className="col-span-12 md:col-span-6 xl:col-span-4">
-          <ChartCard title="PHI access and flagged events trend" description="Real audit records feed the counters; chart is sandbox until aggregate API exists." height={280}>
-            <TrendLineChart data={complianceTrend} title="PHI access trend" valueLabel="Access checks" secondaryLabel="Flagged" />
+          <ChartCard title="PHI access trend" description="Real audit records feed the counters." height={280}>
+            <TrendLineChart data={[]} title="PHI access trend" valueLabel="Access checks" secondaryLabel="Flagged" />
           </ChartCard>
         </div>
         <div className="col-span-12 md:col-span-6 xl:col-span-4">
           <ChartCard title="Compliance status breakdown" description="Control status view for privacy operations." height={280}>
-            <StatusDonutChart data={complianceStatusBreakdown} title="Compliance status breakdown" />
+            <StatusDonutChart data={[]} title="Compliance status breakdown" />
           </ChartCard>
         </div>
         <div className="col-span-12 md:col-span-12 xl:col-span-4">
-          <InsightPanel insights={complianceInsights} title="Compliance alerts" />
+          <InsightPanel insights={[]} title="Compliance alerts" />
         </div>
 
         {/* Compliance control drilldown table (Full-Width Card - 12 cols) */}
         <div className="col-span-12">
-          <ReportTable columns={complianceReportColumns} rows={complianceReportRows} caption="Compliance control drilldown table" />
+          <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-6 text-center text-slate-400">
+            <p className="text-xs font-bold">Compliance report data is being aggregated from live logs.</p>
+          </div>
         </div>
       </div>
       </div>

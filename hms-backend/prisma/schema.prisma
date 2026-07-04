@@ -60,7 +60,7 @@ model Tenant {
   clinicalOrderItems   ClinicalOrderItem[]
   labSpecimens         LabSpecimen[]
   marketplaceListings  MarketplaceListing[]
-
+  marketplaceOrders     MarketplaceOrder[]
   suppliers                   Supplier[]
   purchaseRequests            PurchaseRequest[]
   purchaseOrders              PurchaseOrder[]
@@ -86,6 +86,8 @@ model Tenant {
   paymentVoids                PaymentVoid[]
   refunds                     Refund[]
   cashierLedgerEntries        CashierLedgerEntry[]
+  integrations                Integration[]
+  backupRecords               BackupRecord[]
 
   @@map("tenants")
 }
@@ -1680,6 +1682,7 @@ model Supplier {
   marketplaceListings MarketplaceListing[]
   quotes              Quote[]
   users               User[]
+  receivingRecords    ReceivingRecord[]
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1712,6 +1715,7 @@ model PurchaseOrder {
   purchaseRequestId String            @map("purchase_request_id") @db.Uuid
   orderNumber       String            @map("order_number")
   status            String            @default("DRAFT") // DRAFT, SENT, PARTIALLY_RECEIVED, RECEIVED, CANCELLED
+  expectedDeliveryDate DateTime?         @map("expected_delivery_date")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
   supplier          Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
@@ -1729,11 +1733,15 @@ model ReceivingRecord {
   purchaseOrderId String        @map("purchase_order_id") @db.Uuid
   tenantId        String        @map("tenant_id") @db.Uuid
   branchId        String        @map("branch_id") @db.Uuid
+  supplierId      String        @map("supplier_id") @db.Uuid
   receivedById    String        @map("received_by_id") @db.Uuid
   receivedAt      DateTime      @default(now()) @map("received_at")
+  qualityScore    Decimal?      @db.Decimal(3, 2) // 0.00 to 1.00
+  defectiveCount  Int           @default(0) @map("defective_count")
   notes           String?
   createdAt       DateTime      @default(now()) @map("created_at")
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  supplier        Supplier      @relation(fields: [supplierId], references: [id], onDelete: Restrict)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1864,6 +1872,7 @@ enum RFQStatus {
   DRAFT
   SUBMITTED
   UNDER_REVIEW
+  NEGOTIATION
   APPROVED
   REJECTED
 }
@@ -1919,13 +1928,18 @@ enum DeliveryJobStatus {
 }
 
 model RFQ {
-  id        String    @id @default(uuid()) @db.Uuid
-  tenantId  String    @map("tenant_id") @db.Uuid
-  branchId  String    @map("branch_id") @db.Uuid
-  title     String
-  status    RFQStatus @default(DRAFT)
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id                     String   @id @default(uuid()) @db.Uuid
+  tenantId               String   @map("tenant_id") @db.Uuid
+  branchId               String   @map("branch_id") @db.Uuid
+  itemId                 String   @map("item_id") @db.Uuid
+  buyerId                String   @map("buyer_id") @db.Uuid
+  title                  String
+  warrantyTier           String?
+  siteReadinessDetails   String?  @map("site_readiness_details")
+  leasingOption          String?
+  status                 RFQStatus @default(DRAFT)
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
 
   quotes Quote[]
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1942,7 +1956,10 @@ model Quote {
   tenantId    String      @map("tenant_id") @db.Uuid
   supplierId  String?     @map("supplier_id") @db.Uuid
   status      QuoteStatus @default(DRAFT)
+  amount      Decimal     @map("amount") @db.Decimal(12, 2)
   totalAmount Decimal     @map("total_amount") @db.Decimal(12, 2)
+  deliveryDays Int?       @map("delivery_days")
+  warrantyMonths Int?     @map("warranty_months")
   createdAt   DateTime    @default(now()) @map("created_at")
   convertedAt DateTime?   @map("converted_at")
   approvedAt  DateTime?   @map("approved_at")
@@ -2142,20 +2159,24 @@ model MarketplaceListing {
   status        ListingStatus @default(PENDING_APPROVAL)
 
   // Overrides or additional info for marketplace
-  description   String?  @db.Text
-  priceOverride Decimal? @map("price_override") @db.Decimal(12, 2)
+  name          String?       @map("name")
+  description   String?       @db.Text
+  basePrice     Decimal?      @map("base_price") @db.Decimal(12, 2)
+  priceOverride Decimal?      @map("price_override") @db.Decimal(12, 2)
+  stockCount    Int           @default(0) @map("stock_count")
 
   // Metadata for moderation
-  rejectionReason String?   @map("rejection_reason")
-  approvedAt      DateTime? @map("approved_at")
-  approvedById    String?   @map("approved_by_id") @db.Uuid
+  rejectionReason String?     @map("rejection_reason")
+  approvedAt      DateTime?   @map("approved_at")
+  approvedById    String?     @map("approved_by_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  serviceItem ServiceItem @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
-  supplier    Supplier?   @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  serviceItem ServiceItem          @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
+  supplier    Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  orderItems  MarketplaceOrderItem[]
 
   @@index([tenantId])
   @@index([status])
@@ -2257,3 +2278,70 @@ enum MedicalRecordRequestStatus {
   DENIED
   FULFILLED
 }
+
+model Integration {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  name            String
+  protocol        String // HL7, FHIR, DICOM, REST
+  direction       String // INBOUND, OUTBOUND, BIDIRECTIONAL
+  status          String   @default("CONNECTED") // CONNECTED, ERROR, DISCONNECTED
+  lastSync        DateTime? @map("last_sync")
+  errorCount      Int      @default(0) @map("error_count")
+  description     String?  @db.Text
+  endpoint        String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("integrations")
+}
+
+model BackupRecord {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  name            String
+  type            String // FULL, INCREMENTAL, SNAPSHOT
+  status          String   @default("COMPLETED") // COMPLETED, FAILED, IN_PROGRESS
+  size            String
+  createdAt       DateTime @default(now()) @map("created_at")
+  duration        String?
+  retentionDays   Int      @default(30) @map("retention_days")
+  rpoMet          Boolean  @default(true) @map("rpo_met")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("backup_records")
+}
+
+model MarketplaceOrder {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  buyerId         String   @map("buyer_id") @db.Uuid
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
+  status          String   @default("PENDING") // PENDING, PAID, SHIPPED, DELIVERED, CANCELLED
+  paymentStatus   String   @default("UNPAID") @map("payment_status")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items  MarketplaceOrderItem[]
+
+  @@map("marketplace_orders")
+}
+
+model MarketplaceOrderItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  orderId         String   @map("order_id") @db.Uuid
+  listingId       String   @map("listing_id") @db.Uuid
+  quantity        Int
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(12, 2)
+  subtotal        Decimal  @map("subtotal") @db.Decimal(12, 2)
+
+  order   MarketplaceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  listing MarketplaceListing @relation(fields: [listingId], references: [id])
+
+  @@map("marketplace_order_items")
+}
+

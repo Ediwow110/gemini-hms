@@ -29,6 +29,7 @@ describe('MarketplaceService', () => {
               findFirst: jest.fn(),
               update: jest.fn(),
             },
+            $transaction: jest.fn((cb: (tx: any) => any) => cb(prisma)),
           },
         },
         {
@@ -111,6 +112,7 @@ describe('MarketplaceService', () => {
         expect.objectContaining({
           eventKey: 'MARKETPLACE_LISTING_MODERATED',
         }),
+        expect.anything(),
       );
     });
   });

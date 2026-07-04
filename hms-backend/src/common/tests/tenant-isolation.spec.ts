@@ -43,6 +43,14 @@ describe('Tenant Isolation — PatientsService', () => {
           provide: NumberingService,
           useValue: { generateNumber: jest.fn().mockResolvedValue('P-001') },
         },
+        {
+          provide: 'REDIS_CLIENT',
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue('OK'),
+            del: jest.fn().mockResolvedValue(0),
+          },
+        },
       ],
     }).compile();
     service = module.get(PatientsService);

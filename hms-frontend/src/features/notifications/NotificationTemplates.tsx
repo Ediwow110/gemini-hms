@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PageHeader } from "../../components/ui/page-header";
 import { SectionCard, FormField } from "../../components/ui/section-card";
 import { HmsDashboardShell, HmsAuditFooter } from "../../components/hms-dashboard";
-import { FileText, Eye, Shield, AlertTriangle, CheckCircle2, Mail, MessageSquare, Bell } from "lucide-react";
+import { FileText, Eye, Shield, AlertTriangle, CheckCircle2, Mail, MessageSquare, Bell, AlertCircle } from "lucide-react";
 
 interface Template {
   key: string;
@@ -60,6 +60,17 @@ export const NotificationTemplates = () => {
       footer={<HmsAuditFooter dataSource="Notification templates (UI prototype - not persisted)" />}
     >
       <div className="space-y-6 pb-12 animate-fade-in">
+        <div
+          role="status"
+          data-testid="notification-templates-notice"
+          className="bg-amber-50 border-b border-amber-200 px-8 py-3 flex gap-3 items-center"
+        >
+          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" aria-hidden="true" />
+          <p className="text-xs font-semibold text-amber-800">
+            <span className="font-black uppercase tracking-wide mr-1">Sandbox Notice:</span>
+            Notification Templates is a prototype admin view. Template previews and privacy classifications are fabricated demo examples — no real template engine is connected.
+          </p>
+        </div>
         <PageHeader title="Notification Templates" description="Manage notification templates, channels, and privacy classifications." />
 
         <div className="flex items-start gap-3 p-3 bg-rose-50 border border-rose-200 rounded-xl">

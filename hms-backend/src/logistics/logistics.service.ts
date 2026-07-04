@@ -57,17 +57,17 @@ export class LogisticsService {
     id: string,
     dto: UpdateShipmentStatusDto,
   ) {
-    const shipment = await this.prisma.shipment.findFirst({
-      where: { id, tenantId },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const shipment = await tx.shipment.findFirst({
+        where: { id, tenantId },
+      });
 
-    if (!shipment) {
-      throw new NotFoundException('Shipment not found');
-    }
+      if (!shipment) {
+        throw new NotFoundException('Shipment not found');
+      }
 
-    const updatedShipment = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.shipment.update({
-        where: { id },
+        where: { id, tenantId },
         data: {
           status: dto.status,
           shippedAt:
@@ -84,29 +84,27 @@ export class LogisticsService {
       // Update SalesOrder status if shipment is delivered
       if (dto.status === ShipmentStatus.DELIVERED) {
         await tx.salesOrder.update({
-          where: { id: shipment.salesOrderId },
+          where: { id: shipment.salesOrderId, tenantId },
           data: { status: OrderStatus.DELIVERED },
         });
       } else if (dto.status === ShipmentStatus.SHIPPED) {
         await tx.salesOrder.update({
-          where: { id: shipment.salesOrderId },
+          where: { id: shipment.salesOrderId, tenantId },
           data: { status: OrderStatus.SHIPPED },
         });
       }
 
+      await this.audit.log({
+        tenantId,
+        userId,
+        eventKey: 'SHIPMENT_STATUS_UPDATED',
+        recordType: 'Shipment',
+        recordId: id,
+        newValues: { status: dto.status, note: dto.note },
+      }, tx);
+
       return updated;
     });
-
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'SHIPMENT_STATUS_UPDATED',
-      recordType: 'Shipment',
-      recordId: id,
-      newValues: { status: dto.status, note: dto.note },
-    });
-
-    return updatedShipment;
   }
 
   async findAllShipments(tenantId: string) {
@@ -177,43 +175,42 @@ export class LogisticsService {
     id: string,
     dto: UpdateDeliveryJobStatusDto,
   ) {
-    const job = await this.prisma.deliveryJob.findFirst({
-      where: { id, tenantId },
+    return this.prisma.$transaction(async (tx) => {
+      const job = await tx.deliveryJob.findFirst({
+        where: { id, tenantId },
+      });
+
+      if (!job) {
+        throw new NotFoundException('Delivery job not found');
+      }
+
+      const updatedJob = await tx.deliveryJob.update({
+        where: { id, tenantId },
+        data: {
+          status: dto.status,
+          startedAt:
+            dto.status === DeliveryJobStatus.IN_PROGRESS
+              ? new Date()
+              : job.startedAt,
+          completedAt:
+            dto.status === DeliveryJobStatus.COMPLETED
+              ? new Date()
+              : job.completedAt,
+          notes: dto.notes || job.notes,
+        },
+      });
+
+      await this.audit.log({
+        tenantId,
+        userId,
+        eventKey: 'DELIVERY_JOB_STATUS_UPDATED',
+        recordType: 'DeliveryJob',
+        recordId: id,
+        newValues: { status: dto.status, notes: dto.notes },
+      }, tx);
+
+      return updatedJob;
     });
-
-    if (!job) {
-      throw new NotFoundException('Delivery job not found');
-    }
-
-    // Security: Only assigned technician or admin can update
-    // For now, we allow any user with the permission (handled in controller)
-
-    const updatedJob = await this.prisma.deliveryJob.update({
-      where: { id },
-      data: {
-        status: dto.status,
-        startedAt:
-          dto.status === DeliveryJobStatus.IN_PROGRESS
-            ? new Date()
-            : job.startedAt,
-        completedAt:
-          dto.status === DeliveryJobStatus.COMPLETED
-            ? new Date()
-            : job.completedAt,
-        notes: dto.notes || job.notes,
-      },
-    });
-
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'DELIVERY_JOB_STATUS_UPDATED',
-      recordType: 'DeliveryJob',
-      recordId: id,
-      newValues: { status: dto.status, notes: dto.notes },
-    });
-
-    return updatedJob;
   }
 
   async findTechnicianJobs(tenantId: string, userId: string) {

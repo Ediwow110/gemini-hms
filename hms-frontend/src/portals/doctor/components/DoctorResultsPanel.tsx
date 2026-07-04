@@ -44,6 +44,18 @@ export const DoctorResultsPanel = ({ patientId }: DoctorResultsPanelProps) => {
 
   return (
     <div data-patient-id={patientId} className="card p-5 bg-white border border-slate-200/80 shadow-sm space-y-4">
+      <div
+        role="status"
+        data-testid="doctor-results-notice"
+        className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex gap-3 items-center mb-4"
+      >
+        <BadgeAlert className="h-4 w-4 text-amber-600 shrink-0" aria-hidden="true" />
+        <p className="text-[10px] font-semibold text-amber-800">
+          <span className="font-black uppercase tracking-wide mr-1">Sandbox Notice:</span>
+          Released Diagnostic Results is a prototype clinical view. Result summaries and findings are fabricated demo examples — no real lab result integration is connected in this build.
+        </p>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 className="font-bold text-slate-800 text-sm tracking-wider uppercase flex items-center gap-2">

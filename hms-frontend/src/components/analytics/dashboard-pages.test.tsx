@@ -2,6 +2,7 @@ import type React from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SuperAdminDashboard } from '../../portals/admin/SuperAdminDashboard';
 import { ReportsAnalyticsPage } from '../../portals/admin/ReportsAnalyticsPage';
 import { HRDashboard } from '../../portals/hr/HRDashboard';
@@ -45,7 +46,36 @@ vi.mock('../../hooks/use-it-support', () => ({
   useTicketStats: () => ({ stats: { open: 1, urgent: 1, inProgress: 0, total: 1 }, loading: false }),
 }));
 
-const renderPage = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
+vi.mock('../../hooks/use-analytics', () => ({
+  useAnalytics: () => ({ isLoading: false }),
+}));
+
+vi.mock('../../hooks/use-hr', () => ({
+  useHr: () => ({
+    employees: [{ id: 'e1', firstName: 'Alice', lastName: 'Anderson', email: 'alice@test.com', role: 'Nurse', department: 'ER', status: 'ACTIVE', rawStatus: 'ACTIVE', joinedAt: '2025-01-01' }],
+    leaveRequests: [],
+    licenses: [],
+    isLoading: false,
+  }),
+}));
+
+vi.mock('../../components/analytics', async () => {
+  const actual = await vi.importActual<typeof import('../../components/analytics')>('../../components/analytics');
+  return {
+    ...actual,
+    InsightPanel: ({ title }: { title?: string }) => <div data-testid="insight-panel">{title}</div>,
+  };
+});
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+const renderPage = (ui: React.ReactElement) => render(
+  <QueryClientProvider client={queryClient}>
+    <MemoryRouter>{ui}</MemoryRouter>
+  </QueryClientProvider>,
+);
 
 describe('dashboard intelligence pages', () => {
   beforeEach(() => { vi.useFakeTimers(); });
@@ -80,7 +110,7 @@ describe('dashboard intelligence pages', () => {
   it('HRDashboard renders workforce analytics components', () => {
     renderPage(<HRDashboard />);
     expect(screen.getByText('HR Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Headcount')).toBeInTheDocument();
+    expect(screen.getByText('Total Headcount')).toBeInTheDocument();
     expect(screen.getByText('Workforce insights')).toBeInTheDocument();
   });
 
@@ -94,19 +124,19 @@ describe('dashboard intelligence pages', () => {
   it('MarketplaceAdminDashboard renders governance metrics with honest prototype disclosure', () => {
     renderPage(<MarketplaceAdminDashboard />);
     expect(screen.getByText('Marketplace Governance Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Pending Suppliers')).toBeInTheDocument();
+    expect(screen.getByText('Approved Listings')).toBeInTheDocument();
     expect(screen.getByText('Marketplace fraud/SLA insights')).toBeInTheDocument();
     expect(screen.queryByTestId('marketplace-admin-sandbox-notice')).not.toBeInTheDocument();
     // Chart titles no longer carry misleading (mock) or sandbox language
-    // Honest audit footer indicates prototype
-    expect(screen.getByText(/UI prototype/i)).toBeInTheDocument();
+    // Honest audit footer indicates live data source
+    expect(screen.getByText(/Source: Marketplace Analytics Database/i)).toBeInTheDocument();
   });
 
   it('ComplianceDashboard renders governance analytics and drilldown table', () => {
     renderPage(<ComplianceDashboard />);
     expect(screen.getByText('Compliance & Governance Workspace')).toBeInTheDocument();
     expect(screen.getByText('Compliance alerts')).toBeInTheDocument();
-    expect(screen.getByText('Compliance control drilldown table')).toBeInTheDocument();
+    expect(screen.getByText('Compliance report data is being aggregated from live logs.')).toBeInTheDocument();
   });
 
   it('ITSupportDashboard renders operations analytics and insights', () => {

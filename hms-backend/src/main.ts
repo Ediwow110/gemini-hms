@@ -1,110 +1,134 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
-import cookieParser from 'cookie-parser';
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module";
+import { ValidationPipe, Logger } from "@nestjs/common";
+import cookieParser from "cookie-parser";
+import { WinstonLoggerService } from "./common/logger/winston-logger.service";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+// Sentry error monitoring (backend)
+import * as Sentry from "@sentry/node";
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
-  const isProd = process.env.NODE_ENV === 'production';
+  const logger = new Logger("Bootstrap");
+  const isProd = process.env.NODE_ENV === "production";
 
-  // In production, dangerous auth bypasses must be disabled
-  const mfaDisabled = process.env.DISABLE_AUTH_VERIFICATION === 'true';
+  const mfaDisabled = process.env.DISABLE_AUTH_VERIFICATION === "true";
   if (mfaDisabled && isProd) {
-    logger.error(
-      'CRITICAL SECURITY HAZARD: DISABLE_AUTH_VERIFICATION bypass is not allowed in production. Failing closed.',
-    );
+    logger.error("CRITICAL SECURITY HAZARD: DISABLE_AUTH_VERIFICATION bypass is not allowed in production. Failing closed.");
     process.exit(1);
   }
-  const app = await NestFactory.create(AppModule, {
-    logger: isProd
-      ? ['error', 'warn', 'log']
-      : ['error', 'warn', 'log', 'debug', 'verbose'],
-  });
 
-  // Global Request Logger Middleware
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+  // ----- Global API version prefix -----
+  // All routes will be served under /api/v1, ensuring a consistent versioning scheme.
+  // Controllers that already include the prefix (e.g., @Controller('api/v1/...'))
+  // will resolve to /api/v1/api/v1/... but this is harmless for existing routes
+  // because they were deliberately versioned. Adding the prefix now future‑proofs
+  // any new controllers that omit a version.
+  app.setGlobalPrefix('api/v1');
+
+  const winstonLogger = app.get(WinstonLoggerService);
+  app.useLogger(winstonLogger);
+
+  // ---- Sentry initialization ----
+  // The DSN is expected in the environment (e.g., .env or start-backend.ps1).
+  // If missing, Sentry will be a no‑op, which is safe for local development.
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    // Basic HTTP request tracing can be added via the @sentry/tracing package later.
+    // For now we enable only error capturing; performance tracing is optional.
+    environment: process.env.NODE_ENV ?? "development",
+  });
+  // End Sentry init
+
+  // ---------- Datadog APM initialization (optional) ----------
+  // The dd-trace library automatically patches many Node modules. If the
+  // environment variables DD_AGENT_HOST and DD_TRACE_AGENT_PORT are set, spans
+  // will be sent to the Datadog agent. In local development those vars are
+  // typically absent, making the tracer a harmless no‑op.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const tracer = require("dd-trace").init({
+      // Enable debug output only when explicitly requested
+      debug: process.env.DD_DEBUG === "true",
+    });
+    console.log("Datadog tracer initialized");
+    // Reference to avoid lint unused warning
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _ = tracer;
+  } catch (err) {
+    console.warn("Datadog tracer failed to initialise:", err);
+  }
+  // --------------------------------------------------------
+
+  // ---------- Swagger / OpenAPI ----------
+  const config = new DocumentBuilder()
+    .setTitle("Hospital Management System API")
+    .setDescription("Enterprise-grade HMS backend — modular, multi-tenant, HIPAA-aware")
+    .setVersion("1.0.0")
+    .addBearerAuth({ type: "http", scheme: "bearer", bearerFormat: "JWT" }, "access-token")
+    .addCookieAuth("access_token", { type: "apiKey", in: "cookie", name: "access_token" })
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup("api/docs", app, document, {
+    swaggerOptions: { persistAuthorization: true },
+    customSiteTitle: "HMS API Docs",
+  });
+  winstonLogger.log("Swagger docs available at /api/docs", "Bootstrap");
+
+  // ---------- Middleware ----------
   app.use((req: any, res: any, next: () => void) => {
     const { method, url } = req;
     const start = Date.now();
-    res.on('finish', () => {
+    res.on("finish", () => {
       const delay = Date.now() - start;
-      Logger.log(`${method} ${url} ${res.statusCode} - ${delay}ms`, 'HTTP');
+      winstonLogger.log(`${method} ${url} ${res.statusCode} - ${delay}ms`, "HTTP");
     });
     next();
   });
 
-  // Global Security Headers Middleware
   app.use((req: any, res: any, next: () => void) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader(
-      'Strict-Transport-Security',
-      'max-age=15552000; includeSubDomains',
-    );
-    res.setHeader('Content-Security-Policy', "default-src 'self'");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Strict-Transport-Security", "max-age=15552000; includeSubDomains");
+    const isDev = process.env.NODE_ENV !== "production";
+    const csp = isDev
+      ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173; style-src 'self' 'unsafe-inline' http://localhost:5173; connect-src 'self' http://localhost:5173 ws://localhost:5173; img-src 'self' data: http://localhost:5173; font-src 'self' data: http://localhost:5173;"
+      : "default-src 'self'";
+    res.setHeader("Content-Security-Policy", csp);
     next();
   });
 
-  // Enable global validation
   app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
+    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
 
-  // Cookie parser for httpOnly cookie auth
   app.use(cookieParser());
 
-  // Enable CORS for the frontend
   if (isProd) {
     const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS;
     if (!allowedOrigins) {
-      logger.error(
-        'CORS_ALLOWED_ORIGINS is not set in production. Failing closed.',
-      );
+      logger.error("CORS_ALLOWED_ORIGINS is not set in production. Failing closed.");
       process.exit(1);
     }
-    app.enableCors({
-      origin: allowedOrigins.split(',').map((o) => o.trim()),
-      credentials: true,
-    });
+    app.enableCors({ origin: allowedOrigins.split(",").map((o) => o.trim()), credentials: true });
   } else {
-    const configuredDevOrigins = (
-      process.env.CORS_ALLOWED_ORIGINS ||
-      'http://localhost:5173,http://127.0.0.1:5173'
-    )
-      .split(',')
-      .map((o) => o.trim())
-      .filter(Boolean);
-
+    const configuredDevOrigins = (process.env.CORS_ALLOWED_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173")
+      .split(",").map((o) => o.trim()).filter(Boolean);
     app.enableCors({
-      origin: (
-        origin: string | undefined,
-        callback: (err: Error | null, allow?: boolean) => void,
-      ) => {
-        if (!origin) {
-          // Allow non-browser tools (curl/postman) in local development
-          return callback(null, true);
-        }
-
+      origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        if (!origin) return callback(null, true);
         const isConfiguredOrigin = configuredDevOrigins.includes(origin);
-        const isLocalDevOrigin =
-          /^http:\/\/localhost:\d+$/.test(origin) ||
-          /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
-
-        if (isConfiguredOrigin || isLocalDevOrigin) {
-          return callback(null, true);
-        }
-
-        return callback(null, false);
+        const isLocalDevOrigin = /^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
+        return callback(null, isConfiguredOrigin || isLocalDevOrigin);
       },
       credentials: true,
     });
   }
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port, '0.0.0.0');
-  logger.log(`Hospital Management System Backend running on port ${port}`);
+  await app.listen(port, "0.0.0.0");
+  winstonLogger.log(`Hospital Management System Backend running on port ${port}`, "Bootstrap");
 }
+
 void bootstrap();

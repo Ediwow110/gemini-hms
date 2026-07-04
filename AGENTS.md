@@ -114,7 +114,7 @@ Prior session's findings (still true):
 
 The remaining items at end of prior session:
 - HIGH: Staging VM/host not provisioned.
-- MEDIUM: 173 pre-existing spec/e2e tsc errors in `hms-backend/test/`.
+- MEDIUM: (RESOLVED) Previously claimed 173 pre-existing spec/e2e tsc errors in `hms-backend/test/` — verified this session: both `tsc --noEmit` and `tsc --noEmit -p tsconfig.test.json` produce **0 errors** across all 69 test files. Claim was stale.
 - MEDIUM: Stale untracked snapshot files.
 - LOW: 4 admin mutation forms on backend-blocked pages.
 
@@ -169,7 +169,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 **Why this lane beat alternatives:**
 - (a) Refresh stale snapshot files: low value, file-ops only, would not change code state
 - (b) **Fix pre-existing tsc error ← chosen** — real, small, scoped, closes a long-standing false-claim
-- (c) Pre-existing test/ e2e tsc errors: 173 in `hms-backend/test/` (per AGENTS.md risk bucket) — not in default tsc, out of scope for this single-error lane
+- (c) Pre-existing test/ e2e tsc errors: previously claimed 173 in `hms-backend/test/` — verified this session: both default tsc and tsconfig.test.json produce 0 errors. Claim was stale; no actual debt remains.
 - (d) Stage provisioning: external blocker, no code change can unblock
 
 **Validation (this session):**
@@ -332,7 +332,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - Staging VM/host not provisioned — no VM, no Docker, no DNS, no PostgreSQL 15, no GitHub Staging environment, no STAGING_* secrets exist. All repo-side artifacts ready.
 
 **MEDIUM:**
-- Pre-existing spec/e2e type errors (173 in `hms-backend/test/`) — auth, billing, admin spec files. NOT in default `tsc --noEmit`, but real debt.
+- (RESOLVED) Pre-existing spec/e2e type errors: previously claimed 173 in `hms-backend/test/` — verified this session: both `tsc --noEmit` and `tsc --noEmit -p tsconfig.test.json` produce 0 errors across all 69 test files. Claim was stale; no debt remains.
 - AuditLog retention: count-only enforcement; no schema change for archival by class.
 - Stale untracked snapshot files: `audit-baseline.txt` and `handoff-verify.txt` show older backend test counts (current is 86 suites / 1738 tests). Not committed; not blocking; can confuse future agents.
 - Other admin pages still on mock/hardcoded data (none in this scope — the 4 admin pages with hardcoded data were honest-stubbed in `b5df7498`).
@@ -376,7 +376,7 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 2. After staging is healthy → deploy and run E2E / integration smoke tests against staging.
 3. After staging validated → trigger production deploy via `deploy.yml` (manual workflow_dispatch).
 4. **(Backend tsc is now genuinely clean.)** Next backend type-safety lanes to consider:
-   - Pre-existing 173 spec/e2e tsc errors in `hms-backend/test/` (not in default tsc; would require `tsconfig.test.json` and fix-up).
+   - (RESOLVED) Previously claimed 173 spec/e2e tsc errors in `hms-backend/test/` — verified this session: both default tsc and tsconfig.test.json produce 0 errors. No fix-up needed.
    - General `tsc --noEmit` discipline: future commits can now legitimately claim "tsc clean" without caveat.
 5. **(Admin lane queue — mostly closed.)** 4 admin pages (Tenants, Security, Reports, Settings) honest-stubbed in `b5df7498`. SuperAdminDashboard honest-stubbed in `0eebbe68`. UsersPage, RolesPermissionsPage, BranchesPage, AuditLogsPage all live-wired. Remaining admin surfaces: AdminCreateUserForm, AdminBranchForm, AdminTenantNetworkPage, AdminSettingsPage (mutation forms still on hardcoded data).
 

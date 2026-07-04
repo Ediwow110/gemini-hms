@@ -160,13 +160,10 @@ export class NotificationProviderFactory {
     }
 
     if (providerStr === 'mock') {
-      // Reject the mock provider in production. The mock is intentionally
-      // a local-dev / sandbox stand-in and must not silently mark real
-      // clinical notifications as SENT in a live environment.
-      if (process.env.NODE_ENV === 'production') {
+      if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
         throw new InternalServerErrorException(
-          'EMAIL_PROVIDER=mock is not allowed in NODE_ENV=production. ' +
-            'Configure a real provider (mailrelay, ses) before going live.',
+          `EMAIL_PROVIDER=mock is not allowed in ${process.env.NODE_ENV || 'current'} environment. ` +
+            'Configure a real provider (mailrelay, ses) before proceeding to staging or production.',
         );
       }
       return new MockEmailProvider();
@@ -185,10 +182,10 @@ export class NotificationProviderFactory {
     }
 
     if (providerStr === 'mock') {
-      if (process.env.NODE_ENV === 'production') {
+      if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
         throw new InternalServerErrorException(
-          'SMS_PROVIDER=mock is not allowed in NODE_ENV=production. ' +
-            'Configure a real provider (semaphore) before going live.',
+          `SMS_PROVIDER=mock is not allowed in ${process.env.NODE_ENV || 'current'} environment. ` +
+            'Configure a real provider (semaphore) before proceeding to staging or production.',
         );
       }
       return new MockSmsProvider();

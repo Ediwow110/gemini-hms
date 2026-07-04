@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { PageHeader } from "../../components/ui/page-header";
 import { SectionCard } from "../../components/ui/section-card";
 import { HmsDashboardShell, HmsAuditFooter } from "../../components/hms-dashboard";
@@ -69,7 +69,7 @@ export const NotificationCenter = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -84,11 +84,11 @@ export const NotificationCenter = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterStatus, filterCategory, search]);
 
   useEffect(() => {
     void fetchNotifications();
-  }, [filterStatus, filterCategory, search]);
+  }, [filterStatus, filterCategory, search, fetchNotifications]);
 
   const filtered = notifications.filter((n) => {
     if (filterStatus && n.status !== filterStatus) return false;

@@ -42,7 +42,8 @@ export const NumberingSettings = () => {
           <div className="flex items-start gap-3 p-3 mb-4 mt-4 bg-amber-50 border border-amber-200 rounded-xl">
             <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-amber-700">
-              Changing numbering rules is a <strong>high-risk operation</strong>. All changes require a confirmation step and a reason. Changes only apply to new records — existing numbers are never modified.
+              <span className="font-black uppercase tracking-wide mr-1">Sandbox Notice:</span>
+              Numbering Settings is a prototype admin view. The rules and next-number previews are fabricated demo examples. Changing numbering rules is a <strong>high-risk operation</strong>. All changes require a confirmation step and a reason. Changes only apply to new records — existing numbers are never modified.
             </p>
           </div>
 

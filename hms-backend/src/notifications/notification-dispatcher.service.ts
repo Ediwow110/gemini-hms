@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   EmailProvider,
@@ -14,7 +16,10 @@ export class NotificationDispatcherService {
   private smsProvider: SmsProvider;
   private readonly MAX_ATTEMPTS = 3;
 
-  constructor(private prisma: PrismaService) {
+  constructor(
+    private prisma: PrismaService,
+    @InjectQueue('notifications') private readonly priorityQueue: Queue,
+  ) {
     try {
       this.emailProvider = NotificationProviderFactory.createEmailProvider();
       this.smsProvider = NotificationProviderFactory.createSmsProvider();
@@ -73,6 +78,23 @@ export class NotificationDispatcherService {
   }
 
   /**
+   * Enqueue a high-priority notification for immediate dispatch.
+   * Bypasses the 1-minute cron batch tick.
+   */
+  async enqueuePriorityNotification(notificationId: string, tenantId: string) {
+    this.logger.log(`Enqueuing priority dispatch for notification ${notificationId}`);
+    await this.priorityQueue.add(
+      'priority-dispatch',
+      { notificationId, tenantId },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnComplete: true,
+      },
+    );
+  }
+
+  /**
    * Retry a specific failed notification.
    */
   async retryFailed(id: string, tenantId: string): Promise<boolean> {
@@ -114,7 +136,7 @@ export class NotificationDispatcherService {
     return this.dispatchOne(updated);
   }
 
-  private async dispatchOne(notification: {
+  async dispatchOne(notification: {
     id: string;
     type: string;
     recipient: string;

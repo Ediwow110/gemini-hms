@@ -620,6 +620,42 @@ export class HrService {
     throw new ForbiddenException('Insufficient permissions');
   }
 
+  async getAssignments(tenantId: string, branchId: string, user: RequestUser) {
+    const roles = user.roles || [];
+    if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin') && !this.isBranchScopedHr(roles)) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
+    return this.prisma.employeeBranch.findMany({
+      where: { tenantId, branchId },
+      include: {
+        employee: {
+          select: { firstName: true, lastName: true, employeeNumber: true },
+        },
+        branch: {
+          select: { name: true, code: true },
+        },
+      },
+    });
+  }
+
+  async getAttendance(tenantId: string, branchId: string, user: RequestUser) {
+    const roles = user.roles || [];
+    if (!this.isTenantWideHr(roles) && !roles.includes('Super Admin') && !this.isBranchScopedHr(roles)) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
+    return this.prisma.attendanceLog.findMany({
+      where: { tenantId, branchId },
+      include: {
+        employee: {
+          select: { firstName: true, lastName: true, employeeNumber: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async getDepartments(tenantId: string) {
     return this.prisma.department.findMany({
       where: { tenantId },

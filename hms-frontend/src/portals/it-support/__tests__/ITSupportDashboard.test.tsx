@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ITSupportDashboard } from '../ITSupportDashboard';
 import { useSupportTickets, useTicketStats } from '../../../hooks/use-it-support';
 import { SupportTicketDto } from '../../../services/it-support.service';
@@ -20,6 +21,10 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+vi.mock('../../../hooks/use-analytics', () => ({
+  useAnalytics: () => ({ isLoading: false }),
+}));
+
 vi.mock('../../../hooks/use-it-support', () => ({
   useSupportTickets: vi.fn(),
   useTicketStats: vi.fn(),
@@ -36,7 +41,17 @@ if (typeof window !== 'undefined') {
   (window as any).ResizeObserver = MockResizeObserver;
 }
 
-const renderWithRouter = (ui: React.ReactElement) => render(ui, { wrapper: MemoryRouter });
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+const renderWithRouter = (ui: React.ReactElement) => render(ui, {
+  wrapper: ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{children}</MemoryRouter>
+    </QueryClientProvider>
+  ),
+});
 
 describe('ITSupportDashboard Redesign', () => {
   beforeEach(() => {
@@ -80,7 +95,7 @@ describe('ITSupportDashboard Redesign', () => {
     renderWithRouter(<ITSupportDashboard />);
     expect(screen.getByText('IT & Infrastructure Support Workspace')).toBeInTheDocument();
     expect(screen.getAllByText('Cannot login to Patient Portal')[0]).toBeInTheDocument();
-    expect(screen.getByText('IT Operations (Partial)')).toBeInTheDocument(); // WIP banner
+    expect(screen.getByText('Open Tickets')).toBeInTheDocument();
   });
 
   it('hides ticket queue actions from IT users without support-manage permission', () => {

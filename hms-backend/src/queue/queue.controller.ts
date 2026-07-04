@@ -2,70 +2,89 @@ import {
   Controller,
   Get,
   Post,
-  Body,
-  Param,
   Patch,
-  UseGuards,
+  Param,
+  Body,
   Query,
+  UseGuards,
+  BadRequestException,
+  ForbiddenException,
+  Req,
 } from '@nestjs/common';
 import { QueueService } from './queue.service';
-import { JoinQueueDto, UpdateQueueStatusDto } from './dto/queue.dto';
-import { GetUser } from '../auth/decorators/get-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { BranchGuard } from '../auth/guards/branch.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
-import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
+import { User } from '@prisma/client';
+import type { Request } from 'express';
 
-@UseGuards(PermissionsGuard, BranchGuard)
 @Controller('api/v1/queue')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class QueueController {
   constructor(private readonly queueService: QueueService) {}
 
+  @Get()
+  async listQueue(@Req() req: Request, @Query('branchId') branchId: string) {
+    const user = req.user as any;
+    const bId = branchId || user.primaryBranchId;
+    if (!bId)
+      throw new BadRequestException('Branch ID is required to view the queue.');
+
+    return this.queueService.listActiveQueue(user.tenantId, bId);
+  }
+
   @Post('join')
-  @RequirePermissions('queue.manage')
-  @RequireBranchContext()
-  join(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
-    @GetUser('branchId') branchId: string,
-    @Body() dto: JoinQueueDto,
+  async joinQueue(
+    @Req() req: Request,
+    @Body()
+    body: {
+      patientId: string;
+      serviceType: string;
+      category?: string;
+      branchId: string;
+    },
   ) {
-    // Open endpoint for public kiosk or reception
-    return this.queueService.joinQueue(tenantId, branchId, userId, dto);
+    const user = req.user as any;
+    const userBranchId = user.branchId || user.primaryBranchId;
+    if (body.branchId && userBranchId && body.branchId !== userBranchId) {
+      throw new ForbiddenException('Branch mismatch.');
+    }
+    return this.queueService.joinQueue(
+      user.tenantId,
+      body.branchId,
+      {
+        patientId: body.patientId,
+        serviceType: body.serviceType,
+        category: body.category || 'ROUTINE',
+      },
+      user.userId || user.id,
+    );
   }
 
-  @Get('display')
-  @RequirePermissions('queue.view')
-  @RequireBranchContext()
-  getDisplay(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('branchId') branchId: string,
-  ) {
-    // Polling endpoint for TV display - branch context enforced
-    return this.queueService.getActiveDisplay(tenantId, branchId);
-  }
-
-  @Get('worklist')
-  @RequirePermissions('queue.view')
-  @RequireBranchContext()
-  getWorklist(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('branchId') branchId: string,
+  @Patch('call-next')
+  async callNext(
+    @Req() req: Request,
+    @Query('branchId') branchId: string,
     @Query('serviceType') serviceType: string,
   ) {
-    return this.queueService.getWorklist(tenantId, branchId, serviceType);
+    const user = req.user as any;
+    const bId = branchId || user.primaryBranchId;
+    if (!bId) throw new BadRequestException('Branch ID is required.');
+
+    return this.queueService.callNext(user.tenantId, bId, serviceType);
   }
 
-  @Patch(':id/status')
-  @RequirePermissions('queue.manage')
-  @RequireBranchContext()
-  updateStatus(
-    @GetUser('tenantId') tenantId: string,
-    @GetUser('userId') userId: string,
-    @GetUser('branchId') branchId: string,
-    @Param('id') id: string,
-    @Body() dto: UpdateQueueStatusDto,
-  ) {
-    return this.queueService.updateStatus(tenantId, userId, branchId, id, dto);
+  @Patch(':id/complete')
+  async completeEntry(@Req() req: Request, @Param('id') id: string) {
+    const user = req.user as any;
+    return this.queueService.completeEntry(user.tenantId, id);
+  }
+
+  @Get('stats')
+  async getStats(@Req() req: Request, @Query('branchId') branchId: string) {
+    const user = req.user as any;
+    const bId = branchId || user.primaryBranchId;
+    if (!bId) throw new BadRequestException('Branch ID is required.');
+
+    return this.queueService.getQueueStats(user.tenantId, bId);
   }
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { SectionCard } from "../../components/ui/section-card";
 import { HmsDashboardShell, HmsAuditFooter } from "../../components/hms-dashboard";
-import { Stethoscope, Plus, AlertTriangle, Package } from "lucide-react";
+import { Stethoscope, Plus, AlertTriangle, Package, AlertCircle } from "lucide-react";
 
 interface Service {
   id: string;
@@ -31,6 +31,17 @@ export const ServiceSettings = () => {
       footer={<HmsAuditFooter dataSource="Service catalog (UI prototype - not persisted)" />}
     >
       <div className="space-y-6 animate-fade-in">
+        <div
+          role="status"
+          data-testid="service-settings-notice"
+          className="bg-amber-50 border-b border-amber-200 px-8 py-3 flex gap-3 items-center"
+        >
+          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" aria-hidden="true" />
+          <p className="text-xs font-semibold text-amber-800">
+            <span className="font-black uppercase tracking-wide mr-1">Sandbox Notice:</span>
+            Service & Package Settings is a prototype admin view. The medical service catalog and pricing are fabricated demo examples — no real billing catalog is connected.
+          </p>
+        </div>
         <SectionCard title="Services & Packages">
           <div className="flex items-center justify-between mb-4 mt-4">
             <p className="text-xs text-slate-500">

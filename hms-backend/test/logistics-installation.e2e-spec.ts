@@ -82,6 +82,8 @@ describe('Logistics & Installation E2E Gates (e2e)', () => {
         id: randomUUID(),
         tenantId,
         branchId: testBranchId,
+        itemId: randomUUID(),
+        buyerId: testUserId,
         title: 'High Resolution CT Unit',
         status: 'SUBMITTED',
       },
@@ -92,8 +94,9 @@ describe('Logistics & Installation E2E Gates (e2e)', () => {
         id: randomUUID(),
         rfqId: rfq.id,
         tenantId,
-        status: 'ACCEPTED',
+        amount: 185000.0,
         totalAmount: 185000.0,
+        status: 'ACCEPTED',
       },
     });
 

@@ -24,6 +24,8 @@ export const TerminationWorkflowPage: React.FC = () => {
           <p className="text-xs text-slate-500 font-medium">Standardized exit process and credential revocation</p>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 text-[10px] text-amber-800 font-semibold max-w-md">
+          <span className="font-black uppercase tracking-wide mr-1">Sandbox Notice:</span>
+          Termination & Offboarding is a prototype operational view. The termination checklist and employee search are fabricated demo examples — no real account mutations occur in this build.
         </div>
       </div>
 
