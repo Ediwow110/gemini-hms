@@ -523,4 +523,6 @@ None. All known local production-readiness issues have been addressed.
 - **`0b2d039`**: Added `COPY prisma.config.js ./` to the production stage of `Dockerfile` so that container migrations find the Prisma configuration and database URL.
 - **Health Check Alignment**: Updated `ci.yml`, `docker-compose.prod.yml`, `docker-compose.staging.yml`, `Dockerfile`, and verification scripts to query `http://localhost:3000/api/v1/health` (aligning with the NestJS global prefix).
 - **Deployment Verification**: Monitored the Render build lifecycle, resolved environment configuration issues, and verified that the NestJS backend and Neon PostgreSQL database are fully operational (health status `UP`).
+- **`ba388cb` (Vercel Routing Fix)**: Added `hms-frontend/vercel.json` with a URL rewrite fallback to `index.html` to support React client-side routing on Vercel and prevent direct URL 404 errors.
+
 
