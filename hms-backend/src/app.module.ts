@@ -66,9 +66,21 @@ import { HealthModule } from './common/health/health.module';
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60000, limit: 100 },
-      { name: 'auth', ttl: 60000, limit: 5 },
-      { name: 'sensitive', ttl: 60000, limit: 20 },
+      {
+        name: 'default',
+        ttl: 60000,
+        limit: process.env.NODE_ENV === 'test' ? 10000 : 100,
+      },
+      {
+        name: 'auth',
+        ttl: 60000,
+        limit: process.env.NODE_ENV === 'test' ? 10000 : 5,
+      },
+      {
+        name: 'sensitive',
+        ttl: 60000,
+        limit: process.env.NODE_ENV === 'test' ? 10000 : 20,
+      },
     ]),
     LoggerModule,
     PrismaModule,
