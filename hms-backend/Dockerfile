@@ -33,6 +33,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 # Install production dependencies only (prisma CLI available as dependency)
 COPY package*.json ./
 COPY prisma ./prisma/
+COPY prisma.config.js ./
 RUN npm ci --omit=dev && npx prisma generate
 
 # Copy built artifacts from builder
