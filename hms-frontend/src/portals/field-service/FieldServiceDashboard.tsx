@@ -1,53 +1,57 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import FieldServiceShellNotice from './components/FieldServiceShellNotice';
-import FieldServiceScopeFilter from './components/FieldServiceScopeFilter';
-import TechnicianJobCard from './components/TechnicianJobCard';
-import RouteSummaryPanel from './components/RouteSummaryPanel';
-import OfflineSyncStatusCard from './components/OfflineSyncStatusCard';
-import { useFieldServiceJobs } from '../../hooks/use-field-service';
-import { HmsPageHeader } from '../../components/hms-page';
-import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
-import { CheckCircle2, Clock, Loader2, Truck, WifiOff } from 'lucide-react';
-import { AnalyticsMetricCard, InsightPanel } from '../../components/analytics';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import FieldServiceShellNotice from "./components/FieldServiceShellNotice";
+import FieldServiceScopeFilter from "./components/FieldServiceScopeFilter";
+import TechnicianJobCard from "./components/TechnicianJobCard";
+import RouteSummaryPanel from "./components/RouteSummaryPanel";
+import OfflineSyncStatusCard from "./components/OfflineSyncStatusCard";
+import { useFieldServiceJobs } from "../../hooks/use-field-service";
+import { HmsPageHeader } from "../../components/hms-page";
+import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from "../../components/hms-dashboard";
+import { CheckCircle2, Clock, Loader2, Truck, WifiOff } from "lucide-react";
+import { AnalyticsMetricCard, InsightPanel } from "../../components/analytics";
 import {
   VolumeAreaChart,
   StatusDonutChart,
   ComparisonBarChart
-} from '../../components/analytics/charts';
+} from "../../components/analytics/charts";
+import { useUser } from "../../hooks/use-user";
 
 const MOCK_COMPLETION_TIMELINE = [
-  { label: 'Mon', value: 8 },
-  { label: 'Tue', value: 12 },
-  { label: 'Wed', value: 10 },
-  { label: 'Thu', value: 15 },
-  { label: 'Fri', value: 14 },
-  { label: 'Sat', value: 6 },
-  { label: 'Sun', value: 5 },
+  { label: "Mon", value: 8 },
+  { label: "Tue", value: 12 },
+  { label: "Wed", value: 10 },
+  { label: "Thu", value: 15 },
+  { label: "Fri", value: 14 },
+  { label: "Sat", value: 6 },
+  { label: "Sun", value: 5 },
 ];
 
 const MOCK_SLA_AGING = [
-  { label: '< 2h', value: 12 },
-  { label: '2-4h', value: 8 },
-  { label: '4-8h', value: 4 },
-  { label: '8h+', value: 2 },
+  { label: "< 2h", value: 12 },
+  { label: "2-4h", value: 8 },
+  { label: "4-8h", value: 4 },
+  { label: "8h+", value: 2 },
 ];
 
 const MOCK_HANDOVER_STATUS = [
-  { label: 'Synced', value: 18, color: '#10b981' },
-  { label: 'Pending', value: 3, color: '#f59e0b' },
-  { label: 'Failed', value: 1, color: '#e11d48' },
+  { label: "Synced", value: 18, color: "#10b981" },
+  { label: "Pending", value: 3, color: "#f59e0b" },
+  { label: "Failed", value: 1, color: "#e11d48" },
 ];
 
 export const FieldServiceDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const user = useUser();
   const { data: jobsData, isLoading, error } = useFieldServiceJobs();
 
   const deliveries = jobsData?.deliveries ?? [];
   const installations = jobsData?.installations ?? [];
   const allJobs = [...deliveries, ...installations];
-  const inProgress = allJobs.filter(j => j.status === 'IN_PROGRESS').length;
-  const completed = allJobs.filter(j => j.status === 'COMPLETED').length;
+  const inProgress = allJobs.filter(j => j.status === "IN_PROGRESS").length;
+  const completed = allJobs.filter(j => j.status === "COMPLETED").length;
+
+  const isAdmin = user.roles.includes("Super Admin") || user.roles.includes("Branch Admin");
 
   return (
     <HmsDashboardShell>
@@ -58,12 +62,14 @@ export const FieldServiceDashboard: React.FC = () => {
           actions={
             <div className="flex items-center gap-3">
               <FieldServiceScopeFilter />
-              <button
-                onClick={() => navigate('/field-service/schedule')}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md cursor-pointer"
-              >
-                My Schedule
-              </button>
+              {!isAdmin && (
+                <button
+                  onClick={() => navigate("/field-service/schedule")}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md cursor-pointer"
+                >
+                  My Schedule
+                </button>
+              )}
             </div>
           }
         />
@@ -78,14 +84,14 @@ export const FieldServiceDashboard: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <AnalyticsMetricCard title="Jobs Today" value={String(allJobs.length).padStart(2, '0')} icon={Truck} description="Live technician job assignments" severity="info" href="/field-service/schedule" />
-            <AnalyticsMetricCard title="In Progress" value={String(inProgress).padStart(2, '0')} icon={Clock} description="Jobs currently underway" severity="warning" href="/field-service/deliveries" />
-            <AnalyticsMetricCard title="Completed" value={String(completed).padStart(2, '0')} icon={CheckCircle2} description="Completed field work" severity="success" href="/field-service/proof-of-delivery" />
+            <AnalyticsMetricCard title="Jobs Today" value={String(allJobs.length).padStart(2, "0")} icon={Truck} description="Live technician job assignments" severity="info" href="/field-service/schedule" />
+            <AnalyticsMetricCard title="In Progress" value={String(inProgress).padStart(2, "0")} icon={Clock} description="Jobs currently underway" severity="warning" href="/field-service/deliveries" />
+            <AnalyticsMetricCard title="Completed" value={String(completed).padStart(2, "0")} icon={CheckCircle2} description="Completed field work" severity="success" href="/field-service/proof-of-delivery" />
             <AnalyticsMetricCard title="Offline Sync" value="WIP" icon={WifiOff} description="Queued handovers and offline evidence" severity="warning" href="/field-service/offline-sync" />
           </div>
         )}
 
-        <InsightPanel insights={[{ title: 'Field dashboard stays route-first', description: 'Technician jobs and route/offline readiness remain more important than executive charts for mobile users.', severity: 'info', actionLabel: 'Open Schedule', actionTo: '/field-service/schedule' }]} title="Field service insights" />
+        <InsightPanel insights={[{ title: "Field dashboard stays route-first", description: "Technician jobs and route/offline readiness remain more important than executive charts for mobile users.", severity: "info", actionLabel: "Open Schedule", actionTo: "/field-service/schedule" }]} title="Field service insights" />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
@@ -132,7 +138,9 @@ export const FieldServiceDashboard: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Upcoming Job Queue</h3>
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">
+              {isAdmin ? "Global Job Queue" : "Upcoming Job Queue"}
+            </h3>
             {isLoading ? (
               <div className="flex items-center justify-center p-12 bg-white border border-slate-100 rounded-3xl">
                 <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
@@ -154,7 +162,7 @@ export const FieldServiceDashboard: React.FC = () => {
                     address={j.address}
                     time="SLA: Immediate"
                     status={j.status}
-                    onAction={() => navigate('/field-service/deliveries')}
+                    onAction={() => navigate("/field-service/deliveries")}
                   />
                 ))}
                 {installations.map((j) => (
@@ -166,7 +174,7 @@ export const FieldServiceDashboard: React.FC = () => {
                     address={j.address}
                     time="SLA: Next Day"
                     status={j.status}
-                    onAction={() => navigate('/field-service/installations')}
+                    onAction={() => navigate("/field-service/installations")}
                   />
                 ))}
               </div>
