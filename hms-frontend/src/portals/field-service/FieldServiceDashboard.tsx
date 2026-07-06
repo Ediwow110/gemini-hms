@@ -51,7 +51,7 @@ export const FieldServiceDashboard: React.FC = () => {
   const inProgress = allJobs.filter(j => j.status === "IN_PROGRESS").length;
   const completed = allJobs.filter(j => j.status === "COMPLETED").length;
 
-  const isAdmin = user.roles.includes("Super Admin") || user.roles.includes("Branch Admin");
+  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
 
   return (
     <HmsDashboardShell>

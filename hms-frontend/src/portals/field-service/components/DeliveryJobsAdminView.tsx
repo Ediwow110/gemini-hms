@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Truck, Plus, Search, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Truck, Plus, AlertCircle } from "lucide-react";
 import { fieldServiceService, ShipmentDto } from "../../../services/field-service.service";
 import { HmsLoadingSkeleton, HmsEmptyState } from "../../../components/hms-dashboard";
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Wrench, Loader2, AlertCircle } from "lucide-react";
+import { Wrench, AlertCircle } from "lucide-react";
 import { fieldServiceService, InstallationJobDto } from "../../../services/field-service.service";
 import { HmsLoadingSkeleton, HmsEmptyState } from "../../../components/hms-dashboard";
 
