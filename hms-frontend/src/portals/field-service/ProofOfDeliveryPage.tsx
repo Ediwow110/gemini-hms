@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../../hooks/use-user';
 import FieldServiceShellNotice from './components/FieldServiceShellNotice';
 import PhotoEvidencePlaceholder from './components/PhotoEvidencePlaceholder';
 import SignatureCapturePlaceholder from './components/SignatureCapturePlaceholder';
@@ -10,35 +11,72 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 
 export const ProofOfDeliveryPage: React.FC = () => {
   const navigate = useNavigate();
+  const user = useUser();
   const { data: delivery } = useFieldServiceProofOfDelivery();
+  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
 
   return (
     <HmsDashboardShell widthTier="full">
       <div className="space-y-6 max-w-2xl mx-auto pb-20">
         <HmsPageHeader
           title="Proof of Delivery"
-          description={`Job: ${delivery?.jobId ?? '...'}`}
-          badge="Sandbox"
+          description={isAdmin ? "Delivery Proof Archives" : `Job: ${delivery?.jobId ?? '...'}`}
+          badge={isAdmin ? "Admin" : "Sandbox"}
           onBack={() => navigate(-1)}
         />
 
         <FieldServiceShellNotice />
 
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-8 shadow-sm">
-          <PhotoEvidencePlaceholder />
-          <div className="h-px bg-slate-100" />
-          <div className="space-y-3">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Received By</p>
-            <input type="text" placeholder="Recipient Name" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:outline-none" />
+        {isAdmin ? (
+          <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Job ID</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Recipient</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Status</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Proof</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {[
+                  { id: 'JOB-101', user: 'Alice Smith', status: 'Delivered', proof: 'Image/Sig' },
+                  { id: 'JOB-104', user: 'Bob Jones', status: 'Delivered', proof: 'Image/Sig' },
+                  { id: 'JOB-112', user: 'Charlie Brown', status: 'Pending', proof: 'None' },
+                ].map((row, i) => (
+                  <tr key={i} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-slate-800">{row.id}</td>
+                    <td className="px-6 py-4 font-medium text-slate-600">{row.user}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${row.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-slate-600">{row.proof}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <SignatureCapturePlaceholder />
-        </div>
+        ) : (
+          <>
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-8 shadow-sm">
+              <PhotoEvidencePlaceholder />
+              <div className="h-px bg-slate-100" />
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Received By</p>
+                <input type="text" placeholder="Recipient Name" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold focus:outline-none" />
+              </div>
+              <SignatureCapturePlaceholder />
+            </div>
 
-        <div className="fixed bottom-4 left-4 right-4 max-w-2xl mx-auto">
-          <button className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-2xl uppercase text-xs flex items-center justify-center gap-2">
-            <FileCheck className="h-5 w-5" /> Submit Proof (Shell)
-          </button>
-        </div>
+            <div className="fixed bottom-4 left-4 right-4 max-w-2xl mx-auto">
+              <button className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-2xl uppercase text-xs flex items-center justify-center gap-2">
+                <FileCheck className="h-5 w-5" /> Submit Proof (Shell)
+              </button>
+            </div>
+          </>
+        )}
       </div>
       <HmsAuditFooter />
     </HmsDashboardShell>
