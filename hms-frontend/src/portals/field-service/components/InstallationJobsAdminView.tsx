@@ -15,7 +15,7 @@ export const InstallationJobsAdminView: React.FC = () => {
       const data = await fieldServiceService.getInstallations();
       setJobs(data);
       setError(null);
-    } catch (err) {
+    } catch {
       setError("Failed to load installation jobs.");
     } finally {
       setIsLoading(false);
@@ -31,7 +31,7 @@ export const InstallationJobsAdminView: React.FC = () => {
     try {
       await fieldServiceService.updateInstallationStatus(id, status);
       await fetchJobs();
-    } catch (err) {
+    } catch {
       alert("Failed to update installation status.");
     } finally {
       setUpdatingId(null);
