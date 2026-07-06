@@ -9,7 +9,7 @@ import { HmsDashboardShell, HmsAuditFooter } from "../../components/hms-dashboar
 
 export const DeliveryJobsPage: React.FC = () => {
   const user = useUser();
-  const isAdmin = user.roles.includes("Super Admin") || user.roles.includes("Branch Admin");
+  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
 
   return (
     <HmsDashboardShell>
