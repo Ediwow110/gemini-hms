@@ -33,7 +33,9 @@ export const RedisProvider: Provider = {
         return new Redis({
           host: parsed.hostname,
           port: parseInt(parsed.port || '6379', 10),
-          password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+          password: parsed.password
+            ? decodeURIComponent(parsed.password)
+            : undefined,
           tls: {
             rejectUnauthorized: false,
           },
