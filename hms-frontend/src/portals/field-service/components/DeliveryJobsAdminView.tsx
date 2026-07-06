@@ -23,7 +23,7 @@ export const DeliveryJobsAdminView: React.FC = () => {
       const data = await fieldServiceService.getShipments();
       setShipments(data);
       setError(null);
-    } catch (err) {
+    } catch {
       setError("Failed to load shipment data.");
     } finally {
       setIsLoading(false);
@@ -41,7 +41,7 @@ export const DeliveryJobsAdminView: React.FC = () => {
       setIsModalOpen(false);
       setFormData({ customerOrderId: "", address: "", technicianId: "" });
       await fetchShipments();
-    } catch (err) {
+    } catch {
       alert("Failed to create delivery job.");
     }
   };
@@ -51,7 +51,7 @@ export const DeliveryJobsAdminView: React.FC = () => {
     try {
       await fieldServiceService.updateShipmentStatus(id, status);
       await fetchShipments();
-    } catch (err) {
+    } catch {
       alert("Failed to update shipment status.");
     } finally {
       setUpdatingId(null);
