@@ -524,5 +524,7 @@ None. All known local production-readiness issues have been addressed.
 - **Health Check Alignment**: Updated `ci.yml`, `docker-compose.prod.yml`, `docker-compose.staging.yml`, `Dockerfile`, and verification scripts to query `http://localhost:3000/api/v1/health` (aligning with the NestJS global prefix).
 - **Deployment Verification**: Monitored the Render build lifecycle, resolved environment configuration issues, and verified that the NestJS backend and Neon PostgreSQL database are fully operational (health status `UP`).
 - **`ba388cb` (Vercel Routing Fix)**: Added `hms-frontend/vercel.json` with a URL rewrite fallback to `index.html` to support React client-side routing on Vercel and prevent direct URL 404 errors.
+- **`0a648ce` (Redis/Bull TLS Support)**: Configured parsing of `REDIS_URL` in `bull-queue.module.ts` and `redis.provider.ts` to pass appropriate options and bypass TLS certificate checks (`rejectUnauthorized: false`) for secure `rediss://` Upstash endpoints, resolving HTTP 500 errors on login.
+
 
 
