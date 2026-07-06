@@ -27,6 +27,21 @@ export const RedisProvider: Provider = {
       };
     }
     const url = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+    if (url.startsWith('rediss://')) {
+      try {
+        const parsed = new URL(url);
+        return new Redis({
+          host: parsed.hostname,
+          port: parseInt(parsed.port || '6379', 10),
+          password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+          tls: {
+            rejectUnauthorized: false,
+          },
+        });
+      } catch (e) {
+        return new Redis(url);
+      }
+    }
     return new Redis(url);
   },
 };
