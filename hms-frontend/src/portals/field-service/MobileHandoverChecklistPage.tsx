@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, ClipboardCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/use-user';
+import { useFieldServiceHandoverLogs } from '../../hooks/use-field-service';
 import FieldServiceShellNotice from './components/FieldServiceShellNotice';
 import { useFieldServiceHandoverChecklist } from '../../hooks/use-field-service';
 import { HmsPageHeader } from '../../components/hms-page';
@@ -10,6 +11,7 @@ import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../com
 export const MobileHandoverChecklistPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useUser();
+  const { data: logs } = useFieldServiceHandoverLogs();
   const { data: checklist, isLoading } = useFieldServiceHandoverChecklist();
   const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
 
@@ -32,24 +34,24 @@ export const MobileHandoverChecklistPage: React.FC = () => {
                 <tr>
                   <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Job ID</th>
                   <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Customer</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Asset</th>
                   <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Completion</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Sign-Off</th>
                   <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Timestamp</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {[
-                  { id: 'JOB-201', customer: 'Acme Corp', progress: '100%', time: '2024-06-10 14:30' },
-                  { id: 'JOB-205', customer: 'Global Health', progress: '100%', time: '2024-06-12 09:15' },
-                  { id: 'JOB-210', customer: 'City General', progress: '40%', time: '---' },
-                ].map((row, i) => (
+                {logs?.map((row, i) => (
                   <tr key={i} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 font-bold text-slate-800">{row.id}</td>
                     <td className="px-6 py-4 font-medium text-slate-600">{row.customer}</td>
+                    <td className="px-6 py-4 font-medium text-slate-600">{row.asset}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${row.progress === '100%' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                         {row.progress}
                       </span>
                     </td>
+                    <td className="px-6 py-4 font-medium text-slate-600">{row.signOff}</td>
                     <td className="px-6 py-4 font-medium text-slate-600">{row.time}</td>
                   </tr>
                 ))}

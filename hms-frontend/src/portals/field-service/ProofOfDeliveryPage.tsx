@@ -1,7 +1,8 @@
 import React from 'react';
-import { FileCheck } from 'lucide-react';
+import { FileCheck, PackageCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../hooks/use-user';
+import { useFieldServiceDeliveryArchives } from '../../hooks/use-field-service';
 import FieldServiceShellNotice from './components/FieldServiceShellNotice';
 import PhotoEvidencePlaceholder from './components/PhotoEvidencePlaceholder';
 import SignatureCapturePlaceholder from './components/SignatureCapturePlaceholder';
@@ -12,6 +13,7 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 export const ProofOfDeliveryPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useUser();
+  const { data: archives } = useFieldServiceDeliveryArchives();
   const { data: delivery } = useFieldServiceProofOfDelivery();
   const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
 
@@ -34,25 +36,25 @@ export const ProofOfDeliveryPage: React.FC = () => {
                 <tr>
                   <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Job ID</th>
                   <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Recipient</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Tech</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Location</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Date</th>
                   <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Status</th>
-                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Proof</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {[
-                  { id: 'JOB-101', user: 'Alice Smith', status: 'Delivered', proof: 'Image/Sig' },
-                  { id: 'JOB-104', user: 'Bob Jones', status: 'Delivered', proof: 'Image/Sig' },
-                  { id: 'JOB-112', user: 'Charlie Brown', status: 'Pending', proof: 'None' },
-                ].map((row, i) => (
+                {archives?.map((row, i) => (
                   <tr key={i} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 font-bold text-slate-800">{row.id}</td>
                     <td className="px-6 py-4 font-medium text-slate-600">{row.user}</td>
+                    <td className="px-6 py-4 font-medium text-slate-600">{row.tech}</td>
+                    <td className="px-6 py-4 font-medium text-slate-600">{row.location}</td>
+                    <td className="px-6 py-4 font-medium text-slate-600">{row.date}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${row.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                         {row.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-medium text-slate-600">{row.proof}</td>
                   </tr>
                 ))}
               </tbody>
@@ -82,5 +84,6 @@ export const ProofOfDeliveryPage: React.FC = () => {
     </HmsDashboardShell>
   );
 };
+
 
 export default ProofOfDeliveryPage;

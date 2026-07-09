@@ -1,5 +1,6 @@
 import React from 'react';
 import { useUser } from '../../hooks/use-user';
+import { useFieldServiceWarrantyLogs } from '../../hooks/use-field-service';
 import FieldServiceShellNotice from './components/FieldServiceShellNotice';
 import WarrantyActivationCard from './components/WarrantyActivationCard';
 import { HmsPageHeader } from '../../components/hms-page';
@@ -7,6 +8,7 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 
 export const WarrantyActivationPage: React.FC = () => {
   const user = useUser();
+  const { data: logs } = useFieldServiceWarrantyLogs();
   const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
 
   return (
@@ -27,20 +29,20 @@ export const WarrantyActivationPage: React.FC = () => {
                 <tr>
                   <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Asset ID</th>
                   <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Serial Number</th>
-                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Activation Date</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Customer/Site</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Activated By</th>
+                  <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Expiry Date</th>
                   <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {[
-                  { id: 'AST-901', sn: 'SN-2024-X1', date: '2024-05-12', status: 'Active' },
-                  { id: 'AST-905', sn: 'SN-2024-Y2', date: '2024-06-01', status: 'Active' },
-                  { id: 'AST-912', sn: 'SN-2024-Z3', date: '2024-06-15', status: 'Pending' },
-                ].map((row, i) => (
+                {logs?.map((row, i) => (
                   <tr key={i} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 font-bold text-slate-800">{row.id}</td>
                     <td className="px-6 py-4 font-medium text-slate-600">{row.sn}</td>
-                    <td className="px-6 py-4 font-medium text-slate-600">{row.date}</td>
+                    <td className="px-6 py-4 font-medium text-slate-600">{row.customer}</td>
+                    <td className="px-6 py-4 font-medium text-slate-600">{row.activatedBy}</td>
+                    <td className="px-6 py-4 font-medium text-slate-600">{row.expiry}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${row.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                         {row.status}

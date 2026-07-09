@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, History } from 'lucide-react';
 import { useUser } from '../../hooks/use-user';
+import { useFieldServiceMaintenanceSLA } from '../../hooks/use-field-service';
 import FieldServiceShellNotice from './components/FieldServiceShellNotice';
 import MaintenanceChecklistPanel from './components/MaintenanceChecklistPanel';
 import { useFieldServicePreventiveMaintenance } from '../../hooks/use-field-service';
@@ -9,6 +10,7 @@ import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } 
 
 export const PreventiveMaintenancePage: React.FC = () => {
   const user = useUser();
+  const { data: slaData } = useFieldServiceMaintenanceSLA();
   const { data: jobs, isLoading } = useFieldServicePreventiveMaintenance();
   const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
 
@@ -30,26 +32,26 @@ export const PreventiveMaintenancePage: React.FC = () => {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Asset ID</th>
+                    <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Model</th>
                     <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">SLA Status</th>
-                    <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Tech Assigned</th>
-                    <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Last Visit</th>
+                    <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Next Due</th>
+                    <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Priority</th>
+                    <th className="px-6 py-4 font-black text-slate-500 uppercase tracking-widest text-[10px]">Compliance</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {[
-                    { id: 'AST-101', sla: 'Compliant', tech: 'Alice Smith', date: '2024-05-01' },
-                    { id: 'AST-205', sla: 'At Risk', tech: 'Bob Jones', date: '2024-04-15' },
-                    { id: 'AST-312', sla: 'Overdue', tech: 'Charlie Brown', date: '2024-03-10' },
-                  ].map((row, i) => (
+                  {slaData?.map((row, i) => (
                     <tr key={i} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-800">{row.id}</td>
+                      <td className="px-6 py-4 font-medium text-slate-600">{row.model}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${row.sla === 'Compliant' ? 'bg-emerald-50 text-emerald-600' : row.sla === 'At Risk' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'}`}>
                           {row.sla}
                         </span>
                       </td>
-                      <td className="px-6 py-4 font-medium text-slate-600">{row.tech}</td>
-                      <td className="px-6 py-4 font-medium text-slate-600">{row.date}</td>
+                      <td className="px-6 py-4 font-medium text-slate-600">{row.nextDue}</td>
+                      <td className="px-6 py-4 font-medium text-slate-600">{row.priority}</td>
+                      <td className="px-6 py-4 font-medium text-slate-600">{row.compliance}</td>
                     </tr>
                   ))}
                 </tbody>
