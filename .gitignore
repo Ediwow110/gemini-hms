@@ -29,3 +29,4 @@ backups/
 # Local dev server logs
 **/backend-dev*.log
 **/frontend-dev*.log
+nul
