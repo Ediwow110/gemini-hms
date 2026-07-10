@@ -19,7 +19,11 @@ export const RoleRedirect = () => {
   }
 
   // Get safe portal path
-  const destination = getSafePortalPath(user.defaultPortalPath, user.roles);
+  const destination = getSafePortalPath(
+    user.defaultPortalPath,
+    user.roles,
+    user.permissions,
+  );
   
   // If we ended up computing '/' from something else or there is a loop logic bug, 
   // ensure we don't return '/' to create a render loop since RoleRedirect is mounted at '/'

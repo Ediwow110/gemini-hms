@@ -246,8 +246,7 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       isSuperAdmin: false,
       canAccess: (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
         if (opts.permission === 'inventory.item.view') return false;
-        if (opts.allowedRoles?.includes('Doctor')) return true;
-        return false;
+        return ['patient.view', 'queue.view', 'encounter.view', 'lab.result.view', 'doctor.prescription.view', 'order.view'].includes(opts.permission || '');
       },
     });
 
@@ -257,8 +256,8 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       </MemoryRouter>
     );
 
-    // Doctor should see "Patient Queue" (has allowedRoles ['Doctor']) but NOT "Catalog" (no inventory.item.view)
-    expect(screen.getByText('Patient Queue')).toBeInTheDocument();
+    // Doctor should see the permission-backed queue but NOT inventory catalog access.
+    expect(screen.getAllByText('Patient Queue').length).toBeGreaterThan(0);
     expect(screen.queryByText('Catalog')).not.toBeInTheDocument();
   });
 

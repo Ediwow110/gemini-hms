@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronDown, LogOut } from 'lucide-react';
 import { useUser, useAuth, usePermissions } from '../hooks/use-user';
 import { roleNavigation, NavItemConfig } from '../config/roleNavigation';
+import { getPortalRouteConfig } from '../config/portalRoutes';
 
 interface ActiveItemMatch {
   item: NavItemConfig;
@@ -80,14 +81,17 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
     return false;
   };
 
-  const canView = useCallback((item: NavItemConfig) =>
-    !isDemoHidden(item) &&
-    canAccess({
-      permission: item.permission,
-      allowedRoles: item.allowedRoles,
-      isBranchScoped: item.isBranchScoped,
-      zone: item.zone,
-    }), [canAccess]);
+  const canView = useCallback((item: NavItemConfig) => {
+    if (isDemoHidden(item)) return false;
+
+    const route = getPortalRouteConfig(item.to);
+    return canAccess({
+      permission: route ? route.requiredPermission : item.permission,
+      allowedRoles: route ? route.allowedRoles : item.allowedRoles,
+      isBranchScoped: route ? Boolean(route.isBranchScoped) : item.isBranchScoped,
+      zone: route ? route.zone : item.zone,
+    });
+  }, [canAccess]);
 
   const getAllowedItems = useCallback((items: NavItemConfig[]): NavItemConfig[] => {
     const filterAndMap = (currentItems: NavItemConfig[]): NavItemConfig[] =>

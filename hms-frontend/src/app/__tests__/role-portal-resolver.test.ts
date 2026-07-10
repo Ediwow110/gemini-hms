@@ -22,7 +22,7 @@ describe('Role Portal Resolver', () => {
   });
 
   it('should return correct path for all known roles', () => {
-    expect(getDefaultPortalPath(['Super Admin'])).toBe('/admin/executive');
+    expect(getDefaultPortalPath(['Super Admin'])).toBe('/admin');
     expect(getDefaultPortalPath(['Branch Admin'])).toBe('/branch-admin');
     expect(getDefaultPortalPath(['Marketplace Admin'])).toBe('/marketplace-admin');
     expect(getDefaultPortalPath(['Compliance Officer'])).toBe('/compliance');
@@ -49,7 +49,13 @@ describe('Role Portal Resolver', () => {
     expect(getDefaultPortalPath(['Receptionist'])).toBe('/queue');
   });
 
-  it('should get default portal path for fallback scenarios', () => {
+  it('resolves custom roles from their permission grants', () => {
+    expect(
+      getDefaultPortalPath(['Delivery Coordinator'], ['field_service.job.view']),
+    ).toBe('/field-service');
+    expect(
+      getDefaultPortalPath(['Regional HR Reviewer'], ['hr.employee.view']),
+    ).toBe('/hr');
     expect(getDefaultPortalPath(['Unknown Role'])).toBe('/unauthorized');
     expect(getDefaultPortalPath([])).toBe('/unauthorized');
   });

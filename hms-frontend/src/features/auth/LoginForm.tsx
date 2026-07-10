@@ -49,8 +49,12 @@ export const LoginForm = () => {
   const navigate = useNavigate();
   const { refetchUser } = useAuth();
 
-  const handleSuccessfulAuth = async (user: { defaultPortalPath?: string; roles?: string[] }) => {
-    const path = getSafePortalPath(user?.defaultPortalPath, user?.roles || []);
+  const handleSuccessfulAuth = async (user: { defaultPortalPath?: string; roles?: string[]; permissions?: string[] }) => {
+    const path = getSafePortalPath(
+      user?.defaultPortalPath,
+      user?.roles || [],
+      user?.permissions || [],
+    );
     if (!isKnownPortalPath(path)) {
       setError("Authenticated, but no portal is assigned to your role. Contact administrator.");
       return;

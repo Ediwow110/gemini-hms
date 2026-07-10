@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { FieldServiceDashboard } from '../FieldServiceDashboard';
-import { useFieldServiceJobs } from '../../../hooks/use-field-service';
+import { useFieldServiceAdminJobs, useFieldServiceJobs } from '../../../hooks/use-field-service';
 
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="responsive-chart">{children}</div>,
@@ -23,6 +23,7 @@ vi.mock('recharts', () => ({
 
 vi.mock('../../../hooks/use-field-service', () => ({
   useFieldServiceJobs: vi.fn(),
+  useFieldServiceAdminJobs: vi.fn(),
 }));
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -37,6 +38,11 @@ describe('FieldServiceDashboard Phase 14-B', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     queryClient.clear();
+    vi.mocked(useFieldServiceAdminJobs).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useFieldServiceAdminJobs>);
   });
 
   it('renders loading skeleton while fetching', () => {
@@ -49,8 +55,8 @@ describe('FieldServiceDashboard Phase 14-B', () => {
   it('renders with real data from hook', async () => {
     vi.mocked(useFieldServiceJobs).mockReturnValue({
       data: {
-        deliveries: [{ id: 'del-1', customer: 'Hospital A', address: '123 St', status: 'IN_PROGRESS' as const }],
-        installations: [{ id: 'ins-1', customer: 'Hospital B', address: '456 Rd', status: 'PENDING' as const }],
+        deliveries: [{ id: 'del-1', customer: 'Hospital A', address: '123 St', status: 'IN_PROGRESS' as const, shipmentId: 'ship-1', orderId: 'order-1' }],
+        installations: [{ id: 'ins-1', customer: 'Hospital B', address: '456 Rd', status: 'ASSIGNED' as const, assetId: 'asset-1', assetModel: 'MRI' }],
       },
       isLoading: false,
       error: null,

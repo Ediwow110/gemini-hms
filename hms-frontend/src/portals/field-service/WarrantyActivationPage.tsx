@@ -9,7 +9,9 @@ import { HmsDashboardShell, HmsAuditFooter } from '../../components/hms-dashboar
 export const WarrantyActivationPage: React.FC = () => {
   const user = useUser();
   const { data: logs } = useFieldServiceWarrantyLogs();
-  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
+  const isAdmin = Boolean(
+    user?.permissions.includes('field_service.job.assign'),
+  );
 
   return (
     <HmsDashboardShell>

@@ -5,7 +5,7 @@ import FieldServiceScopeFilter from "./components/FieldServiceScopeFilter";
 import TechnicianJobCard from "./components/TechnicianJobCard";
 import RouteSummaryPanel from "./components/RouteSummaryPanel";
 import OfflineSyncStatusCard from "./components/OfflineSyncStatusCard";
-import { useFieldServiceJobs } from "../../hooks/use-field-service";
+import { useFieldServiceAdminJobs, useFieldServiceJobs } from "../../hooks/use-field-service";
 import { HmsPageHeader } from "../../components/hms-page";
 import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from "../../components/hms-dashboard";
 import { CheckCircle2, Clock, Loader2, Truck, WifiOff } from "lucide-react";
@@ -43,15 +43,21 @@ const MOCK_HANDOVER_STATUS = [
 export const FieldServiceDashboard: React.FC = () => {
   const navigate = useNavigate();
   const user = useUser();
-  const { data: jobsData, isLoading, error } = useFieldServiceJobs();
+  const isAdmin = Boolean(
+    user?.permissions.includes('fulfillment.view'),
+  );
+  const technicianQuery = useFieldServiceJobs(!isAdmin);
+  const adminQuery = useFieldServiceAdminJobs(isAdmin);
+  const activeQuery = isAdmin ? adminQuery : technicianQuery;
+  const jobsData = activeQuery.data;
+  const isLoading = activeQuery.isLoading;
+  const error = activeQuery.error;
 
   const deliveries = jobsData?.deliveries ?? [];
   const installations = jobsData?.installations ?? [];
   const allJobs = [...deliveries, ...installations];
   const inProgress = allJobs.filter(j => j.status === "IN_PROGRESS").length;
   const completed = allJobs.filter(j => j.status === "COMPLETED").length;
-
-  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
 
   return (
     <HmsDashboardShell>
@@ -84,7 +90,7 @@ export const FieldServiceDashboard: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <AnalyticsMetricCard title="Jobs Today" value={String(allJobs.length).padStart(2, "0")} icon={Truck} description="Live technician job assignments" severity="info" href="/field-service/schedule" />
+            <AnalyticsMetricCard title={isAdmin ? "Branch Jobs" : "My Jobs"} value={String(allJobs.length).padStart(2, "0")} icon={Truck} description={isAdmin ? "Live jobs in the selected branch" : "Live technician job assignments"} severity="info" href="/field-service/schedule" />
             <AnalyticsMetricCard title="In Progress" value={String(inProgress).padStart(2, "0")} icon={Clock} description="Jobs currently underway" severity="warning" href="/field-service/deliveries" />
             <AnalyticsMetricCard title="Completed" value={String(completed).padStart(2, "0")} icon={CheckCircle2} description="Completed field work" severity="success" href="/field-service/proof-of-delivery" />
             <AnalyticsMetricCard title="Offline Sync" value="WIP" icon={WifiOff} description="Queued handovers and offline evidence" severity="warning" href="/field-service/offline-sync" />
@@ -139,7 +145,7 @@ export const FieldServiceDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">
-              {isAdmin ? "Global Job Queue" : "Upcoming Job Queue"}
+              {isAdmin ? "Selected Branch Job Queue" : "Upcoming Job Queue"}
             </h3>
             {isLoading ? (
               <div className="flex items-center justify-center p-12 bg-white border border-slate-100 rounded-3xl">
@@ -150,7 +156,7 @@ export const FieldServiceDashboard: React.FC = () => {
                 <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">Could not load job queue.</p>
               </div>
             ) : allJobs.length === 0 ? (
-              <HmsEmptyState title="No active jobs" description="No active jobs assigned." />
+              <HmsEmptyState title="No active jobs" description={isAdmin ? "No delivery or installation jobs exist for the selected branch." : "No active jobs are assigned to you."} />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {deliveries.map((j) => (

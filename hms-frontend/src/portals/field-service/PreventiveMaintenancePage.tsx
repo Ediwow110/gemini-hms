@@ -12,7 +12,9 @@ export const PreventiveMaintenancePage: React.FC = () => {
   const user = useUser();
   const { data: slaData } = useFieldServiceMaintenanceSLA();
   const { data: jobs, isLoading } = useFieldServicePreventiveMaintenance();
-  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
+  const isAdmin = Boolean(
+    user?.permissions.includes('field_service.job.assign'),
+  );
 
   return (
     <HmsDashboardShell>

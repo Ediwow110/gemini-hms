@@ -8,6 +8,7 @@ export const InstallationJobsAdminView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
   const fetchJobs = async () => {
     setIsLoading(true);
@@ -28,11 +29,13 @@ export const InstallationJobsAdminView: React.FC = () => {
 
   const handleUpdateStatus = async (id: string, status: InstallationJobDto["status"]) => {
     setUpdatingId(id);
+    setMutationError(null);
     try {
       await fieldServiceService.updateInstallationStatus(id, status);
       await fetchJobs();
-    } catch {
-      alert("Failed to update installation status.");
+    } catch (updateError) {
+      const apiError = updateError as { response?: { data?: { message?: string } }; message?: string };
+      setMutationError(apiError.response?.data?.message || apiError.message || "Failed to update installation status.");
     } finally {
       setUpdatingId(null);
     }
@@ -43,6 +46,12 @@ export const InstallationJobsAdminView: React.FC = () => {
       <div className="flex justify-between items-center">
         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Installation Management</h3>
       </div>
+
+      {mutationError && (
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">
+          {mutationError}
+        </div>
+      )}
 
       {isLoading ? (
         <HmsLoadingSkeleton variant="table" rows={5} />
@@ -59,6 +68,7 @@ export const InstallationJobsAdminView: React.FC = () => {
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Job ID / Asset</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Branch / Technician</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
@@ -78,6 +88,10 @@ export const InstallationJobsAdminView: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    <p className="text-xs font-bold text-slate-600">{job.asset.salesOrder?.quote?.rfq?.branch?.name || "Selected branch"}</p>
+                    <p className="text-[10px] font-medium text-slate-400">{job.assignedUser?.email || "Unassigned"}</p>
+                  </td>
+                  <td className="px-6 py-4">
                     <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase border ${
                       job.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
                       job.status === "IN_PROGRESS" ? "bg-indigo-100 text-indigo-700 border-indigo-200" :
@@ -95,7 +109,9 @@ export const InstallationJobsAdminView: React.FC = () => {
                     >
                       <option value="ASSIGNED">Assigned</option>
                       <option value="IN_PROGRESS">In Progress</option>
+                      <option value="COMMISSIONED">Commissioned</option>
                       <option value="COMPLETED">Completed</option>
+                      <option value="FAILED">Failed</option>
                     </select>
                   </td>
                 </tr>

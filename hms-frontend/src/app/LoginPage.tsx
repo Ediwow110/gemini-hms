@@ -16,7 +16,11 @@ export const LoginPage = () => {
   }
 
   if (user) {
-    const destination = getSafePortalPath(user.defaultPortalPath, user.roles);
+    const destination = getSafePortalPath(
+      user.defaultPortalPath,
+      user.roles,
+      user.permissions,
+    );
     return <Navigate to={destination === '/' ? '/unauthorized' : destination} replace />;
   }
 

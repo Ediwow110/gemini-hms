@@ -21,7 +21,7 @@ describe("Dashboard route access control", () => {
     "Customer",
     "Supplier Admin",
     "Marketplace Supplier",
-    "Field Service Technician",
+    "Field Technician",
   ];
 
   const dashboardRouteChecks: {

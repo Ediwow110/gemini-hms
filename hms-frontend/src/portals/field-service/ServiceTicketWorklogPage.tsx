@@ -10,7 +10,9 @@ import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton } from '../../com
 export const ServiceTicketWorklogPage: React.FC = () => {
   const user = useUser();
   const { data: ticket, isLoading } = useFieldServiceServiceTicket();
-  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
+  const isAdmin = Boolean(
+    user?.permissions.includes('field_service.job.assign'),
+  );
 
   return (
     <HmsDashboardShell>

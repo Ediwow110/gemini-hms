@@ -13,10 +13,12 @@ vi.mock('../../hooks/use-user', () => ({
   useUser: () => mockUseUser(),
 }));
 
-const renderGuard = (ui: React.ReactNode) =>
-  render(<MemoryRouter>{ui}</MemoryRouter>);
+const renderGuard = (ui: React.ReactNode, path = '/unit-test') =>
+  render(<MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>);
 
-describe('PermissionRoute — Super Admin global governance bypass', () => {
+const protectedContent = <div data-testid="protected-content">Protected</div>;
+
+describe('PermissionRoute — canonical fail-closed authorization', () => {
   beforeEach(() => {
     mockUseAuth.mockReturnValue({ isLoading: false });
   });
@@ -25,217 +27,162 @@ describe('PermissionRoute — Super Admin global governance bypass', () => {
     vi.clearAllMocks();
   });
 
-  it('denies Super Admin when allowedRoles is specified and does not include Super Admin', () => {
+  it('does not give Super Admin an implicit permission bypass', () => {
     mockUseUser.mockReturnValue({
       id: 'admin-1',
-      email: 'admin@hospital.com',
       roles: ['Super Admin'],
       permissions: [],
     });
-    mockUsePermissions.mockReturnValue({
-      isSuperAdmin: true,
-      hasPermission: () => false,
-    });
-
-    renderGuard(
-      <PermissionRoute allowedRoles={['Marketplace Admin']}>
-        <div data-testid="protected-content">Marketplace Admin Dashboard</div>
-      </PermissionRoute>
-    );
-
-    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    expect(screen.getByText('Access Restriction Active')).toBeInTheDocument();
-  });
-
-  it('allows Super Admin through a permission-only global governance route', () => {
-    mockUseUser.mockReturnValue({
-      id: 'admin-1',
-      email: 'admin@hospital.com',
-      roles: ['Super Admin'],
-      permissions: [],
-    });
-    mockUsePermissions.mockReturnValue({
-      isSuperAdmin: true,
-      hasPermission: () => false,
-    });
+    mockUsePermissions.mockReturnValue({ hasPermission: () => false });
 
     renderGuard(
       <PermissionRoute permission="marketplace.admin.manage">
-        <div data-testid="protected-content">Supplier Management</div>
-      </PermissionRoute>
-    );
-
-    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-  });
-
-  it('denies a non-Super-Admin user on a global governance route when role/permission do not match', () => {
-    mockUseUser.mockReturnValue({
-      id: 'doc-1',
-      email: 'doctor@hospital.com',
-      roles: ['Doctor'],
-      permissions: [],
-    });
-    mockUsePermissions.mockReturnValue({
-      isSuperAdmin: false,
-      hasPermission: () => false,
-    });
-
-    renderGuard(
-      <PermissionRoute allowedRoles={['Marketplace Admin']}>
-        <div data-testid="protected-content">Marketplace Admin Dashboard</div>
-      </PermissionRoute>
+        {protectedContent}
+      </PermissionRoute>,
     );
 
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
     expect(screen.getByText('Access Restriction Active')).toBeInTheDocument();
   });
 
-  it('still requires explicit role/permission for branch-scoped clinical routes even for Super Admin', () => {
+  it('allows an explicit role and permission match', () => {
     mockUseUser.mockReturnValue({
-      id: 'admin-1',
-      email: 'admin@hospital.com',
-      roles: ['Super Admin'],
-      permissions: [],
-    });
-    mockUsePermissions.mockReturnValue({
-      isSuperAdmin: true,
-      hasPermission: () => false,
-    });
-
-    renderGuard(
-      <PermissionRoute allowedRoles={['Doctor']} isBranchScoped>
-        <div data-testid="protected-content">Doctor Dashboard</div>
-      </PermissionRoute>
-    );
-
-    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    expect(screen.getByText('Access Restriction Active')).toBeInTheDocument();
-  });
-
-  it('allows a user with the correct role on a global governance route', () => {
-    mockUseUser.mockReturnValue({
-      id: 'mp-1',
-      email: 'marketplace.admin@hospital.com',
+      id: 'marketplace-admin-1',
       roles: ['Marketplace Admin'],
       permissions: ['marketplace.admin.manage'],
     });
     mockUsePermissions.mockReturnValue({
-      isSuperAdmin: false,
-      hasPermission: (p: string) => ['marketplace.admin.manage', 'marketplace.admin.view'].includes(p),
+      hasPermission: (permission: string) => permission === 'marketplace.admin.manage',
     });
 
     renderGuard(
-      <PermissionRoute allowedRoles={['Marketplace Admin']} permission="marketplace.admin.manage">
-        <div data-testid="protected-content">Supplier Management</div>
-      </PermissionRoute>
+      <PermissionRoute
+        allowedRoles={['Marketplace Admin']}
+        permission="marketplace.admin.manage"
+      >
+        {protectedContent}
+      </PermissionRoute>,
     );
 
     expect(screen.getByTestId('protected-content')).toBeInTheDocument();
   });
 
-  it('denies Super Admin from branch-admin routes when Super Admin is not in allowedRoles', () => {
+  it('uses the canonical patient-zone policy and denies Super Admin direct access', () => {
     mockUseUser.mockReturnValue({
       id: 'admin-1',
-      email: 'admin@hospital.com',
       roles: ['Super Admin'],
-      permissions: [],
+      permissions: ['patient.portal.view_own'],
     });
-    mockUsePermissions.mockReturnValue({
-      isSuperAdmin: true,
-      hasPermission: () => false,
-    });
+    mockUsePermissions.mockReturnValue({ hasPermission: () => true });
 
     renderGuard(
-      <PermissionRoute allowedRoles={['Branch Admin']}>
-        <div data-testid="protected-content">Branch Admin Area</div>
-      </PermissionRoute>
+      <PermissionRoute permission="patient.portal.view_own">
+        {protectedContent}
+      </PermissionRoute>,
+      '/patient',
     );
 
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    expect(screen.getByText('Access Restriction Active')).toBeInTheDocument();
   });
 
-  it('allows Branch Admin role through branch-admin routes even when isBranchScoped is false or omitted', () => {
+  it('allows explicit Super Admin field-service oversight with branch context and grant', () => {
     mockUseUser.mockReturnValue({
-      id: 'ba-1',
-      email: 'branch-admin@hospital.com',
+      id: 'admin-1',
+      branchId: 'branch-1',
+      roles: ['Super Admin'],
+      permissions: ['field_service.job.view'],
+    });
+    mockUsePermissions.mockReturnValue({
+      hasPermission: (permission: string) => permission === 'field_service.job.view',
+    });
+
+    renderGuard(
+      <PermissionRoute allowedRoles={['Field Technician']}>
+        {protectedContent}
+      </PermissionRoute>,
+      '/field-service/deliveries',
+    );
+
+    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+  });
+
+  it('denies branch-scoped field-service access when no branch is selected', () => {
+    mockUseUser.mockReturnValue({
+      id: 'admin-1',
+      roles: ['Super Admin'],
+      permissions: ['field_service.job.view'],
+    });
+    mockUsePermissions.mockReturnValue({ hasPermission: () => true });
+
+    renderGuard(
+      <PermissionRoute allowedRoles={['Field Technician']}>
+        {protectedContent}
+      </PermissionRoute>,
+      '/field-service/deliveries',
+    );
+
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+  });
+
+  it('allows the operational Field Technician route with matching branch and permission', () => {
+    mockUseUser.mockReturnValue({
+      id: 'tech-1',
+      branchId: 'branch-1',
+      roles: ['Field Technician'],
+      permissions: ['field_service.job.view'],
+    });
+    mockUsePermissions.mockReturnValue({
+      hasPermission: (permission: string) => permission === 'field_service.job.view',
+    });
+
+    renderGuard(
+      <PermissionRoute permission="field_service.manage">
+        {protectedContent}
+      </PermissionRoute>,
+      '/field-service/deliveries',
+    );
+
+    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+  });
+
+  it('allows a custom operational role through permission-first field-service access', () => {
+    mockUseUser.mockReturnValue({
+      id: 'coordinator-1',
+      branchId: 'branch-1',
+      roles: ['Delivery Coordinator'],
+      permissions: ['field_service.job.view', 'field_service.job.assign'],
+    });
+    mockUsePermissions.mockReturnValue({
+      hasPermission: (permission: string) =>
+        ['field_service.job.view', 'field_service.job.assign'].includes(permission),
+    });
+
+    renderGuard(
+      <PermissionRoute allowedRoles={['Field Technician']}>
+        {protectedContent}
+      </PermissionRoute>,
+      '/field-service',
+    );
+
+    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+  });
+
+  it('uses the canonical cashier-closing roles instead of the stale Cashier-only wrapper', () => {
+    mockUseUser.mockReturnValue({
+      id: 'branch-admin-1',
+      branchId: 'branch-1',
       roles: ['Branch Admin'],
-      permissions: [],
+      permissions: ['billing.invoice.view'],
     });
     mockUsePermissions.mockReturnValue({
-      isSuperAdmin: false,
-      hasPermission: () => false,
+      hasPermission: (permission: string) => permission === 'billing.invoice.view',
     });
 
     renderGuard(
-      <PermissionRoute allowedRoles={['Branch Admin']}>
-        <div data-testid="protected-content">Branch Admin Area</div>
-      </PermissionRoute>
-    );
-
-    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-  });
-
-  it('denies other staff roles (e.g. Doctor) through branch-admin routes when they do not have the required role', () => {
-    mockUseUser.mockReturnValue({
-      id: 'doc-1',
-      email: 'doctor@hospital.com',
-      roles: ['Doctor'],
-      permissions: [],
-    });
-    mockUsePermissions.mockReturnValue({
-      isSuperAdmin: false,
-      hasPermission: () => false,
-    });
-
-    renderGuard(
-      <PermissionRoute allowedRoles={['Branch Admin']}>
-        <div data-testid="protected-content">Branch Admin Area</div>
-      </PermissionRoute>
-    );
-
-    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    expect(screen.getByText('Access Restriction Active')).toBeInTheDocument();
-  });
-
-  it('still blocks Super Admin from branch-scoped routes when isBranchScoped is true', () => {
-    mockUseUser.mockReturnValue({
-      id: 'admin-1',
-      email: 'admin@hospital.com',
-      roles: ['Super Admin'],
-      permissions: [],
-    });
-    mockUsePermissions.mockReturnValue({
-      isSuperAdmin: true,
-      hasPermission: () => false,
-    });
-
-    renderGuard(
-      <PermissionRoute allowedRoles={['Doctor']} isBranchScoped>
-        <div data-testid="protected-content">Doctor Portal</div>
-      </PermissionRoute>
-    );
-
-    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    expect(screen.getByText('Access Restriction Active')).toBeInTheDocument();
-  });
-
-  it('preserves Super Admin access for marketplace-admin routes when explicitly included in allowedRoles', () => {
-    mockUseUser.mockReturnValue({
-      id: 'admin-1',
-      email: 'admin@hospital.com',
-      roles: ['Super Admin'],
-      permissions: [],
-    });
-    mockUsePermissions.mockReturnValue({
-      isSuperAdmin: true,
-      hasPermission: () => false,
-    });
-
-    renderGuard(
-      <PermissionRoute allowedRoles={['Super Admin', 'Marketplace Admin']}>
-        <div data-testid="protected-content">Marketplace Admin</div>
-      </PermissionRoute>
+      <PermissionRoute allowedRoles={['Cashier']}>
+        {protectedContent}
+      </PermissionRoute>,
+      '/billing/cashier-closing',
     );
 
     expect(screen.getByTestId('protected-content')).toBeInTheDocument();

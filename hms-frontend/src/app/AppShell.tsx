@@ -16,6 +16,7 @@ import { useState, useCallback, memo, useEffect } from 'react';
 import { useUser, useAuth, usePermissions } from '../hooks/use-user';
 import { RoleBasedSidebar } from './RoleBasedSidebar';
 import { CommandPalette } from './CommandPalette';
+import { PortalAccessBoundary } from './PortalAccessBoundary';
 
 const MemoizedSidebar = memo(RoleBasedSidebar);
 MemoizedSidebar.displayName = 'MemoizedSidebar';
@@ -29,13 +30,28 @@ export const AppShell = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const user = useUser();
   const { logout } = useAuth();
-  const { hasPermission, isSuperAdmin } = usePermissions();
+  const { canAccess } = usePermissions();
 
-  const canRegisterPatient = isSuperAdmin || hasPermission('patient.create');
-  const canAdmitQueue = isSuperAdmin || hasPermission('queue.manage');
-  const canCreateOrder = isSuperAdmin || hasPermission('order.create');
+  const canRegisterPatient = canAccess({
+    permission: 'patient.create',
+    isBranchScoped: true,
+    zone: 'staff',
+  });
+  const canAdmitQueue = canAccess({
+    permission: 'queue.manage',
+    isBranchScoped: true,
+    zone: 'staff',
+  });
+  const canCreateOrder = canAccess({
+    permission: 'order.create',
+    isBranchScoped: true,
+    zone: 'staff',
+  });
   const showQuickCreateBtn = canRegisterPatient || canAdmitQueue || canCreateOrder;
-  const showNotifications = isSuperAdmin || hasPermission('it.system.view') || hasPermission('compliance.audit.review');
+  const showNotifications = canAccess({
+    permission: 'notification.view',
+    zone: 'staff',
+  });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -270,7 +286,9 @@ export const AppShell = () => {
         {/* Main Content */}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
           <div className="max-w-[1800px] mx-auto">
-            <Outlet />
+            <PortalAccessBoundary>
+              <Outlet />
+            </PortalAccessBoundary>
           </div>
         </main>
 

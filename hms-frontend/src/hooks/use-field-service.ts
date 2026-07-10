@@ -1,10 +1,55 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fieldServiceService, type InstallationJobDto } from '../services/field-service.service';
+import {
+  fieldServiceService,
+  type InstallationJobDto,
+  type TechnicianJobsResponseDto,
+} from '../services/field-service.service';
 
-export const useFieldServiceJobs = () => {
+export const useFieldServiceJobs = (enabled = true) => {
   return useQuery({
     queryKey: ['field-service', 'technician-jobs'],
     queryFn: () => fieldServiceService.getTechnicianJobs(),
+    enabled,
+    retry: false,
+  });
+};
+
+export const useFieldServiceAdminJobs = (enabled = true) => {
+  return useQuery({
+    queryKey: ['field-service', 'branch-jobs'],
+    queryFn: async (): Promise<TechnicianJobsResponseDto> => {
+      const [shipments, installationRows] = await Promise.all([
+        fieldServiceService.getShipments(),
+        fieldServiceService.getInstallations(),
+      ]);
+
+      return {
+        deliveries: shipments.flatMap((shipment) =>
+          (shipment.deliveryJobs || []).map((job) => ({
+            id: job.id,
+            status: job.status,
+            customer:
+              shipment.salesOrder.quote?.rfq?.title ||
+              `Order ${shipment.salesOrder.id.slice(0, 8)}`,
+            address:
+              shipment.salesOrder.quote?.rfq?.branch?.name || 'Selected branch',
+            shipmentId: shipment.id,
+            orderId: shipment.salesOrder.id,
+          })),
+        ),
+        installations: installationRows.map((job) => ({
+          id: job.id,
+          status: job.status,
+          customer:
+            job.asset.salesOrder?.quote?.rfq?.title || job.asset.model,
+          address:
+            job.asset.salesOrder?.quote?.rfq?.branch?.name || 'Selected branch',
+          assetId: job.asset.id,
+          assetModel: job.asset.model,
+        })),
+      };
+    },
+    enabled,
     retry: false,
   });
 };

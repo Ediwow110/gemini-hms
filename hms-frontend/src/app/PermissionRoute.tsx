@@ -1,6 +1,8 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth, usePermissions, useUser } from '../hooks/use-user';
 import { UnauthorizedState } from '../components/feedback/UnauthorizedState';
+import { getPortalRouteConfig } from '../config/portalRoutes';
 import { GuardMode } from './types';
 
 interface PermissionRouteProps {
@@ -27,17 +29,9 @@ interface PermissionRouteProps {
 }
 
 /**
- * Route-level authorization guard component.
- *
- * BEHAVIOR:
- * 0. Super Admin is a global governance role. For non-branch-scoped routes
- *    (global / admin / marketplace-admin / it / compliance / procurement oversight),
- *    Super Admin is allowed through without matching the role/permission lists.
- *    Branch-scoped clinical/operational routes still require the explicit role/permission.
- * 1. If `allowedRoles` is provided, it is checked first. If the user lacks the role, access is denied.
- * 2. If `permission` is provided, it is checked.
- * 3. If `permissions` array is provided, it is evaluated based on `mode`.
- * 4. ALL conditions provided must be met (e.g. if both roles and permissions are provided, user needs the role AND the permissions).
+ * Route-level authorization guard. The canonical portal route catalog overrides
+ * duplicated route metadata from App.tsx, while explicit props remain the fallback
+ * for isolated components and unregistered unit-test paths.
  */
 export const PermissionRoute: React.FC<PermissionRouteProps> = ({
   permission,
@@ -48,8 +42,20 @@ export const PermissionRoute: React.FC<PermissionRouteProps> = ({
   children
 }) => {
   const { isLoading } = useAuth();
-  const { hasPermission, isSuperAdmin } = usePermissions();
+  const { hasPermission } = usePermissions();
   const user = useUser();
+  const location = useLocation();
+  const routeConfig = getPortalRouteConfig(location.pathname);
+
+  const effectivePermission = routeConfig
+    ? routeConfig.requiredPermission
+    : permission;
+  const effectiveAllowedRoles = routeConfig
+    ? routeConfig.allowedRoles
+    : allowedRoles;
+  const effectiveBranchScoped = routeConfig
+    ? Boolean(routeConfig.isBranchScoped)
+    : isBranchScoped;
 
   if (isLoading) {
     return (
@@ -59,31 +65,21 @@ export const PermissionRoute: React.FC<PermissionRouteProps> = ({
     );
   }
 
-  // 0. Super Admin global-governance bypass (non-branch-scoped routes only).
-  // When allowedRoles is specified, Super Admin must be explicitly listed in the route config
-  // to be granted access via role. If only a permission is specified, Super Admin
-  // gets governance oversight access by default for non-branch-scoped zones.
-  if (isSuperAdmin && !isBranchScoped) {
-    if (!allowedRoles || allowedRoles.length === 0) {
-      // No role restriction — governance oversight access granted for permission-based routes
-      return <>{children}</>;
-    }
-    // If allowedRoles is present, Super Admin will be checked in the standard role check below.
-  }
-
-  // 1. Role check (ANY)
-  if (allowedRoles && allowedRoles.length > 0) {
-    const userRoles = user?.roles || [];
-    const hasRole = allowedRoles.some(role => userRoles.includes(role));
-    if (!hasRole) return <UnauthorizedState />;
-  }
-
-  // 2. Single permission check
-  if (permission && !hasPermission(permission)) {
+  if (effectiveBranchScoped && !user?.branchId) {
     return <UnauthorizedState />;
   }
 
-  // 3. Permissions array check
+  if (effectiveAllowedRoles && effectiveAllowedRoles.length > 0) {
+    const userRoles = user?.roles || [];
+    const hasRole = effectiveAllowedRoles.some((role) => userRoles.includes(role));
+    if (!hasRole) return <UnauthorizedState />;
+  }
+
+  if (effectivePermission && !hasPermission(effectivePermission)) {
+    return <UnauthorizedState />;
+  }
+
+  // Explicit multi-permission guards remain additive defense in depth.
   if (permissions && permissions.length > 0) {
     if (mode === GuardMode.ALL) {
       const hasAll = permissions.every(p => hasPermission(p));

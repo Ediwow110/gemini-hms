@@ -19,7 +19,18 @@ const branchRows = {
   page: 1,
   limit: 100,
 };
-const roleRows = [{ id: 'role-nurse', name: 'Nurse', status: 'ACTIVE', isSystem: false, permissions: [] }];
+const roleRows = [
+  { id: 'role-nurse', name: 'Nurse', status: 'ACTIVE', isSystem: true, permissions: [] },
+  {
+    id: 'role-super-admin',
+    name: 'Super Admin',
+    status: 'ACTIVE',
+    isSystem: true,
+    permissions: [
+      { id: 'permission-admin', name: 'admin.role.change', scope: 'tenant/system', riskLevel: 'PRIVILEGED' },
+    ],
+  },
+];
 
 const selectFirstOption = (label: string) => {
   const select = screen.getByLabelText(label) as HTMLSelectElement;
@@ -72,6 +83,18 @@ describe('UsersPage create account wiring', () => {
     expect(dto).not.toHaveProperty('tenantId');
     await waitFor(() => expect(adminService.listUsers).toHaveBeenCalledTimes(2));
     expect(await screen.findByText(/Created new@hospital.test/i)).toBeInTheDocument();
+  });
+
+  it('offers built-in operational roles but excludes privileged roles', async () => {
+    render(<UsersPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Register New Account/i }));
+    const roleSelect = screen.getByLabelText('Roles') as HTMLSelectElement;
+    const optionLabels = Array.from(roleSelect.options, (option) => option.textContent);
+
+    expect(optionLabels).toContain('Nurse');
+    expect(optionLabels).not.toContain('Super Admin');
+    expect(screen.getByText(/Privileged roles are intentionally excluded/i)).toBeInTheDocument();
   });
 
   it('shows inline error and does not alert when create user fails', async () => {

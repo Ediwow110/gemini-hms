@@ -13,7 +13,7 @@ type MockPrisma = {
   user: { findUnique: jest.Mock; update: jest.Mock };
   userBranch: { findMany: jest.Mock; findFirst: jest.Mock };
   userRole: { findMany: jest.Mock };
-  rolePermission: { findFirst: jest.Mock };
+  rolePermission: { findFirst: jest.Mock; findMany: jest.Mock };
   session: { update: jest.Mock };
   $transaction: jest.Mock;
 };
@@ -41,7 +41,10 @@ describe('Auth Routing Stability', () => {
               findFirst: jest.fn().mockResolvedValue({ branchId: 'branch-0' }),
             },
             userRole: { findMany: jest.fn() },
-            rolePermission: { findFirst: jest.fn().mockResolvedValue(null) },
+            rolePermission: {
+              findFirst: jest.fn().mockResolvedValue(null),
+              findMany: jest.fn().mockResolvedValue([]),
+            },
             session: { update: jest.fn().mockResolvedValue(undefined) },
             $transaction: jest.fn(async (cb) => cb({})),
           },
@@ -117,6 +120,7 @@ describe('Auth Routing Stability', () => {
     userRoles: roles.map((r) => ({
       status: 'ACTIVE',
       role: {
+        id: `role-${r}`,
         name: r,
         status: 'ACTIVE',
         archivedAt: null,

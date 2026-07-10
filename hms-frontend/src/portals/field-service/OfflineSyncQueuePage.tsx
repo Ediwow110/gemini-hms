@@ -12,7 +12,9 @@ export const OfflineSyncQueuePage: React.FC = () => {
   const navigate = useNavigate();
   const user = useUser();
   const { data: syncData, isLoading } = useFieldServiceOfflineSync();
-  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
+  const isAdmin = Boolean(
+    user?.permissions.includes('field_service.job.assign'),
+  );
 
   return (
     <HmsDashboardShell widthTier="full">

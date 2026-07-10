@@ -7,7 +7,7 @@ interface TechnicianJobCardProps {
   customer: string;
   address: string;
   time: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+  status: 'PENDING' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMMISSIONED' | 'COMPLETED' | 'FAILED';
   onAction?: () => void;
 }
 
@@ -39,7 +39,9 @@ export const TechnicianJobCard: React.FC<TechnicianJobCardProps> = ({
         </div>
         <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg border ${
           status === 'IN_PROGRESS' ? 'bg-indigo-50 text-indigo-700 border-indigo-100 animate-pulse' :
-          status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+          status === 'COMPLETED' || status === 'COMMISSIONED' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+          status === 'FAILED' ? 'bg-rose-50 text-rose-700 border-rose-100' :
+          status === 'ASSIGNED' ? 'bg-blue-50 text-blue-700 border-blue-100' :
           'bg-slate-50 text-slate-400 border-slate-100'
         }`}>
           {status.replace('_', ' ')}

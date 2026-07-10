@@ -15,7 +15,9 @@ export const ProofOfDeliveryPage: React.FC = () => {
   const user = useUser();
   const { data: archives } = useFieldServiceDeliveryArchives();
   const { data: delivery } = useFieldServiceProofOfDelivery();
-  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
+  const isAdmin = Boolean(
+    user?.permissions.includes('field_service.job.assign'),
+  );
 
   return (
     <HmsDashboardShell widthTier="full">

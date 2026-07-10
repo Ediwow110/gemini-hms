@@ -162,13 +162,22 @@ describe('BranchGuard', () => {
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
     });
 
-    it('should allow Super Admin without branchId when no branchId in request', () => {
+    it('should deny Super Admin without a selected or explicitly targeted branch', () => {
       const context = mockExecutionContext(
         { userId: 'u1', tenantId: 't1', roles: ['Super Admin'] },
         {},
         {},
       );
-      expect(guard.canActivate(context)).toBe(true);
+      expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+    });
+
+    it('should still deny Super Admin when a branch is requested but none is selected in the session', () => {
+      const context = mockExecutionContext(
+        { userId: 'u1', tenantId: 't1', roles: ['Super Admin'] },
+        {},
+        { branchId: 'b2' },
+      );
+      expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
     });
 
     it('should allow bypass role user without branchId', () => {

@@ -11,29 +11,30 @@ export interface RouteGuardConfig {
 export const portalRoutes: RouteGuardConfig[] = [
   // Clinical routes (Staff, Branch Scoped)
   { path: 'patients', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff', isBranchScoped: true },
-  { path: 'patients/new', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'patients/new', requiredPermission: PERMISSIONS.PATIENT_CREATE, zone: 'staff', isBranchScoped: true },
   { path: 'patients/:id', requiredPermission: PERMISSIONS.PATIENT_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'queue', requiredPermission: PERMISSIONS.QUEUE_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'emr', requiredPermission: PERMISSIONS.ENCOUNTER_UPDATE, zone: 'staff', isBranchScoped: true },
   
-  // Telehealth (Accessible by Staff and Patients, Branch Scoped)
-  { path: 'telehealth', requiredPermission: PERMISSIONS.PATIENT_VIEW, allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse', 'Patient'], isBranchScoped: true },
+  // Telehealth (Staff, Branch Scoped)
+  { path: 'telehealth', requiredPermission: 'encounter.create', zone: 'staff', isBranchScoped: true },
   
   // Lab & Radiology (Staff, Branch Scoped)
   { path: 'lab/results', requiredPermission: PERMISSIONS.LAB_RESULT_VIEW, zone: 'staff', isBranchScoped: true },
-  { path: 'lab/results/:id/encode', requiredPermission: PERMISSIONS.LAB_RESULT_VIEW, zone: 'staff', isBranchScoped: true },
-  { path: 'lab/results/:id/approval', requiredPermission: PERMISSIONS.LAB_RESULT_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'lab/results/:id/encode', requiredPermission: 'lab.result.encode', zone: 'staff', isBranchScoped: true },
+  { path: 'lab/results/:id/approval', requiredPermission: 'lab.result.approve', zone: 'staff', isBranchScoped: true },
   { path: 'lab/results/:id/print-preview', requiredPermission: PERMISSIONS.LAB_RESULT_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'radiology', requiredPermission: PERMISSIONS.LAB_RESULT_VIEW, zone: 'staff', isBranchScoped: true },
 
   // Finance/Supply routes (Staff, Branch Scoped)
-  { path: 'pharmacy', requiredPermission: PERMISSIONS.INVENTORY_DISPENSE, allowedRoles: ['Super Admin', 'Branch Admin', 'Pharmacist'], zone: 'staff', isBranchScoped: true },
-  { path: 'pharmacy/dashboard', requiredPermission: PERMISSIONS.INVENTORY_VIEW, allowedRoles: ['Super Admin', 'Branch Admin', 'Pharmacist'], zone: 'staff', isBranchScoped: true },
-  { path: 'pharmacy/dispense', requiredPermission: PERMISSIONS.INVENTORY_DISPENSE, allowedRoles: ['Super Admin', 'Branch Admin', 'Pharmacist'], zone: 'staff', isBranchScoped: true },
-  { path: 'pharmacy/inventory', requiredPermission: PERMISSIONS.INVENTORY_VIEW, allowedRoles: ['Super Admin', 'Branch Admin', 'Pharmacist'], zone: 'staff', isBranchScoped: true },
+  { path: 'pharmacy', requiredPermission: PERMISSIONS.INVENTORY_DISPENSE, zone: 'staff', isBranchScoped: true },
+  { path: 'pharmacy/dashboard', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'pharmacy/dispense', requiredPermission: PERMISSIONS.INVENTORY_DISPENSE, zone: 'staff', isBranchScoped: true },
+  { path: 'pharmacy/inventory', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'billing', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'billing/dashboard', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'billing/cashier-closing', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff', isBranchScoped: true },
-  { path: 'claims', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'claims', requiredPermission: 'billing.claim.view', zone: 'staff', isBranchScoped: true },
   { path: 'inventory', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'inventory/:id', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff', isBranchScoped: true },
   { path: 'inventory/receiving', requiredPermission: PERMISSIONS.INVENTORY_RECEIVE, zone: 'staff', isBranchScoped: true },
@@ -43,7 +44,6 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'approvals', requiredPermission: PERMISSIONS.APPROVAL_VIEW, zone: 'staff', isBranchScoped: true },
 
   // Admin & Security (Staff, Tenant Scoped - no active branch context strictly required for editing roles/users/audit)
-  { path: 'admin/users', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   { path: 'admin/users/:id', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   { path: 'admin/roles', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   { path: 'admin/roles/:id', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
@@ -55,197 +55,262 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'audit-logs', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
   { path: 'my-audit-log', requiredPermission: PERMISSIONS.AUDIT_SELF, zone: 'staff' },
   { path: 'audit/events/:id', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
+  { path: 'audit/my-events/:id', requiredPermission: PERMISSIONS.AUDIT_SELF, zone: 'staff' },
   { path: 'audit/entity/:recordType/:recordId', requiredPermission: PERMISSIONS.AUDIT_VIEW, zone: 'staff' },
   { path: 'spatial', requiredPermission: 'it.system.view', zone: 'staff' },
-  { path: 'sales-dashboard', requiredPermission: PERMISSIONS.BILLING_VIEW, zone: 'staff' },
-  { path: 'logistics-checklist', requiredPermission: PERMISSIONS.INVENTORY_VIEW, zone: 'staff' },
-  { path: 'notifications', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse', 'Lab Technician', 'Cashier', 'IT Support', 'HR Manager', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' },
-  { path: '', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse', 'Lab Technician', 'Cashier', 'IT Support', 'HR Manager', 'Procurement Manager', 'Procurement Agent'], zone: 'staff' }, // Dashboard
+  { path: 'sales-dashboard', requiredPermission: PERMISSIONS.REPORT_EXPORT, zone: 'staff' },
+  { path: 'logistics-checklist', requiredPermission: PERMISSIONS.FIELD_SERVICE_JOB_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'notifications', requiredPermission: PERMISSIONS.NOTIFICATION_VIEW, zone: 'staff' },
+  { path: 'notifications/templates', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
+  { path: 'notifications/settings', requiredPermission: 'notification.manage', zone: 'staff' },
+  { path: '', zone: 'staff' }, // Authenticated root; RoleRedirect chooses the actual portal.
+  { path: 'unauthorized', zone: 'staff' },
 
-  // Marketplace Zone (Accessible by all authenticated users: Patients, Suppliers, Customers, Staff)
-  { path: 'marketplace', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/products', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/products/:productId', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/compare', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/cart', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/checkout', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/rfqs', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/orders', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/deliveries', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/installations', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/warranty', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
-  { path: 'marketplace/service-tickets', allowedRoles: ['Marketplace Buyer', 'Customer'], zone: 'marketplace' },
+  // Marketplace Buyer Zone (Permission Scoped)
+  { path: 'marketplace', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/products', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/products/:productId', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/compare', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/cart', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/checkout', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/rfqs', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/orders', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/deliveries', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/installations', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/warranty', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
+  { path: 'marketplace/service-tickets', requiredPermission: 'marketplace.buyer.view', zone: 'marketplace' },
 
   // Marketplace Supplier Zone
-  { path: 'supplier', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
-  { path: 'supplier/listings', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
-  { path: 'supplier/service-listings', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
-  { path: 'supplier/rfq-inbox', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
-  { path: 'supplier/quotes', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
-  { path: 'supplier/orders', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
-  { path: 'supplier/fulfillment', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
-  { path: 'supplier/warranty-claims', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
-  { path: 'supplier/service-commitments', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
-  { path: 'supplier/payouts', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
-  { path: 'supplier/performance', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier', requiredPermission: 'marketplace.supplier.view', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier/listings', requiredPermission: 'marketplace.supplier.manage_listing', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier/service-listings', requiredPermission: 'marketplace.supplier.manage_listing', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier/rfq-inbox', requiredPermission: 'marketplace.supplier.view', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier/quotes', requiredPermission: 'marketplace.supplier.view', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier/orders', requiredPermission: 'marketplace.supplier.view', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier/fulfillment', requiredPermission: 'marketplace.supplier.view', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier/warranty-claims', requiredPermission: 'marketplace.supplier.view', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier/service-commitments', requiredPermission: 'marketplace.supplier.view', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier/payouts', requiredPermission: 'marketplace.supplier.view', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
+  { path: 'supplier/performance', requiredPermission: 'marketplace.supplier.view', allowedRoles: ['Supplier', 'Supplier Admin', 'Marketplace Supplier'], zone: 'marketplace' },
 
   // Marketplace Admin Zone
-  { path: 'marketplace-admin', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/suppliers', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/buyers', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/listing-approval', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/rfq-monitor', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/order-monitor', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/fulfillment-monitor', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/installation-monitor', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/warranty-claims', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/disputes', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/commission-fees', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
-  { path: 'marketplace-admin/reports', allowedRoles: ['Super Admin', 'Marketplace Admin'], zone: 'marketplace' },
+  { path: 'marketplace-admin', requiredPermission: 'marketplace.admin.view', zone: 'marketplace' },
+  { path: 'marketplace-admin/suppliers', requiredPermission: 'marketplace.admin.manage', zone: 'marketplace' },
+  { path: 'marketplace-admin/buyers', requiredPermission: 'marketplace.admin.manage', zone: 'marketplace' },
+  { path: 'marketplace-admin/listing-approval', requiredPermission: 'marketplace.admin.manage', zone: 'marketplace' },
+  { path: 'marketplace-admin/rfq-monitor', requiredPermission: 'marketplace.admin.view', zone: 'marketplace' },
+  { path: 'marketplace-admin/order-monitor', requiredPermission: 'marketplace.admin.view', zone: 'marketplace' },
+  { path: 'marketplace-admin/fulfillment-monitor', requiredPermission: 'marketplace.admin.view', zone: 'marketplace' },
+  { path: 'marketplace-admin/installation-monitor', requiredPermission: 'marketplace.admin.view', zone: 'marketplace' },
+  { path: 'marketplace-admin/warranty-claims', requiredPermission: 'marketplace.admin.view', zone: 'marketplace' },
+  { path: 'marketplace-admin/disputes', requiredPermission: 'marketplace.admin.manage', zone: 'marketplace' },
+  { path: 'marketplace-admin/commission-fees', requiredPermission: 'marketplace.admin.manage', zone: 'marketplace' },
+  { path: 'marketplace-admin/reports', requiredPermission: 'marketplace.admin.view', zone: 'marketplace' },
 
   // Field Service / Logistics Zone
-  { path: 'field-service', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-  { path: 'field-service/deliveries', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-  { path: 'field-service/installations', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-  { path: 'field-service/schedule', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-  { path: 'field-service/handover', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-  { path: 'field-service/proof-of-delivery', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-  { path: 'field-service/warranty-activation', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-  { path: 'field-service/preventive-maintenance', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-  { path: 'field-service/service-worklog', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-  { path: 'field-service/offline-sync', requiredPermission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
+  // Permission-first branch-scoped logistics workspace. Pages choose oversight vs
+  // technician presentation from capabilities, not hard-coded role names.
+  { path: 'field-service', requiredPermission: PERMISSIONS.FIELD_SERVICE_JOB_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'field-service/deliveries', requiredPermission: PERMISSIONS.FIELD_SERVICE_JOB_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'field-service/installations', requiredPermission: PERMISSIONS.FIELD_SERVICE_INSTALLATION_UPDATE, zone: 'staff', isBranchScoped: true },
+  { path: 'field-service/schedule', requiredPermission: PERMISSIONS.FIELD_SERVICE_JOB_VIEW, zone: 'staff', isBranchScoped: true },
+  { path: 'field-service/handover', requiredPermission: PERMISSIONS.FIELD_SERVICE_DELIVERY_PROOF_CREATE, zone: 'staff', isBranchScoped: true },
+  { path: 'field-service/proof-of-delivery', requiredPermission: PERMISSIONS.FIELD_SERVICE_DELIVERY_PROOF_CREATE, zone: 'staff', isBranchScoped: true },
+  { path: 'field-service/warranty-activation', requiredPermission: PERMISSIONS.FIELD_SERVICE_INSTALLATION_UPDATE, zone: 'staff', isBranchScoped: true },
+  { path: 'field-service/preventive-maintenance', requiredPermission: PERMISSIONS.FIELD_SERVICE_MAINTENANCE_UPDATE, zone: 'staff', isBranchScoped: true },
+  { path: 'field-service/service-worklog', requiredPermission: PERMISSIONS.FIELD_SERVICE_JOB_UPDATE, zone: 'staff', isBranchScoped: true },
+  { path: 'field-service/offline-sync', requiredPermission: PERMISSIONS.FIELD_SERVICE_JOB_VIEW, zone: 'staff', isBranchScoped: true },
 
   // Clinical Ops Dashboard (Staff Zone, Observational, Branch Scoped)
-  { path: 'clinical/ops', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse'], zone: 'staff', isBranchScoped: true },
+  { path: 'clinical/ops', requiredPermission: 'patient.view', zone: 'staff', isBranchScoped: true },
 
-  // Doctor Portal Workspace Routes (Staff Zone, Clinical Scope, Branch Scoped, Doctor/Admin allowedRoles)
-  { path: 'doctor', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
-  { path: 'doctor/queue', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
-  { path: 'doctor/patients', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
-  { path: 'doctor/emr/:patientId?', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
-  { path: 'doctor/encounters/:encounterId?', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
-  { path: 'doctor/results', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
-  { path: 'doctor/prescriptions', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
-  { path: 'doctor/orders', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
-  { path: 'doctor/timeline/:patientId?', allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor'], zone: 'staff', isBranchScoped: true },
+  // Doctor Portal Workspace Routes (Staff, Permission Scoped, Branch Scoped)
+  { path: 'doctor', requiredPermission: 'patient.view', zone: 'staff', isBranchScoped: true },
+  { path: 'doctor/queue', requiredPermission: 'queue.view', zone: 'staff', isBranchScoped: true },
+  { path: 'doctor/patients', requiredPermission: 'patient.view', zone: 'staff', isBranchScoped: true },
+  { path: 'doctor/emr/:patientId?', requiredPermission: 'encounter.view', zone: 'staff', isBranchScoped: true },
+  { path: 'doctor/encounters/:encounterId?', requiredPermission: 'encounter.view', zone: 'staff', isBranchScoped: true },
+  { path: 'doctor/results', requiredPermission: 'lab.result.view', zone: 'staff', isBranchScoped: true },
+  { path: 'doctor/prescriptions', requiredPermission: 'doctor.prescription.view', zone: 'staff', isBranchScoped: true },
+  { path: 'doctor/orders', requiredPermission: 'order.view', zone: 'staff', isBranchScoped: true },
+  { path: 'doctor/timeline/:patientId?', requiredPermission: 'patient.view', zone: 'staff', isBranchScoped: true },
 
-  // Nurse Portal Workspace Routes (Staff Zone, Clinical Scope, Branch Scoped, Nurse/Admin allowedRoles)
-  { path: 'nurse', allowedRoles: ['Super Admin', 'Branch Admin', 'Nurse'], zone: 'staff', isBranchScoped: true },
-  { path: 'nurse/triage', allowedRoles: ['Super Admin', 'Branch Admin', 'Nurse'], zone: 'staff', isBranchScoped: true },
-  { path: 'nurse/intake', allowedRoles: ['Super Admin', 'Branch Admin', 'Nurse'], zone: 'staff', isBranchScoped: true },
-  { path: 'nurse/vitals', allowedRoles: ['Super Admin', 'Branch Admin', 'Nurse'], zone: 'staff', isBranchScoped: true },
-  { path: 'nurse/tasks', allowedRoles: ['Super Admin', 'Branch Admin', 'Nurse'], zone: 'staff', isBranchScoped: true },
-  { path: 'nurse/specimens', allowedRoles: ['Super Admin', 'Branch Admin', 'Nurse'], zone: 'staff', isBranchScoped: true },
+  // Nurse Portal Workspace Routes (Staff, Permission Scoped, Branch Scoped)
+  { path: 'nurse', requiredPermission: 'patient.view', zone: 'staff', isBranchScoped: true },
+  { path: 'nurse/triage', requiredPermission: 'queue.view', zone: 'staff', isBranchScoped: true },
+  { path: 'nurse/intake', requiredPermission: 'patient.create', zone: 'staff', isBranchScoped: true },
+  { path: 'nurse/vitals', requiredPermission: 'encounter.create', zone: 'staff', isBranchScoped: true },
+  { path: 'nurse/tasks', requiredPermission: 'patient.view', zone: 'staff', isBranchScoped: true },
+  { path: 'nurse/specimens', requiredPermission: 'lab.specimen.receive', zone: 'staff', isBranchScoped: true },
 
-  // Lab Portal Workspace Routes (Staff Zone, Clinical Scope, Branch Scoped, Lab Tech/Admin allowedRoles)
-  { path: 'lab', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/orders', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/specimens', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/encoding', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/validation', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/validated', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/released', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/released/:patientId/:orderId', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/critical-results', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
-  { path: 'lab/turnaround', allowedRoles: ['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech'], zone: 'staff', isBranchScoped: true },
+  // Lab Portal Workspace Routes (Staff, Permission Scoped, Branch Scoped)
+  { path: 'lab', requiredPermission: 'lab.result.view', zone: 'staff', isBranchScoped: true },
+  { path: 'lab/orders', requiredPermission: 'order.view', zone: 'staff', isBranchScoped: true },
+  { path: 'lab/specimens', requiredPermission: 'lab.specimen.receive', zone: 'staff', isBranchScoped: true },
+  { path: 'lab/encoding', requiredPermission: 'lab.result.encode', zone: 'staff', isBranchScoped: true },
+  { path: 'lab/validation', requiredPermission: 'lab.result.validate', zone: 'staff', isBranchScoped: true },
+  { path: 'lab/validated', requiredPermission: 'lab.result.view', zone: 'staff', isBranchScoped: true },
+  { path: 'lab/released', requiredPermission: 'lab.result.view', zone: 'staff', isBranchScoped: true },
+  { path: 'lab/released/:patientId/:orderId', requiredPermission: 'lab.result.view', zone: 'staff', isBranchScoped: true },
+  { path: 'lab/critical-results', requiredPermission: 'lab.critical.view', zone: 'staff', isBranchScoped: true },
+  { path: 'lab/turnaround', requiredPermission: 'lab.result.view', zone: 'staff', isBranchScoped: true },
 
-  // Cashier Portal Workspace Routes (Staff Zone, Financial Scope, Branch Scoped, Cashier/Admin/Finance allowedRoles)
-  { path: 'cashier', allowedRoles: ['Super Admin', 'Branch Admin', 'Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
-  { path: 'cashier/billing', allowedRoles: ['Super Admin', 'Branch Admin', 'Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
-  { path: 'cashier/invoices', allowedRoles: ['Super Admin', 'Branch Admin', 'Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
-  { path: 'cashier/payments', allowedRoles: ['Super Admin', 'Branch Admin', 'Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
-  { path: 'cashier/session', allowedRoles: ['Super Admin', 'Branch Admin', 'Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
-  { path: 'cashier/refunds-voids', allowedRoles: ['Super Admin', 'Branch Admin', 'Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
-  { path: 'cashier/hmo-claims', allowedRoles: ['Super Admin', 'Branch Admin', 'Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
-  { path: 'cashier/reconciliation', allowedRoles: ['Super Admin', 'Branch Admin', 'Cashier', 'Finance'], zone: 'staff', isBranchScoped: true },
+  // Cashier Portal Workspace Routes (Staff, Permission Scoped, Branch Scoped)
+  { path: 'cashier', requiredPermission: 'billing.invoice.view', zone: 'staff', isBranchScoped: true },
+  { path: 'cashier/billing', requiredPermission: 'billing.invoice.view', zone: 'staff', isBranchScoped: true },
+  { path: 'cashier/invoices', requiredPermission: 'billing.invoice.view', zone: 'staff', isBranchScoped: true },
+  { path: 'cashier/payments', requiredPermission: 'billing.invoice.view', zone: 'staff', isBranchScoped: true },
+  { path: 'cashier/session', requiredPermission: 'billing.payment.create', zone: 'staff', isBranchScoped: true },
+  { path: 'cashier/refunds-voids', requiredPermission: 'billing.refund.request', zone: 'staff', isBranchScoped: true },
+  { path: 'cashier/hmo-claims', requiredPermission: 'billing.claim.view', zone: 'staff', isBranchScoped: true },
+  { path: 'cashier/reconciliation', requiredPermission: 'billing.invoice.view', zone: 'staff', isBranchScoped: true },
 
   // SuperAdmin Portal Workspace Routes (Staff Zone, Governance Scope, Tenant Scoped)
   { path: 'admin', allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/executive', allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/tenants', allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/branches', allowedRoles: ['Super Admin'], zone: 'staff' },
-  { path: 'admin/users', allowedRoles: ['Super Admin'], zone: 'staff' },
-  { path: 'admin/roles-permissions', allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/users', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
+  { path: 'admin/roles-permissions', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   { path: 'admin/security', allowedRoles: ['Super Admin'], zone: 'staff' },
-  { path: 'admin/audit-logs', allowedRoles: ['Super Admin'], zone: 'staff' },
-  { path: 'admin/settings', allowedRoles: ['Super Admin'], zone: 'staff' },
-  { path: 'admin/reports', allowedRoles: ['Super Admin'], zone: 'staff' },
-  { path: 'admin/catalog', allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/audit-logs', requiredPermission: PERMISSIONS.AUDIT_VIEW, allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/settings', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
+  { path: 'admin/reports', requiredPermission: PERMISSIONS.REPORT_EXPORT, allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/catalog', requiredPermission: 'catalog.manage', allowedRoles: ['Super Admin'], zone: 'staff' },
 
   // Branch Admin Workspace Routes (Staff Zone, Governance Scope, Branch Scoped)
-  { path: 'branch-admin', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/staff', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/departments', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/rooms', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/schedules', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/services', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/equipment', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/inventory-rules', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/billing-rules', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/queue-settings', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
-  { path: 'branch-admin/approvals', allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin', requiredPermission: 'admin.branch.view', zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/staff', requiredPermission: 'admin.user.view', zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/departments', requiredPermission: 'admin.branch.view', zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/rooms', requiredPermission: 'admin.branch.view', zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/schedules', requiredPermission: 'admin.branch.view', zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/services', requiredPermission: 'catalog.service.view', zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/equipment', requiredPermission: 'inventory.item.view', zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/inventory-rules', requiredPermission: 'inventory.item.view', zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/billing-rules', requiredPermission: 'billing.invoice.view', zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/queue-settings', requiredPermission: 'queue.view', zone: 'staff', isBranchScoped: true },
+  { path: 'branch-admin/approvals', requiredPermission: 'approval.request.view', zone: 'staff', isBranchScoped: true },
 
   // Compliance Officer Portal Workspace Routes (Staff Zone, Compliance Scope, Tenant Scoped)
-  { path: 'compliance', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
-  { path: 'compliance/phi-access', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
-  { path: 'compliance/audit-review', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
-  { path: 'compliance/access-reviews', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
-  { path: 'compliance/export-logs', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
-  { path: 'compliance/breach-alerts', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
-  { path: 'compliance/retention', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
-  { path: 'compliance/reports', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
-  { path: 'compliance/audit-chain', allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
+  { path: 'compliance', requiredPermission: 'compliance.audit.review', zone: 'staff' },
+  { path: 'compliance/phi-access', requiredPermission: 'compliance.phi.monitor', zone: 'staff' },
+  { path: 'compliance/audit-review', requiredPermission: 'compliance.audit.review', zone: 'staff' },
+  { path: 'compliance/access-reviews', requiredPermission: 'compliance.audit.review', zone: 'staff' },
+  { path: 'compliance/export-logs', requiredPermission: 'compliance.report.export', zone: 'staff' },
+  { path: 'compliance/breach-alerts', requiredPermission: 'compliance.phi.monitor', zone: 'staff' },
+  { path: 'compliance/retention', requiredPermission: 'compliance.audit.review', zone: 'staff' },
+  { path: 'compliance/reports', requiredPermission: 'compliance.report.export', zone: 'staff' },
+  { path: 'compliance/audit-chain', requiredPermission: 'compliance.audit.review', zone: 'staff' },
 
   // IT / Support Portal Workspace Routes (Staff Zone, Operations Scope, Tenant Scoped)
-  { path: 'it', allowedRoles: ['Super Admin', 'IT Support'], zone: 'staff' },
-  { path: 'it/system-health', allowedRoles: ['Super Admin', 'IT Support'], zone: 'staff' },
-  { path: 'it/user-support', allowedRoles: ['Super Admin', 'IT Support'], zone: 'staff' },
-  { path: 'it/sessions', allowedRoles: ['Super Admin', 'IT Support'], zone: 'staff' },
-  { path: 'it/background-jobs', allowedRoles: ['Super Admin', 'IT Support'], zone: 'staff' },
-  { path: 'it/integrations', allowedRoles: ['Super Admin', 'IT Support'], zone: 'staff' },
-  { path: 'it/logs', allowedRoles: ['Super Admin', 'IT Support'], zone: 'staff' },
-  { path: 'it/backup-restore', allowedRoles: ['Super Admin', 'IT Support'], zone: 'staff' },
-  { path: 'it/incidents', allowedRoles: ['Super Admin', 'IT Support'], zone: 'staff' },
+  { path: 'it', requiredPermission: 'it.system.view', zone: 'staff' },
+  { path: 'it/system-health', requiredPermission: 'it.system.view', zone: 'staff' },
+  { path: 'it/user-support', requiredPermission: 'it.support.manage', zone: 'staff' },
+  { path: 'it/sessions', requiredPermission: 'it.system.view', zone: 'staff' },
+  { path: 'it/background-jobs', requiredPermission: 'it.system.view', zone: 'staff' },
+  { path: 'it/integrations', requiredPermission: 'it.system.view', zone: 'staff' },
+  { path: 'it/logs', requiredPermission: 'it.system.view', zone: 'staff' },
+  { path: 'it/backup-restore', requiredPermission: 'it.system.view', zone: 'staff' },
+  { path: 'it/incidents', requiredPermission: 'it.support.manage', zone: 'staff' },
 
   // HR Portal Workspace Routes (Staff Zone, HR Scope, Tenant Scoped)
-  { path: 'hr', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
-  { path: 'hr/employees', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
-  { path: 'hr/departments', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
-  { path: 'hr/attendance', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
-  { path: 'hr/leave', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
-  { path: 'hr/payroll', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
-  { path: 'hr/licenses', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff'], zone: 'staff' },
-  { path: 'hr/branch-assignments', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
-  { path: 'hr/termination', allowedRoles: ['Super Admin', 'Branch Admin', 'HR Manager'], zone: 'staff' },
+  { path: 'hr', requiredPermission: 'hr.employee.view', zone: 'staff' },
+  { path: 'hr/employees', requiredPermission: 'hr.employee.manage', zone: 'staff' },
+  { path: 'hr/departments', requiredPermission: 'hr.employee.view', zone: 'staff' },
+  { path: 'hr/attendance', requiredPermission: 'hr.employee.view', zone: 'staff' },
+  { path: 'hr/leave', requiredPermission: 'hr.employee.view', zone: 'staff' },
+  { path: 'hr/payroll', requiredPermission: 'hr.payroll.view', zone: 'staff' },
+  { path: 'hr/licenses', requiredPermission: 'hr.employee.view', zone: 'staff' },
+  { path: 'hr/branch-assignments', requiredPermission: 'hr.employee.manage', zone: 'staff' },
+  { path: 'hr/termination', requiredPermission: 'hr.employee.manage', zone: 'staff' },
 
   // Procurement Portal Workspace Routes (Staff Zone, Procurement Scope, Tenant Scoped)
-  { path: 'procurement', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
-  { path: 'procurement/suppliers', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
-  { path: 'procurement/purchase-requests', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
-  { path: 'procurement/rfqs', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
-  { path: 'procurement/quotes', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
-  { path: 'procurement/purchase-orders', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
-  { path: 'procurement/receiving', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
-  { path: 'procurement/inventory-requests', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
-  { path: 'procurement/vendor-performance', allowedRoles: ['Super Admin', 'Branch Admin', 'Procurement Manager', 'Procurement Agent', 'Procurement Officer'], zone: 'staff' },
+  { path: 'procurement', requiredPermission: 'procurement.request.view', zone: 'staff' },
+  { path: 'procurement/suppliers', requiredPermission: 'procurement.supplier.view', zone: 'staff' },
+  { path: 'procurement/purchase-requests', requiredPermission: 'procurement.request.view', zone: 'staff' },
+  { path: 'procurement/rfqs', requiredPermission: 'procurement.rfq.view', zone: 'staff' },
+  { path: 'procurement/quotes', requiredPermission: 'procurement.quote.view', zone: 'staff' },
+  { path: 'procurement/purchase-orders', requiredPermission: 'procurement.po.view', zone: 'staff' },
+  { path: 'procurement/receiving', requiredPermission: 'procurement.receiving.post', zone: 'staff' },
+  { path: 'procurement/inventory-requests', requiredPermission: 'procurement.request.view', zone: 'staff' },
+  { path: 'procurement/vendor-performance', requiredPermission: 'procurement.vendor.performance.view', zone: 'staff' },
 
   // Patient Portal Workspace Routes (Patient Zone, Self-Service Scope)
-  { path: 'patient', allowedRoles: ['Patient'], zone: 'patient' },
-  { path: 'patient/appointments', allowedRoles: ['Patient'], zone: 'patient' },
-  { path: 'patient/lab-results', allowedRoles: ['Patient'], zone: 'patient' },
-  { path: 'patient/prescriptions', allowedRoles: ['Patient'], zone: 'patient' },
-  { path: 'patient/billing', allowedRoles: ['Patient'], zone: 'patient' },
-  { path: 'patient/medical-records', allowedRoles: ['Patient'], zone: 'patient' },
-  { path: 'patient/messages', allowedRoles: ['Patient'], zone: 'patient' },
-  { path: 'patient/profile', allowedRoles: ['Patient'], zone: 'patient' },
+  { path: 'patient', requiredPermission: 'patient.portal.view_own', allowedRoles: ['Patient'], zone: 'patient' },
+  { path: 'patient/appointments', requiredPermission: 'patient.portal.appointment.view', allowedRoles: ['Patient'], zone: 'patient' },
+  { path: 'patient/lab-results', requiredPermission: 'patient.portal.result.view', allowedRoles: ['Patient'], zone: 'patient' },
+  { path: 'patient/prescriptions', requiredPermission: 'patient.portal.view_own', allowedRoles: ['Patient'], zone: 'patient' },
+  { path: 'patient/billing', requiredPermission: 'patient.portal.billing.view', allowedRoles: ['Patient'], zone: 'patient' },
+  { path: 'patient/medical-records', requiredPermission: 'patient.portal.view_own', allowedRoles: ['Patient'], zone: 'patient' },
+  { path: 'patient/messages', requiredPermission: 'patient.portal.message', allowedRoles: ['Patient'], zone: 'patient' },
+  { path: 'patient/profile', requiredPermission: 'patient.portal.view_own', allowedRoles: ['Patient'], zone: 'patient' },
 
   // Integration Bridges Workspace Routes (Staff Zone, Cross-Domain Scope, Tenant Scoped)
-  { path: 'integration', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/notifications', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/approvals', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/global-search', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/patient-timeline', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/asset-timeline', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/reconciliation', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
-  { path: 'integration/activity-audit', allowedRoles: ['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin'], zone: 'staff' },
+  { path: 'integration', requiredPermission: 'integration.view', zone: 'staff' },
+  { path: 'integration/notifications', requiredPermission: 'integration.view', zone: 'staff' },
+  { path: 'integration/approvals', requiredPermission: 'integration.view', zone: 'staff' },
+  { path: 'integration/global-search', requiredPermission: 'integration.view', zone: 'staff' },
+  { path: 'integration/patient-timeline', requiredPermission: 'integration.view', zone: 'staff' },
+  { path: 'integration/asset-timeline', requiredPermission: 'integration.view', zone: 'staff' },
+  { path: 'integration/reconciliation', requiredPermission: 'integration.view', zone: 'staff' },
+  { path: 'integration/activity-audit', requiredPermission: 'integration.view', zone: 'staff' },
 ];
+
+const normalizePortalPath = (path: string): string =>
+  path
+    .split(/[?#]/, 1)[0]
+    .replace(/^\/+|\/+$/g, '');
+
+const splitRoute = (path: string): string[] => {
+  const normalized = normalizePortalPath(path);
+  return normalized ? normalized.split('/') : [];
+};
+
+const matchesRoutePattern = (pattern: string, pathname: string): boolean => {
+  const patternSegments = splitRoute(pattern);
+  const pathSegments = splitRoute(pathname);
+
+  let pathIndex = 0;
+  for (const segment of patternSegments) {
+    const optional = segment.startsWith(':') && segment.endsWith('?');
+    const dynamic = segment.startsWith(':');
+
+    if (optional && pathIndex >= pathSegments.length) continue;
+    if (pathIndex >= pathSegments.length) return false;
+    if (!dynamic && segment !== pathSegments[pathIndex]) return false;
+    pathIndex += 1;
+  }
+
+  return pathIndex === pathSegments.length;
+};
+
+/**
+ * Resolve the canonical access policy for a browser pathname.
+ * Exact/dynamic matches win; otherwise the longest static parent policy is used
+ * for nested layout routes such as /settings/branches.
+ */
+const routeSpecificity = (path: string): [number, number] => {
+  const segments = splitRoute(path);
+  const staticSegments = segments.filter((segment) => !segment.startsWith(':')).length;
+  return [staticSegments, segments.length];
+};
+
+export const getPortalRouteConfig = (pathname: string): RouteGuardConfig | undefined => {
+  const normalized = normalizePortalPath(pathname);
+  const exact = portalRoutes
+    .filter((route) => matchesRoutePattern(route.path, normalized))
+    .sort((a, b) => {
+      const [aStatic, aLength] = routeSpecificity(a.path);
+      const [bStatic, bLength] = routeSpecificity(b.path);
+      return bStatic - aStatic || bLength - aLength;
+    })[0];
+
+  if (exact) return exact;
+
+  return portalRoutes
+    .filter((route) => {
+      const routePath = normalizePortalPath(route.path);
+      return Boolean(routePath) && !routePath.includes(':') && normalized.startsWith(`${routePath}/`);
+    })
+    .sort((a, b) => splitRoute(b.path).length - splitRoute(a.path).length)[0];
+};

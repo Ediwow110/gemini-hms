@@ -2,6 +2,10 @@ import { PrismaClient, ListingStatus, OrderStatus, ShipmentStatus, DeliveryJobSt
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as bcrypt from 'bcrypt';
+import {
+  AUTHORIZATION_PERMISSIONS,
+  SYSTEM_ROLE_PERMISSIONS,
+} from '../src/auth/authorization-catalog';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://hms_local_user:hms_secure_pass@localhost:5432/gemini_hms_local?schema=public',
@@ -60,30 +64,13 @@ async function main() {
 
   // 2B. PERMISSIONS
   console.log('🔑 Creating permissions...');
-  const permissionNames = [
-    'patient.view', 'encounter.update', 'patient.create',
-    'queue.view', 'queue.manage',
-    'lab.result.view',
-    'inventory.stock.dispense', 'inventory.item.view', 'inventory.stock.receive',
-    'billing.invoice.view',
-    'order.create',
-    'approval.request.view',
-    'admin.role.change', 'admin.health.view', 'admin.user.view', 'admin.branch.view',
-    'report.export',
-    'audit.view', 'audit.self', 'audit.export',
-    'compliance.audit.review',
-    'it.system.view',
-    'integration.view',
-    'hr.employee.manage',
-    'procurement.request.view', 'procurement.supplier.manage',
-    'patient.self_service', 'patient.merge.request', 'patient.merge.approve',
-    'marketplace.buyer', 'marketplace.supplier', 'marketplace.admin',
-    'field_service.manage',
-  ];
   const createdPermissions = await Promise.all(
-    permissionNames.map(name =>
+    AUTHORIZATION_PERMISSIONS.map((definition) =>
       prisma.permission.create({
-        data: { name, tenantId: tenant.id, riskLevel: 'PRIVILEGED' },
+        data: {
+          ...definition,
+          tenantId: tenant.id,
+        },
       }),
     ),
   );
@@ -190,79 +177,34 @@ async function main() {
   }
 
   // Define role->permission mappings
-  const rolePermissions: Record<string, string[]> = {
-    'Super Admin': allPermissions.map((p) => p.name),
-    'Branch Admin': [
-      'patient.view', 'patient.create', 'queue.view', 'queue.manage',
-      'billing.invoice.view', 'inventory.item.view', 'inventory.stock.receive',
-      'inventory.stock.dispense', 'order.create', 'approval.request.view',
-      'admin.user.view', 'admin.branch.view', 'report.export', 'audit.view', 'audit.self',
-      'hr.employee.manage', 'procurement.request.view'
-    ],
-    'Doctor': [
-      'patient.view', 'encounter.update', 'patient.create',
-      'queue.view', 'queue.manage', 'lab.result.view',
-      'order.create', 'audit.self', 'billing.invoice.view',
-      'inventory.item.view',
-    ],
-    'Nurse': [
-      'patient.view', 'encounter.update', 'patient.create',
-      'queue.view', 'queue.manage', 'lab.result.view',
-      'order.create', 'audit.self', 'inventory.stock.dispense',
-      'inventory.item.view',
-    ],
-    'Cashier': [
-      'patient.view', 'queue.view', 'billing.invoice.view',
-      'audit.self', 'inventory.item.view',
-    ],
-    'Receptionist': [
-      'patient.view', 'queue.view', 'queue.manage'
-    ],
-    'Med-Tech': [
-      'patient.view', 'lab.result.view', 'audit.self'
-    ],
-    'Pharmacist': [
-      'patient.view', 'inventory.item.view', 'inventory.stock.dispense', 'audit.self'
-    ],
-    'Supplier': [
-      'marketplace.supplier', 'audit.self'
-    ],
-    'Procurement Officer': [
-      'procurement.request.view', 'procurement.supplier.manage', 'inventory.item.view', 'audit.self'
-    ],
-    'HR Staff': [
-      'hr.employee.manage', 'audit.self'
-    ],
-    'HR Manager': [
-      'hr.employee.manage', 'audit.self'
-    ],
-    'IT Support': [
-      'it.system.view', 'audit.view', 'audit.self'
-    ],
-    'Compliance Officer': [
-      'compliance.audit.review', 'audit.view', 'audit.self'
-    ],
-    'Field Technician': [
-      'field_service.manage', 'audit.self'
-    ],
-    'Marketplace Admin': [
-      'marketplace.admin', 'audit.self'
-    ],
-    'Patient': [
-      'patient.self_service', 'audit.self'
-    ]
-  };
+  const rolePermissions = SYSTEM_ROLE_PERMISSIONS;
 
   for (const [roleName, permNames] of Object.entries(rolePermissions)) {
     // Upsert the role
     const role = await prisma.role.upsert({
       where: { tenantId_name: { tenantId: tenant.id, name: roleName } },
-      update: { status: 'ACTIVE' },
+      update: {
+        status: 'ACTIVE',
+        isSystem: true,
+        archivedAt: null,
+        archivedReason: null,
+      },
       create: {
         tenantId: tenant.id,
         name: roleName,
         status: 'ACTIVE',
-        isSystem: roleName === 'Super Admin',
+        isSystem: true,
+      },
+    });
+
+    const canonicalPermissionIds = permNames
+      .map((permName) => permissionMap.get(permName))
+      .filter((permissionId): permissionId is string => Boolean(permissionId));
+
+    await prisma.rolePermission.deleteMany({
+      where: {
+        roleId: role.id,
+        permissionId: { notIn: canonicalPermissionIds },
       },
     });
 

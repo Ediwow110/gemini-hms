@@ -567,20 +567,41 @@ describe('AdminService', () => {
     expect(result.assignmentStatus).toBe('ACTIVE');
   });
 
-  it('assign rejects system roles', async () => {
-    prisma.user.findFirst.mockResolvedValue(makeUser({ userRoles: [] }));
-    prisma.role.findFirst.mockResolvedValue(
-      makeRole({ id: 'role-id', name: 'Cashier', isSystem: true }),
+  it('assigns a non-privileged built-in system role', async () => {
+    const role = makeRole({ id: 'role-id', name: 'Cashier', isSystem: true });
+    const target = makeUser({ userRoles: [] });
+    const updated = makeUser({
+      tokenVersion: 2,
+      userRoles: [
+        {
+          userId: 'target-id',
+          roleId: 'role-id',
+          status: 'ACTIVE',
+          revokedAt: null,
+          revokedReason: null,
+          role,
+        },
+      ],
+    });
+    prisma.user.findFirst
+      .mockResolvedValueOnce(target)
+      .mockResolvedValueOnce(updated);
+    prisma.role.findFirst.mockResolvedValue(role);
+    prisma.userRole.updateMany.mockResolvedValue({ count: 0 });
+    prisma.userRole.create.mockResolvedValue({});
+    prisma.user.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await service.assignUserRole(
+      superAdminActor,
+      'target-id',
+      'role-id',
+      'valid reason',
     );
 
-    await expect(
-      service.assignUserRole(
-        superAdminActor,
-        'target-id',
-        'role-id',
-        'valid reason',
-      ),
-    ).rejects.toThrow(ForbiddenException);
+    expect(result).toMatchObject({
+      role: { id: 'role-id', name: 'Cashier' },
+      assignmentStatus: 'ACTIVE',
+    });
   });
 
   it('assign rejects cross-tenant roles', async () => {
@@ -846,32 +867,39 @@ describe('AdminService', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
-  it('revoke rejects system roles', async () => {
+  it('revokes a non-privileged built-in system role', async () => {
     const role = makeRole({ id: 'role-id', name: 'Cashier', isSystem: true });
-    prisma.user.findFirst.mockResolvedValue(
-      makeUser({
-        userRoles: [
-          {
-            userId: 'target-id',
-            roleId: 'role-id',
-            status: 'ACTIVE',
-            revokedAt: null,
-            revokedReason: null,
-            role,
-          },
-        ],
-      }),
-    );
+    const target = makeUser({
+      userRoles: [
+        {
+          userId: 'target-id',
+          roleId: 'role-id',
+          status: 'ACTIVE',
+          revokedAt: null,
+          revokedReason: null,
+          role,
+        },
+      ],
+    });
+    const updated = makeUser({ tokenVersion: 2, userRoles: [] });
+    prisma.user.findFirst
+      .mockResolvedValueOnce(target)
+      .mockResolvedValueOnce(updated);
     prisma.role.findFirst.mockResolvedValue(role);
+    prisma.userRole.updateMany.mockResolvedValue({ count: 1 });
+    prisma.user.updateMany.mockResolvedValue({ count: 1 });
 
-    await expect(
-      service.revokeUserRole(
-        superAdminActor,
-        'target-id',
-        'role-id',
-        'valid reason',
-      ),
-    ).rejects.toThrow(ForbiddenException);
+    const result = await service.revokeUserRole(
+      superAdminActor,
+      'target-id',
+      'role-id',
+      'valid reason',
+    );
+
+    expect(result).toMatchObject({
+      role: { id: 'role-id', name: 'Cashier' },
+      assignmentStatus: 'REVOKED',
+    });
   });
 
   it('revoke rejects missing or inactive assignment', async () => {
@@ -2888,24 +2916,6 @@ describe('AdminService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('rejects system roles', async () => {
-      prisma.user.findFirst.mockResolvedValue(null);
-      prisma.branch.findMany.mockResolvedValue([
-        { id: 'branch-id', tenantId: 'tenant-id' },
-      ]);
-      prisma.role.findMany.mockResolvedValue([
-        {
-          id: 'role-id',
-          isSystem: true,
-          name: 'System Role',
-          rolePermissions: [],
-        },
-      ]);
-      await expect(service.createUser(superAdminActor, dto)).rejects.toThrow(
-        ForbiddenException,
-      );
-    });
-
     it('rejects privileged roles', async () => {
       prisma.user.findFirst.mockResolvedValue(null);
       prisma.branch.findMany.mockResolvedValue([
@@ -2924,7 +2934,7 @@ describe('AdminService', () => {
       );
     });
 
-    it('succeeds with transactional create and audit', async () => {
+    it('creates a user with a non-privileged built-in system role', async () => {
       prisma.user.findFirst.mockResolvedValue(null);
       prisma.branch.findMany.mockResolvedValue([
         { id: 'branch-id', tenantId: 'tenant-id' },
@@ -2932,8 +2942,8 @@ describe('AdminService', () => {
       prisma.role.findMany.mockResolvedValue([
         {
           id: 'role-id',
-          isSystem: false,
-          name: 'Normal Role',
+          isSystem: true,
+          name: 'Cashier',
           rolePermissions: [],
         },
       ]);

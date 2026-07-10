@@ -1,17 +1,25 @@
 import { apiClient } from "../lib/api";
 
+export type DeliveryJobStatus = "ASSIGNED" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
+export type InstallationJobStatus = "ASSIGNED" | "IN_PROGRESS" | "COMMISSIONED" | "COMPLETED" | "FAILED";
+export type ShipmentStatus = "PENDING" | "PROCESSING" | "SHIPPED" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED";
+
 export interface TechnicianDeliveryDto {
   id: string;
   customer: string;
   address: string;
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
+  status: DeliveryJobStatus;
+  shipmentId: string;
+  orderId: string;
 }
 
 export interface TechnicianInstallationDto {
   id: string;
   customer: string;
   address: string;
-  status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
+  status: InstallationJobStatus;
+  assetId: string;
+  assetModel: string;
 }
 
 export interface TechnicianJobsResponseDto {
@@ -22,20 +30,52 @@ export interface TechnicianJobsResponseDto {
 export interface InstallationJobDto {
   id: string;
   asset: {
+    id: string;
     model: string;
     serialNumber: string;
+    salesOrder?: {
+      quote?: {
+        rfq?: {
+          title: string;
+          branch?: { id: string; name: string };
+        };
+      };
+    };
   };
-  status: "ASSIGNED" | "IN_PROGRESS" | "COMPLETED";
+  assignedUser?: { id: string; email: string };
+  status: InstallationJobStatus;
 }
 
 export interface ShipmentDto {
   id: string;
   trackingNumber?: string;
+  status: ShipmentStatus;
+  carrier?: string;
   salesOrder: {
     id: string;
+    quote?: {
+      rfq?: {
+        title: string;
+        branch?: { id: string; name: string };
+      };
+    };
   };
-  status: "SHIPPED" | "IN_TRANSIT" | "DELIVERED";
-  carrier?: string;
+  deliveryJobs?: Array<{
+    id: string;
+    status: DeliveryJobStatus;
+    assignedUser?: { id: string; email: string };
+  }>;
+}
+
+export interface EligibleTechnicianDto {
+  id: string;
+  email: string;
+}
+
+export interface CreateDeliveryJobDto {
+  shipmentId: string;
+  assignedUserId: string;
+  notes?: string;
 }
 
 export const fieldServiceService = {
@@ -51,13 +91,23 @@ export const fieldServiceService = {
     const response = await apiClient.get("/v1/logistics/shipments");
     return response.data;
   },
-  updateInstallationStatus: async (id: string, status: InstallationJobDto["status"]): Promise<void> => {
+  getEligibleTechnicians: async (): Promise<EligibleTechnicianDto[]> => {
+    const response = await apiClient.get("/v1/logistics/technicians");
+    return response.data;
+  },
+  updateInstallationStatus: async (
+    id: string,
+    status: InstallationJobDto["status"],
+  ): Promise<void> => {
     await apiClient.patch(`/v1/logistics/installations/${id}/status`, { status });
   },
-  createDeliveryJob: async (dto: { customerOrderId: string; address: string; technicianId: string }): Promise<void> => {
+  createDeliveryJob: async (dto: CreateDeliveryJobDto): Promise<void> => {
     await apiClient.post("/v1/logistics/delivery-jobs", dto);
   },
-  updateShipmentStatus: async (id: string, status: ShipmentDto["status"]): Promise<void> => {
+  updateShipmentStatus: async (
+    id: string,
+    status: ShipmentDto["status"],
+  ): Promise<void> => {
     await apiClient.patch(`/v1/logistics/shipments/${id}/status`, { status });
   },
 };

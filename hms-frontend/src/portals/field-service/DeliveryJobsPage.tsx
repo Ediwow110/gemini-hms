@@ -9,7 +9,15 @@ import { HmsDashboardShell, HmsAuditFooter } from "../../components/hms-dashboar
 
 export const DeliveryJobsPage: React.FC = () => {
   const user = useUser();
-  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
+  const canViewAdministration = Boolean(
+    user?.permissions.includes('fulfillment.view'),
+  );
+  const canAssignJobs = Boolean(
+    user?.permissions.includes('field_service.job.assign'),
+  );
+  const canUpdateShipment = Boolean(
+    user?.permissions.includes('fulfillment.update_status'),
+  );
 
   return (
     <HmsDashboardShell>
@@ -21,8 +29,11 @@ export const DeliveryJobsPage: React.FC = () => {
 
         <FieldServiceShellNotice />
 
-        {isAdmin ? (
-          <DeliveryJobsAdminView />
+        {canViewAdministration ? (
+          <DeliveryJobsAdminView
+            canAssignJobs={canAssignJobs}
+            canUpdateShipment={canUpdateShipment}
+          />
         ) : (
           <>
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
