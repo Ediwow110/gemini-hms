@@ -13,6 +13,14 @@ import { ComplianceDashboard } from '../../portals/compliance/ComplianceDashboar
 import { ITSupportDashboard } from '../../portals/it-support/ITSupportDashboard';
 import { PatientDashboard } from '../../portals/patient/PatientDashboard';
 
+vi.mock('../../lib/api', () => ({
+  apiClient: {
+    get: vi.fn().mockResolvedValue({ data: [] }),
+    post: vi.fn().mockResolvedValue({ data: {} }),
+    patch: vi.fn().mockResolvedValue({ data: {} }),
+  },
+}));
+
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="responsive-chart">{children}</div>,
   LineChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -57,6 +65,24 @@ vi.mock('../../services/dashboard.service', () => ({
     getAdminAlerts: () => Promise.resolve({ lowStock: [], criticalLabs: [] }),
     getAdminTopLists: () => Promise.resolve({ busiestDepts: [], unpaidBills: [] }),
     buildQueryParams: () => ({}),
+  },
+}));
+
+vi.mock('../../services/procurement.service', () => ({
+  procurementService: {
+    listSuppliers: () => Promise.resolve([
+      { id: 'supplier-1', name: 'Medical Supply Co.', status: 'ACTIVE' },
+      { id: 'supplier-2', name: 'Inactive Supplier', status: 'INACTIVE' },
+    ]),
+    listPurchaseRequests: () => Promise.resolve([
+      { id: 'pr-1', branchId: 'branch-1', requestedById: 'user-1', items: [], status: 'SUBMITTED', createdAt: '2026-07-01T00:00:00Z' },
+      { id: 'pr-2', branchId: 'branch-1', requestedById: 'user-1', items: [], status: 'APPROVED', createdAt: '2026-07-02T00:00:00Z' },
+      { id: 'pr-3', branchId: 'branch-1', requestedById: 'user-1', items: [], status: 'ORDERED', createdAt: '2026-07-03T00:00:00Z' },
+    ]),
+    listPurchaseOrders: () => Promise.resolve([
+      { id: 'po-1', branchId: 'branch-1', supplierId: 'supplier-1', purchaseRequestId: 'pr-2', orderNumber: 'PO-000001', status: 'SENT', supplier: { id: 'supplier-1', name: 'Medical Supply Co.', status: 'ACTIVE' } },
+      { id: 'po-2', branchId: 'branch-1', supplierId: 'supplier-1', purchaseRequestId: 'pr-3', orderNumber: 'PO-000002', status: 'RECEIVED', supplier: { id: 'supplier-1', name: 'Medical Supply Co.', status: 'ACTIVE' } },
+    ]),
   },
 }));
 
@@ -132,11 +158,15 @@ describe('dashboard intelligence pages', () => {
     expect(screen.getByText('Workforce insights')).toBeInTheDocument();
   });
 
-  it('ProcurementDashboard renders funnel and metrics', () => {
+  it('ProcurementDashboard renders live API totals without simulated alerts or dead actions', async () => {
+    vi.useRealTimers();
     renderPage(<ProcurementDashboard />);
     expect(screen.getByText('Procurement Officer')).toBeInTheDocument();
-    expect(screen.getByText('Open PRs')).toBeInTheDocument();
-    expect(screen.getByText(/PR → RFQ → PO → Receiving funnel/i)).toBeInTheDocument();
+    expect(screen.getByText('Open purchase requests')).toBeInTheDocument();
+    expect(await screen.findByText('PO-000001')).toBeInTheDocument();
+    expect(screen.getByText(/Source: Live Procurement API/i)).toBeInTheDocument();
+    expect(screen.queryByText(/CRITICAL STOCKOUTS DETECTED/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Auto-Generate RFQs/i })).not.toBeInTheDocument();
   });
 
   it('MarketplaceAdminDashboard renders governance metrics with honest prototype disclosure', () => {

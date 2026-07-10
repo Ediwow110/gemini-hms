@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM node:20-alpine AS builder
+FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS builder
 
 # Install necessary tools for Prisma
 RUN apk add --no-cache openssl
@@ -20,7 +20,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Stage 2: Production
-FROM node:20-alpine
+FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
 
 # Install openssl and curl for healthcheck
 RUN apk add --no-cache openssl curl
@@ -49,5 +49,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 # Expose port
 EXPOSE 3000
 
-# Run migrations and start the server
-CMD npx prisma migrate deploy && node dist/src/main
+# Migrations are executed once by the deployment orchestrator before rollout.
+CMD ["node", "dist/src/main.js"]

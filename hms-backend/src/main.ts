@@ -6,8 +6,10 @@ import { WinstonLoggerService } from './common/logger/winston-logger.service';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 // Sentry error monitoring (backend)
 import * as Sentry from '@sentry/node';
+import { validateRuntimeEnvironment } from './config/validate-runtime-environment';
 
 async function bootstrap() {
+  validateRuntimeEnvironment();
   const logger = new Logger('Bootstrap');
   const isProd = process.env.NODE_ENV === 'production';
 
@@ -56,37 +58,42 @@ async function bootstrap() {
   // --------------------------------------------------------
 
   // ---------- Swagger / OpenAPI ----------
-  const config = new DocumentBuilder()
-    .setTitle('Hospital Management System API')
-    .setDescription(
-      'Enterprise-grade HMS backend — modular, multi-tenant, HIPAA-aware',
-    )
-    .setVersion('1.0.0')
-    .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      'access-token',
-    )
-    .addCookieAuth('access_token', {
-      type: 'apiKey',
-      in: 'cookie',
-      name: 'access_token',
-    })
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: { persistAuthorization: true },
-    customSiteTitle: 'HMS API Docs',
-  });
-  winstonLogger.log('Swagger docs available at /api/docs', 'Bootstrap');
+  // API documentation is intentionally disabled in production. It exposes the
+  // complete route and schema surface and must not be anonymously discoverable.
+  if (!isProd) {
+    const config = new DocumentBuilder()
+      .setTitle('Hospital Management System API')
+      .setDescription(
+        'Enterprise-grade HMS backend — modular, multi-tenant, HIPAA-aware',
+      )
+      .setVersion('1.0.0')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        'access-token',
+      )
+      .addCookieAuth('access_token', {
+        type: 'apiKey',
+        in: 'cookie',
+        name: 'access_token',
+      })
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: { persistAuthorization: true },
+      customSiteTitle: 'HMS API Docs',
+    });
+    winstonLogger.log('Swagger docs available at /api/docs', 'Bootstrap');
+  }
 
   // ---------- Middleware ----------
   app.use((req: any, res: any, next: () => void) => {
-    const { method, url } = req;
+    const { method, path: requestPath } = req;
     const start = Date.now();
     res.on('finish', () => {
       const delay = Date.now() - start;
+      // Never log query strings: healthcare search/filter parameters may contain PHI.
       winstonLogger.log(
-        `${method} ${url} ${res.statusCode} - ${delay}ms`,
+        `${method} ${requestPath || '/'} ${res.statusCode} - ${delay}ms`,
         'HTTP',
       );
     });

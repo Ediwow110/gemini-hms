@@ -12,7 +12,6 @@ vi.mock('../../../hooks/use-patient-portal', () => ({
 }));
 
 if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).ResizeObserver = vi.fn().mockImplementation(() => ({
     observe: vi.fn(),
     unobserve: vi.fn(),
@@ -36,7 +35,6 @@ describe('PatientDashboard Redesign', () => {
 
   it('renders dashboard with real profile data and HMS shell', () => {
     vi.mocked(usePatientProfile).mockReturnValue({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       profile: { id: '1', patientNumber: 'PT-123', firstName: 'John', lastName: 'Doe', dob: '1990-01-01', status: 'ACTIVE' } as any,
       loading: false, error: null, refetch: vi.fn()
     });

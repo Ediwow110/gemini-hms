@@ -14,16 +14,16 @@
   },
   {
     "id": "health-status",
-    "file": "hms-backend/src/app.controller.ts",
-    "controller": "AppController",
+    "file": "hms-backend/src/common/health/health.controller.ts",
+    "controller": "HealthController",
     "handler": "getHealth",
     "method": "GET",
-    "path": "/health",
+    "path": "/api/v1/health",
     "unsafe": false,
-    "reason": "Health/status endpoint. Safe method (GET).",
+    "reason": "Minimal public liveness endpoint used by load balancers and container health checks.",
     "manualProtection": "N/A (GET exempt from CSRF)",
-    "risk": "none",
-    "ownerNote": "Expected health endpoint."
+    "risk": "low",
+    "ownerNote": "Detailed dependency information is not exposed publicly."
   },
   {
     "id": "auth-login",

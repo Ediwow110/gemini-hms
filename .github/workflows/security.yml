@@ -1,0 +1,121 @@
+name: Security Gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+
+jobs:
+  dependency-and-secret-scan:
+    name: Dependencies and Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+          cache-dependency-path: |
+            hms-backend/package-lock.json
+            hms-frontend/package-lock.json
+
+      - name: Audit backend production dependencies
+        working-directory: hms-backend
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high
+
+      - name: Audit frontend production dependencies
+        working-directory: hms-frontend
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high
+
+      - name: Scan repository history for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Review dependency changes
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+
+      - uses: github/codeql-action/autobuild@v3
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
+
+  container-scan-and-sbom:
+    name: Container Vulnerabilities and SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t hms-backend:security-scan ./hms-backend
+
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: hms-backend:security-scan
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - name: Generate backend SBOM
+        uses: anchore/sbom-action@v0.17.2
+        with:
+          image: hms-backend:security-scan
+          format: spdx-json
+          output-file: backend.spdx.json
+
+      - name: Build frontend image
+        run: docker build -t hms-frontend:security-scan ./hms-frontend
+
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: hms-frontend:security-scan
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - name: Generate frontend SBOM
+        uses: anchore/sbom-action@v0.17.2
+        with:
+          image: hms-frontend:security-scan
+          format: spdx-json
+          output-file: frontend.spdx.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-sboms
+          path: |
+            backend.spdx.json
+            frontend.spdx.json
+          if-no-files-found: error

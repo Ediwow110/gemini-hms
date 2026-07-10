@@ -1,7 +1,6 @@
 import { PrismaClient, ListingStatus, OrderStatus, ShipmentStatus, DeliveryJobStatus, TaskStatus } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 
 const pool = new Pool({
@@ -141,7 +140,7 @@ async function main() {
 
   const createdEmployees = [];
   const createdUsers = [];
-  for (const s of staff) {
+  for (const [staffIndex, s] of staff.entries()) {
     const passwordHash = await bcrypt.hash(s.password, 10);
     const user = await prisma.user.create({
       data: {
@@ -158,7 +157,7 @@ async function main() {
         tenantId: tenant.id,
         branchId: createdBranches[s.branchIdx].id,
         userId: user.id,
-        employeeNumber: `EMP-${crypto.randomInt(1000, 9999)}`,
+        employeeNumber: `EMP-${String(staffIndex + 1).padStart(4, '0')}`,
         department: s.dept,
         position: s.role,
         hireDate: new Date('2023-01-01'),
@@ -361,7 +360,7 @@ async function main() {
         patientNumber: `PAT-${1000 + i}`,
         firstName: `Patient ${i}`,
         lastName: `Lastname ${i}`,
-        dob: new Date(1960 + Math.floor(Math.random() * 40), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)),
+        dob: new Date(1960 + (i % 40), i % 12, (i % 27) + 1),
         status: 'ACTIVE',
       },
     });
@@ -437,7 +436,7 @@ async function main() {
   }
 
   // 8. HR: Attendance & Licenses
-  for (const emp of createdEmployees) {
+  for (const [employeeIndex, emp] of createdEmployees.entries()) {
     // 30 days of attendance
     for (let d = 30; d > 0; d--) {
       await prisma.attendanceLog.create({
@@ -457,7 +456,7 @@ async function main() {
         tenantId: tenant.id,
         employeeId: emp.id,
         licenseType: 'Board Certification',
-        licenseNumber: `LIC-${crypto.randomInt(10000, 99999)}`,
+        licenseNumber: `LIC-${String(employeeIndex + 1).padStart(5, '0')}`,
         issuedAt: new Date('2022-01-01'),
         expiresAt: new Date(Date.now() + 15 * 86400000), // 15 days from now
         status: 'ACTIVE',

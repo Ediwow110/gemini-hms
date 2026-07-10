@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -26,8 +29,7 @@
     "@sentry/tracing": "^7.120.4",
     "@tanstack/react-query": "^5.100.9",
     "@tanstack/react-table": "^8.21.3",
-    "axios": "^1.16.0",
-    "axios-cookiejar-support": "^7.0.0",
+    "axios": "^1.18.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^1.14.0",
@@ -35,10 +37,9 @@
     "react-day-picker": "^10.0.0",
     "react-dom": "^19.2.5",
     "react-hook-form": "^7.75.0",
-    "react-router-dom": "^7.15.0",
+    "react-router-dom": "^7.18.1",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0",
-    "tough-cookie": "^6.0.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },
@@ -65,7 +66,11 @@
     "tsx": "^4.22.3",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.10",
+    "vite": "8.0.16",
     "vitest": "^4.1.7"
+  },
+  "overrides": {
+    "@babel/core": "7.29.7",
+    "esbuild": "0.28.1"
   }
 }

@@ -5,6 +5,9 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -22,6 +25,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "npx tsx test/setup-db.ts && jest --config ./test/jest-e2e.json --runInBand",
     "test:migrations": "npx tsx scripts/verify-migration-upgrade.ts",
+    "test:migrations:local": "npx tsx scripts/run-local-migration-upgrade.ts",
     "db:check:demo": "npx tsx scripts/check-demo-data.ts",
     "db:fix:demo": "npx tsx scripts/fix-demo-data.ts",
     "db:reset:demo:safe": "npx tsx scripts/reset-demo-db.ts",
@@ -92,6 +96,17 @@
     "tsx": "^4.22.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.60.0"
+  },
+  "overrides": {
+    "@babel/core": "7.29.7",
+    "@hono/node-server": "1.19.13",
+    "esbuild": "0.28.1",
+    "form-data": "4.0.6",
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "3.15.0"
+    },
+    "multer": "2.2.0",
+    "uuid": "11.1.1"
   },
   "jest": {
     "moduleFileExtensions": [

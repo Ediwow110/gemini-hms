@@ -3,7 +3,7 @@ services:
   # The DB_* variables below are ONLY for starting the postgres container.
   # Always provide a full DATABASE_URL for the backend service in .env or your environment.
   db:
-    image: postgres:15-alpine
+    image: postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f
     restart: always
     environment:
       POSTGRES_USER: ${DB_USER:?DB_USER is required}
@@ -13,6 +13,17 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
@@ -24,9 +35,14 @@ services:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       MASTER_MFA_KEY: ${MASTER_MFA_KEY:?MASTER_MFA_KEY is required}
+      AUDIT_CHAIN_SECRET: ${AUDIT_CHAIN_SECRET:-local-audit-chain-secret-that-is-at-least-32-characters}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:80,http://localhost:5173,http://localhost:5174,http://localhost:3000}
     depends_on:
-      - db
+      db:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   frontend:
     build:

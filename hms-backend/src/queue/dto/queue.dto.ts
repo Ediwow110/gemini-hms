@@ -1,33 +1,45 @@
-import { IsNotEmpty, IsString, IsOptional, IsUUID } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
+
+const QUEUE_CATEGORIES = [
+  'REGULAR',
+  'ROUTINE',
+  'PRIORITY',
+  'EMERGENCY',
+] as const;
+
+export class QueueBranchQueryDto {
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+}
+
+export class CallNextQueueQueryDto extends QueueBranchQueryDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  serviceType!: string;
+}
 
 export class JoinQueueDto {
   @IsUUID()
+  patientId!: string;
+
+  @IsString()
   @IsNotEmpty()
-  branchId: string;
+  @MaxLength(64)
+  serviceType!: string;
+
+  @IsOptional()
+  @IsIn(QUEUE_CATEGORIES)
+  category?: (typeof QUEUE_CATEGORIES)[number];
 
   @IsUUID()
-  @IsOptional()
-  patientId?: string;
-
-  @IsString()
-  @IsOptional()
-  patientName?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  serviceType: string; // RECEPTION, CASHIER, LABORATORY, DOCTOR
-
-  @IsString()
-  @IsOptional()
-  category?: string; // REGULAR, PRIORITY, EMERGENCY
-}
-
-export class UpdateQueueStatusDto {
-  @IsString()
-  @IsNotEmpty()
-  status: string; // CALLING, SERVING, COMPLETED, CANCELLED
-
-  @IsString()
-  @IsOptional()
-  counterNumber?: string;
+  branchId!: string;
 }

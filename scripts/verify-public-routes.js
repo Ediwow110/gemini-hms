@@ -113,6 +113,39 @@ function extractHandlerName(line) {
   return match ? match[1] : null;
 }
 
+function countParentheses(line) {
+  return (line.match(/\(/g) || []).length - (line.match(/\)/g) || []).length;
+}
+
+function findDecoratedHandler(lines, startIndex, maxLines = 40) {
+  let methodDecorator = '';
+  let decoratorDepth = 0;
+
+  for (let j = startIndex + 1; j < Math.min(startIndex + maxLines, lines.length); j++) {
+    const nextLine = lines[j].trim();
+    if (!nextLine || nextLine.startsWith('//') || nextLine.startsWith('*')) continue;
+
+    if (nextLine.startsWith('@')) {
+      const httpMethod = getHttpMethod(nextLine);
+      if (httpMethod) methodDecorator = httpMethod;
+      decoratorDepth += countParentheses(nextLine);
+      continue;
+    }
+
+    if (decoratorDepth > 0) {
+      decoratorDepth += countParentheses(nextLine);
+      continue;
+    }
+
+    const handlerName = extractHandlerName(nextLine);
+    if (handlerName) {
+      return { handlerName, methodDecorator };
+    }
+  }
+
+  return { handlerName: null, methodDecorator };
+}
+
 /**
  * Scan a controller file and return:
  * 1. classPublicRoutes: handlers found in files with class-level @Public()
@@ -144,22 +177,9 @@ function scanFile(filePath) {
       if (isClassLevelPublic(lines, i)) {
         hasClassLevelPublic = true;
       } else {
-        // Method-level @Public(): find the next method decorator + handler
-        let methodDecorator = '';
-        let handlerName = null;
-        for (let j = i + 1; j < Math.min(i + 20, lines.length); j++) {
-          const nextLine = lines[j].trim();
-          if (!nextLine || nextLine.startsWith('//') || nextLine.startsWith('*')) continue;
-          if (nextLine.startsWith('@')) {
-            const httpMethod = getHttpMethod(nextLine);
-            if (httpMethod) {
-              methodDecorator = httpMethod;
-            }
-            continue;
-          }
-          handlerName = extractHandlerName(nextLine);
-          break;
-        }
+        // Method-level @Public(): find the next decorated handler,
+        // including multiline decorator arguments such as @ApiOkResponse({ ... }).
+        const { handlerName, methodDecorator } = findDecoratedHandler(lines, i);
 
         methodRoutes.push({
           file: relativePath,
@@ -178,17 +198,13 @@ function scanFile(filePath) {
       if (line.startsWith('@')) {
         const httpMethod = getHttpMethod(line);
         if (httpMethod) {
-          for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
-            const nextLine = lines[j].trim();
-            const handlerName = extractHandlerName(nextLine);
-            if (handlerName) {
-              classMethodHandlers.push({
-                file: relativePath,
-                handler: handlerName,
-                method: httpMethod,
-              });
-              break;
-            }
+          const { handlerName } = findDecoratedHandler(lines, i, 20);
+          if (handlerName) {
+            classMethodHandlers.push({
+              file: relativePath,
+              handler: handlerName,
+              method: httpMethod,
+            });
           }
         }
       }

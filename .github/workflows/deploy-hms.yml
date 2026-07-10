@@ -1,4 +1,4 @@
-name: Deploy HMS Foundational Core
+name: Validate HMS Foundational Core
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Secure Dependencies
         run: npm ci
@@ -27,26 +27,7 @@ jobs:
       - name: Prisma Schema Syntax Validation
         run: npx prisma validate --schema=../hms-backend/prisma/schema.prisma
 
-  provision-deployment:
-    needs: validate
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Remote Shell Provisioning Execution (Zero-Touch)
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /tmp/app
-            export DB_USER='${{ secrets.DB_USER }}'
-            export DB_PASSWORD='${{ secrets.DB_PASSWORD }}'
-            export DB_NAME='${{ secrets.DB_NAME }}'
-            export CORS_ALLOWED_ORIGINS='${{ secrets.CORS_ALLOWED_ORIGINS }}'
-            export DATABASE_URL='${{ secrets.PROD_DATABASE_URL }}'
-            export JWT_SECRET='${{ secrets.PROD_JWT_SECRET }}'
-            export MASTER_MFA_KEY='${{ secrets.MASTER_MFA_KEY }}'
-            bash ./hms-backend/scripts/remote-deploy.sh
+      - name: Deployment path notice
+        run: |
+          echo "Foundational core validation passed."
+          echo "Production releases must use .github/workflows/deploy.yml so the exact CI-built images, full release gates, required secrets, and rollback orchestrator are enforced."

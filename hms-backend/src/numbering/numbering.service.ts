@@ -30,6 +30,7 @@ export class NumberingService {
       RECEIPT: { prefix: 'RCP-', padding: 6 },
       LAB_RESULT: { prefix: 'LAB-', padding: 6 },
       CLAIM: { prefix: 'CLM-', padding: 6 },
+      QUEUE: { prefix: 'Q-', padding: 6 },
     };
 
     const config = defaults[entityType] || {
