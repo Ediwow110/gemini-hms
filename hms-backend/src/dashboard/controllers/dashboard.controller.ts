@@ -13,25 +13,25 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('admin/summary')
-  @Roles('Super Admin', 'Admin')
+  @Roles('Super Admin')
   async getSummary(@Query() query: DashboardQueryDto, @GetUser() user: User) {
     return this.dashboardService.getAdminSummary(query, user.id, user.tenantId);
   }
 
   @Get('admin/trends')
-  @Roles('Super Admin', 'Admin')
+  @Roles('Super Admin')
   async getTrends(@Query() query: DashboardQueryDto, @GetUser() user: User) {
     return this.dashboardService.getAdminTrends(query, user.tenantId);
   }
 
   @Get('admin/alerts')
-  @Roles('Super Admin', 'Admin')
+  @Roles('Super Admin')
   async getAlerts(@GetUser() user: User) {
     return this.dashboardService.getAdminAlerts(user.tenantId);
   }
 
   @Get('admin/top-lists')
-  @Roles('Super Admin', 'Admin')
+  @Roles('Super Admin')
   async getTopLists(@GetUser() user: User) {
     return this.dashboardService.getAdminTopLists(user.tenantId);
   }

@@ -19,29 +19,38 @@ import {
   CreateLicenseRecordDto,
 } from './dto/hr.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import * as AuthTypes from '../common/types/authenticated-request.type';
 
-@UseGuards(RolesGuard)
+/**
+ * HR Controller — permission-based authorization.
+ *
+ * Uses PermissionsGuard so that custom roles created via the RolesPermissionsPage
+ * UI work correctly for HR endpoints. The permission catalog includes granular
+ * permissions that prevent privilege expansion:
+ *
+ * - `hr.employee.status.change` (PRIVILEGED): only Super Admin, HR Manager, HR
+ *   Staff. Branch Admin does NOT have this — preserving the intentional
+ *   exclusion that was previously enforced via @Roles.
+ * - `hr.leave.request.create_own` / `hr.leave.request.view`: granted to Doctor
+ *   and Nurse for self-service leave requests.
+ * - `hr.leave.request.approve`: granted to Super Admin, HR Manager, HR Staff,
+ *   Branch Admin.
+ */
+@UseGuards(PermissionsGuard)
 @Controller('api/v1/hr')
 export class HrController {
   constructor(private readonly hrService: HrService) {}
 
   @Get('departments')
-  @Roles(
-    'Super Admin',
-    'Branch Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Manager',
-  )
+  @RequirePermissions('hr.employee.view')
   getDepartments(@GetUser('tenantId') tenantId: string) {
     return this.hrService.getDepartments(tenantId);
   }
 
   @Post('departments')
-  @Roles('Super Admin', 'HR Manager', 'HR Staff')
+  @RequirePermissions('hr.employee.manage')
   createDepartment(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -51,13 +60,7 @@ export class HrController {
   }
 
   @Get('employees')
-  @Roles(
-    'Super Admin',
-    'Branch Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Manager',
-  )
+  @RequirePermissions('hr.employee.view')
   getEmployees(
     @GetUser('tenantId') tenantId: string,
     @GetUser() user: AuthTypes.RequestUser,
@@ -66,13 +69,7 @@ export class HrController {
   }
 
   @Get('assignments')
-  @Roles(
-    'Super Admin',
-    'Branch Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Manager',
-  )
+  @RequirePermissions('hr.employee.view')
   getAssignments(
     @GetUser('tenantId') tenantId: string,
     @GetUser('branchId') branchId: string,
@@ -82,13 +79,7 @@ export class HrController {
   }
 
   @Get('attendance')
-  @Roles(
-    'Super Admin',
-    'Branch Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Manager',
-  )
+  @RequirePermissions('hr.employee.view')
   getAttendance(
     @GetUser('tenantId') tenantId: string,
     @GetUser('branchId') branchId: string,
@@ -98,7 +89,7 @@ export class HrController {
   }
 
   @Post('employees')
-  @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff')
+  @RequirePermissions('hr.employee.manage')
   createEmployee(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -109,13 +100,7 @@ export class HrController {
   }
 
   @Get('employees/:id')
-  @Roles(
-    'Super Admin',
-    'Branch Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Manager',
-  )
+  @RequirePermissions('hr.employee.view')
   getEmployeeById(
     @GetUser('tenantId') tenantId: string,
     @Param('id') id: string,
@@ -125,7 +110,7 @@ export class HrController {
   }
 
   @Patch('employees/:id/status')
-  @Roles('Super Admin', 'HR Manager', 'HR Staff')
+  @RequirePermissions('hr.employee.status.change')
   updateEmployeeStatus(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -143,14 +128,7 @@ export class HrController {
   }
 
   @Post('leave-requests')
-  @Roles(
-    'Super Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Admin',
-    'Doctor',
-    'Nurse',
-  )
+  @RequirePermissions('hr.leave.request.create_own')
   createLeaveRequest(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -160,14 +138,7 @@ export class HrController {
   }
 
   @Get('leave-requests')
-  @Roles(
-    'Super Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Admin',
-    'Doctor',
-    'Nurse',
-  )
+  @RequirePermissions('hr.leave.request.view')
   getLeaveRequests(
     @GetUser('tenantId') tenantId: string,
     @GetUser() user: AuthTypes.RequestUser,
@@ -181,7 +152,7 @@ export class HrController {
   }
 
   @Patch('leave-requests/:id/approve')
-  @Roles('Super Admin', 'HR Manager', 'HR Staff', 'Branch Admin')
+  @RequirePermissions('hr.leave.request.approve')
   approveLeaveRequest(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -192,7 +163,7 @@ export class HrController {
   }
 
   @Patch('leave-requests/:id/reject')
-  @Roles('Super Admin', 'HR Manager', 'HR Staff', 'Branch Admin')
+  @RequirePermissions('hr.leave.request.approve')
   rejectLeaveRequest(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -203,7 +174,7 @@ export class HrController {
   }
 
   @Post('licenses')
-  @Roles('Super Admin', 'HR Manager', 'HR Staff')
+  @RequirePermissions('hr.employee.manage')
   createLicenseRecord(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -213,13 +184,7 @@ export class HrController {
   }
 
   @Get('licenses/:employeeId')
-  @Roles(
-    'Super Admin',
-    'Branch Admin',
-    'HR Manager',
-    'HR Staff',
-    'Branch Manager',
-  )
+  @RequirePermissions('hr.employee.view')
   getLicensesByEmployee(
     @GetUser('tenantId') tenantId: string,
     @Param('employeeId') employeeId: string,
@@ -229,7 +194,7 @@ export class HrController {
   }
 
   @Post('payroll/generate')
-  @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff')
+  @RequirePermissions('hr.payroll.view')
   generatePayslip(
     @GetUser('tenantId') tenantId: string,
     @GetUser('userId') userId: string,
@@ -240,7 +205,7 @@ export class HrController {
   }
 
   @Get('payslips')
-  @Roles('Super Admin', 'Branch Admin', 'HR Manager', 'HR Staff')
+  @RequirePermissions('hr.payroll.view')
   listPayslips(
     @GetUser('tenantId') tenantId: string,
     @GetUser() user: AuthTypes.RequestUser,

@@ -29,25 +29,25 @@ describe('Dashboard API access control', () => {
     {
       name: 'Admin getSummary',
       method: DashboardController.prototype.getSummary,
-      expectedRoles: ['Super Admin', 'Admin'],
+      expectedRoles: ['Super Admin'],
       controllerName: 'Dashboard',
     },
     {
       name: 'Admin getTrends',
       method: DashboardController.prototype.getTrends,
-      expectedRoles: ['Super Admin', 'Admin'],
+      expectedRoles: ['Super Admin'],
       controllerName: 'Dashboard',
     },
     {
       name: 'Admin getAlerts',
       method: DashboardController.prototype.getAlerts,
-      expectedRoles: ['Super Admin', 'Admin'],
+      expectedRoles: ['Super Admin'],
       controllerName: 'Dashboard',
     },
     {
       name: 'Admin getTopLists',
       method: DashboardController.prototype.getTopLists,
-      expectedRoles: ['Super Admin', 'Admin'],
+      expectedRoles: ['Super Admin'],
       controllerName: 'Dashboard',
     },
     {
@@ -139,7 +139,7 @@ describe('Dashboard API access control', () => {
     it('rejects unauthenticated', () => {
       jest
         .spyOn(reflector, 'getAllAndOverride')
-        .mockReturnValue(['Super Admin', 'Admin']);
+        .mockReturnValue(['Super Admin']);
       const ctx = {
         getHandler: jest.fn(),
         getClass: jest.fn(),

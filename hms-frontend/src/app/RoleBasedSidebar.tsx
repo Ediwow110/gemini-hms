@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, LogOut } from 'lucide-react';
-import { useUser, useAuth, usePermissions } from '../hooks/use-user';
+import { ChevronDown } from 'lucide-react';
+import { useUser, usePermissions } from '../hooks/use-user';
 import { roleNavigation, NavItemConfig } from '../config/roleNavigation';
 import { getPortalRouteConfig } from '../config/portalRoutes';
 
@@ -71,7 +71,6 @@ interface RoleBasedSidebarProps {
 
 export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps) => {
   const user = useUser();
-  const { logout } = useAuth();
   const { canAccess } = usePermissions();
   const [manuallyExpanded, setManuallyExpanded] = useState<Set<string>>(new Set());
 
@@ -257,20 +256,23 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
         })}
       </nav>
 
-      {/* User profile card */}
+      {/* User profile card — display-only.
+          Sign-out is handled exclusively by the explicit "Sign out" button in
+          the AppShell topbar (with a 2-step confirmation bar). This card must
+          NOT trigger logout on click; it is an identity display surface only. */}
       <div className="p-3 border-t border-slate-100 bg-white sticky bottom-0">
-        <div 
-          onClick={logout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100/80 hover:from-slate-100 hover:to-slate-100 transition-all duration-200 cursor-pointer group"
+        <div
+          data-testid="sidebar-user-card"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100/80"
+          title={user?.email || 'Signed in'}
         >
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-indigo-200 uppercase">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-indigo-200 uppercase" aria-hidden="true">
             {user?.email?.[0] || 'U'}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-900 truncate">{user?.email}</p>
             <p className="text-[11px] text-slate-500 truncate">{user?.roles?.[0]}</p>
           </div>
-          <LogOut className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
         </div>
       </div>
     </>

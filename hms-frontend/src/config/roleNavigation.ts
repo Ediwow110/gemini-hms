@@ -80,8 +80,8 @@ export const roleNavigation: NavGroupConfig[] = [
       { label: 'Executive View', to: '/admin/executive', icon: Activity, allowedRoles: ['Super Admin'], zone: 'staff' },
       { label: 'Tenants Manager', to: '/admin/tenants', icon: Building, allowedRoles: ['Super Admin'], zone: 'staff' },
       { label: 'Branches Manager', to: '/admin/branches', icon: GitMerge, allowedRoles: ['Super Admin'], zone: 'staff' },
-      { label: 'Users & Accounts', to: '/admin/users', icon: Users, allowedRoles: ['Super Admin', 'Admin'], zone: 'staff' },
-      { label: 'Roles & Permissions', to: '/admin/roles-permissions', icon: ShieldCheck, allowedRoles: ['Super Admin', 'Admin'], zone: 'staff' },
+      { label: 'Users & Accounts', to: '/admin/users', icon: Users, allowedRoles: ['Super Admin'], zone: 'staff' },
+      { label: 'Roles & Permissions', to: '/admin/roles-permissions', icon: ShieldCheck, allowedRoles: ['Super Admin'], zone: 'staff' },
     ],
   },
   {
@@ -146,7 +146,7 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Clinical Operations',
     items: [
-      { label: 'Ops Dashboard', to: '/clinical/ops', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Admin', 'Doctor', 'Nurse'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
+      { label: 'Ops Dashboard', to: '/clinical/ops', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
     ],
   },
   {
@@ -435,7 +435,7 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Dashboard & Core',
     items: [
-      { label: 'Command Center', to: '/', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Branch Admin', 'Admin'], zone: 'staff' },
+      { label: 'Command Center', to: '/', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
       { label: 'Spatial Tracking', to: '/spatial', icon: Map, permission: 'it.system.view', zone: 'staff' },
     ],
   },

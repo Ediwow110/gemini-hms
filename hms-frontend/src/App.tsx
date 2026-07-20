@@ -324,7 +324,7 @@ const router = createBrowserRouter([
            { path: 'pharmacy', element: <PermissionRoute permission="inventory.stock.dispense"><LazyPage><PharmacyHub /></LazyPage></PermissionRoute> },
 
           { path: 'claims', element: <PermissionRoute permission="billing.claim.view"><LazyPage><ClaimsDashboard /></LazyPage></PermissionRoute> },
-          { path: 'admin/patient-merges', element: <PermissionRoute permission="patient.merge.approve"><LazyPage><PatientMergeRequests /></LazyPage></PermissionRoute> },
+           { path: 'admin/patient-merges', element: <PermissionRoute allowedRoles={['Super Admin']} permission="patient.merge.approve"><LazyPage><PatientMergeRequests /></LazyPage></PermissionRoute> },
           
           // Branch Admin routes (branch-scoped)
           { path: 'branch-admin', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><BranchAdminDashboard /></LazyPage></PermissionRoute> },
@@ -336,11 +336,11 @@ const router = createBrowserRouter([
            { path: 'admin/tenants', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><TenantsPage /></LazyPage></PermissionRoute> },
 
           { path: 'admin/branches', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><BranchesPage /></LazyPage></PermissionRoute> },
-          { path: 'admin/users', element: <PermissionRoute permission="admin.role.change"><LazyPage><UsersPage /></LazyPage></PermissionRoute> },
-          { path: 'admin/roles-permissions', element: <PermissionRoute permission="admin.role.change"><LazyPage><RolesPermissionsPage /></LazyPage></PermissionRoute> },
+           { path: 'admin/users', element: <PermissionRoute allowedRoles={['Super Admin']} permission="admin.role.change"><LazyPage><UsersPage /></LazyPage></PermissionRoute> },
+           { path: 'admin/roles-permissions', element: <PermissionRoute allowedRoles={['Super Admin']} permission="admin.role.change"><LazyPage><RolesPermissionsPage /></LazyPage></PermissionRoute> },
           { path: 'admin/security', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><SecurityCenterPage /></LazyPage></PermissionRoute> },
           { path: 'admin/audit-logs', element: <PermissionRoute permission="audit.view"><LazyPage><AuditLogsPage /></LazyPage></PermissionRoute> },
-          { path: 'admin/settings', element: <PermissionRoute permission="admin.role.change"><LazyPage><SystemSettingsPage /></LazyPage></PermissionRoute> },
+           { path: 'admin/settings', element: <PermissionRoute allowedRoles={['Super Admin']} permission="admin.role.change"><LazyPage><SystemSettingsPage /></LazyPage></PermissionRoute> },
           { path: 'admin/reports', element: <PermissionRoute permission="report.export"><LazyPage><ReportsAnalyticsPage /></LazyPage></PermissionRoute> },
 
           // Compliance Portal

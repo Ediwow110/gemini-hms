@@ -1,21 +1,18 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { RoleBasedSidebar } from '../RoleBasedSidebar';
 
-const mockUseAuth = vi.fn();
 const mockUsePermissions = vi.fn();
 const mockUseUser = vi.fn();
 
 vi.mock('../../hooks/use-user', () => ({
-  useAuth: () => mockUseAuth(),
   usePermissions: () => mockUsePermissions(),
   useUser: () => mockUseUser(),
 }));
 
 describe('RoleBasedSidebar — Navigation Active States', () => {
   beforeEach(() => {
-    mockUseAuth.mockReturnValue({ isLoading: false, logout: vi.fn() });
     mockUsePermissions.mockReturnValue({
       isSuperAdmin: false,
       canAccess: () => true, // Allow all items for testing
@@ -436,5 +433,33 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     // Pharmacist should see "Catalog" (has inventory.item.view) but NOT "Stock Receiving" (no inventory.stock.receive)
     expect(screen.getByText('Catalog')).toBeInTheDocument();
     expect(screen.queryByText('Stock Receiving')).not.toBeInTheDocument();
+  });
+
+  it('sidebar profile card does NOT trigger logout on click (regression)', () => {
+    // Regression guard: the sidebar user-profile card must be display-only.
+    // Sign-out is handled exclusively by the AppShell topbar's explicit
+    // "Sign out" button with a 2-step confirmation bar.
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <RoleBasedSidebar pathname="/admin" />
+      </MemoryRouter>
+    );
+
+    // The profile card exists and is NOT a button or link
+    const profileCard = screen.getByTestId('sidebar-user-card');
+    expect(profileCard).toBeInTheDocument();
+    expect(profileCard.tagName).not.toBe('BUTTON');
+    expect(profileCard.tagName).not.toBe('A');
+
+    // Clicking the card must not navigate or trigger any action
+    fireEvent.click(profileCard);
+    // The card should still be present (no navigation/unmount)
+    expect(screen.getByTestId('sidebar-user-card')).toBeInTheDocument();
   });
 });

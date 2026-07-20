@@ -44,10 +44,10 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'approvals', requiredPermission: PERMISSIONS.APPROVAL_VIEW, zone: 'staff', isBranchScoped: true },
 
   // Admin & Security (Staff, Tenant Scoped - no active branch context strictly required for editing roles/users/audit)
-  { path: 'admin/users/:id', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
-  { path: 'admin/roles', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
-  { path: 'admin/roles/:id', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
-  { path: 'admin/patient-merges', requiredPermission: PERMISSIONS.PATIENT_MERGE_APPROVE, zone: 'staff' },
+  { path: 'admin/users/:id', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/roles', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/roles/:id', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/patient-merges', requiredPermission: PERMISSIONS.PATIENT_MERGE_APPROVE, allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'settings', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
   
   // Reports & Logs (Staff)
@@ -170,11 +170,11 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'admin/executive', allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/tenants', allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/branches', allowedRoles: ['Super Admin'], zone: 'staff' },
-  { path: 'admin/users', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
-  { path: 'admin/roles-permissions', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
+  { path: 'admin/users', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/roles-permissions', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/security', allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/audit-logs', requiredPermission: PERMISSIONS.AUDIT_VIEW, allowedRoles: ['Super Admin'], zone: 'staff' },
-  { path: 'admin/settings', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, zone: 'staff' },
+  { path: 'admin/settings', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/reports', requiredPermission: PERMISSIONS.REPORT_EXPORT, allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/catalog', requiredPermission: 'catalog.manage', allowedRoles: ['Super Admin'], zone: 'staff' },
 

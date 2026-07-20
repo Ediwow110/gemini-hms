@@ -8,10 +8,14 @@ import {
   X,
   User,
   Clock,
-  LogOut
+  LogOut,
+  ChevronDown,
+  Building2,
+  Loader2,
 } from 'lucide-react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useCallback, memo, useEffect } from 'react';
+import { apiClient } from '../lib/api';
 
 import { useUser, useAuth, usePermissions } from '../hooks/use-user';
 import { RoleBasedSidebar } from './RoleBasedSidebar';
@@ -28,8 +32,12 @@ export const AppShell = () => {
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showBranchSelector, setShowBranchSelector] = useState(false);
+  const [branches, setBranches] = useState<Array<{ id: string; name: string; code: string }>>([]);
+  const [branchLoading, setBranchLoading] = useState(false);
+  const [branchError, setBranchError] = useState<string | null>(null);
   const user = useUser();
-  const { logout } = useAuth();
+  const { logout, refetchUser } = useAuth();
   const { canAccess } = usePermissions();
 
   const canRegisterPatient = canAccess({
@@ -65,6 +73,34 @@ export const AppShell = () => {
   }, []);
 
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
+
+  const handleOpenBranchSelector = useCallback(async () => {
+    setShowBranchSelector(true);
+    setBranchError(null);
+    setBranchLoading(true);
+    try {
+      const res = await apiClient.get('/v1/auth/branches');
+      setBranches(res.data);
+    } catch {
+      setBranchError('Failed to load branches.');
+    } finally {
+      setBranchLoading(false);
+    }
+  }, []);
+
+  const handleSelectBranch = useCallback(async (branchId: string) => {
+    setBranchLoading(true);
+    setBranchError(null);
+    try {
+      await apiClient.post('/v1/auth/select-branch', { branchId });
+      await refetchUser();
+      setShowBranchSelector(false);
+    } catch {
+      setBranchError('Failed to select branch.');
+    } finally {
+      setBranchLoading(false);
+    }
+  }, [refetchUser]);
 
   return (
     <div className="min-h-screen flex bg-[#f0f2f7]">
@@ -166,14 +202,27 @@ export const AppShell = () => {
               </>
             )}
 
-            {/* Branch selector */}
-            <div 
-              className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600"
-              title="Branch switching is managed by your administrator"
-            >
-              <Briefcase className="h-4 w-4 text-slate-500" aria-hidden="true" />
-              <span className="font-medium text-xs">Branch: {user?.branchId || 'None'}</span>
-            </div>
+            {/* Branch selector — displays current branch or prompts selection */}
+            {user && !user.branchId ? (
+              <button
+                onClick={handleOpenBranchSelector}
+                data-testid="branch-selector-button"
+                className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-amber-50 rounded-xl border border-amber-300 text-sm text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
+                aria-label="Select branch"
+              >
+                <Building2 className="h-4 w-4 text-amber-600" aria-hidden="true" />
+                <span className="font-medium text-xs">Select Branch</span>
+                <ChevronDown className="h-3 w-3" aria-hidden="true" />
+              </button>
+            ) : (
+              <div
+                className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-slate-50/80 rounded-xl border border-slate-200/80 text-sm text-slate-600"
+                title={user?.branchId ? `Branch: ${user.branchId}` : 'No branch selected'}
+              >
+                <Briefcase className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                <span className="font-medium text-xs">Branch: {user?.branchId ? user.branchId.substring(0, 8) : 'None'}</span>
+              </div>
+            )}
             
             {/* Notifications */}
             {showNotifications && (
@@ -284,8 +333,8 @@ export const AppShell = () => {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
-          <div className="max-w-[1800px] mx-auto">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 xl:p-8">
+          <div className="mx-auto w-full max-w-[1680px]">
             <PortalAccessBoundary>
               <Outlet />
             </PortalAccessBoundary>
@@ -367,6 +416,73 @@ export const AppShell = () => {
             </div>
           </div>
         )}
+
+        {/* Branch Selector Modal */}
+        {showBranchSelector && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={() => !branchLoading && setShowBranchSelector(false)}>
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="branch-selector-title"
+              data-testid="branch-selector-modal"
+              className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full border border-slate-200 animate-slide-up relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => !branchLoading && setShowBranchSelector(false)}
+                className="absolute top-4 right-4 p-1.5 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
+                aria-label="Close branch selector"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <h3 id="branch-selector-title" className="text-sm font-bold text-slate-800 flex items-center gap-2 border-b pb-3 border-slate-100 uppercase tracking-wider">
+                <Building2 className="h-4.5 w-4.5 text-amber-600" aria-hidden="true" />
+                Select Branch
+              </h3>
+
+              {branchLoading && (
+                <div className="flex items-center justify-center py-8" data-testid="branch-selector-loading">
+                  <Loader2 className="h-6 w-6 text-indigo-500 animate-spin" />
+                </div>
+              )}
+
+              {branchError && !branchLoading && (
+                <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-sm font-medium" data-testid="branch-selector-error">
+                  {branchError}
+                </div>
+              )}
+
+              {!branchLoading && !branchError && branches.length === 0 && (
+                <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-100 text-amber-800 text-sm font-medium" data-testid="branch-selector-empty">
+                  No branches assigned to your account. Contact your administrator.
+                </div>
+              )}
+
+              {!branchLoading && !branchError && branches.length > 0 && (
+                <div className="mt-4 grid gap-2" data-testid="branch-selector-list">
+                  {branches.map((branch) => (
+                    <button
+                      key={branch.id}
+                      onClick={() => handleSelectBranch(branch.id)}
+                      disabled={branchLoading}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all text-left group disabled:opacity-50 cursor-pointer"
+                    >
+                      <div className="bg-slate-100 group-hover:bg-indigo-100 p-2 rounded-lg transition-colors">
+                        <Building2 className="h-4 w-4 text-slate-500 group-hover:text-indigo-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">{branch.name}</p>
+                        <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider">{branch.code}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Command Palette */}
         <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
       </div>

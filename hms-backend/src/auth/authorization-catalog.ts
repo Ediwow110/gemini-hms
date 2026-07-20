@@ -109,6 +109,10 @@ export const AUTHORIZATION_PERMISSIONS: AuthorizationPermissionDefinition[] = [
 
   permission('hr.employee.view', 'tenant/branch'),
   permission('hr.employee.manage', 'tenant/branch', 'MEDIUM'),
+  permission('hr.employee.status.change', 'tenant/branch', 'PRIVILEGED'),
+  permission('hr.leave.request.create_own', 'tenant/user', 'LOW'),
+  permission('hr.leave.request.view', 'tenant/branch', 'LOW'),
+  permission('hr.leave.request.approve', 'tenant/branch', 'MEDIUM'),
   permission('hr.payroll.view', 'tenant/branch', 'HIGH'),
 
   permission('procurement.request.view'),
@@ -218,6 +222,9 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
     'integration.view',
     'admin.user.view',
     'admin.branch.view',
+    'hr.leave.request.view',
+    'hr.leave.request.approve',
+    'hr.leave.request.create_own',
   ],
   Doctor: [
     ...clinicalBase,
@@ -227,6 +234,8 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
     'clinical_note.create',
     'doctor.prescription.view',
     'doctor.prescription.create',
+    'hr.leave.request.create_own',
+    'hr.leave.request.view',
   ],
   Nurse: [
     ...clinicalBase,
@@ -235,6 +244,8 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
     'lab.result.view',
     'lab.specimen.receive',
     'lab.critical.view',
+    'hr.leave.request.create_own',
+    'hr.leave.request.view',
   ],
   Cashier: [
     'patient.view',
@@ -312,11 +323,23 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<string, string[]> = {
     'inventory.adjust.request',
     'audit.self',
   ],
-  'HR Staff': ['hr.employee.view', 'hr.employee.manage', 'audit.self'],
+  'HR Staff': [
+    'hr.employee.view',
+    'hr.employee.manage',
+    'hr.employee.status.change',
+    'hr.leave.request.view',
+    'hr.leave.request.approve',
+    'hr.leave.request.create_own',
+    'audit.self',
+  ],
   'HR Manager': [
     'hr.employee.view',
     'hr.employee.manage',
+    'hr.employee.status.change',
     'hr.payroll.view',
+    'hr.leave.request.view',
+    'hr.leave.request.approve',
+    'hr.leave.request.create_own',
     'report.export',
     'audit.self',
   ],
