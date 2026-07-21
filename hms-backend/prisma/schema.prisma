@@ -1631,6 +1631,8 @@ model AttendanceLog {
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
+  @@index([employeeId])
   @@map("attendance_logs")
 }
 
@@ -1649,6 +1651,8 @@ model LeaveRequest {
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
+  @@index([employeeId])
   @@map("leave_requests")
 }
 
@@ -1665,6 +1669,8 @@ model LicenseRecord {
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
+  @@index([employeeId])
   @@map("license_records")
 }
 

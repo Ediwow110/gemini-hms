@@ -63,6 +63,7 @@ export const RolesPermissionsPage: React.FC = () => {
       const data = await adminService.listPermissions();
       setPermissions(data);
     } catch {
+      setError('Unable to load permissions');
       setPermissions([]);
     }
   }, []);

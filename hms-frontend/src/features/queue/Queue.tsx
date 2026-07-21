@@ -26,6 +26,8 @@ export const Queue = () => {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState("GENERAL");
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [callError, setCallError] = useState<string | null>(null);
 
   const handleSearchPatients = async () => {
     if (!searchQuery) return;
@@ -45,6 +47,7 @@ export const Queue = () => {
 
   const handleJoinQueue = async () => {
     if (!selectedPatient) return;
+    setJoinError(null);
     try {
       await joinQueue({
         patientId: selectedPatient,
@@ -56,18 +59,17 @@ export const Queue = () => {
       setSelectedPatient(null);
       setSearchQuery("");
     } catch {
-      alert("Failed to join queue");
+      setJoinError("Failed to join queue. Please try again.");
     }
   };
 
   const handleCallNext = async () => {
+    setCallError(null);
     try {
-      // In a real app, the user would select the service (e.g. "Triage" or "Doctor")
-      // For this slice, we default to "GENERAL" or a selected service
       await callNext("GENERAL");
     } catch (e) {
       const err = e as AxiosError<{ message?: string }>;
-      alert(err.response?.data?.message || "No patients waiting");
+      setCallError(err.response?.data?.message || "No patients waiting");
     }
   };
 
@@ -111,6 +113,12 @@ export const Queue = () => {
           </RequirePermission>
         </div>
       </div>
+      
+      {(joinError || callError) && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-sm text-rose-700" role="alert">
+          {joinError || callError}
+        </div>
+      )}
       
       {isLoading ? (
         <div className="p-20 text-center text-slate-400">Loading live queue data...</div>

@@ -173,9 +173,9 @@ export const portalRoutes: RouteGuardConfig[] = [
   { path: 'admin/users', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/roles-permissions', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, allowedRoles: ['Super Admin'], zone: 'staff' },
   { path: 'admin/security', allowedRoles: ['Super Admin'], zone: 'staff' },
-  { path: 'admin/audit-logs', requiredPermission: PERMISSIONS.AUDIT_VIEW, allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/audit-logs', requiredPermission: PERMISSIONS.AUDIT_VIEW, allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
   { path: 'admin/settings', requiredPermission: PERMISSIONS.ADMIN_ROLE_CHANGE, allowedRoles: ['Super Admin'], zone: 'staff' },
-  { path: 'admin/reports', requiredPermission: PERMISSIONS.REPORT_EXPORT, allowedRoles: ['Super Admin'], zone: 'staff' },
+  { path: 'admin/reports', requiredPermission: PERMISSIONS.REPORT_EXPORT, allowedRoles: ['Super Admin', 'Compliance Officer'], zone: 'staff' },
   { path: 'admin/catalog', requiredPermission: 'catalog.manage', allowedRoles: ['Super Admin'], zone: 'staff' },
 
   // Branch Admin Workspace Routes (Staff Zone, Governance Scope, Branch Scoped)

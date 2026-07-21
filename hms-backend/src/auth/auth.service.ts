@@ -106,9 +106,7 @@ export class AuthService {
       });
     }
 
-    const bypassAuth = process.env.DISABLE_AUTH_VERIFICATION === 'true';
-    const passwordValid =
-      bypassAuth || (await bcrypt.compare(pass, user.passwordHash));
+    const passwordValid = await bcrypt.compare(pass, user.passwordHash);
 
     if (
       user.status !== 'ACTIVE' ||
@@ -210,13 +208,7 @@ export class AuthService {
     );
 
     // 2. Handle MFA Step-Up
-    const mfaDisabled = process.env.DISABLE_AUTH_VERIFICATION === 'true';
-    if (mfaDisabled) {
-      this.logger.warn(
-        'MFA step-up is DISABLED — this should only occur in test environments',
-      );
-    }
-    if (isSensitive && !mfaDisabled) {
+    if (isSensitive) {
       const challenge = user.mfaEnabled ? 'MFA_VERIFY' : 'MFA_SETUP';
 
       // Issue a restricted mfaToken (short-lived, limited scope)
