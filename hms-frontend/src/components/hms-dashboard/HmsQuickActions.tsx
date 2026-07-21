@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { RequirePermission } from '../ui/RequirePermission';
 
@@ -31,52 +31,67 @@ const iconColors: Record<string, string> = {
   danger: 'text-rose-600',
 };
 
-export const HmsQuickActions = ({ actions, columns = 1, title }: HmsQuickActionsProps) => {
-  const navigate = useNavigate();
+const ActionContent = ({ action }: { action: QuickAction }) => (
+  <>
+    <span className="flex min-w-0 items-center gap-2">
+      <span className={`shrink-0 ${iconColors[action.variant ?? 'default']}`}>
+        {action.icon}
+      </span>
+      <span className="truncate">{action.label}</span>
+    </span>
+    <ChevronRight
+      className="h-3.5 w-3.5 shrink-0 text-slate-400 transition-colors group-hover:text-blue-500"
+      aria-hidden="true"
+    />
+  </>
+);
 
+export const HmsQuickActions = ({
+  actions,
+  columns = 1,
+  title,
+}: HmsQuickActionsProps) => {
   if (actions.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {title && (
-        <div className="border-b border-slate-100 px-3 py-2.5">
-          <h3 className="text-[14px] font-bold text-slate-800">{title}</h3>
+        <div className="border-b border-slate-100 px-5 py-4">
+          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
         </div>
       )}
-      <div className={`p-2 grid ${columns === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-1.5`}>
-        {actions.map((a) => {
-          const handleClick = () => {
-            if (a.href) navigate(a.href);
-            else a.onClick?.();
-          };
+      <div className={`grid gap-2 p-3 ${columns === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+        {actions.map((action) => {
+          const className = `group flex min-h-10 items-center justify-between rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${variantStyles[action.variant ?? 'default']}`;
 
-          const button = (
+          const control = action.href ? (
+            <Link key={action.id} to={action.href} className={className}>
+              <ActionContent action={action} />
+            </Link>
+          ) : (
             <button
-              key={a.id}
+              key={action.id}
               type="button"
-              onClick={handleClick}
-              className={`flex items-center justify-between rounded-md border px-3 py-2.5 text-left text-[12px] font-semibold transition-colors group ${variantStyles[a.variant ?? 'default']}`}
+              onClick={action.onClick}
+              disabled={!action.onClick}
+              className={`${className} disabled:cursor-not-allowed disabled:opacity-60`}
             >
-              <span className="flex items-center gap-2 min-w-0">
-                <span className={`flex-shrink-0 ${iconColors[a.variant ?? 'default']}`}>{a.icon}</span>
-                <span className="truncate">{a.label}</span>
-              </span>
-              <ChevronRight className="h-3.5 w-3.5 text-slate-400 flex-shrink-0 group-hover:text-blue-500 transition-colors" aria-hidden="true" />
+              <ActionContent action={action} />
             </button>
           );
 
-          if (a.permission) {
+          if (action.permission) {
             return (
-              <RequirePermission key={a.id} permission={a.permission}>
-                {button}
+              <RequirePermission key={action.id} permission={action.permission}>
+                {control}
               </RequirePermission>
             );
           }
 
-          return button;
+          return control;
         })}
       </div>
-    </div>
+    </section>
   );
 };
 

@@ -74,7 +74,7 @@ export const useHr = (branchId: string) => {
   const queryClient = useQueryClient();
 
   const { data: employees, isLoading: employeesLoading } = useQuery({
-    queryKey: ['hr-employees'],
+    queryKey: ['hr', 'employees'],
     queryFn: async () => {
       const res = await apiClient.get('/v1/hr/employees');
       return res.data as HrEmployee[];
@@ -82,7 +82,7 @@ export const useHr = (branchId: string) => {
   });
 
   const { data: leaveRequests, isLoading: leaveLoading } = useQuery({
-    queryKey: ['hr-leave'],
+    queryKey: ['hr', 'leave'],
     queryFn: async () => {
       const res = await apiClient.get('/v1/hr/leave');
       return res.data as HrLeaveRequest[];
@@ -90,7 +90,7 @@ export const useHr = (branchId: string) => {
   });
 
   const { data: licenses, isLoading: licensesLoading } = useQuery({
-    queryKey: ['hr-licenses'],
+    queryKey: ['hr', 'licenses'],
     queryFn: async () => {
       const res = await apiClient.get('/v1/hr/licenses');
       return res.data as HrLicense[];
@@ -98,7 +98,7 @@ export const useHr = (branchId: string) => {
   });
 
   const { data: assignments, isLoading: assignmentsLoading, error: assignmentsError } = useQuery({
-    queryKey: ['hr-assignments', branchId],
+    queryKey: ['hr', 'assignments', branchId],
     queryFn: async () => {
       const res = await apiClient.get(`/v1/hr/assignments?branchId=${branchId}`);
       return res.data as HrAssignment[];
@@ -107,7 +107,7 @@ export const useHr = (branchId: string) => {
   });
 
   const { data: attendance, isLoading: attendanceLoading, error: attendanceError } = useQuery({
-    queryKey: ['hr-attendance', branchId],
+    queryKey: ['hr', 'attendance', branchId],
     queryFn: async () => {
       const res = await apiClient.get(`/v1/hr/attendance?branchId=${branchId}`);
       return res.data as HrAttendanceRecord[];

@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { BillingDashboard } from '../BillingDashboard';
 import type { InvoiceDto, ActiveSessionDto } from '../../../services/billing-frontend.service';
@@ -143,8 +143,9 @@ describe('BillingDashboard Unit Tests', () => {
       expect(screen.getByText('Invoice Registry')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Invoice Registry'));
-    expect(mockNavigate).toHaveBeenCalledWith('/cashier/invoices');
+    expect(
+      screen.getByRole('link', { name: /Invoice Registry/i }),
+    ).toHaveAttribute('href', '/cashier/invoices');
     expect(mockNavigate).not.toHaveBeenCalledWith('/billing');
   });
 
@@ -179,8 +180,9 @@ describe('BillingDashboard Unit Tests', () => {
       expect(screen.getAllByText('Claims Dashboard').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getAllByText('Claims Dashboard')[0]);
-    expect(mockNavigate).toHaveBeenCalledWith('/claims');
+    expect(
+      screen.getByRole('link', { name: /Claims Dashboard/i }),
+    ).toHaveAttribute('href', '/claims');
   });
 
   it('shows HmsDataUnavailable sections when invoices are empty', async () => {

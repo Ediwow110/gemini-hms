@@ -1,4 +1,9 @@
-import { PrismaClient, ListingStatus, OrderStatus, ShipmentStatus, DeliveryJobStatus, TaskStatus } from '@prisma/client';
+import {
+  EncounterStatus,
+  ListingStatus,
+  PrescriptionStatus,
+  PrismaClient,
+} from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import * as bcrypt from 'bcrypt';
@@ -6,6 +11,7 @@ import {
   AUTHORIZATION_PERMISSIONS,
   SYSTEM_ROLE_PERMISSIONS,
 } from '../src/auth/authorization-catalog';
+import { validateDemoEnvironment } from '../scripts/demo-safety-guard';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://hms_local_user:hms_secure_pass@localhost:5432/gemini_hms_local?schema=public',
@@ -14,44 +20,19 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🚀 Starting System-Wide Real-Data Seeding...');
+  validateDemoEnvironment({ isDestructive: true });
+  console.log('🚀 Starting deterministic synthetic dashboard seeding...');
 
-  // 1. CLEANUP: Start fresh
-  console.log('🧹 Cleaning database...');
-  await prisma.queueEntry.deleteMany();
-  await prisma.serviceItem.deleteMany();
-  await prisma.serviceCategory.deleteMany();
-  await prisma.supplier.deleteMany();
-  await prisma.notificationOutbox.deleteMany();
-  await prisma.auditLog.deleteMany();
-  await prisma.marketplaceOrderItem.deleteMany();
-  await prisma.marketplaceOrder.deleteMany();
-  await prisma.marketplaceListing.deleteMany();
-  await prisma.shipment.deleteMany();
-  await prisma.deliveryJob.deleteMany();
-  await prisma.salesOrder.deleteMany();
-  await prisma.quote.deleteMany();
-  await prisma.rFQ.deleteMany();
-  await prisma.nurseTask.deleteMany();
-  await prisma.attendanceLog.deleteMany();
-  await prisma.leaveRequest.deleteMany();
-  await prisma.licenseRecord.deleteMany();
-  await prisma.employeeBranch.deleteMany();
-  await prisma.employee.deleteMany();
-  await prisma.patientUser.deleteMany();
-  await prisma.prescription.deleteMany();
-  await prisma.labResult.deleteMany();
-  await prisma.labSpecimen.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.patient.deleteMany();
-  await prisma.userRole.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.rolePermission.deleteMany();
-  await prisma.role.deleteMany();
-  await prisma.permission.deleteMany();
-  await prisma.branch.deleteMany();
-  await prisma.department.deleteMany();
-  await prisma.tenant.deleteMany();
+  // 1. SAFETY: Seeding owns data creation only. The guarded reset wrapper owns
+  // destructive schema reset, which avoids brittle model-by-model deletion and
+  // restrictive-foreign-key failures when demo workflows created extra records.
+  const existingTenantCount = await prisma.tenant.count();
+  if (existingTenantCount > 0) {
+    throw new Error(
+      'Synthetic seed requires an empty database. Run npm run db:reset:demo:safe ' +
+        'with the demo safety confirmation instead of invoking the seed directly.',
+    );
+  }
 
   // 2. TENANT & BRANCHES
   const tenant = await prisma.tenant.create({
@@ -300,8 +281,8 @@ async function main() {
       data: {
         tenantId: tenant.id,
         patientNumber: `PAT-${1000 + i}`,
-        firstName: `Patient ${i}`,
-        lastName: `Lastname ${i}`,
+        firstName: `[SYNTHETIC] Patient ${i}`,
+        lastName: `Demo ${i}`,
         dob: new Date(1960 + (i % 40), i % 12, (i % 27) + 1),
         status: 'ACTIVE',
       },
@@ -325,19 +306,116 @@ async function main() {
     console.log(`  ✅ PatientUser "${patientEmail}" linked to Patient "${patients[0].patientNumber}"`);
   }
 
-  // 6. CLINICAL FLOW: Orders -> Results
+  // 6. CLINICAL + FINANCIAL FLOW
+  // Synthetic dates are distributed so dashboards show meaningful trends.
+  const doctorUser = createdUsers.find((entry) => entry.roleName === 'Doctor')?.user;
+  const cashierUser = createdUsers.find((entry) => entry.roleName === 'Cashier')?.user;
+  if (!doctorUser || !cashierUser) {
+    throw new Error('Synthetic Doctor and Cashier users are required for dashboard seeding.');
+  }
+
+  const cashierSession = await prisma.cashierSession.create({
+    data: {
+      tenantId: tenant.id,
+      branchId: createdBranches[0].id,
+      userId: cashierUser.id,
+      status: 'OPEN',
+      openingBalance: 5000,
+      openedAt: new Date(Date.now() - 7 * 86400000),
+    },
+  });
+
+  const encounters = [];
+  for (let i = 0; i < 24; i++) {
+    const occurredAt = new Date(Date.now() - (23 - i) * 86400000 - (i % 5) * 3600000);
+    const encounter = await prisma.encounter.create({
+      data: {
+        tenantId: tenant.id,
+        branchId: createdBranches[i % createdBranches.length].id,
+        patientId: patients[i % patients.length].id,
+        attendingId: doctorUser.id,
+        doctorId: doctorUser.id,
+        encounteredAt: occurredAt,
+        startedAt: occurredAt,
+        endedAt: i % 4 === 0 ? new Date(occurredAt.getTime() + 55 * 60000) : null,
+        chiefComplaint: ['Routine follow-up', 'Fever and cough', 'Medication review', 'Diagnostic workup'][i % 4],
+        reason: 'Synthetic dashboard scenario',
+        status: i % 4 === 0 ? EncounterStatus.FINISHED : EncounterStatus.OPEN,
+        type: ['OUTPATIENT', 'EMERGENCY', 'OUTPATIENT', 'TELEHEALTH'][i % 4],
+        createdBy: doctorUser.id,
+        updatedBy: doctorUser.id,
+        createdAt: occurredAt,
+      },
+    });
+    encounters.push(encounter);
+  }
+
   for (let i = 0; i < 15; i++) {
     const patient = patients[i];
+    const occurredAt = new Date(Date.now() - (14 - i) * 86400000);
     const order = await prisma.order.create({
       data: {
         tenantId: tenant.id,
         patientId: patient.id,
         branchId: createdBranches[0].id,
+        encounterId: encounters[i].id,
         orderNumber: `ORD-${2000 + i}`,
+        orderType: i % 2 === 0 ? 'LAB' : 'CONSULTATION',
+        priority: i % 5 === 0 ? 'URGENT' : 'ROUTINE',
+        clinicalIndication: 'Synthetic dashboard scenario',
+        requestedById: doctorUser.id,
+        requestedAt: occurredAt,
         status: i % 3 === 0 ? 'COMPLETED' : 'PENDING',
-        createdAt: new Date(),
+        createdById: doctorUser.id,
+        updatedById: doctorUser.id,
+        createdAt: occurredAt,
       },
     });
+
+    const totalAmount = 1800 + (i % 5) * 650;
+    const paymentAmount = i < 10 ? totalAmount : i < 13 ? Math.round(totalAmount * 0.45) : 0;
+    const invoice = await prisma.invoice.create({
+      data: {
+        tenantId: tenant.id,
+        orderId: order.id,
+        invoiceNumber: `INV-DEMO-${String(i + 1).padStart(4, '0')}`,
+        totalAmount,
+        paidAmount: paymentAmount,
+        status: paymentAmount === totalAmount ? 'PAID' : paymentAmount > 0 ? 'PARTIAL' : 'UNPAID',
+        createdById: cashierUser.id,
+        updatedById: cashierUser.id,
+        createdAt: occurredAt,
+      },
+    });
+
+    if (paymentAmount > 0) {
+      const payment = await prisma.payment.create({
+        data: {
+          tenantId: tenant.id,
+          branchId: createdBranches[0].id,
+          invoiceId: invoice.id,
+          cashierSessionId: cashierSession.id,
+          receiptNumber: `RCT-DEMO-${String(i + 1).padStart(4, '0')}`,
+          amount: paymentAmount,
+          paymentMethod: ['CASH', 'CARD', 'HMO', 'BANK_TRANSFER'][i % 4],
+          status: 'POSTED',
+          idempotencyKey: `demo-payment-${i + 1}`,
+          createdById: cashierUser.id,
+          updatedById: cashierUser.id,
+          createdAt: new Date(Math.max(occurredAt.getTime(), Date.now() - 6 * 86400000 + i * 1800000)),
+        },
+      });
+      await prisma.cashierLedgerEntry.create({
+        data: {
+          tenantId: tenant.id,
+          cashierSessionId: cashierSession.id,
+          type: 'PAYMENT',
+          amount: paymentAmount,
+          referenceId: payment.id,
+          createdAt: payment.createdAt,
+        },
+      });
+    }
 
     if (order.status === 'COMPLETED') {
       await prisma.labResult.create({
@@ -345,16 +423,38 @@ async function main() {
           tenantId: tenant.id,
           orderId: order.id,
           status: i % 2 === 0 ? 'RELEASED' : 'APPROVED',
-          results: { glucose: 110, cholesterol: 200 },
-          remarks: 'Patient stable',
+          results: { glucose: 92 + i, cholesterol: 168 + i * 3 },
+          remarks: 'Synthetic result for dashboard and portal review',
           encodedById: createdEmployees[3].id,
-          encodedAt: new Date(),
+          encodedAt: occurredAt,
           validatedById: createdEmployees[1].id,
-          validatedAt: new Date(),
-          releasedAt: i % 2 === 0 ? new Date() : null,
+          validatedAt: new Date(occurredAt.getTime() + 3600000),
+          releasedAt: i % 2 === 0 ? new Date(occurredAt.getTime() + 7200000) : null,
           releasedById: createdEmployees[1].id,
-          isCritical: i === 0, // Make first one critical
+          lockedAt: i % 2 === 0 ? new Date(occurredAt.getTime() + 7200000) : null,
+          isCritical: i === 0,
           criticalStatus: i === 0 ? 'OPEN' : undefined,
+        },
+      });
+    }
+
+    if (i < 8) {
+      await prisma.prescription.create({
+        data: {
+          tenantId: tenant.id,
+          branchId: createdBranches[0].id,
+          encounterId: encounters[i].id,
+          prescribedById: doctorUser.id,
+          patientId: patient.id,
+          medicationName: ['Amoxicillin', 'Losartan', 'Metformin', 'Paracetamol'][i % 4],
+          dosage: ['500 mg', '50 mg', '500 mg', '500 mg'][i % 4],
+          frequency: ['Every 8 hours', 'Once daily', 'Twice daily', 'As needed'][i % 4],
+          duration: ['7 days', '30 days', '30 days', '5 days'][i % 4],
+          notes: 'Synthetic prescription for portal review',
+          status: i < 6 ? PrescriptionStatus.ACTIVE : PrescriptionStatus.DISPENSED,
+          createdById: doctorUser.id,
+          updatedById: doctorUser.id,
+          createdAt: occurredAt,
         },
       });
     }
@@ -442,8 +542,9 @@ async function main() {
     { name: 'COVID-19 Vaccine', price: 450, stock: 200 },
   ];
 
+  const createdListings = [];
   for (const l of listings) {
-    await prisma.marketplaceListing.create({
+    const listing = await prisma.marketplaceListing.create({
       data: {
         tenantId: tenant.id,
         serviceItemId: serviceItem.id,
@@ -454,9 +555,37 @@ async function main() {
         status: ListingStatus.APPROVED,
       },
     });
+    createdListings.push(listing);
   }
 
-  console.log('✅ Database successfully seeded with realistic data!');
+  const marketplaceBuyer = createdUsers.find((entry) => entry.roleName === 'Branch Admin')?.user ?? createdUsers[0].user;
+  for (let i = 0; i < 18; i++) {
+    const listing = createdListings[i % createdListings.length];
+    const quantity = 1 + (i % 4);
+    const unitPrice = Number(listing.basePrice);
+    const subtotal = quantity * unitPrice;
+    const order = await prisma.marketplaceOrder.create({
+      data: {
+        tenantId: tenant.id,
+        buyerId: marketplaceBuyer.id,
+        totalAmount: subtotal,
+        status: ['PENDING', 'PAID', 'SHIPPED', 'DELIVERED'][i % 4],
+        paymentStatus: i % 4 === 0 ? 'UNPAID' : 'PAID',
+        createdAt: new Date(Date.now() - (17 - i) * 86400000),
+      },
+    });
+    await prisma.marketplaceOrderItem.create({
+      data: {
+        orderId: order.id,
+        listingId: listing.id,
+        quantity,
+        unitPrice,
+        subtotal,
+      },
+    });
+  }
+
+  console.log('✅ Database successfully seeded with realistic synthetic data!');
   process.exit(0);
 }
 

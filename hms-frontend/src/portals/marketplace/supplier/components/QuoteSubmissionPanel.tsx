@@ -1,50 +1,112 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Send, ShieldCheck, Truck } from 'lucide-react';
 
-export const QuoteSubmissionPanel: React.FC = () => {
+export interface QuoteSubmissionValues {
+  rfqId: string;
+  totalAmount: number;
+  deliveryLeadTime: string;
+}
+
+interface QuoteSubmissionPanelProps {
+  rfqId: string;
+  onSubmit: (values: QuoteSubmissionValues) => Promise<void> | void;
+  submitting?: boolean;
+}
+
+export const QuoteSubmissionPanel: React.FC<QuoteSubmissionPanelProps> = ({
+  rfqId,
+  onSubmit,
+  submitting = false,
+}) => {
+  const [totalAmount, setTotalAmount] = useState('');
+  const [deliveryLeadTime, setDeliveryLeadTime] = useState('7-14 days');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const numericAmount = Number(totalAmount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      setError('Enter a valid positive quote amount.');
+      return;
+    }
+
+    setError(null);
+    await onSubmit({ rfqId, totalAmount: numericAmount, deliveryLeadTime });
+  };
+
   return (
-    <div className="bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-sm">
-      <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-        <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Draft Quote Submission</h3>
-        <span className="text-[10px] font-black text-slate-400 uppercase">RFQ-2026-001</span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unit Price (PHP)</label>
-          <input type="number" placeholder="0.00" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all" />
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+    >
+      <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Submit quote</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Quote a specific RFQ using the connected supplier API.
+          </p>
         </div>
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Delivery Lead Time</label>
-          <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none">
-            <option>7-14 Days</option>
-            <option>14-21 Days</option>
-            <option>30+ Days</option>
-          </select>
+        <span className="font-mono text-[10px] text-slate-500">
+          {rfqId.slice(0, 12)}
+        </span>
+      </div>
+
+      <label className="block text-[11px] font-semibold text-slate-500">
+        <span className="mb-1 block">Total amount (PHP)</span>
+        <input
+          type="number"
+          min="0.01"
+          step="0.01"
+          required
+          value={totalAmount}
+          onChange={(event) => setTotalAmount(event.target.value)}
+          className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </label>
+
+      <label className="block text-[11px] font-semibold text-slate-500">
+        <span className="mb-1 block">Delivery lead time</span>
+        <select
+          value={deliveryLeadTime}
+          onChange={(event) => setDeliveryLeadTime(event.target.value)}
+          className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        >
+          <option>7-14 days</option>
+          <option>14-21 days</option>
+          <option>30+ days</option>
+        </select>
+      </label>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex items-start gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-3">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+          <p className="text-[11px] leading-5 text-indigo-800">
+            Warranty terms must match the selected RFQ and supplier agreement.
+          </p>
+        </div>
+        <div className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+          <Truck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+          <p className="text-[11px] leading-5 text-emerald-800">
+            Delivery commitments become part of the submitted commercial offer.
+          </p>
         </div>
       </div>
 
-      <div className="space-y-4">
-         <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-start gap-3">
-           <ShieldCheck className="h-5 w-5 text-indigo-600 mt-0.5" />
-           <div>
-             <p className="text-xs font-black text-indigo-900 uppercase">Warranty Inclusion</p>
-             <p className="text-[10px] text-indigo-700 font-medium leading-relaxed">Default 3-Year Platinum Support Plan included in this quote.</p>
-           </div>
-         </div>
-         <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-3">
-           <Truck className="h-5 w-5 text-emerald-600 mt-0.5" />
-           <div>
-             <p className="text-xs font-black text-emerald-900 uppercase">Logistic Commitments</p>
-             <p className="text-[10px] text-emerald-700 font-medium leading-relaxed">Includes specialized medical handling and on-site delivery to radiology suites.</p>
-           </div>
-         </div>
-      </div>
+      {error && (
+        <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+          {error}
+        </p>
+      )}
 
-      <button className="w-full bg-slate-900 hover:bg-black text-white font-black py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 group cursor-pointer">
-        Submit Formal Quote (Shell) <Send className="h-5 w-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+      <button
+        type="submit"
+        disabled={submitting}
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <Send className="h-4 w-4" />
+        {submitting ? 'Submitting…' : 'Submit quote'}
       </button>
-    </div>
+    </form>
   );
 };
 

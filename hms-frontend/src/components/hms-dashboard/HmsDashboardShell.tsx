@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 
 const WIDTH_TIERS: Record<string, string> = {
-  compact: 'max-w-4xl',
-  standard: 'max-w-6xl',
-  wide: 'max-w-[1600px]',
-  full: '',
+  compact: 'max-w-5xl',
+  standard: 'max-w-7xl',
+  wide: 'max-w-[1680px]',
+  full: 'max-w-none',
 };
 
 interface HmsDashboardShellProps {
@@ -12,15 +12,20 @@ interface HmsDashboardShellProps {
   children: ReactNode;
   footer?: ReactNode;
   widthTier?: 'compact' | 'standard' | 'wide' | 'full';
+  className?: string;
 }
 
-export const HmsDashboardShell = ({ toolbar, children, footer, widthTier = 'wide' }: HmsDashboardShellProps) => (
-  <div className={`mx-auto px-4 py-4 ${WIDTH_TIERS[widthTier]}`}>
-    {toolbar && <div className="mb-3">{toolbar}</div>}
-    <div className="flex flex-col gap-3">
-      {children}
-    </div>
-    {footer && <div className="mt-2">{footer}</div>}
+export const HmsDashboardShell = ({
+  toolbar,
+  children,
+  footer,
+  widthTier = 'wide',
+  className = '',
+}: HmsDashboardShellProps) => (
+  <div className={`mx-auto w-full ${WIDTH_TIERS[widthTier]} ${className}`}>
+    {toolbar && <div className="mb-5">{toolbar}</div>}
+    <div className="flex min-w-0 flex-col gap-6">{children}</div>
+    {footer && <div className="mt-6">{footer}</div>}
   </div>
 );
 

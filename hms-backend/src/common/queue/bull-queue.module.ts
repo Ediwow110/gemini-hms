@@ -18,7 +18,11 @@ const mockQueueProvider = {
     ? []
     : [
         BullModule.forRootAsync({
-          useFactory: () => ({ redis: buildRedisOptions() }),
+          useFactory: () => {
+            const opts = buildRedisOptions();
+            delete opts.enableReadyCheck;
+            return { redis: opts };
+          },
         }),
         BullModule.registerQueue({ name: 'notifications' }),
       ],

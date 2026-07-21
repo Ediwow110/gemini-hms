@@ -18,9 +18,10 @@ export interface SupportTicket {
 
 interface UserSupportQueueProps {
   tickets: SupportTicket[];
+  isDemo?: boolean;
 }
 
-export const UserSupportQueue: React.FC<UserSupportQueueProps> = ({ tickets }) => {
+export const UserSupportQueue: React.FC<UserSupportQueueProps> = ({ tickets, isDemo = false }) => {
   const getIssueLabel = (type: string) => {
     switch (type) {
       case 'LOGIN_FAILURE': return 'Login Failure';
@@ -117,9 +118,11 @@ export const UserSupportQueue: React.FC<UserSupportQueueProps> = ({ tickets }) =
         </div>
       )}
 
-      <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-semibold">
-        <strong>Shell Notice:</strong> Support queue items are simulated. No real account mutations, MFA resets, or session changes occur from this view.
-      </div>
+      {isDemo && (
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-semibold text-sky-800">
+          Synthetic support tickets are displayed for layout review. No account action is available from this dashboard.
+        </div>
+      )}
     </div>
   );
 };

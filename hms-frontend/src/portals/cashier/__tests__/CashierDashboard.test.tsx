@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { CashierDashboard } from '../CashierDashboard';
@@ -23,6 +23,8 @@ vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="responsive-chart">{children}</div>,
   AreaChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Area: () => <div />,
+  LineChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Line: () => <div />,
   PieChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Pie: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Cell: () => <div />,
@@ -30,6 +32,7 @@ vi.mock('recharts', () => ({
   Tooltip: () => <div />,
   XAxis: () => <div />,
   YAxis: () => <div />,
+  Legend: () => <div />,
 }));
 
 describe('CashierDashboard truth labels', () => {
@@ -58,8 +61,8 @@ describe('CashierDashboard truth labels', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Refunds & Voids')).toBeInTheDocument();
-    expect(screen.getByText('Manage live reversal requests')).toBeInTheDocument();
+    expect(screen.getByText('Refunds and voids')).toBeInTheDocument();
+    expect(screen.getByText('Live records + synthetic trends')).toBeInTheDocument();
     expect(screen.queryByText(/Manage reversals \(sandbox\)/i)).not.toBeInTheDocument();
   });
 
@@ -70,8 +73,7 @@ describe('CashierDashboard truth labels', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText('Refunds & Voids'));
-
-    expect(mockNavigate).toHaveBeenCalledWith('/cashier/refunds-voids');
+    const link = screen.getByRole('link', { name: /Refunds and voids/i });
+    expect(link).toHaveAttribute('href', '/cashier/refunds-voids');
   });
 });

@@ -20,6 +20,7 @@ vi.mock('recharts', () => ({
   Tooltip: () => <div />,
   XAxis: () => <div />,
   YAxis: () => <div />,
+  Legend: () => <div />,
 }));
 
 vi.mock('../../../services/dashboard.service', () => ({
@@ -66,12 +67,11 @@ describe('AdminExecutiveDashboard Unit Tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Executive Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('Active Patients')).toBeInTheDocument();
-      expect(screen.getByText(/Patient Volume Trend/)).toBeInTheDocument();
-      expect(screen.getByText(/Revenue Trend/)).toBeInTheDocument();
-      expect(screen.queryByText(/Live source unavailable/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Demo Preview/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Health System Overview')).toBeInTheDocument();
+      expect(screen.getByText('Active patients')).toBeInTheDocument();
+      expect(screen.getByText('Patient demand')).toBeInTheDocument();
+      expect(screen.getByText('Revenue trend')).toBeInTheDocument();
+      expect(screen.getByText(/Live metrics \+ synthetic risk context/i)).toBeInTheDocument();
     });
   });
 
@@ -85,13 +85,11 @@ describe('AdminExecutiveDashboard Unit Tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Executive Dashboard')).toBeInTheDocument();
-      expect(screen.getAllByText(/Live source unavailable/i).length).toBeGreaterThan(0);
-      expect(screen.getByText(/Live dashboard data could not be loaded/i)).toBeInTheDocument();
-      expect(screen.getByText(/Executive Key Metrics/)).toBeInTheDocument();
-      expect(screen.getByText(/Branch Volume Comparison/)).toBeInTheDocument();
-      expect(screen.getByText(/Top Outstanding Invoices/)).toBeInTheDocument();
-      expect(screen.getByText(/System Compliance & Risk/)).toBeInTheDocument();
+      expect(screen.getByText('Health System Overview')).toBeInTheDocument();
+      expect(screen.getAllByText(/Synthetic executive scenario/i).length).toBeGreaterThan(0);
+      expect(screen.getByText('Patient demand')).toBeInTheDocument();
+      expect(screen.getByText('Branch activity ranking')).toBeInTheDocument();
+      expect(screen.getByText('Outstanding invoices')).toBeInTheDocument();
     });
   });
 });

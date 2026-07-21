@@ -1,139 +1,255 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Users, Building, Shield, Activity } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Building, Shield, Users, WalletCards } from 'lucide-react';
+import {
+  AnalyticsMetricCard,
+  ChartCard,
+  InsightPanel,
+  StatusDonutChart,
+  TrendLineChart,
+} from '../../components/analytics';
 import { HmsPageHeader } from '../../components/hms-page';
-import { HmsDashboardShell, HmsAuditFooter, HmsKpiStrip, HmsLoadingSkeleton } from '../../components/hms-dashboard';
-import { dashboardService } from '../../services/dashboard.service';
+import {
+  HmsAuditFooter,
+  HmsDashboardShell,
+  HmsDataSourceBadge,
+  HmsToolbar,
+} from '../../components/hms-dashboard';
+import {
+  dashboardDemoConfig,
+  demoAdminDashboard,
+  shouldUseDashboardDemo,
+} from '../../data/dashboard-demo';
 import { adminService } from '../../services/admin.service';
+import { dashboardService } from '../../services/dashboard.service';
+
+interface AdminSummary {
+  activePatients: number;
+  todaysAppointments: number;
+  pendingLabs: number;
+  lowStock: number;
+  revenue: number;
+  securityAlerts: number;
+}
+
+interface TenantRow {
+  id: string;
+  name: string;
+  status: string;
+  userCount: number;
+  branchCount: number;
+}
+
+const peso = (value: number) =>
+  new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    maximumFractionDigits: 0,
+  }).format(value);
 
 export const SuperAdminDashboard: React.FC = () => {
-  const [summary, setSummary] = useState<{ activePatients: number; todaysAppointments: number; pendingLabs: number; lowStock: number; revenue: number; securityAlerts: number } | null>(null);
-  const [tenants, setTenants] = useState<{ id: string; name: string; status: string; userCount: number; branchCount: number }[]>([]);
+  const [summary, setSummary] = useState<AdminSummary | null>(null);
+  const [tenants, setTenants] = useState<TenantRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | undefined>();
 
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        const [s, t] = await Promise.all([
-          dashboardService.getAdminSummary({ dateRange: { from: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0], to: new Date().toISOString().split('T')[0] } }),
-          adminService.listTenants(),
-        ]);
-        setSummary(s);
-        setTenants(t);
-      } catch {
-        setError('Unable to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
+  const fetchDashboard = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const today = new Date();
+      const from = new Date(today.getTime() - 7 * 86_400_000);
+      const [summaryResponse, tenantResponse] = await Promise.all([
+        dashboardService.getAdminSummary({
+          dateRange: {
+            from: from.toISOString().slice(0, 10),
+            to: today.toISOString().slice(0, 10),
+          },
+        }),
+        adminService.listTenants(),
+      ]);
+      setSummary(summaryResponse);
+      setTenants(tenantResponse);
+      setLastUpdated(new Date());
+    } catch {
+      setError('Live platform summary is unavailable.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  const kpis = summary ? [
-    { id: 'kpi-patients', label: 'Active Patients', value: summary.activePatients.toLocaleString(), severity: 'info' as const },
-    { id: 'kpi-volume', label: "Today's Volume", value: summary.todaysAppointments.toLocaleString(), severity: 'success' as const },
-    { id: 'kpi-revenue', label: '7d Revenue', value: `₱${summary.revenue.toLocaleString()}`, severity: 'success' as const },
-    { id: 'kpi-security', label: 'Security Events', value: summary.securityAlerts.toLocaleString(), severity: summary.securityAlerts > 0 ? 'critical' as const : 'success' as const },
-    { id: 'kpi-tenants', label: 'Tenants', value: tenants.length.toLocaleString(), severity: 'info' as const },
-  ] : [];
+  useEffect(() => {
+    void fetchDashboard();
+  }, [fetchDashboard]);
+
+  const hasLiveData = Boolean(
+    summary &&
+      (summary.activePatients > 0 ||
+        summary.todaysAppointments > 0 ||
+        summary.revenue > 0 ||
+        tenants.length > 0),
+  );
+  const isDemo = shouldUseDashboardDemo(hasLiveData, Boolean(error));
+  const displayedSummary = isDemo ? demoAdminDashboard.summary : summary;
+  const displayedTenants = isDemo ? demoAdminDashboard.tenants : tenants;
+
+  const tenantStatus = useMemo(
+    () => [
+      {
+        label: 'Healthy',
+        value: displayedTenants.filter((tenant) => tenant.status === 'ACTIVE').length,
+      },
+      {
+        label: 'Needs attention',
+        value: displayedTenants.filter((tenant) => tenant.status !== 'ACTIVE').length,
+      },
+    ],
+    [displayedTenants],
+  );
 
   return (
-    <HmsDashboardShell widthTier="full" footer={<HmsAuditFooter dataSource="System Operations API" />}>
-      <HmsPageHeader title="Platform Command Center" description="Multi-tenant operations, security posture, system health, and drilldown-ready governance signals." badge={loading ? 'Loading...' : 'Live'} />
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar
+          branchName="All tenants"
+          role="Platform Administration"
+          lastRefreshed={lastUpdated}
+          onRefresh={() => void fetchDashboard(true)}
+          refreshing={refreshing}
+        />
+      }
+      footer={
+        <HmsAuditFooter
+          dataSource={
+            isDemo
+              ? 'Synthetic platform scenario'
+              : 'Live platform records with synthetic trend context'
+          }
+        />
+      }
+    >
+      <HmsPageHeader
+        eyebrow="Platform governance"
+        title="Platform Command Center"
+        description="Tenant health, security posture and system-wide operational signals without mixing them into staff workspaces."
+        actions={
+          <HmsDataSourceBadge
+            mode="demo"
+            label={isDemo ? 'Synthetic platform scenario' : 'Live records + synthetic trends'}
+          />
+        }
+      />
 
-      {loading ? (
-        <HmsLoadingSkeleton variant="kpi" />
-      ) : error ? (
-        <div className="max-w-3xl mx-auto py-10">
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm text-center">
-            <p className="text-sm text-slate-600">{error}</p>
-            <Link to="/admin/executive" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-indigo-600 text-white px-4 py-2 text-xs font-bold hover:bg-indigo-700">
-              Open Live Admin Executive <ArrowRight className="h-4 w-4" />
-            </Link>
+      {error && !isDemo && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
+        <AnalyticsMetricCard
+          title="Active patients"
+          value={loading ? '—' : (displayedSummary?.activePatients ?? 0).toLocaleString()}
+          icon={Users}
+          severity="info"
+        />
+        <AnalyticsMetricCard
+          title="Today's appointments"
+          value={loading ? '—' : (displayedSummary?.todaysAppointments ?? 0).toLocaleString()}
+          icon={Building}
+          severity="success"
+        />
+        <AnalyticsMetricCard
+          title="Seven-day revenue"
+          value={loading ? '—' : peso(displayedSummary?.revenue ?? 0)}
+          icon={WalletCards}
+          severity="success"
+          href="/admin/reports"
+        />
+        <AnalyticsMetricCard
+          title="Security events"
+          value={loading ? '—' : (displayedSummary?.securityAlerts ?? 0)}
+          icon={Shield}
+          severity={(displayedSummary?.securityAlerts ?? 0) > 0 ? 'critical' : 'success'}
+          href="/admin/security"
+        />
+        <AnalyticsMetricCard
+          title="Tenants"
+          value={loading ? '—' : displayedTenants.length}
+          icon={Building}
+          severity="info"
+          href="/admin/tenants"
+        />
+      </div>
+
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-12 xl:col-span-8">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h2 className="text-sm font-semibold text-slate-900">Tenant overview</h2>
+              <p className="mt-1 text-xs text-slate-500">Account and branch footprint by tenant.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[620px] text-left text-xs">
+                <thead className="border-b border-slate-100 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Tenant</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Users</th>
+                    <th className="px-5 py-3 text-right">Branches</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {displayedTenants.map((tenant) => (
+                    <tr key={tenant.id} className="hover:bg-slate-50">
+                      <td className="px-5 py-3.5 font-semibold text-slate-900">{tenant.name}</td>
+                      <td className="px-4 py-3.5">
+                        <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${tenant.status === 'ACTIVE' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+                          {tenant.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 font-mono font-semibold text-slate-700">{tenant.userCount}</td>
+                      <td className="px-5 py-3.5 text-right font-mono font-semibold text-slate-700">{tenant.branchCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      ) : (
-        <div className="space-y-6">
-          <HmsKpiStrip metrics={kpis} loading={false} />
+        <div className="col-span-12 xl:col-span-4">
+          <InsightPanel insights={demoAdminDashboard.insights} title="Platform decisions" />
+        </div>
 
-          <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-12 xl:col-span-8">
-              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <Building className="h-5 w-5 text-slate-500" />
-                  <h3 className="text-sm font-bold text-slate-800">Tenant Overview</h3>
-                </div>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="pb-2">Tenant</th>
-                      <th className="pb-2">Status</th>
-                      <th className="pb-2">Users</th>
-                      <th className="pb-2">Branches</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tenants.map((t) => (
-                      <tr key={t.id} className="border-b border-slate-100">
-                        <td className="py-2.5 font-semibold text-slate-800">{t.name}</td>
-                        <td className="py-2.5">
-                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${t.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
-                            {t.status}
-                          </span>
-                        </td>
-                        <td className="py-2.5 font-mono font-bold text-slate-900">{t.userCount}</td>
-                        <td className="py-2.5 font-mono font-bold text-slate-900">{t.branchCount}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        <div className="col-span-12 xl:col-span-8">
+          <ChartCard
+            title="Patient activity"
+            description="Synthetic seven-day activity trend for executive layout review."
+            emphasis="primary"
+          >
+            <TrendLineChart
+              data={demoAdminDashboard.patientVolumeTrend}
+              title="Patient activity"
+              valueLabel="Encounters"
+            />
+          </ChartCard>
+        </div>
+        <div className="col-span-12 xl:col-span-4">
+          <ChartCard
+            title="Tenant status"
+            description="Current tenant-state distribution."
+          >
+            <StatusDonutChart data={tenantStatus} title="Tenant status" />
+          </ChartCard>
+        </div>
+      </div>
 
-            <div className="col-span-12 xl:col-span-4 space-y-4">
-              <Link to="/admin/tenants" className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Building className="h-5 w-5 text-indigo-500" />
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Tenants</p>
-                    <p className="text-[11px] text-slate-500">Manage multi-tenant</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-slate-400 ml-auto" />
-                </div>
-              </Link>
-              <Link to="/admin/security" className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Shield className="h-5 w-5 text-rose-500" />
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Security Center</p>
-                    <p className="text-[11px] text-slate-500">Audit & compliance</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-slate-400 ml-auto" />
-                </div>
-              </Link>
-              <Link to="/admin/reports" className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Activity className="h-5 w-5 text-emerald-500" />
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Reports</p>
-                    <p className="text-[11px] text-slate-500">Analytics & exports</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-slate-400 ml-auto" />
-                </div>
-              </Link>
-              <Link to="/admin/executive" className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-blue-500" />
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">Executive Dashboard</p>
-                    <p className="text-[11px] text-slate-500">Patient volume & revenue</p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-slate-400 ml-auto" />
-                </div>
-              </Link>
-            </div>
-          </div>
+      {dashboardDemoConfig.mode === 'off' && !hasLiveData && !loading && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 text-xs text-slate-500">
+          No platform metrics are available. Enable the local synthetic scenario only in a non-production environment to review populated layouts.
         </div>
       )}
     </HmsDashboardShell>

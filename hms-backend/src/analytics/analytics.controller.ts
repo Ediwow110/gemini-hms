@@ -1,64 +1,88 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
-@UseGuards(RolesGuard)
+@UseGuards(PermissionsGuard)
 @Controller('api/v1/analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('revenue')
-  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
+  @RequirePermissions(
+    'admin.metrics.view',
+    'billing.invoice.view',
+    'compliance.report.export',
+  )
   async getRevenue(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getRevenue(tenantId);
   }
 
   @Get('diagnoses')
-  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
+  @RequirePermissions(
+    'admin.metrics.view',
+    'encounter.view',
+    'compliance.audit.review',
+  )
   async getTopDiagnoses(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getTopDiagnoses(tenantId);
   }
 
   @Get('occupancy')
-  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
+  @RequirePermissions(
+    'admin.metrics.view',
+    'encounter.view',
+    'compliance.audit.review',
+  )
   async getBedOccupancy(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getBedOccupancy(tenantId);
   }
 
   @Get('wait-time')
-  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
+  @RequirePermissions(
+    'admin.metrics.view',
+    'queue.view',
+    'compliance.audit.review',
+  )
   async getWaitTime(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getWaitTime(tenantId);
   }
 
   @Get('claim-rate')
-  @Roles('Super Admin', 'Branch Admin', 'Compliance Officer')
+  @RequirePermissions(
+    'admin.metrics.view',
+    'billing.claim.view',
+    'compliance.report.export',
+  )
   async getClaimRate(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getClaimRate(tenantId);
   }
 
   @Get('hr-metrics')
-  @Roles('Super Admin', 'HR Manager', 'HR Staff')
+  @RequirePermissions(
+    'admin.metrics.view',
+    'hr.employee.view',
+    'hr.payroll.view',
+  )
   async getHrMetrics(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getHrMetrics(tenantId);
   }
 
   @Get('it-metrics')
-  @Roles('Super Admin', 'IT Support')
+  @RequirePermissions('admin.metrics.view', 'it.system.view')
   async getItMetrics(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getItMetrics(tenantId);
   }
 
   @Get('marketplace-metrics')
-  @Roles('Super Admin', 'Marketplace Admin')
+  @RequirePermissions('admin.metrics.view', 'marketplace.admin.view')
   async getMarketplaceMetrics(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getMarketplaceMetrics(tenantId);
   }
 
   @Get('compliance-metrics')
-  @Roles('Super Admin', 'Compliance Officer')
+  @RequirePermissions('admin.metrics.view', 'compliance.audit.review')
   async getComplianceMetrics(@GetUser('tenantId') tenantId: string) {
     return this.analyticsService.getComplianceMetrics(tenantId);
   }

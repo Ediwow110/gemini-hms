@@ -164,8 +164,8 @@ describe('PharmacyDashboard Unit Tests', () => {
     });
 
     expect(screen.queryByRole('button', { name: /Dispense →/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Dispense Queue' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Drug Inventory' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Dispense Queue' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Drug Inventory' })).not.toBeInTheDocument();
     expect(screen.queryByText('Open Dispense Hub')).not.toBeInTheDocument();
     expect(screen.queryByText('Open Inventory Manager')).not.toBeInTheDocument();
     expect(screen.getByText('Dispense Queue Backlog')).toBeInTheDocument();
@@ -185,13 +185,14 @@ describe('PharmacyDashboard Unit Tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Dispense Queue' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Dispense Queue' })).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Dispense →/i }));
     expect(mockNavigate).toHaveBeenCalledWith('/pharmacy');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Dispense Queue' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/pharmacy');
+    expect(
+      screen.getByRole('link', { name: 'Dispense Queue' }),
+    ).toHaveAttribute('href', '/pharmacy');
   });
 });

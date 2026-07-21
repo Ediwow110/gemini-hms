@@ -15,14 +15,14 @@ async function main() {
     // 2. Reset database using Prisma
     console.log('Resetting schema and data...');
     // We use env here to pass the confirmed safety state to prisma migrate
-    execSync('npx prisma migrate reset --force', { 
+    execSync('npx prisma migrate reset --force --skip-seed', {
       stdio: 'inherit',
       env: { ...process.env, SKIP_SAFETY_CHECK: 'true' } // Allow nested calls if needed, though migrate has its own guards
     });
     
     // 3. Run standard seed
     console.log('\nRunning standard seed...');
-    execSync('npx tsx prisma/seed.ts', { 
+    execSync('npx tsx prisma/seed.ts --confirm-demo-reset', {
       stdio: 'inherit',
       env: { ...process.env, NODE_ENV: 'development' }
     });

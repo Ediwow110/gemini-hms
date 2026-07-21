@@ -1,199 +1,231 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import FieldServiceShellNotice from "./components/FieldServiceShellNotice";
-import FieldServiceScopeFilter from "./components/FieldServiceScopeFilter";
-import TechnicianJobCard from "./components/TechnicianJobCard";
-import RouteSummaryPanel from "./components/RouteSummaryPanel";
-import OfflineSyncStatusCard from "./components/OfflineSyncStatusCard";
-import { useFieldServiceAdminJobs, useFieldServiceJobs } from "../../hooks/use-field-service";
-import { HmsPageHeader } from "../../components/hms-page";
-import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from "../../components/hms-dashboard";
-import { CheckCircle2, Clock, Loader2, Truck, WifiOff } from "lucide-react";
-import { AnalyticsMetricCard, InsightPanel } from "../../components/analytics";
+import React from 'react';
+import { CheckCircle2, Clock, Truck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
-  VolumeAreaChart,
+  AnalyticsMetricCard,
+  ChartCard,
+  ComparisonBarChart,
   StatusDonutChart,
-  ComparisonBarChart
-} from "../../components/analytics/charts";
-import { useUser } from "../../hooks/use-user";
-
-const MOCK_COMPLETION_TIMELINE = [
-  { label: "Mon", value: 8 },
-  { label: "Tue", value: 12 },
-  { label: "Wed", value: 10 },
-  { label: "Thu", value: 15 },
-  { label: "Fri", value: 14 },
-  { label: "Sat", value: 6 },
-  { label: "Sun", value: 5 },
-];
-
-const MOCK_SLA_AGING = [
-  { label: "< 2h", value: 12 },
-  { label: "2-4h", value: 8 },
-  { label: "4-8h", value: 4 },
-  { label: "8h+", value: 2 },
-];
-
-const MOCK_HANDOVER_STATUS = [
-  { label: "Synced", value: 18, color: "#10b981" },
-  { label: "Pending", value: 3, color: "#f59e0b" },
-  { label: "Failed", value: 1, color: "#e11d48" },
-];
+  TrendLineChart,
+} from '../../components/analytics';
+import { HmsPageHeader } from '../../components/hms-page';
+import {
+  HmsAuditFooter,
+  HmsDashboardShell,
+  HmsDataSourceBadge,
+  HmsEmptyState,
+  HmsLoadingSkeleton,
+  HmsToolbar,
+} from '../../components/hms-dashboard';
+import { demoFieldServiceDashboard } from '../../data/dashboard-demo';
+import { useFieldServiceAdminJobs, useFieldServiceJobs } from '../../hooks/use-field-service';
+import { useUser } from '../../hooks/use-user';
+import FieldServiceShellNotice from './components/FieldServiceShellNotice';
+import FieldServiceScopeFilter from './components/FieldServiceScopeFilter';
+import OfflineSyncStatusCard from './components/OfflineSyncStatusCard';
+import RouteSummaryPanel from './components/RouteSummaryPanel';
+import TechnicianJobCard from './components/TechnicianJobCard';
 
 export const FieldServiceDashboard: React.FC = () => {
   const navigate = useNavigate();
   const user = useUser();
-  const isAdmin = Boolean(
-    user?.permissions.includes('fulfillment.view'),
-  );
+  const isAdmin = Boolean(user?.permissions.includes('fulfillment.view'));
   const technicianQuery = useFieldServiceJobs(!isAdmin);
   const adminQuery = useFieldServiceAdminJobs(isAdmin);
   const activeQuery = isAdmin ? adminQuery : technicianQuery;
-  const jobsData = activeQuery.data;
-  const isLoading = activeQuery.isLoading;
-  const error = activeQuery.error;
 
-  const deliveries = jobsData?.deliveries ?? [];
-  const installations = jobsData?.installations ?? [];
+  const deliveries = activeQuery.data?.deliveries ?? [];
+  const installations = activeQuery.data?.installations ?? [];
   const allJobs = [...deliveries, ...installations];
-  const inProgress = allJobs.filter(j => j.status === "IN_PROGRESS").length;
-  const completed = allJobs.filter(j => j.status === "COMPLETED").length;
+  const inProgress = allJobs.filter((job) => job.status === 'IN_PROGRESS').length;
+  const completed = allJobs.filter((job) => job.status === 'COMPLETED').length;
+  const assigned = allJobs.filter((job) => job.status === 'ASSIGNED').length;
 
   return (
-    <HmsDashboardShell>
-      <div className="space-y-6 pb-12">
-        <HmsPageHeader
-          title="Field Service Dashboard"
-          description="Logistics monitoring and field technician operations"
-          actions={
-            <div className="flex items-center gap-3">
-              <FieldServiceScopeFilter />
-              {!isAdmin && (
-                <button
-                  onClick={() => navigate("/field-service/schedule")}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md cursor-pointer"
-                >
-                  My Schedule
-                </button>
-              )}
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar
+          branchName={isAdmin ? 'Selected branch' : 'Assigned route'}
+          role={isAdmin ? 'Field Service Oversight' : 'Technician Workspace'}
+          onRefresh={() => void activeQuery.refetch()}
+          refreshing={activeQuery.isFetching}
+        >
+          <FieldServiceScopeFilter />
+        </HmsToolbar>
+      }
+      footer={<HmsAuditFooter dataSource="Live field jobs with synthetic trend context" />}
+    >
+      <HmsPageHeader
+        eyebrow="Field operations"
+        title={isAdmin ? 'Field Service Control Center' : 'My Field Work'}
+        description={
+          isAdmin
+            ? 'Branch delivery and installation work, route pressure and SLA risk in one operational view.'
+            : 'Your assigned jobs, route readiness and handover status, optimized for field use.'
+        }
+        actions={
+          <>
+            <HmsDataSourceBadge mode="demo" label="Live jobs + synthetic trends" />
+            {!isAdmin && (
+              <button
+                type="button"
+                onClick={() => navigate('/field-service/schedule')}
+                className="min-h-10 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
+              >
+                My schedule
+              </button>
+            )}
+          </>
+        }
+      />
+
+      <FieldServiceShellNotice />
+
+      {activeQuery.isLoading ? (
+        <HmsLoadingSkeleton variant="kpi" />
+      ) : activeQuery.error ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold text-rose-700">
+          Field service jobs could not be loaded. Use Refresh after checking the branch and network context.
+        </div>
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
+          <AnalyticsMetricCard
+            title={isAdmin ? 'Branch jobs' : 'My jobs'}
+            value={allJobs.length}
+            icon={Truck}
+            description={isAdmin ? 'Live jobs in branch scope' : 'Live assignments for this technician'}
+            severity="info"
+            href="/field-service/schedule"
+          />
+          <AnalyticsMetricCard
+            title="Assigned"
+            value={assigned}
+            icon={Clock}
+            description="Ready to start"
+            severity={assigned > 0 ? 'warning' : 'success'}
+            href="/field-service/deliveries"
+          />
+          <AnalyticsMetricCard
+            title="In progress"
+            value={inProgress}
+            icon={Clock}
+            description="Currently underway"
+            severity={inProgress > 0 ? 'warning' : 'info'}
+            href="/field-service/deliveries"
+          />
+          <AnalyticsMetricCard
+            title="Completed"
+            value={completed}
+            icon={CheckCircle2}
+            description="Completed field work"
+            severity="success"
+            href="/field-service/proof-of-delivery"
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-12 gap-6">
+        <section className="col-span-12 space-y-4 xl:col-span-8" aria-labelledby="field-job-queue-title">
+          <div>
+            <h2 id="field-job-queue-title" className="text-sm font-semibold text-slate-900">
+              {isAdmin ? 'Selected branch job queue' : 'Upcoming job queue'}
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Operational work remains more prominent than analytics on this dashboard.
+            </p>
+          </div>
+
+          {activeQuery.isLoading ? (
+            <HmsLoadingSkeleton variant="table" />
+          ) : activeQuery.error ? (
+            <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center text-sm text-rose-600">
+              Job queue unavailable.
             </div>
-          }
-        />
-
-        <FieldServiceShellNotice />
-
-        {isLoading ? (
-          <HmsLoadingSkeleton variant="kpi" />
-        ) : error ? (
-          <div className="p-10 text-center text-sm font-bold text-rose-500">
-            Failed to load field service jobs.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <AnalyticsMetricCard title={isAdmin ? "Branch Jobs" : "My Jobs"} value={String(allJobs.length).padStart(2, "0")} icon={Truck} description={isAdmin ? "Live jobs in the selected branch" : "Live technician job assignments"} severity="info" href="/field-service/schedule" />
-            <AnalyticsMetricCard title="In Progress" value={String(inProgress).padStart(2, "0")} icon={Clock} description="Jobs currently underway" severity="warning" href="/field-service/deliveries" />
-            <AnalyticsMetricCard title="Completed" value={String(completed).padStart(2, "0")} icon={CheckCircle2} description="Completed field work" severity="success" href="/field-service/proof-of-delivery" />
-            <AnalyticsMetricCard title="Offline Sync" value="WIP" icon={WifiOff} description="Queued handovers and offline evidence" severity="warning" href="/field-service/offline-sync" />
-          </div>
-        )}
-
-        <InsightPanel insights={[{ title: "Field dashboard stays route-first", description: "Technician jobs and route/offline readiness remain more important than executive charts for mobile users.", severity: "info", actionLabel: "Open Schedule", actionTo: "/field-service/schedule" }]} title="Field service insights" />
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-            <h3 className="mb-4 text-xs font-black text-slate-400 uppercase tracking-widest flex justify-between items-center">
-              <span>Job Completion Timeline</span>
-              <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">DEMO</span>
-            </h3>
-            <div className="h-[calc(100%-3rem)]">
-              <VolumeAreaChart
-                data={MOCK_COMPLETION_TIMELINE}
-                title="Job Completion"
-                valueLabel="Completed"
-              />
+          ) : allJobs.length === 0 ? (
+            <HmsEmptyState
+              title="No active jobs"
+              description={
+                isAdmin
+                  ? 'No delivery or installation jobs exist for the selected branch.'
+                  : 'No active jobs are assigned to you.'
+              }
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {deliveries.map((job) => (
+                <TechnicianJobCard
+                  key={job.id}
+                  id={`DEL-${job.id}`}
+                  type="DELIVERY"
+                  customer={job.customer}
+                  address={job.address}
+                  time="Delivery SLA"
+                  status={job.status}
+                  onAction={() => navigate('/field-service/deliveries')}
+                />
+              ))}
+              {installations.map((job) => (
+                <TechnicianJobCard
+                  key={job.id}
+                  id={`INS-${job.id}`}
+                  type="INSTALLATION"
+                  customer={job.customer}
+                  address={job.address}
+                  time="Installation SLA"
+                  status={job.status}
+                  onAction={() => navigate('/field-service/installations')}
+                />
+              ))}
             </div>
-          </div>
+          )}
+        </section>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-            <h3 className="mb-4 text-xs font-black text-slate-400 uppercase tracking-widest flex justify-between items-center">
-              <span>SLA Response / Aging</span>
-              <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">DEMO</span>
-            </h3>
-            <div className="h-[calc(100%-3rem)]">
-              <ComparisonBarChart
-                data={MOCK_SLA_AGING}
-                title="SLA Aging"
-                valueLabel="Jobs Count"
-              />
-            </div>
-          </div>
+        <aside className="col-span-12 space-y-6 xl:col-span-4">
+          <RouteSummaryPanel />
+          <OfflineSyncStatusCard />
+        </aside>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-            <h3 className="mb-4 text-xs font-black text-slate-400 uppercase tracking-widest flex justify-between items-center">
-              <span>Handover Sync Posture</span>
-              <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">DEMO</span>
-            </h3>
-            <div className="h-[calc(100%-3rem)]">
-              <StatusDonutChart
-                data={MOCK_HANDOVER_STATUS}
-                title="Handover Status"
-              />
-            </div>
-          </div>
+        <div className="col-span-12 xl:col-span-7">
+          <ChartCard
+            title="Completed jobs"
+            description="Synthetic weekly completion pattern for workload planning."
+            emphasis="primary"
+          >
+            <TrendLineChart
+              data={demoFieldServiceDashboard.completionTrend}
+              title="Completed jobs"
+              valueLabel="Completed"
+            />
+          </ChartCard>
+        </div>
+        <div className="col-span-12 xl:col-span-5">
+          <ChartCard
+            title="Current job mix"
+            description="Synthetic assignment-state distribution."
+          >
+            <StatusDonutChart
+              data={demoFieldServiceDashboard.statusBreakdown}
+              title="Current job mix"
+            />
+          </ChartCard>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">
-              {isAdmin ? "Selected Branch Job Queue" : "Upcoming Job Queue"}
-            </h3>
-            {isLoading ? (
-              <div className="flex items-center justify-center p-12 bg-white border border-slate-100 rounded-3xl">
-                <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-              </div>
-            ) : error ? (
-              <div className="bg-white border border-slate-100 rounded-3xl p-12 text-center">
-                <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">Could not load job queue.</p>
-              </div>
-            ) : allJobs.length === 0 ? (
-              <HmsEmptyState title="No active jobs" description={isAdmin ? "No delivery or installation jobs exist for the selected branch." : "No active jobs are assigned to you."} />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {deliveries.map((j) => (
-                  <TechnicianJobCard
-                    key={j.id}
-                    id={`DEL-${j.id}`}
-                    type="DELIVERY"
-                    customer={j.customer}
-                    address={j.address}
-                    time="SLA: Immediate"
-                    status={j.status}
-                    onAction={() => navigate("/field-service/deliveries")}
-                  />
-                ))}
-                {installations.map((j) => (
-                  <TechnicianJobCard
-                    key={j.id}
-                    id={`INS-${j.id}`}
-                    type="INSTALLATION"
-                    customer={j.customer}
-                    address={j.address}
-                    time="SLA: Next Day"
-                    status={j.status}
-                    onAction={() => navigate("/field-service/installations")}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-8">
-            <RouteSummaryPanel />
-            <OfflineSyncStatusCard />
-          </div>
+        <div className="col-span-12">
+          <ChartCard
+            title="SLA performance by work type"
+            description="Synthetic on-time completion percentage for delivery, installation and maintenance."
+            emphasis="compact"
+          >
+            <ComparisonBarChart
+              data={demoFieldServiceDashboard.slaByType}
+              title="SLA performance"
+              valueLabel="On time"
+              valueFormatter={(value) => `${value}%`}
+              yDomain={[0, 100]}
+            />
+          </ChartCard>
         </div>
       </div>
-      <HmsAuditFooter />
     </HmsDashboardShell>
   );
 };

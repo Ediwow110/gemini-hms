@@ -1,176 +1,299 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   AnalyticsMetricCard,
   ChartCard,
   ComparisonBarChart,
-  DashboardFilterBar,
   InsightPanel,
   StatusDonutChart,
   TrendLineChart,
 } from '../../components/analytics';
+import { HmsPageHeader } from '../../components/hms-page';
+import {
+  HmsAuditFooter,
+  HmsDashboardShell,
+  HmsDataSourceBadge,
+  HmsToolbar,
+} from '../../components/hms-dashboard';
 import HRScopeFilter from './components/HRScopeFilter';
-import { EmployeeWorklist, Employee } from './components/EmployeeWorklist';
+import { EmployeeWorklist, type Employee } from './components/EmployeeWorklist';
+import { LeaveQueuePanel, type LeaveRequest } from './components/LeaveQueuePanel';
+import { LicenseMonitorPanel, type License } from './components/LicenseMonitorPanel';
 import type { HrEmployeeStatus } from '../../services/hr.service';
-import { LeaveQueuePanel, LeaveRequest } from './components/LeaveQueuePanel';
-import { LicenseMonitorPanel, License } from './components/LicenseMonitorPanel';
 import { useAnalytics } from '../../hooks/use-analytics';
 import { useHr } from '../../hooks/use-hr';
-import type { DateRange } from '../../types/analytics';
-import {
-  HmsDashboardShell,
-  HmsToolbar,
-  HmsAuditFooter,
-} from '../../components/hms-dashboard';
+import { demoHrDashboard } from '../../data/dashboard-demo';
+
+const DASHBOARD_REFERENCE_TIME = Date.now();
+
+const currencyFormatter = (value: number) =>
+  new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    maximumFractionDigits: 0,
+  }).format(value);
 
 export const HRDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [dateRange, setDateRange] = useState<DateRange>({ from: '2026-01-01', to: '2026-06-25' });
   const [department, setDepartment] = useState('all');
 
-  const { hr: hrMetrics, isLoading: analyticsLoading } = useAnalytics();
-  const { employees, leaveRequests, licenses, isLoading: hrLoading } = useHr('');
+  const {
+    hr: hrMetrics,
+    isLoading: analyticsLoading,
+    isFetching: analyticsFetching,
+    demoByScope,
+    refetchAll: refetchAnalytics,
+  } = useAnalytics('hr');
+  const {
+    employees,
+    leaveRequests,
+    licenses,
+    isLoading: hrLoading,
+    refetchAll: refetchHr,
+  } = useHr('');
 
-  if (analyticsLoading || hrLoading) {
-    return <div className="p-10 text-center text-slate-400">Loading workforce data...</div>;
+  const isDemo = demoByScope.hr;
+  const isLoading = analyticsLoading || hrLoading;
+
+  const mappedEmployees: Employee[] = useMemo(() => {
+    if (isDemo) return demoHrDashboard.employees;
+    return (employees || []).map((employee) => ({
+      id: employee.id,
+      name: `${employee.firstName} ${employee.lastName}`,
+      email: employee.email,
+      role: employee.role,
+      department: employee.department,
+      branch: employee.branchId || 'Tenant-wide',
+      status: employee.status as Employee['status'],
+      rawStatus: employee.rawStatus as HrEmployeeStatus,
+      joinedAt: employee.joinedAt,
+    }));
+  }, [employees, isDemo]);
+
+  const mappedLeave: LeaveRequest[] = useMemo(() => {
+    if (isDemo) return demoHrDashboard.leaveRequests;
+    return (leaveRequests || []).map((request) => ({
+      id: request.id,
+      employeeName: `${request.employee.firstName} ${request.employee.lastName}`,
+      type: request.type,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      days: request.days,
+      status: request.status,
+    }));
+  }, [leaveRequests, isDemo]);
+
+  const employeeNames = useMemo(
+    () =>
+      new Map(
+        (employees || []).map((employee) => [
+          employee.id,
+          `${employee.firstName} ${employee.lastName}`,
+        ]),
+      ),
+    [employees],
+  );
+
+  const mappedLicenses: License[] = useMemo(() => {
+    if (isDemo) return demoHrDashboard.licenses;
+    return (licenses || []).map((license) => {
+      const daysRemaining = Math.ceil(
+        (new Date(license.expiresAt).getTime() - DASHBOARD_REFERENCE_TIME) /
+          86_400_000,
+      );
+      return {
+        id: license.id,
+        employeeName: employeeNames.get(license.employeeId) ?? 'Employee record',
+        type: license.licenseType,
+        licenseNumber: license.licenseNumber,
+        expiryDate: license.expiresAt,
+        daysRemaining,
+        status: daysRemaining < 30 ? 'EXPIRING' : 'VALID',
+      };
+    });
+  }, [employeeNames, isDemo, licenses]);
+
+  const departments = useMemo(
+    () => Array.from(new Set(mappedEmployees.map((employee) => employee.department))).sort(),
+    [mappedEmployees],
+  );
+
+  const filteredEmployees = useMemo(
+    () =>
+      department === 'all'
+        ? mappedEmployees
+        : mappedEmployees.filter((employee) => employee.department === department),
+    [department, mappedEmployees],
+  );
+
+  const expiringLicensesCount = mappedLicenses.filter(
+    (license) => license.status === 'EXPIRING',
+  ).length;
+
+  const refresh = async () => {
+    await Promise.all([refetchAnalytics(), refetchHr()]);
+  };
+
+  if (isLoading) {
+    return (
+      <HmsDashboardShell>
+        <div className="min-h-80 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+      </HmsDashboardShell>
+    );
   }
 
-  // Map real employees to Worklist shape
-  const mappedEmployees: Employee[] = (employees || []).map(e => ({
-    id: e.id,
-    name: `${e.firstName} ${e.lastName}`,
-    email: e.email,
-    role: e.role,
-    department: e.department,
-    branch: 'All Branches',
-    status: e.status as Employee['status'],
-    rawStatus: e.rawStatus as HrEmployeeStatus,
-    joinedAt: e.joinedAt,
-  }));
-
-  // Map real leave requests to Queue shape
-  const mappedLeave: LeaveRequest[] = (leaveRequests || []).map(l => ({
-    id: l.id,
-    employeeName: `${l.employee.firstName} ${l.employee.lastName}`,
-    type: l.type,
-    startDate: l.startDate,
-    endDate: l.endDate,
-    days: l.days,
-    status: l.status,
-  }));
-
-  // Map real licenses to Monitor shape
-  const mappedLicenses: License[] = (licenses || []).map(l => {
-    const diff = Math.ceil((new Date(l.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    return {
-      id: l.id,
-      employeeName: 'Employee', // Need employee join in API
-      type: l.licenseType,
-      licenseNumber: l.licenseNumber,
-      expiryDate: l.expiresAt,
-      daysRemaining: diff,
-      status: diff < 30 ? 'EXPIRING' : 'VALID',
-    };
-  });
-
-  const expiringLicensesCount = mappedLicenses.filter(l => l.status === 'EXPIRING').length;
-  const expiringDescription = expiringLicensesCount > 0
-    ? `${expiringLicensesCount} provider credentials expire within 30 days. Action is required to avoid scheduling blocks.`
-    : 'No provider credentials are currently flagged as expiring.';
-
   return (
-    <HmsDashboardShell widthTier="full"
+    <HmsDashboardShell
       toolbar={
         <HmsToolbar
-          branchName="All Branches"
+          branchName="Tenant-wide workforce"
           role="HR Command Center"
-          onRefresh={() => window.location.reload()}
+          onRefresh={() => void refresh()}
+          refreshing={analyticsFetching}
+        >
+          <label className="min-w-[180px] text-[11px] font-semibold text-slate-500">
+            <span className="mb-1 block">Department</span>
+            <select
+              value={department}
+              onChange={(event) => setDepartment(event.target.value)}
+              className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+            >
+              <option value="all">All departments</option>
+              {departments.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+        </HmsToolbar>
+      }
+      footer={
+        <HmsAuditFooter
+          dataSource={isDemo ? 'Synthetic workforce scenario' : 'Live workforce records with synthetic trend context'}
         />
       }
-      footer={<HmsAuditFooter dataSource="Workforce HR Database" />}
     >
-      <div className="space-y-6 pb-12">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">
-        </div>
+      <HmsPageHeader
+        eyebrow="People operations"
+        title="Workforce Command Center"
+        description="Staffing, leave, credential risk and payroll context organized around the decisions HR must make next."
+        actions={
+          <HmsDataSourceBadge
+            mode="demo"
+            label={isDemo ? 'Synthetic workforce scenario' : 'Live records + synthetic trends'}
+          />
+        }
+      />
 
-        {/* Alert Strip: Expiring License Alerts */}
-        <div className="rounded-xl border border-rose-200 bg-rose-50/50 px-4 py-3 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-rose-600 flex-shrink-0" />
+      <HRScopeFilter />
+
+      {expiringLicensesCount > 0 && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
             <div>
-              <span className="text-[12px] font-bold text-rose-900 block">LICENSE COMPLIANCE NOTICE: {expiringLicensesCount} EXPIRING CLINICAL LICENSES</span>
-              <span className="text-[10px] text-rose-700 font-semibold block mt-0.5">{expiringDescription}</span>
+              <p className="text-sm font-semibold text-rose-900">
+                {expiringLicensesCount} clinical credential{expiringLicensesCount === 1 ? '' : 's'} require review
+              </p>
+              <p className="mt-0.5 text-xs leading-5 text-rose-700">
+                Credentials enter the 30-day renewal window and may affect future scheduling.
+              </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={() => navigate('/hr/licenses')}
-            className="text-[11px] font-bold text-rose-700 bg-rose-100 hover:bg-rose-200 border border-rose-300 rounded-md px-2.5 py-1 cursor-pointer transition-colors"
+            className="min-h-10 rounded-xl border border-rose-300 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
           >
-            Verify Credentials
+            Review credentials
           </button>
         </div>
+      )}
 
-        <HRScopeFilter />
-        <DashboardFilterBar dateRange={dateRange} onDateRangeChange={setDateRange} department={department} onDepartmentChange={setDepartment} />
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
+        <AnalyticsMetricCard title="Total headcount" value={hrMetrics.headcount} />
+        <AnalyticsMetricCard title="Pending leave" value={hrMetrics.pendingLeave} severity={hrMetrics.pendingLeave > 8 ? 'warning' : 'info'} />
+        <AnalyticsMetricCard title="Expired licenses" value={hrMetrics.expiredLicenses} severity={hrMetrics.expiredLicenses > 0 ? 'critical' : 'success'} />
+        <AnalyticsMetricCard title="Staffing gap" value={hrMetrics.staffingGap} severity={hrMetrics.staffingGap > 0 ? 'warning' : 'success'} />
+      </div>
 
-        <div className="grid grid-cols-12 gap-6">
-          {/* KPI metrics - Use real metrics from useAnalytics */}
-          <div className="col-span-12 sm:col-span-4 xl:col-span-2">
-            <AnalyticsMetricCard title="Total Headcount" value={hrMetrics?.headcount || 0} trend={{ value: '+2%', direction: 'positive' }} />
-          </div>
-          <div className="col-span-12 sm:col-span-4 xl:col-span-2">
-            <AnalyticsMetricCard title="Pending Leave" value={hrMetrics?.pendingLeave || 0} trend={{ value: '-10%', direction: 'positive' }} />
-          </div>
-          <div className="col-span-12 sm:col-span-4 xl:col-span-2">
-            <AnalyticsMetricCard title="Expiring Licenses" value={hrMetrics?.expiredLicenses || 0} trend={{ value: '+5%', direction: 'negative' }} />
-          </div>
-          <div className="col-span-12 sm:col-span-4 xl:col-span-2">
-            <AnalyticsMetricCard title="Staffing Gap" value={hrMetrics?.staffingGap || 0} trend={{ value: '0%', direction: 'neutral' }} />
-          </div>
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-12 xl:col-span-8">
+          <EmployeeWorklist employees={filteredEmployees} />
+        </div>
+        <div className="col-span-12 xl:col-span-4">
+          <LeaveQueuePanel requests={mappedLeave} />
+        </div>
 
-          {/* Primary Work Row: Employee List (XL Card) & Leave Approvals Queue (L Card) */}
-          <div className="col-span-12 xl:col-span-8">
-            <EmployeeWorklist employees={mappedEmployees} />
-          </div>
-          <div className="col-span-12 xl:col-span-4">
-            <LeaveQueuePanel requests={mappedLeave} />
-          </div>
+        <div className="col-span-12 xl:col-span-7">
+          <ChartCard
+            title="Headcount trend"
+            description="Six-month synthetic workforce growth used for capacity review."
+            emphasis="primary"
+          >
+            <TrendLineChart
+              data={demoHrDashboard.headcountTrend}
+              title="Headcount trend"
+              valueLabel="Headcount"
+            />
+          </ChartCard>
+        </div>
+        <div className="col-span-12 xl:col-span-5">
+          <InsightPanel insights={demoHrDashboard.insights} title="Workforce decisions" />
+        </div>
 
-          {/* Secondary Insight Row: Licensure Verification Panel (L Card) + Workforce insights (L Card) */}
-          <div className="col-span-12 xl:col-span-6">
-            <LicenseMonitorPanel licenses={mappedLicenses} />
-          </div>
-          <div className="col-span-12 xl:col-span-6">
-            <InsightPanel insights={[]} title="Workforce insights" />
-          </div>
+        <div className="col-span-12 xl:col-span-6">
+          <LicenseMonitorPanel licenses={mappedLicenses} />
+        </div>
+        <div className="col-span-12 xl:col-span-6">
+          <ChartCard
+            title="Leave mix"
+            description="Approved and pending leave composition in the displayed scenario."
+          >
+            <StatusDonutChart data={demoHrDashboard.leaveBreakdown} title="Leave mix" />
+          </ChartCard>
+        </div>
 
-          {/* Bottom Supporting Row: Trends & Charts - Still using mock for charts until a time-series API is implemented */}
-          <div className="col-span-12 md:col-span-6 xl:col-span-4">
-            <ChartCard title="Headcount trend" description="Workforce growth by month." height={280}>
-              <TrendLineChart data={[]} title="Headcount trend" />
-            </ChartCard>
-          </div>
-          <div className="col-span-12 md:col-span-6 xl:col-span-4">
-            <ChartCard title="Attendance trend" description="Daily attendance percentage." height={280}>
-              <TrendLineChart data={[]} title="Attendance trend" valueLabel="Attendance %" />
-            </ChartCard>
-          </div>
-          <div className="col-span-12 md:col-span-6 xl:col-span-4">
-            <ChartCard title="Leave type breakdown" description="Leave pressure by type." height={280}>
-              <StatusDonutChart data={[]} title="Leave type breakdown" />
-            </ChartCard>
-          </div>
-          <div className="col-span-12 md:col-span-6 xl:col-span-6">
-            <ChartCard title="Staffing gap by department" description="FTE gap estimate by department." height={280}>
-              <ComparisonBarChart data={[]} title="Staffing gap" valueLabel="FTE gap" />
-            </ChartCard>
-          </div>
-          <div className="col-span-12 md:col-span-12 xl:col-span-6">
-            <ChartCard title="Payroll trend" description="Payroll amount trend in millions." height={280}>
-              <TrendLineChart data={[]} title="Payroll trend" valueLabel="₱M" />
-            </ChartCard>
-          </div>
+        <div className="col-span-12 xl:col-span-6">
+          <ChartCard
+            title="Attendance trend"
+            description="Synthetic attendance percentage across the current week."
+          >
+            <TrendLineChart
+              data={demoHrDashboard.attendanceTrend}
+              title="Attendance trend"
+              valueLabel="Attendance"
+              valueFormatter={(value) => `${value}%`}
+              yDomain={[80, 100]}
+            />
+          </ChartCard>
+        </div>
+
+        <div className="col-span-12 xl:col-span-6">
+          <ChartCard
+            title="Staffing gap by department"
+            description="Estimated open full-time equivalents by service area."
+          >
+            <ComparisonBarChart
+              data={demoHrDashboard.staffingGap}
+              title="Staffing gap by department"
+              valueLabel="FTE gap"
+              horizontal
+            />
+          </ChartCard>
+        </div>
+        <div className="col-span-12 xl:col-span-6">
+          <ChartCard
+            title="Payroll trend"
+            description="Synthetic monthly payroll used for layout and capacity review."
+          >
+            <TrendLineChart
+              data={demoHrDashboard.payrollTrend}
+              title="Payroll trend"
+              valueLabel="Payroll"
+              valueFormatter={currencyFormatter}
+            />
+          </ChartCard>
         </div>
       </div>
     </HmsDashboardShell>

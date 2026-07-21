@@ -37,28 +37,45 @@ const TrendIcon = ({ trend }: { trend: AnalyticsTrend }) => {
   return <Minus className="h-3.5 w-3.5" aria-hidden="true" />;
 };
 
-const InnerCard = ({ title, value, description, icon: Icon, trend, severity = 'info', loading, interactive }: AnalyticsMetricCardProps & { interactive: boolean }) => (
-  <div className={`h-full rounded-2xl border bg-white p-4 shadow-sm transition-all ${interactive ? 'hover:border-indigo-200 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600' : 'border-slate-200/80'} ${loading ? 'animate-pulse' : ''}`}>
-    <div className="flex items-start justify-between gap-3">
+const InnerCard = ({
+  title,
+  value,
+  description,
+  icon: Icon,
+  trend,
+  severity = 'info',
+  loading,
+  interactive,
+}: AnalyticsMetricCardProps & { interactive: boolean }) => (
+  <div data-dashboard-metric-card className={`flex h-full min-h-32 min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all ${interactive ? 'hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md' : ''} ${loading ? 'animate-pulse' : ''}`}>
+    <div className="flex min-w-0 items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{title}</p>
-        <p className="mt-2 text-2xl font-black tracking-tight text-slate-900">{loading ? '—' : value}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.11em] text-slate-500">
+          {title}
+        </p>
+        <p className="mt-2 truncate font-mono text-2xl font-bold tracking-tight text-slate-950">
+          {loading ? '—' : value}
+        </p>
       </div>
       {Icon && (
-        <div className={`rounded-2xl border p-3 ${severityClasses[severity]}`}>
+        <div className={`shrink-0 rounded-xl border p-2.5 ${severityClasses[severity]}`}>
           <Icon className="h-5 w-5" aria-hidden="true" />
         </div>
       )}
     </div>
-    <div className="mt-3 flex flex-wrap items-center gap-2">
-      {trend && !loading && (
-        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black ${trendClasses[trend.direction]}`} aria-label={`${trend.label ?? 'Trend'} ${trend.value}`}>
-          <TrendIcon trend={trend} /> {trend.value}
-        </span>
-      )}
-      {interactive && <ArrowRight className="ml-auto h-4 w-4 text-slate-300" aria-hidden="true" />}
+    <div className="mt-auto flex min-w-0 items-end gap-2 pt-3">
+      <div className="min-w-0 flex-1">
+        {trend && !loading && (
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold ${trendClasses[trend.direction]}`} aria-label={`${trend.label ?? 'Trend'} ${trend.value}`}>
+            <TrendIcon trend={trend} /> {trend.value}
+          </span>
+        )}
+        {description && (
+          <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{description}</p>
+        )}
+      </div>
+      {interactive && <ArrowRight className="mb-1 h-4 w-4 shrink-0 text-slate-300" aria-hidden="true" />}
     </div>
-    {description && <p className="mt-3 text-xs font-medium leading-relaxed text-slate-500">{description}</p>}
   </div>
 );
 
@@ -67,7 +84,7 @@ export const AnalyticsMetricCard = (props: AnalyticsMetricCardProps) => {
 
   if (props.href) {
     return (
-      <Link to={props.href} aria-label={label} data-testid={props.testId} className="block min-h-28 rounded-2xl">
+      <Link to={props.href} aria-label={label} data-testid={props.testId} className="block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
         <InnerCard {...props} interactive />
       </Link>
     );
@@ -75,14 +92,14 @@ export const AnalyticsMetricCard = (props: AnalyticsMetricCardProps) => {
 
   if (props.onClick) {
     return (
-      <button type="button" onClick={props.onClick} aria-label={label} data-testid={props.testId} className="block min-h-28 w-full rounded-2xl text-left">
+      <button type="button" onClick={props.onClick} aria-label={label} data-testid={props.testId} className="block h-full w-full rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
         <InnerCard {...props} interactive />
       </button>
     );
   }
 
   return (
-    <div aria-label={label} data-testid={props.testId} className="min-h-28">
+    <div aria-label={label} data-testid={props.testId} className="h-full">
       <InnerCard {...props} interactive={false} />
     </div>
   );
