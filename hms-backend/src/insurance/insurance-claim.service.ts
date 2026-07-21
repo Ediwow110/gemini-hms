@@ -86,7 +86,11 @@ export class InsuranceClaimService {
     return claim;
   }
 
-  async submitClaim(tenantId: string, userId: string, id: string): Promise<InsuranceClaim> {
+  async submitClaim(
+    tenantId: string,
+    userId: string,
+    id: string,
+  ): Promise<InsuranceClaim> {
     const claim = await this.prisma.insuranceClaim.findFirst({
       where: { id, tenantId },
     });
@@ -177,19 +181,22 @@ export class InsuranceClaimService {
         );
       }
 
-      await this.audit.log({
-        tenantId,
-        userId,
-        eventKey: 'INSURANCE_CLAIM_STATUS_CHANGED',
-        recordType: 'InsuranceClaim',
-        recordId: claim.id,
-        oldValues: { status: claim.status },
-        newValues: {
-          status: data.status,
-          settledAmount: data.settledAmount,
-          rejectionReason: data.rejectionReason,
+      await this.audit.log(
+        {
+          tenantId,
+          userId,
+          eventKey: 'INSURANCE_CLAIM_STATUS_CHANGED',
+          recordType: 'InsuranceClaim',
+          recordId: claim.id,
+          oldValues: { status: claim.status },
+          newValues: {
+            status: data.status,
+            settledAmount: data.settledAmount,
+            rejectionReason: data.rejectionReason,
+          },
         },
-      }, tx);
+        tx,
+      );
 
       return updatedClaim;
     });
