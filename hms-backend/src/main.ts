@@ -105,7 +105,12 @@ async function bootstrap() {
   const devCsp = {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'http://localhost:5173'],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        'http://localhost:5173',
+      ],
       styleSrc: ["'self'", "'unsafe-inline'", 'http://localhost:5173'],
       connectSrc: ["'self'", 'http://localhost:5173', 'ws://localhost:5173'],
       imgSrc: ["'self'", 'data:', 'http://localhost:5173'],
