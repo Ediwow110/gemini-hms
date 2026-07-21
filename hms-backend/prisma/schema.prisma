@@ -1257,6 +1257,7 @@ model ApprovalRequest {
   paymentReversals PaymentReversal[]
 
   @@index([tenantId, branchId, status])
+  @@index([tenantId, status, type])
   @@map("approval_requests")
 }
 
@@ -1401,9 +1402,8 @@ model PatientMergeRequest {
   requester User   @relation("MergeRequested", fields: [requesterId], references: [id])
   approver  User?  @relation("MergeApproved", fields: [approverId], references: [id])
 
-  @@index([tenantId])
+  @@index([tenantId, status])
   @@index([branchId])
-  @@index([status])
   @@map("patient_merge_requests")
 }
 

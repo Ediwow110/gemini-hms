@@ -381,7 +381,7 @@ async function main() {
         invoiceNumber: `INV-DEMO-${String(i + 1).padStart(4, '0')}`,
         totalAmount,
         paidAmount: paymentAmount,
-        status: paymentAmount === totalAmount ? 'PAID' : paymentAmount > 0 ? 'PARTIAL' : 'UNPAID',
+        status: paymentAmount === totalAmount ? 'PAID' : paymentAmount > 0 ? 'PARTIALLY_PAID' : 'UNPAID',
         createdById: cashierUser.id,
         updatedById: cashierUser.id,
         createdAt: occurredAt,

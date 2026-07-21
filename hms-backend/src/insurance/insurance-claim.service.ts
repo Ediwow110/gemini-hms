@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LedgerService } from '../ledger/ledger.service';
+import { AuditService } from '../audit/audit.service';
 import { InsuranceClaim, Prisma } from '@prisma/client';
 import type { InsuranceProvider } from './providers/insurance-provider.interface';
 
@@ -14,6 +15,7 @@ export class InsuranceClaimService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ledgerService: LedgerService,
+    private readonly audit: AuditService,
     @Inject('InsuranceProvider')
     private readonly provider: InsuranceProvider,
   ) {}
@@ -21,6 +23,7 @@ export class InsuranceClaimService {
   async createClaim(
     tenantId: string,
     branchId: string,
+    userId: string,
     data: {
       invoiceId: string;
       providerCode: string;
@@ -53,7 +56,7 @@ export class InsuranceClaimService {
     // 3. Find patientId from order/patient
     const patientId = invoice.order.patientId;
 
-    return this.prisma.insuranceClaim.create({
+    const claim = await this.prisma.insuranceClaim.create({
       data: {
         tenantId,
         branchId,
@@ -64,9 +67,26 @@ export class InsuranceClaimService {
         claimedAmount: data.claimedAmount,
       },
     });
+
+    await this.audit.log({
+      tenantId,
+      userId,
+      eventKey: 'INSURANCE_CLAIM_CREATED',
+      recordType: 'InsuranceClaim',
+      recordId: claim.id,
+      newValues: {
+        claimId: claim.id,
+        invoiceId: data.invoiceId,
+        branchId,
+        providerCode: data.providerCode,
+        claimedAmount: data.claimedAmount,
+      },
+    });
+
+    return claim;
   }
 
-  async submitClaim(tenantId: string, id: string): Promise<InsuranceClaim> {
+  async submitClaim(tenantId: string, userId: string, id: string): Promise<InsuranceClaim> {
     const claim = await this.prisma.insuranceClaim.findFirst({
       where: { id, tenantId },
     });
@@ -77,7 +97,7 @@ export class InsuranceClaimService {
     // Call provider stub
     const providerResult = await this.provider.submitClaim(claim);
 
-    return this.prisma.insuranceClaim.update({
+    const updatedClaim = await this.prisma.insuranceClaim.update({
       where: { id },
       data: {
         status: 'SUBMITTED',
@@ -85,6 +105,21 @@ export class InsuranceClaimService {
         submittedAt: new Date(),
       },
     });
+
+    await this.audit.log({
+      tenantId,
+      userId,
+      eventKey: 'INSURANCE_CLAIM_SUBMITTED',
+      recordType: 'InsuranceClaim',
+      recordId: claim.id,
+      oldValues: { status: claim.status },
+      newValues: {
+        status: 'SUBMITTED',
+        claimNumber: providerResult.referenceNumber,
+      },
+    });
+
+    return updatedClaim;
   }
 
   async updateClaimStatus(

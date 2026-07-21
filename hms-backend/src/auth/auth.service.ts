@@ -13,6 +13,7 @@ import * as crypto from 'crypto';
 import { SessionService } from './session.service';
 import { MfaService } from './mfa.service';
 import { AuditService } from '../audit/audit.service';
+import { SENSITIVE_ROLES } from './constants';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { resolveDefaultPortalPath } from './portal-resolver';
@@ -34,14 +35,7 @@ type UserRoleWithName = {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly SENSITIVE_ROLES = [
-    'Super Admin',
-    'Branch Admin',
-    'Doctor',
-    'Cashier',
-    'HR',
-    'Finance',
-  ];
+  private readonly SENSITIVE_ROLES = SENSITIVE_ROLES;
 
   constructor(
     private prisma: PrismaService,
@@ -98,12 +92,8 @@ export class AuthService {
 
     // Check account lockout
     if (user.lockedUntil && user.lockedUntil > new Date()) {
-      throw new UnauthorizedException({
-        statusCode: 401,
-        message: 'Account locked due to too many failed attempts',
-        error: 'account_locked',
-        lockedUntil: user.lockedUntil,
-      });
+      this.logger.warn(`Locked account login attempt: ${email}`);
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const passwordValid = await bcrypt.compare(pass, user.passwordHash);
@@ -142,12 +132,7 @@ export class AuthService {
           );
         });
 
-        throw new UnauthorizedException({
-          statusCode: 401,
-          message: 'Account locked due to too many failed attempts',
-          error: 'account_locked',
-          lockedUntil: lockUntil,
-        });
+        throw new UnauthorizedException('Invalid credentials');
       }
 
       await this.prisma.user.update({ where: { id: user.id }, data: updates });

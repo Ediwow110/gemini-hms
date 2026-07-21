@@ -133,7 +133,6 @@ async function bootstrap() {
   );
 
   app.use(cookieParser());
-  app.use(helmet());
 
   if (isProd) {
     const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS;
