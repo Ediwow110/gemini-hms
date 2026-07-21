@@ -49,6 +49,7 @@ export class InsuranceClaimController {
   @Patch(':id/status')
   async updateStatus(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
     @Param('id') id: string,
     @Body()
     dto: {
@@ -57,6 +58,6 @@ export class InsuranceClaimController {
       rejectionReason?: string;
     },
   ) {
-    return this.claimService.updateClaimStatus(tenantId, id, dto);
+    return this.claimService.updateClaimStatus(tenantId, userId, id, dto);
   }
 }

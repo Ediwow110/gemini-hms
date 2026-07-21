@@ -15,6 +15,7 @@ describe('SessionService', () => {
     session: {
       create: jest.Mock;
       findUnique: jest.Mock;
+      findMany: jest.Mock;
       update: jest.Mock;
       updateMany: jest.Mock;
       delete: jest.Mock;
@@ -27,6 +28,7 @@ describe('SessionService', () => {
       session: {
         create: jest.fn(),
         findUnique: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
         update: jest.fn(),
         updateMany: jest.fn(),
         delete: jest.fn(),

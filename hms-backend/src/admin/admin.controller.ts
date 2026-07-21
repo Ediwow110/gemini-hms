@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AdminService } from './admin.service';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
@@ -96,12 +97,14 @@ export class AdminController {
   }
 
   @Post('users')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async createUser(@GetUser() actor: RequestUser, @Body() dto: CreateUserDto) {
     return this.adminService.createUser(actor, dto);
   }
 
   @Patch('users/:id')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async updateUser(
     @GetUser() actor: RequestUser,
@@ -112,6 +115,7 @@ export class AdminController {
   }
 
   @Post('roles')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async createCustomRole(
     @GetUser() actor: RequestUser,
@@ -126,6 +130,7 @@ export class AdminController {
   }
 
   @Patch('roles/:roleId')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async updateCustomRole(
     @GetUser() actor: RequestUser,
@@ -141,6 +146,7 @@ export class AdminController {
   }
 
   @Post('roles/:roleId/archive')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async archiveCustomRole(
     @GetUser() actor: RequestUser,
@@ -151,6 +157,7 @@ export class AdminController {
   }
 
   @Post('users/:id/deactivate')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async deactivateUser(
     @GetUser() actor: RequestUser,
@@ -161,6 +168,7 @@ export class AdminController {
   }
 
   @Post('users/:id/activate')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async activateUser(
     @GetUser() actor: RequestUser,
@@ -171,6 +179,7 @@ export class AdminController {
   }
 
   @Post('users/:id/force-logout')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async forceLogout(
     @GetUser() actor: RequestUser,
@@ -181,6 +190,7 @@ export class AdminController {
   }
 
   @Post('users/:id/reset-password')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async resetPassword(
     @GetUser() actor: RequestUser,
@@ -191,6 +201,7 @@ export class AdminController {
   }
 
   @Post('users/:id/reset-mfa')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async resetUserMfa(
     @GetUser() actor: RequestUser,
@@ -201,6 +212,7 @@ export class AdminController {
   }
 
   @Post('users/:id/roles')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async assignUserRole(
     @GetUser() actor: RequestUser,
@@ -216,6 +228,7 @@ export class AdminController {
   }
 
   @Post('users/:id/roles/:roleId/revoke')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async revokeUserRole(
     @GetUser() actor: RequestUser,
@@ -232,6 +245,7 @@ export class AdminController {
   }
 
   @Post('roles/:roleId/permissions')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async grantRolePermission(
     @GetUser() actor: RequestUser,
@@ -247,6 +261,7 @@ export class AdminController {
   }
 
   @Post('roles/:roleId/permissions/:permissionId/revoke')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async revokeRolePermission(
     @GetUser() actor: RequestUser,
@@ -263,6 +278,7 @@ export class AdminController {
   }
 
   @Post('users/:id/roles/privileged-requests')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async requestPrivilegedRoleAssignment(
     @GetUser() actor: RequestUser,
@@ -278,6 +294,7 @@ export class AdminController {
   }
 
   @Post('users/:id/roles/:roleId/privileged-revoke-requests')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async requestPrivilegedRoleRevocation(
     @GetUser() actor: RequestUser,
@@ -294,6 +311,7 @@ export class AdminController {
   }
 
   @Post('roles/:roleId/permissions/:permissionId/privileged-requests')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async requestPrivilegedRolePermissionGrant(
     @GetUser() actor: RequestUser,
@@ -310,6 +328,7 @@ export class AdminController {
   }
 
   @Post('roles/:roleId/permissions/:permissionId/privileged-revoke-requests')
+  @Throttle({ sensitive: { limit: 10, ttl: 60000 } })
   @RequirePermissions('admin.role.change')
   async requestPrivilegedRolePermissionRevoke(
     @GetUser() actor: RequestUser,

@@ -4,6 +4,8 @@ import { Session } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import * as bcrypt from 'bcrypt';
 
+const MAX_CONCURRENT_SESSIONS = 5;
+
 @Injectable()
 export class SessionService {
   constructor(
@@ -19,12 +21,39 @@ export class SessionService {
     userAgent?: string,
     ip?: string,
   ): Promise<Session> {
+    // Enforce concurrent session limit — revoke oldest when exceeded
+    const activeSessions = await this.prisma.session.findMany({
+      where: { userId, expiresAt: { gt: new Date() } },
+      orderBy: { lastRotatedAt: 'asc' },
+    });
+
+    if (activeSessions.length >= MAX_CONCURRENT_SESSIONS) {
+      const sessionsToRevoke = activeSessions.slice(
+        0,
+        activeSessions.length - MAX_CONCURRENT_SESSIONS + 1,
+      );
+      await this.prisma.session.deleteMany({
+        where: { id: { in: sessionsToRevoke.map((s) => s.id) } },
+      });
+      await this.audit.log({
+        tenantId,
+        userId,
+        eventKey: 'SESSION_LIMIT_EXCEEDED',
+        recordType: 'Session',
+        recordId: sessionsToRevoke[0].id,
+        newValues: {
+          revokedCount: sessionsToRevoke.length,
+          maxConcurrent: MAX_CONCURRENT_SESSIONS,
+        },
+      });
+    }
+
     return this.prisma.session.create({
       data: {
         userId,
         tenantId,
         refreshTokenHash: initialRtHash,
-        isMfaVerified: false, // Default to false until step-up verification
+        isMfaVerified: false,
         expiresAt,
         userAgent,
         ipAddress: ip,

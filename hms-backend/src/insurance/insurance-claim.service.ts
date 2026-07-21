@@ -124,6 +124,7 @@ export class InsuranceClaimService {
 
   async updateClaimStatus(
     tenantId: string,
+    userId: string,
     id: string,
     data: {
       status: 'ACCEPTED' | 'REJECTED' | 'PAID';
@@ -175,6 +176,20 @@ export class InsuranceClaimService {
           tx,
         );
       }
+
+      await this.audit.log({
+        tenantId,
+        userId,
+        eventKey: 'INSURANCE_CLAIM_STATUS_CHANGED',
+        recordType: 'InsuranceClaim',
+        recordId: claim.id,
+        oldValues: { status: claim.status },
+        newValues: {
+          status: data.status,
+          settledAmount: data.settledAmount,
+          rejectionReason: data.rejectionReason,
+        },
+      }, tx);
 
       return updatedClaim;
     });
