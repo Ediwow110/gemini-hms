@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { Reflector } from '@nestjs/core';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -7,7 +8,6 @@ import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
-import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
 import { PERMISSIONS_KEY } from '../src/auth/decorators/permissions.decorator';
 import { AnalyticsModule } from '../src/analytics/analytics.module';
@@ -29,9 +29,13 @@ describe('Advanced Analytics Module (e2e)', () => {
         PrismaModule,
         AnalyticsModule,
       ],
+      providers: [
+        {
+          provide: APP_GUARD,
+          useClass: MockJwtAuthGuard,
+        },
+      ],
     })
-      .overrideGuard(JwtAuthGuard)
-      .useClass(MockJwtAuthGuard)
       .overrideGuard(PermissionsGuard)
       .useFactory({
         factory: (reflector: Reflector) => ({
