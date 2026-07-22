@@ -146,7 +146,7 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Clinical Operations',
     items: [
-      { label: 'Ops Dashboard', to: '/clinical/ops', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Branch Admin', 'Doctor', 'Nurse'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
+      { label: 'Ops Dashboard', to: '/clinical/ops', icon: LayoutDashboard, allowedRoles: ['Branch Admin', 'Doctor', 'Nurse'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
     ],
   },
   {
@@ -156,11 +156,11 @@ export const roleNavigation: NavGroupConfig[] = [
         label: 'Branch Dashboard',
         to: '/branch-admin',
         icon: LayoutDashboard,
-        allowedRoles: ['Super Admin', 'Branch Admin'],
+        allowedRoles: ['Branch Admin'],
         zone: 'staff',
         isBranchScoped: true,
         children: [
-          { label: 'Overview', to: '/branch-admin', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+          { label: 'Overview', to: '/branch-admin', icon: LayoutDashboard, allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
         ],
       },
     ],
@@ -168,9 +168,9 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Governance',
     items: [
-      { label: 'Approvals', to: '/approvals', icon: CheckSquare, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
-      { label: 'Branch Reports', to: '/reports', icon: BarChart3, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true },
-      { label: 'Branch Audit Logs', to: '/audit-logs', icon: History, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
+      { label: 'Approvals', to: '/approvals', icon: CheckSquare, allowedRoles: ['Branch Admin'], zone: 'staff' },
+      { label: 'Branch Reports', to: '/reports', icon: BarChart3, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
+      { label: 'Branch Audit Logs', to: '/audit-logs', icon: History, allowedRoles: ['Branch Admin'], zone: 'staff' },
       {
         label: 'Branch Settings',
         to: '/settings',
