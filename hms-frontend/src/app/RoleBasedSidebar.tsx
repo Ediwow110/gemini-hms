@@ -75,6 +75,79 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
   const [manuallyExpanded, setManuallyExpanded] = useState<Set<string>>(new Set());
   const [manuallyCollapsed, setManuallyCollapsed] = useState<Set<string>>(new Set());
 
+  const isDemoHidden = (item: NavItemConfig) => {
+    if (item.isHiddenForDemo) return true;
+    if (item.isComingSoon) return true;
+    return false;
+  };
+
+  const canView = useCallback((item: NavItemConfig) => {
+    if (isDemoHidden(item)) return false;
+
+    const route = getPortalRouteConfig(item.to);
+    return canAccess({
+      permission: route ? route.requiredPermission : item.permission,
+      allowedRoles: route ? route.allowedRoles : item.allowedRoles,
+      isBranchScoped: route ? Boolean(route.isBranchScoped) : item.isBranchScoped,
+      zone: route ? route.zone : item.zone,
+    });
+  }, [canAccess]);
+
+  const getAllowedItems = useCallback((items: NavItemConfig[]): NavItemConfig[] => {
+    const filterAndMap = (currentItems: NavItemConfig[]): NavItemConfig[] =>
+      currentItems
+        .filter(canView)
+        .map((item: NavItemConfig): NavItemConfig => ({
+          ...item,
+          children: item.children ? filterAndMap(item.children) : undefined,
+        }));
+    return filterAndMap(items);
+  }, [canView]);
+
+  const navGroups = useMemo(() => {
+    return roleNavigation
+      .map((group) => ({
+        ...group,
+        items: getAllowedItems(group.items),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [getAllowedItems]);
+
+  const allowedTopLevelItems = useMemo(() => navGroups.flatMap((group) => group.items), [navGroups]);
+
+  const activeMatch = useMemo(() => {
+    return findBestMatch(allowedTopLevelItems, pathname);
+  }, [allowedTopLevelItems, pathname]);
+
+  const isActive = (item: NavItemConfig): boolean => {
+    if (!activeMatch) return false;
+    const normalizedItemTo = normalizePath(item.to);
+    const normalizedTarget = normalizePath(pathname);
+
+    // 1. Exact match on pathname (for both parents and leaves)
+    if (normalizedItemTo === normalizedTarget) {
+      return true;
+    }
+
+    // 2. Parent check: if the item has children, it is active if it's a prefix of the target path
+    if (item.children?.length) {
+      if (normalizedItemTo !== '/' && normalizedTarget.startsWith(normalizedItemTo + '/')) {
+        return true;
+      }
+    } else {
+      // 3. Leaf check: if the item has no children, it is active if its path exactly matches the resolved active match leaf path
+      const normalizedActiveTo = normalizePath(activeMatch.item.to);
+      if (normalizedItemTo !== '/' && normalizedItemTo === normalizedActiveTo) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const hasActiveDescendant = (item: NavItemConfig): boolean =>
+    item.children?.some((child) => isActive(child) || hasActiveDescendant(child)) ?? false;
+
   const isExpanded = (item: NavItemConfig) => {
     const key = getItemKey(item);
     if (manuallyCollapsed.has(key)) return false;
