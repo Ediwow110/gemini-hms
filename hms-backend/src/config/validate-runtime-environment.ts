@@ -57,6 +57,10 @@ export function validateRuntimeEnvironment(
     errors.push('DISABLE_AUTH_VERIFICATION cannot be enabled in production');
   }
 
+  if (env.DISABLE_MFA === 'true') {
+    errors.push('DISABLE_MFA cannot be enabled in production');
+  }
+
   validateNotificationProviders(env, errors);
 
   const origins = (env.CORS_ALLOWED_ORIGINS ?? '')
