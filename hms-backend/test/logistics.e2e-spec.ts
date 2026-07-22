@@ -181,7 +181,7 @@ describe('Logistics & Field Service (e2e)', () => {
       permissions: ['field_service.job.view'],
       email: 'techA@test.com',
       branchId,
-    } as any;
+    };
 
     const res = await request(app.getHttpServer())
       .get('/api/v1/logistics/technician/jobs')
@@ -201,7 +201,7 @@ describe('Logistics & Field Service (e2e)', () => {
       permissions: ['field_service.job.view'],
       email: 'techB@test.com',
       branchId,
-    } as any;
+    };
 
     const res = await request(app.getHttpServer())
       .get('/api/v1/logistics/technician/jobs')
@@ -219,7 +219,7 @@ describe('Logistics & Field Service (e2e)', () => {
       permissions: ['field_service.installation.update'],
       email: 'techA@test.com',
       branchId,
-    } as any;
+    };
 
     const res = await request(app.getHttpServer())
       .patch(`/api/v1/logistics/installations/${installationJobId}/status`)
@@ -242,7 +242,7 @@ describe('Logistics & Field Service (e2e)', () => {
       permissions: ['field_service.job.view'],
       email: 'techA@test.com',
       branchId,
-    } as any;
+    };
 
     const res = await request(app.getHttpServer())
       .get('/api/v1/logistics/technician/jobs')
