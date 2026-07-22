@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { PrismaModule } from '../src/prisma/prisma.module';
@@ -8,6 +9,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
+import { PERMISSIONS_KEY } from '../src/auth/decorators/permissions.decorator';
 import { LogisticsModule } from '../src/logistics/logistics.module';
 import { randomUUID } from 'crypto';
 
@@ -35,7 +37,23 @@ describe('Logistics & Installation E2E Gates (e2e)', () => {
       .overrideGuard(JwtAuthGuard)
       .useClass(MockJwtAuthGuard)
       .overrideGuard(PermissionsGuard)
-      .useValue({ canActivate: () => true })
+      .useFactory({
+        factory: (reflector: Reflector) => ({
+          canActivate: (context: import('@nestjs/common').ExecutionContext) => {
+            const metadata = reflector.getAllAndOverride<string[]>(
+              PERMISSIONS_KEY,
+              [context.getHandler(), context.getClass()],
+            );
+            if (!metadata || metadata.length === 0) return true;
+            const req = context.switchToHttp().getRequest();
+            const user = req.user;
+            if (!user || !user.permissions) return false;
+            if (user.permissions.includes('*')) return true;
+            return metadata.some((p: string) => user.permissions.includes(p));
+          },
+        }),
+        inject: [Reflector],
+      })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -154,7 +172,7 @@ describe('Logistics & Installation E2E Gates (e2e)', () => {
       tenantId: tenantId,
       email: 'tech@hospital.com',
       roles: ['Nurse'],
-      permissions: [],
+      permissions: ['field_service.job.view'],
       branchId: testBranchId,
     };
 
@@ -174,7 +192,7 @@ describe('Logistics & Installation E2E Gates (e2e)', () => {
       tenantId: tenantId,
       email: 'tech@hospital.com',
       roles: ['Nurse'],
-      permissions: [],
+      permissions: ['field_service.job.view'],
       branchId: testBranchId,
     };
 
@@ -194,7 +212,7 @@ describe('Logistics & Installation E2E Gates (e2e)', () => {
       tenantId: tenantId,
       email: 'tech@hospital.com',
       roles: ['Nurse'],
-      permissions: [],
+      permissions: ['field_service.installation.update'],
       branchId: testBranchId,
     };
 
@@ -214,7 +232,7 @@ describe('Logistics & Installation E2E Gates (e2e)', () => {
       tenantId: tenantId,
       email: 'tech@hospital.com',
       roles: ['Nurse'],
-      permissions: [],
+      permissions: ['field_service.installation.update'],
       branchId: testBranchId,
     };
 

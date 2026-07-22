@@ -93,7 +93,12 @@ export class AuthService {
     // Check account lockout
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       this.logger.warn(`Locked account login attempt: ${email}`);
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Account locked due to too many failed attempts',
+        error: 'account_locked',
+        lockedUntil: user.lockedUntil,
+      });
     }
 
     const passwordValid = await bcrypt.compare(pass, user.passwordHash);
@@ -132,7 +137,12 @@ export class AuthService {
           );
         });
 
-        throw new UnauthorizedException('Invalid credentials');
+        throw new UnauthorizedException({
+          statusCode: 401,
+          message: 'Account locked due to too many failed attempts',
+          error: 'account_locked',
+          lockedUntil: lockUntil,
+        });
       }
 
       await this.prisma.user.update({ where: { id: user.id }, data: updates });

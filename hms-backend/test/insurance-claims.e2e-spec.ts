@@ -11,6 +11,11 @@ import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
 import { BranchGuard } from '../src/auth/guards/branch.guard';
 import { randomUUID } from 'crypto';
 
+const TEST_USER_ID = '11111111-1111-4111-8111-111111111111';
+const NURSE_USER_ID = '22222222-2222-4222-8222-222222222222';
+const CASHIER_USER_ID = '33333333-3333-4333-8333-333333333333';
+const ADMIN_USER_ID = '44444444-4444-4444-8444-444444444444';
+
 describe('Insurance Claims E2E', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
@@ -57,6 +62,28 @@ describe('Insurance Claims E2E', () => {
       },
     });
     branchId = branch.id;
+
+    // Seed default mock user for audit_logs FK constraint
+    await prisma.user.upsert({
+      where: { id: TEST_USER_ID },
+      update: {},
+      create: {
+        id: TEST_USER_ID,
+        tenantId,
+        email: 'admin@hms.local',
+        passwordHash: 'mock-hash',
+      },
+    });
+
+    // Seed additional mock users for test cases
+    await prisma.user.createMany({
+      data: [
+        { id: NURSE_USER_ID, tenantId, email: 'nurse@hms.local', passwordHash: 'mock-hash' },
+        { id: CASHIER_USER_ID, tenantId, email: 'finance@hms.local', passwordHash: 'mock-hash' },
+        { id: ADMIN_USER_ID, tenantId, email: 'admin2@hms.local', passwordHash: 'mock-hash' },
+      ],
+      skipDuplicates: true,
+    });
 
     // Seed patient
     const patient = await prisma.patient.create({
@@ -116,7 +143,7 @@ describe('Insurance Claims E2E', () => {
   it('should restrict claims operations based on roles', async () => {
     // 1. Nurse attempts to create claim -> 403
     MockJwtAuthGuard.user = {
-      userId: randomUUID(),
+      userId: NURSE_USER_ID,
       tenantId,
       branchId,
       roles: ['Nurse'],
@@ -137,7 +164,7 @@ describe('Insurance Claims E2E', () => {
   it('should allow Cashier/Super Admin to create, submit, and settle claims', async () => {
     // 2. Cashier creates claim for invoice -> 201
     MockJwtAuthGuard.user = {
-      userId: randomUUID(),
+      userId: CASHIER_USER_ID,
       tenantId,
       branchId,
       roles: ['Cashier'],
@@ -180,7 +207,7 @@ describe('Insurance Claims E2E', () => {
 
     // 5. Super Admin updates claim to PAID -> settledAmount set, ledger entry posted
     MockJwtAuthGuard.user = {
-      userId: randomUUID(),
+      userId: ADMIN_USER_ID,
       tenantId,
       branchId,
       roles: ['Super Admin'],

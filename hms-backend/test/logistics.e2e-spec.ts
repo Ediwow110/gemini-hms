@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { PrismaModule } from '../src/prisma/prisma.module';
@@ -8,6 +9,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
+import { PERMISSIONS_KEY } from '../src/auth/decorators/permissions.decorator';
 import { LogisticsModule } from '../src/logistics/logistics.module';
 import { AuditModule } from '../src/audit/audit.module';
 import { randomUUID } from 'crypto';
@@ -40,7 +42,23 @@ describe('Logistics & Field Service (e2e)', () => {
       .overrideGuard(JwtAuthGuard)
       .useClass(MockJwtAuthGuard)
       .overrideGuard(PermissionsGuard)
-      .useValue({ canActivate: () => true })
+      .useFactory({
+        factory: (reflector: Reflector) => ({
+          canActivate: (context: import('@nestjs/common').ExecutionContext) => {
+            const metadata = reflector.getAllAndOverride<string[]>(
+              PERMISSIONS_KEY,
+              [context.getHandler(), context.getClass()],
+            );
+            if (!metadata || metadata.length === 0) return true;
+            const req = context.switchToHttp().getRequest();
+            const user = req.user;
+            if (!user || !user.permissions) return false;
+            if (user.permissions.includes('*')) return true;
+            return metadata.some((p: string) => user.permissions.includes(p));
+          },
+        }),
+        inject: [Reflector],
+      })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -158,6 +176,7 @@ describe('Logistics & Field Service (e2e)', () => {
       userId: techA_Id,
       tenantId,
       roles: ['Field Technician'],
+      permissions: ['field_service.job.view'],
       email: 'techA@test.com',
     } as any;
 
@@ -176,6 +195,7 @@ describe('Logistics & Field Service (e2e)', () => {
       userId: techB_Id,
       tenantId,
       roles: ['Field Technician'],
+      permissions: ['field_service.job.view'],
       email: 'techB@test.com',
     } as any;
 
@@ -192,6 +212,7 @@ describe('Logistics & Field Service (e2e)', () => {
       userId: techA_Id,
       tenantId,
       roles: ['Field Technician'],
+      permissions: ['field_service.installation.update'],
       email: 'techA@test.com',
     } as any;
 
@@ -213,6 +234,7 @@ describe('Logistics & Field Service (e2e)', () => {
       userId: techA_Id,
       tenantId: otherTenantId,
       roles: ['Field Technician'],
+      permissions: ['field_service.job.view'],
       email: 'techA@test.com',
     } as any;
 

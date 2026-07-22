@@ -76,7 +76,7 @@ describe('Cross-Branch Policy (e2e)', () => {
 
   it('Super Admin (multi-branch) SHOULD be able to access action for ANY branch', async () => {
     MockJwtAuthGuard.user.roles = ['Super Admin'];
-    MockJwtAuthGuard.user.branchId = undefined as unknown as string; // No default branch
+    MockJwtAuthGuard.user.branchId = branchAId; // Super Admin has a default branch but can cross branches
 
     await request(app.getHttpServer())
       .post('/policy-test/branch-action')
