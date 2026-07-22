@@ -22,6 +22,7 @@ describe('Logistics & Field Service (e2e)', () => {
   const techA_Id = randomUUID();
   const techB_Id = randomUUID();
 
+  let branchId: string;
   let assetId: string;
   let installationJobId: string;
   let shipmentId: string;
@@ -91,7 +92,7 @@ describe('Logistics & Field Service (e2e)', () => {
     });
 
     // Create a SalesOrder and Asset to link jobs to
-    const branchId = randomUUID();
+    branchId = randomUUID();
     await prisma.branch.create({
       data: { id: branchId, tenantId, name: 'Main Branch', code: 'MAIN' },
     });
@@ -179,6 +180,7 @@ describe('Logistics & Field Service (e2e)', () => {
       roles: ['Field Technician'],
       permissions: ['field_service.job.view'],
       email: 'techA@test.com',
+      branchId,
     } as any;
 
     const res = await request(app.getHttpServer())
@@ -198,6 +200,7 @@ describe('Logistics & Field Service (e2e)', () => {
       roles: ['Field Technician'],
       permissions: ['field_service.job.view'],
       email: 'techB@test.com',
+      branchId,
     } as any;
 
     const res = await request(app.getHttpServer())
@@ -215,6 +218,7 @@ describe('Logistics & Field Service (e2e)', () => {
       roles: ['Field Technician'],
       permissions: ['field_service.installation.update'],
       email: 'techA@test.com',
+      branchId,
     } as any;
 
     const res = await request(app.getHttpServer())
@@ -237,6 +241,7 @@ describe('Logistics & Field Service (e2e)', () => {
       roles: ['Field Technician'],
       permissions: ['field_service.job.view'],
       email: 'techA@test.com',
+      branchId,
     } as any;
 
     const res = await request(app.getHttpServer())
