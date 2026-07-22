@@ -78,9 +78,24 @@ describe('Insurance Claims E2E', () => {
     // Seed additional mock users for test cases
     await prisma.user.createMany({
       data: [
-        { id: NURSE_USER_ID, tenantId, email: 'nurse@hms.local', passwordHash: 'mock-hash' },
-        { id: CASHIER_USER_ID, tenantId, email: 'finance@hms.local', passwordHash: 'mock-hash' },
-        { id: ADMIN_USER_ID, tenantId, email: 'admin2@hms.local', passwordHash: 'mock-hash' },
+        {
+          id: NURSE_USER_ID,
+          tenantId,
+          email: 'nurse@hms.local',
+          passwordHash: 'mock-hash',
+        },
+        {
+          id: CASHIER_USER_ID,
+          tenantId,
+          email: 'finance@hms.local',
+          passwordHash: 'mock-hash',
+        },
+        {
+          id: ADMIN_USER_ID,
+          tenantId,
+          email: 'admin2@hms.local',
+          passwordHash: 'mock-hash',
+        },
       ],
       skipDuplicates: true,
     });

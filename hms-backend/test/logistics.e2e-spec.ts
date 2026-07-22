@@ -45,16 +45,17 @@ describe('Logistics & Field Service (e2e)', () => {
       .useFactory({
         factory: (reflector: Reflector) => ({
           canActivate: (context: import('@nestjs/common').ExecutionContext) => {
-            const metadata = reflector.getAllAndOverride<string[]>(
-              PERMISSIONS_KEY,
-              [context.getHandler(), context.getClass()],
-            );
-            if (!metadata || metadata.length === 0) return true;
+            const raw = reflector.getAllAndOverride<
+              string[] | { permissions: string[] }
+            >(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
+            if (!raw) return true;
+            const required = Array.isArray(raw) ? raw : raw.permissions;
+            if (!required || required.length === 0) return true;
             const req = context.switchToHttp().getRequest();
             const user = req.user;
             if (!user || !user.permissions) return false;
             if (user.permissions.includes('*')) return true;
-            return metadata.some((p: string) => user.permissions.includes(p));
+            return required.some((p: string) => user.permissions.includes(p));
           },
         }),
         inject: [Reflector],
