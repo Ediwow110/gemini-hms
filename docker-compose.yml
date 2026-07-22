@@ -34,7 +34,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       DISABLE_MFA: ${DISABLE_MFA:-true}
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DATABASE_URL: ${CONTAINER_DATABASE_URL:-postgresql://hms_local_user:hms_secure_pass@db:5432/gemini_hms_local?schema=public}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       MASTER_MFA_KEY: ${MASTER_MFA_KEY:?MASTER_MFA_KEY is required}
       AUDIT_CHAIN_SECRET: ${AUDIT_CHAIN_SECRET:-local-audit-chain-secret-that-is-at-least-32-characters}
@@ -51,8 +51,8 @@ services:
       context: ./hms-frontend
     restart: always
     ports:
-      - "5173:80"
-      - "80:80"
+      - "5173:8080"
+      - "80:8080"
     depends_on:
       - backend
 
