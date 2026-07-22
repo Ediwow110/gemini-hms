@@ -73,98 +73,43 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
   const user = useUser();
   const { canAccess } = usePermissions();
   const [manuallyExpanded, setManuallyExpanded] = useState<Set<string>>(new Set());
-
-  const isDemoHidden = (item: NavItemConfig) => {
-    if (item.isHiddenForDemo) return true;
-    if (item.isComingSoon) return true;
-    return false;
-  };
-
-  const canView = useCallback((item: NavItemConfig) => {
-    if (isDemoHidden(item)) return false;
-
-    const route = getPortalRouteConfig(item.to);
-    return canAccess({
-      permission: route ? route.requiredPermission : item.permission,
-      allowedRoles: route ? route.allowedRoles : item.allowedRoles,
-      isBranchScoped: route ? Boolean(route.isBranchScoped) : item.isBranchScoped,
-      zone: route ? route.zone : item.zone,
-    });
-  }, [canAccess]);
-
-  const getAllowedItems = useCallback((items: NavItemConfig[]): NavItemConfig[] => {
-    const filterAndMap = (currentItems: NavItemConfig[]): NavItemConfig[] =>
-      currentItems
-        .filter(canView)
-        .map((item: NavItemConfig): NavItemConfig => ({
-          ...item,
-          children: item.children ? filterAndMap(item.children) : undefined,
-        }));
-    return filterAndMap(items);
-  }, [canView]);
-
-  const navGroups = useMemo(() => {
-    return roleNavigation
-      .map((group) => ({
-        ...group,
-        items: getAllowedItems(group.items),
-      }))
-      .filter((group) => group.items.length > 0);
-  }, [getAllowedItems]);
-
-  const allowedTopLevelItems = useMemo(() => navGroups.flatMap((group) => group.items), [navGroups]);
-
-  const activeMatch = useMemo(() => {
-    return findBestMatch(allowedTopLevelItems, pathname);
-  }, [allowedTopLevelItems, pathname]);
-
-  const isActive = (item: NavItemConfig): boolean => {
-    if (!activeMatch) return false;
-    const normalizedItemTo = normalizePath(item.to);
-    const normalizedTarget = normalizePath(pathname);
-
-    // 1. Exact match on pathname (for both parents and leaves)
-    if (normalizedItemTo === normalizedTarget) {
-      return true;
-    }
-
-    // 2. Parent check: if the item has children, it is active if it's a prefix of the target path
-    if (item.children?.length) {
-      if (normalizedItemTo !== '/' && normalizedTarget.startsWith(normalizedItemTo + '/')) {
-        return true;
-      }
-    } else {
-      // 3. Leaf check: if the item has no children, it is active if its path exactly matches the resolved active match leaf path
-      const normalizedActiveTo = normalizePath(activeMatch.item.to);
-      if (normalizedItemTo !== '/' && normalizedItemTo === normalizedActiveTo) {
-        return true;
-      }
-    }
-
-    return false;
-  };
-
-  const hasActiveDescendant = (item: NavItemConfig): boolean =>
-    item.children?.some((child) => isActive(child) || hasActiveDescendant(child)) ?? false;
+  const [manuallyCollapsed, setManuallyCollapsed] = useState<Set<string>>(new Set());
 
   const isExpanded = (item: NavItemConfig) => {
-    const auto = Boolean(item.children?.length) && (isActive(item) || hasActiveDescendant(item));
-    if (auto) return true;
-    return manuallyExpanded.has(getItemKey(item));
+    const key = getItemKey(item);
+    if (manuallyCollapsed.has(key)) return false;
+    if (manuallyExpanded.has(key)) return true;
+    return Boolean(item.children?.length) && (isActive(item) || hasActiveDescendant(item));
   };
 
   const handleNavClick = (item: NavItemConfig) => {
     if (item.children?.length) {
-      // Don't toggle if auto-expanded — prevents silently polluting
-      // manuallyExpanded when the click has no visible effect.
-      if (isActive(item) || hasActiveDescendant(item)) return;
       const key = getItemKey(item);
-      setManuallyExpanded(prev => {
-        const next = new Set(prev);
-        if (next.has(key)) next.delete(key);
-        else next.add(key);
-        return next;
-      });
+      const expanded = isExpanded(item);
+
+      if (expanded) {
+        setManuallyExpanded((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        setManuallyCollapsed((prev) => {
+          const next = new Set(prev);
+          next.add(key);
+          return next;
+        });
+      } else {
+        setManuallyCollapsed((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        setManuallyExpanded((prev) => {
+          const next = new Set(prev);
+          next.add(key);
+          return next;
+        });
+      }
     } else {
       onNavClick?.();
     }

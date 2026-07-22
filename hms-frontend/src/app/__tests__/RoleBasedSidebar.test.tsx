@@ -312,33 +312,39 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     expect(orgBtns2[0]).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('clicking an auto-expanded parent does not corrupt manuallyExpanded', () => {
+  it('clicking an active auto-expanded parent toggles it closed and open', async () => {
     mockUseUser.mockReturnValue({
       id: 'sa-1',
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
     });
 
-    const { rerender } = render(
+    render(
       <MemoryRouter initialEntries={['/settings/security']}>
         <RoleBasedSidebar pathname="/settings/security" />
       </MemoryRouter>
     );
 
-    // Click auto-expanded parent — should be a no-op
+    // On child route — Organization Settings parent button is initially expanded
     const orgBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
-    orgBtns[0].click();
+    expect(orgBtns[0]).toHaveAttribute('aria-expanded', 'true');
 
-    // Navigate to unrelated route
-    rerender(
-      <MemoryRouter initialEntries={['/settings/security']}>
-        <RoleBasedSidebar pathname="/admin" />
-      </MemoryRouter>
-    );
+    // Click active parent button — should collapse it!
+    fireEvent.click(orgBtns[0]);
 
-    // Parent should have collapsed (manuallyExpanded was NOT corrupted)
-    const orgBtns2 = screen.getAllByRole('button', { name: /Organization Settings/ });
-    expect(orgBtns2[0]).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => {
+      const collapsedBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+      expect(collapsedBtns[0]).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    // Click active parent button again — should expand it back!
+    const collapsedBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+    fireEvent.click(collapsedBtns[0]);
+
+    await waitFor(() => {
+      const reexpandedBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+      expect(reexpandedBtns[0]).toHaveAttribute('aria-expanded', 'true');
+    });
   });
 
   it('duplicate /settings entries (Organization Settings + Branch Settings) have independent expansion state', async () => {
