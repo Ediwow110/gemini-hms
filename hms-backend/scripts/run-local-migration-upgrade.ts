@@ -27,7 +27,7 @@ process.env.ALLOW_DESTRUCTIVE_MIGRATION_TEST = 'true';
 process.env.NODE_ENV = 'test';
 
 async function main(): Promise<void> {
-  await import('./verify-migration-upgrade');
+  await import('./verify-migration-upgrade.js');
 }
 
 void main();
