@@ -32,6 +32,8 @@ services:
     ports:
       - "3000:3000"
     environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DISABLE_MFA: ${DISABLE_MFA:-true}
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       MASTER_MFA_KEY: ${MASTER_MFA_KEY:?MASTER_MFA_KEY is required}
