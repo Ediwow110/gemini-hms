@@ -74,6 +74,7 @@ jobs:
         run: |
           npm ci
           npx prisma generate
+          npx prisma migrate deploy
           npm run test
           npm run test:e2e
 
@@ -146,12 +147,6 @@ jobs:
           JWT_SECRET: test-secret-key-for-e2e-tests-that-is-long-enough
           JWT_REFRESH_SECRET: test-refresh-secret-for-e2e-tests
           NODE_ENV: test
-          # Smoke test is not a security test: skip MFA step-up so the
-          # Super Admin / sensitive-role accounts in the seed can complete
-          # /auth/login with a 200 instead of a 202 (MFA_REQUIRED). The
-          # backend already honors this env var and logs a warning when set.
-          # See: PR #229 Browser Smoke follow-up to ef024b36.
-          DISABLE_AUTH_VERIFICATION: 'true'
         run: |
           npm ci
           npx prisma generate

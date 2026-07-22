@@ -68,7 +68,8 @@ export function validateDemoEnvironment(options: {
   }
 
   // 6. Destructive Reset Guard
-  if (options.isDestructive) {
+  // Skip in test environments — CI test databases are disposable
+  if (options.isDestructive && nodeEnv !== 'test') {
     const confirmEnv = process.env.DEMO_DB_RESET_CONFIRM === 'RESET_SYNTHETIC_DEMO_DB';
     const confirmFlag = process.argv.includes('--confirm-demo-reset');
 
