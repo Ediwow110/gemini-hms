@@ -51,6 +51,7 @@ services:
       context: ./hms-frontend
     restart: always
     ports:
+      - "5173:80"
       - "80:80"
     depends_on:
       - backend
