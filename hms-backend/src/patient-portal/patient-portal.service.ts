@@ -51,12 +51,61 @@ export class PatientPortalService {
       throw new UnauthorizedException('Invalid tenant or credentials');
     }
 
+    // Check account lockout
+    if (patientUser.lockUntil && patientUser.lockUntil > new Date()) {
+      this.logger.warn(
+        `Locked patient portal account login attempt: ${dto.email}`,
+      );
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Account locked due to too many failed attempts',
+        error: 'account_locked',
+        lockedUntil: patientUser.lockUntil,
+      });
+    }
+
     const passwordMatch = await bcrypt.compare(
       dto.password,
       patientUser.passwordHash,
     );
+
     if (!passwordMatch) {
+      // Increment failed attempts
+      const newAttempts = patientUser.failedLoginAttempts + 1;
+      const updates: any = { failedLoginAttempts: newAttempts };
+
+      if (newAttempts >= 5) {
+        const lockUntil = new Date();
+        lockUntil.setMinutes(lockUntil.getMinutes() + 15);
+        updates.lockUntil = lockUntil;
+
+        await this.prisma.patientUser.update({
+          where: { id: patientUser.id },
+          data: updates,
+        });
+
+        throw new UnauthorizedException({
+          statusCode: 401,
+          message: 'Account locked due to too many failed attempts',
+          error: 'account_locked',
+          lockUntil,
+        });
+      }
+
+      await this.prisma.patientUser.update({
+        where: { id: patientUser.id },
+        data: updates,
+      });
+
       throw new UnauthorizedException('Invalid tenant or credentials');
+    }
+
+    // Successful login: reset failed attempts
+    if (patientUser.failedLoginAttempts > 0 || patientUser.lockUntil !== null) {
+      await this.prisma.patientUser.update({
+        where: { id: patientUser.id },
+        data: { failedLoginAttempts: 0, lockUntil: null },
+      });
     }
 
     const payload = {
@@ -65,6 +114,7 @@ export class PatientPortalService {
       patientId: patientUser.patientId,
       email: patientUser.email,
       isPatientPortal: true,
+      tokenVersion: patientUser.tokenVersion,
     };
 
     const token = await this.jwtService.signAsync(payload);
@@ -529,6 +579,16 @@ export class PatientPortalService {
         createdAt: true,
         updatedAt: true,
       },
+    });
+  }
+
+  /**
+   * Increment tokenVersion to invalidate all existing JWTs for a patient user.
+   */
+  async revokeTokens(patientUserId: string) {
+    await this.prisma.patientUser.update({
+      where: { id: patientUserId },
+      data: { tokenVersion: { increment: 1 } },
     });
   }
 }

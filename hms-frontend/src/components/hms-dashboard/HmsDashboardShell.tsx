@@ -22,10 +22,10 @@ export const HmsDashboardShell = ({
   widthTier = 'wide',
   className = '',
 }: HmsDashboardShellProps) => (
-  <div className={`mx-auto w-full ${WIDTH_TIERS[widthTier]} ${className}`}>
-    {toolbar && <div className="mb-5">{toolbar}</div>}
-    <div className="flex min-w-0 flex-col gap-6">{children}</div>
-    {footer && <div className="mt-6">{footer}</div>}
+  <div className={`mx-auto w-full px-1 ${WIDTH_TIERS[widthTier]} ${className}`}>
+    {toolbar && <div className="mb-4">{toolbar}</div>}
+    <div className="flex min-w-0 flex-col gap-5">{children}</div>
+    {footer && <div className="mt-5 border-t border-slate-200 pt-4">{footer}</div>}
   </div>
 );
 

@@ -32,9 +32,14 @@ fi
 echo "Starting backup of database '$DB_NAME' at $DB_HOST:$DB_PORT..."
 
 # Run pg_dump and compress
-export PGPASSWORD="$DB_PASS"
+# Use .pgpass file instead of environment variable (more secure)
+PGPASS_FILE=$(mktemp)
+chmod 600 "$PGPASS_FILE"
+echo "${DB_HOST}:${DB_PORT}:${DB_NAME}:${DB_USER}:${DB_PASS}" > "$PGPASS_FILE"
+export PGPASSFILE="$PGPASS_FILE"
+trap 'rm -f "$PGPASS_FILE"' EXIT
+
 pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" --no-owner --no-privileges | gzip > "$BACKUP_FILE"
-unset PGPASSWORD
 
 if [[ $? -eq 0 && -f "$BACKUP_FILE" ]]; then
   FILE_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)

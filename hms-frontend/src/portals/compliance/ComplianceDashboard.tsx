@@ -130,14 +130,14 @@ export const ComplianceDashboard: React.FC = () => {
       <ComplianceScopeFilter />
 
       {(auditError || reviewError) && !hasSyntheticContent && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
+        <div className="rounded-md border border-amber-500 bg-amber-50 p-4 text-xs text-amber-800">
           {auditError || reviewError}
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="rounded-md border border-slate-300 bg-white px-4 py-3 shadow-sm">
         <div className="flex items-start gap-3">
-          <Lock className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" />
+          <Lock className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
           <div>
             <p className="text-sm font-semibold text-slate-900">Audit controls are enabled</p>
             <p className="mt-0.5 text-xs leading-5 text-slate-600">
@@ -147,7 +147,7 @@ export const ComplianceDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-5">
         <AnalyticsMetricCard
           title="Critical access events"
           value={auditLoading ? '—' : criticalCount}
@@ -184,7 +184,7 @@ export const ComplianceDashboard: React.FC = () => {
         />
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-5">
         <div className="col-span-12 xl:col-span-8">
           <div className="space-y-3">
             <div>
@@ -195,14 +195,14 @@ export const ComplianceDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="col-span-12 space-y-6 xl:col-span-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="col-span-12 space-y-5 xl:col-span-4">
+          <div className="rounded-md border border-slate-300 bg-white p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-900">Access review</h3>
             {reviewLoading ? (
               <p className="mt-4 text-xs text-slate-400">Loading access review…</p>
             ) : accessReview ? (
               <dl className="mt-4 space-y-3 text-xs">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center justify-between border-b border-slate-300 pb-3">
                   <dt className="font-medium text-slate-600">Status</dt>
                   <dd>
                     <StatusBadge
@@ -211,7 +211,7 @@ export const ComplianceDashboard: React.FC = () => {
                     />
                   </dd>
                 </div>
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center justify-between border-b border-slate-300 pb-3">
                   <dt className="font-medium text-slate-600">Stale accounts</dt>
                   <dd className="font-mono font-semibold text-slate-900">{accessReview.staleAccountsCount}</dd>
                 </div>
@@ -277,9 +277,9 @@ export const ComplianceDashboard: React.FC = () => {
           />
         </div>
         <div className="col-span-12 xl:col-span-6">
-          <div className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="h-full rounded-md border border-slate-300 bg-white p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-900">Recent audit activity</h3>
-            <div className="mt-4 divide-y divide-slate-100">
+            <div className="mt-4 divide-y divide-slate-300">
               {auditEvents.slice(0, 6).map((event) => (
                 <div key={event.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
                   <div className="min-w-0">

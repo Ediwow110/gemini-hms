@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 
 interface AlertItem {
   id: string;
@@ -18,27 +18,30 @@ interface HmsAlertRailProps {
   loading?: boolean;
 }
 
-const severityConfig: Record<string, { border: string; bg: string; text: string; icon: typeof AlertTriangle; iconColor: string }> = {
+const severityConfig: Record<string, { border: string; bg: string; text: string; icon: typeof AlertTriangle; iconColor: string; badge: string }> = {
   critical: {
-    border: 'border-l-rose-500',
-    bg: 'bg-rose-50/50',
-    text: 'text-rose-800',
+    border: 'border-l-red-600',
+    bg: 'bg-red-50',
+    text: 'text-red-900',
     icon: AlertTriangle,
-    iconColor: 'text-rose-500',
+    iconColor: 'text-red-600',
+    badge: 'bg-red-600 text-white',
   },
   warning: {
     border: 'border-l-amber-500',
-    bg: 'bg-amber-50/50',
-    text: 'text-amber-800',
+    bg: 'bg-amber-50',
+    text: 'text-amber-900',
     icon: AlertCircle,
-    iconColor: 'text-amber-500',
+    iconColor: 'text-amber-600',
+    badge: 'bg-amber-500 text-white',
   },
   success: {
-    border: 'border-l-emerald-500',
-    bg: 'bg-emerald-50/50',
-    text: 'text-emerald-800',
+    border: 'border-l-emerald-600',
+    bg: 'bg-emerald-50',
+    text: 'text-emerald-900',
     icon: CheckCircle2,
-    iconColor: 'text-emerald-500',
+    iconColor: 'text-emerald-600',
+    badge: 'bg-emerald-600 text-white',
   },
 };
 
@@ -47,32 +50,32 @@ const AlertRow = ({ alert }: { alert: AlertItem }) => {
   const Icon = cfg.icon;
 
   return (
-    <div className={`flex items-start gap-3 border-l-4 ${cfg.border} ${cfg.bg} rounded-r-lg px-3 py-2`}>
+    <div className={`flex items-start gap-3 border border-slate-200 border-l-4 ${cfg.border} ${cfg.bg} rounded-sm px-3.5 py-2.5`}>
       <Icon className={`h-4 w-4 mt-0.5 flex-shrink-0 ${cfg.iconColor}`} aria-hidden="true" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className={`text-[13px] font-semibold ${cfg.text}`}>{alert.title}</span>
+          <span className={`text-[12px] font-bold uppercase tracking-wide ${cfg.text}`}>{alert.title}</span>
           {alert.timestamp && (
-            <span className="text-[11px] font-mono text-slate-400 flex-shrink-0">{alert.timestamp}</span>
+            <span className="text-[10px] font-mono font-medium text-slate-400 flex-shrink-0">{alert.timestamp}</span>
           )}
         </div>
-        <p className="mt-0.5 text-[12px] text-slate-600">{alert.message}</p>
+        <p className="mt-0.5 text-[12px] leading-relaxed text-slate-600">{alert.message}</p>
         {(alert.actionLabel) && (
           <div className="mt-1.5">
             {alert.actionHref ? (
               <a
                 href={alert.actionHref}
-                className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                className="inline-flex items-center gap-1 rounded-sm bg-slate-800 px-2 py-1 text-[11px] font-bold text-white transition-colors hover:bg-slate-700"
               >
-                {alert.actionLabel} →
+                {alert.actionLabel}
               </a>
             ) : (
               <button
                 type="button"
                 onClick={alert.actionOnClick}
-                className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                className="inline-flex items-center gap-1 rounded-sm bg-slate-800 px-2 py-1 text-[11px] font-bold text-white transition-colors hover:bg-slate-700"
               >
-                {alert.actionLabel} →
+                {alert.actionLabel}
               </button>
             )}
           </div>
@@ -88,16 +91,16 @@ export const HmsAlertRail = ({ alerts, maxVisible = 3, loading }: HmsAlertRailPr
   if (loading) {
     return (
       <div className="flex flex-col gap-2 animate-pulse">
-        <div className="h-10 w-full rounded-lg bg-slate-100" />
+        <div className="h-12 w-full rounded-sm bg-slate-200" />
       </div>
     );
   }
 
   if (alerts.length === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2">
-        <CheckCircle2 className="h-4 w-4 text-emerald-500" aria-hidden="true" />
-        <span className="text-[12px] font-medium text-emerald-700">All clear — no alerts</span>
+      <div className="flex items-center gap-2.5 rounded-sm border border-emerald-300 bg-emerald-50 px-4 py-2.5">
+        <ShieldCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+        <span className="text-[12px] font-bold text-emerald-800">All systems nominal — no active alerts</span>
       </div>
     );
   }
@@ -106,7 +109,7 @@ export const HmsAlertRail = ({ alerts, maxVisible = 3, loading }: HmsAlertRailPr
   const remaining = alerts.length - maxVisible;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" role="region" aria-label="Alerts">
       {visible.map((a) => (
         <AlertRow key={a.id} alert={a} />
       ))}
@@ -114,12 +117,12 @@ export const HmsAlertRail = ({ alerts, maxVisible = 3, loading }: HmsAlertRailPr
         <button
           type="button"
           onClick={() => setShowAll(!showAll)}
-          className="flex items-center gap-1 self-start text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors"
+          className="flex items-center gap-1 self-start rounded-sm px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
         >
           {showAll ? (
-            <>Show less <ChevronUp className="h-3 w-3" /></>
+            <>Collapse <ChevronUp className="h-3 w-3" /></>
           ) : (
-            <>Show {remaining} more <ChevronDown className="h-3 w-3" /></>
+            <>+{remaining} more <ChevronDown className="h-3 w-3" /></>
           )}
         </button>
       )}

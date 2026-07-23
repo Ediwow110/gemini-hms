@@ -70,7 +70,7 @@ export const FieldServiceDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/field-service/schedule')}
-                className="min-h-10 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
+                className="min-h-10 rounded-md bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
               >
                 My schedule
               </button>
@@ -84,7 +84,7 @@ export const FieldServiceDashboard: React.FC = () => {
       {activeQuery.isLoading ? (
         <HmsLoadingSkeleton variant="kpi" />
       ) : activeQuery.error ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold text-rose-700">
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
           Field service jobs could not be loaded. Use Refresh after checking the branch and network context.
         </div>
       ) : (
@@ -126,19 +126,17 @@ export const FieldServiceDashboard: React.FC = () => {
 
       <div className="grid grid-cols-12 gap-6">
         <section className="col-span-12 space-y-4 xl:col-span-8" aria-labelledby="field-job-queue-title">
-          <div>
-            <h2 id="field-job-queue-title" className="text-sm font-semibold text-slate-900">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-1 rounded-full bg-sky-600" />
+            <h2 id="field-job-queue-title" className="text-xs font-bold uppercase tracking-wide text-slate-800">
               {isAdmin ? 'Selected branch job queue' : 'Upcoming job queue'}
             </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Operational work remains more prominent than analytics on this dashboard.
-            </p>
           </div>
 
           {activeQuery.isLoading ? (
             <HmsLoadingSkeleton variant="table" />
           ) : activeQuery.error ? (
-            <div className="rounded-2xl border border-rose-200 bg-white p-8 text-center text-sm text-rose-600">
+            <div className="rounded-md border border-rose-200 bg-white p-8 text-center text-sm text-rose-600">
               Job queue unavailable.
             </div>
           ) : allJobs.length === 0 ? (

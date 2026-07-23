@@ -58,7 +58,7 @@ export const DoctorDashboard = () => {
       <div className="mx-auto py-4 space-y-6">
         <div className="flex flex-wrap gap-x-6 gap-y-3 animate-pulse">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-1 border-l-2 border-l-slate-200 pl-3">
+            <div key={i} className="flex flex-col gap-1 border-l-2 border-l-slate-300 pl-3">
               <div className="h-3 w-20 rounded bg-slate-100" />
               <div className="h-5 w-16 rounded bg-slate-100" />
             </div>
@@ -189,9 +189,9 @@ export const DoctorDashboard = () => {
       {metrics.length > 0 && <HmsKpiStrip metrics={metrics} />}
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-5">
         {/* Left Column — 8/12 cols desktop, 12 cols tablet/mobile */}
-        <div className="col-span-12 xl:col-span-8 space-y-6">
+        <div className="col-span-12 xl:col-span-8 space-y-5">
           {/* Patient Queue */}
           <HmsWorkQueue
             title="My Patient Queue"
@@ -203,13 +203,13 @@ export const DoctorDashboard = () => {
                   <span className={`h-2 w-2 rounded-full ${
                     item.priority === 'emergency' ? 'bg-rose-500'
                     : item.priority === 'critical' ? 'bg-amber-500'
-                    : item.priority === 'urgent' ? 'bg-blue-500'
+                    : item.priority === 'urgent' ? 'bg-sky-500'
                     : 'bg-slate-400'
                   }`} />
                   <span className={`text-[11px] font-semibold ${
                     item.priority === 'emergency' ? 'text-rose-700'
                     : item.priority === 'critical' ? 'text-amber-700'
-                    : item.priority === 'urgent' ? 'text-blue-700'
+                    : item.priority === 'urgent' ? 'text-sky-700'
                     : 'text-slate-500'
                   }`}>
                     {item.priority.toUpperCase()}
@@ -235,7 +235,7 @@ export const DoctorDashboard = () => {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); navigate(`/doctor/emr?patientId=${item.patientId}`); }}
-                  className="text-[12px] font-semibold text-blue-600 hover:text-blue-700"
+                  className="text-[12px] font-semibold text-sky-600 hover:text-sky-700"
                 >
                   Chart →
                 </button>
@@ -263,7 +263,7 @@ export const DoctorDashboard = () => {
         </div>
 
         {/* Right Column — 4/12 cols desktop, 12 cols tablet/mobile */}
-        <div className="col-span-12 xl:col-span-4 space-y-6">
+        <div className="col-span-12 xl:col-span-4 space-y-5">
           {/* SLA Panel */}
           {slaItems.length > 0 && (
             <HmsSlaPanel title="Queue Thresholds" items={slaItems} />

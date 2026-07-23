@@ -117,7 +117,7 @@ export const ITSupportDashboard: React.FC = () => {
       <ITScopeFilter displayOnly />
 
       {(statsError || ticketsError) && !hasSyntheticContent && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
           {statsError || ticketsError}
         </div>
       )}
@@ -184,7 +184,7 @@ export const ITSupportDashboard: React.FC = () => {
           {canManageSupport ? (
             <UserSupportQueue tickets={displayedTickets} isDemo={useDemoTickets} />
           ) : (
-            <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+            <div className="flex min-h-72 flex-col items-center justify-center rounded-md border border-slate-300 bg-white p-8 text-center shadow-sm">
               <AlertOctagon className="h-8 w-8 text-slate-300" aria-hidden="true" />
               <p className="mt-3 text-sm font-semibold text-slate-800">Support queue restricted</p>
               <p className="mt-1 max-w-md text-xs leading-5 text-slate-500">

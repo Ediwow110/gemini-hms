@@ -138,7 +138,7 @@ export const HRDashboard: React.FC = () => {
   if (isLoading) {
     return (
       <HmsDashboardShell>
-        <div className="min-h-80 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+        <div className="min-h-80 animate-pulse rounded-md border border-slate-300 bg-white" />
       </HmsDashboardShell>
     );
   }
@@ -157,7 +157,7 @@ export const HRDashboard: React.FC = () => {
             <select
               value={department}
               onChange={(event) => setDepartment(event.target.value)}
-              className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
             >
               <option value="all">All departments</option>
               {departments.map((item) => (
@@ -188,14 +188,14 @@ export const HRDashboard: React.FC = () => {
       <HRScopeFilter />
 
       {expiringLicensesCount > 0 && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-md border border-red-600 bg-red-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
             <div>
-              <p className="text-sm font-semibold text-rose-900">
+              <p className="text-sm font-semibold text-red-900">
                 {expiringLicensesCount} clinical credential{expiringLicensesCount === 1 ? '' : 's'} require review
               </p>
-              <p className="mt-0.5 text-xs leading-5 text-rose-700">
+              <p className="mt-0.5 text-xs leading-5 text-red-700">
                 Credentials enter the 30-day renewal window and may affect future scheduling.
               </p>
             </div>
@@ -203,21 +203,21 @@ export const HRDashboard: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/hr/licenses')}
-            className="min-h-10 rounded-xl border border-rose-300 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+            className="min-h-10 rounded-md border border-red-600 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
           >
             Review credentials
           </button>
         </div>
       )}
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-5">
         <AnalyticsMetricCard title="Total headcount" value={hrMetrics.headcount} />
         <AnalyticsMetricCard title="Pending leave" value={hrMetrics.pendingLeave} severity={hrMetrics.pendingLeave > 8 ? 'warning' : 'info'} />
         <AnalyticsMetricCard title="Expired licenses" value={hrMetrics.expiredLicenses} severity={hrMetrics.expiredLicenses > 0 ? 'critical' : 'success'} />
         <AnalyticsMetricCard title="Staffing gap" value={hrMetrics.staffingGap} severity={hrMetrics.staffingGap > 0 ? 'warning' : 'success'} />
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-5">
         <div className="col-span-12 xl:col-span-8">
           <EmployeeWorklist employees={filteredEmployees} />
         </div>

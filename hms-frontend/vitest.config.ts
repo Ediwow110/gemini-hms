@@ -13,6 +13,16 @@ export default defineConfig({
       // React 19 CJS production build omits `act` export; dev build required by @testing-library/react
       NODE_ENV: 'development',
     },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      thresholds: {
+        branches: 50,
+        functions: 50,
+        lines: 50,
+        statements: 50,
+      },
+    },
   },
   resolve: {
     alias: {

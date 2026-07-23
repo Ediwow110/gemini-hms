@@ -16,6 +16,7 @@ export const apiClient = axios.create({
   // apiClient baseURL includes `/api`; service methods should call `/v1/...`
   // Use relative URL in dev to go through Vite proxy; absolute in prod
   baseURL: import.meta.env.VITE_API_URL || '/api',
+  timeout: 30000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

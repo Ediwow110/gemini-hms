@@ -37,17 +37,17 @@ const PATIENT_COOKIE_OPTIONS = (isProd: boolean) => ({
   httpOnly: true,
   secure: isProd || configuredSameSite() === 'none',
   sameSite: configuredSameSite(),
-  path: '/patient-portal',
+  path: '/api/v1/patient-portal',
 });
 
 const PATIENT_CSRF_COOKIE_OPTIONS = (isProd: boolean) => ({
-  httpOnly: true,
+  httpOnly: false,
   secure: isProd || configuredSameSite() === 'none',
   sameSite: configuredSameSite(),
-  path: '/patient-portal',
+  path: '/api/v1/patient-portal',
 });
 
-@Controller('patient-portal')
+@Controller('api/v1/patient-portal')
 @Public()
 export class PatientPortalController {
   constructor(
@@ -86,10 +86,14 @@ export class PatientPortalController {
 
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post('auth/logout')
-  @UseGuards(PatientCsrfGuard)
-  async logout(@Res({ passthrough: true }) res: any) {
-    res.clearCookie('patient_token', { path: '/patient-portal' });
-    res.clearCookie('patient_csrf', { path: '/patient-portal' });
+  @UseGuards(PatientJwtGuard, PatientCsrfGuard)
+  async logout(
+    @GetPatientUser('patientUserId') patientUserId: string,
+    @Res({ passthrough: true }) res: any,
+  ) {
+    await this.portalService.revokeTokens(patientUserId);
+    res.clearCookie('patient_token', { path: '/api/v1/patient-portal' });
+    res.clearCookie('patient_csrf', { path: '/api/v1/patient-portal' });
   }
 
   @Get('profile')

@@ -154,13 +154,20 @@ jobs:
           npx tsx prisma/seed.ts
           npm run build
           npm run start:prod &
+          backend_ready=false
           for i in $(seq 1 60); do
             if curl -sf http://localhost:3000/api/v1/health > /dev/null; then
               echo "Backend healthy"
+              backend_ready=true
               break
             fi
             sleep 2
           done
+          if [ "$backend_ready" != "true" ]; then
+            echo "ERROR: Backend failed to become healthy within 120s"
+            npm run stop:prod || true
+            exit 1
+          fi
           curl -sf http://localhost:3000/api/v1/health
 
       - name: Install frontend and Playwright
@@ -173,13 +180,19 @@ jobs:
         working-directory: ./hms-frontend
         run: |
           npm run dev &
+          frontend_ready=false
           for i in $(seq 1 45); do
             if curl -sf http://localhost:5173 > /dev/null; then
               echo "Frontend ready"
+              frontend_ready=true
               break
             fi
             sleep 2
           done
+          if [ "$frontend_ready" != "true" ]; then
+            echo "ERROR: Frontend failed to become ready within 90s"
+            exit 1
+          fi
           npm run test:smoke
 
   docker-build:

@@ -195,7 +195,7 @@ export const ClaimsDashboard = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-5">
       <div className="flex justify-between items-center">
         <PageHeader
           title="HMO & PhilHealth Claims Center"
@@ -207,12 +207,12 @@ export const ClaimsDashboard = () => {
       </div>
 
       {/* Tabs Menu */}
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-slate-300">
         <button
           onClick={() => setActiveTab("pipeline")}
           className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${
             activeTab === "pipeline"
-              ? "border-indigo-600 text-indigo-600"
+              ? "border-sky-600 text-sky-600"
               : "border-transparent text-slate-500 hover:text-slate-900"
           }`}
         >
@@ -224,7 +224,7 @@ export const ClaimsDashboard = () => {
           onClick={() => setActiveTab("partners")}
           className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${
             activeTab === "partners"
-              ? "border-indigo-600 text-indigo-600"
+              ? "border-sky-600 text-sky-600"
               : "border-transparent text-slate-500 hover:text-slate-900"
           }`}
         >
@@ -235,7 +235,7 @@ export const ClaimsDashboard = () => {
       </div>
 
       {/* Global Notice — honest description of live backend contract */}
-      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl flex items-start gap-3 text-xs font-medium">
+      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-md flex items-start gap-3 text-xs font-medium">
         <ShieldAlert className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
         <div className="space-y-1">
           <p>
@@ -255,7 +255,7 @@ export const ClaimsDashboard = () => {
 
       {/* Error Notice */}
       {fetchError && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-medium mt-4">
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-md flex items-center gap-3 text-xs font-medium mt-4">
           <ShieldAlert className="h-4 w-4 text-rose-600 flex-shrink-0" />
           <span>{fetchError}</span>
         </div>
@@ -263,56 +263,56 @@ export const ClaimsDashboard = () => {
 
       {/* TAB 1: Claims Reconciliation Pipeline */}
       {activeTab === "pipeline" && (
-        <div className="card overflow-hidden">
+        <div className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/80 border-b border-slate-200">
+            <thead className="bg-slate-100/80 border-b border-slate-300">
               <tr>
-                <th className="px-5 py-3.5 font-semibold text-slate-500 uppercase">Claim ID</th>
-                <th className="px-5 py-3.5 font-semibold text-slate-500 uppercase">LOA Reference</th>
-                <th className="px-5 py-3.5 font-semibold text-slate-500 uppercase">Patient Name</th>
-                <th className="px-5 py-3.5 font-semibold text-slate-500 uppercase font-mono">Invoice ID Link</th>
-                <th className="px-5 py-3.5 font-semibold text-slate-500 uppercase text-right">Total Claim</th>
-                <th className="px-5 py-3.5 font-semibold text-slate-500 uppercase text-right">Approved Amount</th>
-                <th className="px-5 py-3.5 font-semibold text-slate-500 uppercase text-center">Status</th>
-                <th className="px-5 py-3.5 text-right">Action</th>
+                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wide text-[10px]">Claim ID</th>
+                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wide text-[10px]">LOA Reference</th>
+                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wide text-[10px]">Patient Name</th>
+                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wide text-[10px] font-mono">Invoice ID Link</th>
+                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wide text-[10px] text-right">Total Claim</th>
+                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wide text-[10px] text-right">Approved Amount</th>
+                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wide text-[10px] text-center">Status</th>
+                <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200">
               {claims.map(claim => {
                 let statusColor = "";
 
                 if (claim.status === "PENDING") {
                   statusColor = "bg-amber-50 text-amber-700 border-amber-200";
                 } else if (claim.status === "SUBMITTED") {
-                  statusColor = "bg-blue-50 text-blue-700 border-blue-200";
+                  statusColor = "bg-sky-50 text-sky-700 border-sky-200";
                 } else if (claim.status === "APPROVED") {
                   statusColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
                 } else if (claim.status === "PAID") {
-                  statusColor = "bg-indigo-50 text-indigo-700 border-indigo-200";
+                  statusColor = "bg-sky-50 text-sky-700 border-sky-200";
                 } else if (claim.status === "DENIED") {
                   statusColor = "bg-rose-50 text-rose-700 border-rose-200";
                 }
 
                 return (
-                  <tr key={claim.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-5 py-4 font-bold text-slate-900">{claim.claimIdentifier}</td>
-                    <td className="px-5 py-4 font-semibold text-slate-700">{claim.loaReference || "—"}</td>
-                    <td className="px-5 py-4 font-bold text-slate-900">{claim.patientName}</td>
-                    <td className="px-5 py-4 text-indigo-600 font-bold font-mono">{claim.invoiceId}</td>
-                    <td className="px-5 py-4 text-right font-bold text-slate-900">₱{claim.totalClaimValue.toLocaleString()}</td>
-                    <td className="px-5 py-4 text-right font-extrabold text-emerald-600">
+                  <tr key={claim.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 font-bold text-slate-900">{claim.claimIdentifier}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-700">{claim.loaReference || "—"}</td>
+                    <td className="px-4 py-3 font-bold text-slate-900">{claim.patientName}</td>
+                    <td className="px-4 py-3 text-sky-600 font-bold font-mono">{claim.invoiceId}</td>
+                    <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">₱{claim.totalClaimValue.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">
                       ₱{claim.approvedValue.toLocaleString()}
                     </td>
-                    <td className="px-5 py-4 text-center">
-                      <span className={`inline-block px-2 py-0.5 font-bold rounded-full border text-[9px] ${statusColor}`}>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-block px-2 py-0.5 font-bold rounded-md border text-[9px] ${statusColor}`}>
                         {claim.status}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-right">
+                    <td className="px-4 py-3 text-right">
                       {claim.status !== "APPROVED" && claim.status !== "DENIED" && claim.status !== "PAID" ? (
                         <button
                           onClick={() => handleOpenReconcile(claim)}
-                          className="btn bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-3 py-1.5"
+                          className="btn bg-sky-600 hover:bg-sky-700 text-white text-[10px] font-bold px-3 py-1.5"
                         >
                           Reconcile
                         </button>
@@ -330,28 +330,28 @@ export const ClaimsDashboard = () => {
 
       {/* TAB 2: HMO Insurance Partners Directory */}
       {activeTab === "partners" && (
-        <div className="card overflow-hidden max-w-4xl">
+        <div className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm max-w-4xl">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/80 border-b border-slate-200">
+            <thead className="bg-slate-100/80 border-b border-slate-300">
               <tr>
-                <th className="px-5 py-3.5 font-semibold text-slate-500 uppercase">Insurance Partner Name</th>
-                <th className="px-5 py-3.5 font-semibold text-slate-500 uppercase">Unique ID Code</th>
-                <th className="px-5 py-3.5 font-semibold text-slate-500 uppercase text-center">Status</th>
+                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wide text-[10px]">Insurance Partner Name</th>
+                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wide text-[10px]">Unique ID Code</th>
+                <th className="px-4 py-3 font-bold text-slate-500 uppercase tracking-wide text-[10px] text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200">
               {partners.map(p => (
-                <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-5 py-4 font-bold text-slate-900 flex items-center gap-2">
-                    <Building className="h-4 w-4 text-indigo-500" />
+                <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-4 py-3 font-bold text-slate-900 flex items-center gap-2">
+                    <Building className="h-4 w-4 text-sky-600" />
                     {p.name}
                   </td>
-                  <td className="px-5 py-4 font-mono font-bold text-slate-600">{p.code}</td>
-                  <td className="px-5 py-4 text-center">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-lg border font-bold text-[10px] ${
+                  <td className="px-4 py-3 font-mono font-bold text-slate-600">{p.code}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`inline-block px-2.5 py-0.5 rounded-md border font-bold text-[10px] ${
                       p.status === "ACTIVE"
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-slate-50 text-slate-600 border-slate-200"
+                        : "bg-slate-50 text-slate-600 border-slate-300"
                     }`}>
                       {p.status}
                     </span>
@@ -366,14 +366,14 @@ export const ClaimsDashboard = () => {
       {/* CLAIMS RECONCILIATION DIALOG MODAL */}
       {selectedClaim && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Claims reconciliation update">
-          <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 animate-slide-up">
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 border-b pb-3 border-slate-100">
-              <RefreshCcw className="h-5 w-5 text-indigo-600" />
+          <div className="bg-white rounded-md p-6 shadow-2xl max-w-md w-full border border-slate-300">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 border-b pb-3 border-slate-300">
+              <RefreshCcw className="h-5 w-5 text-sky-600" />
               Claims Reconciliation Update
             </h3>
 
             <div className="mt-4 space-y-4">
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs space-y-2">
+              <div className="bg-slate-50 p-4 rounded-md border border-slate-300 text-xs space-y-2">
                 <p><strong>Claim Identifier:</strong> {selectedClaim.claimIdentifier}</p>
                 <p><strong>LOA Reference:</strong> {selectedClaim.loaReference || "—"}</p>
                 <p><strong>Patient Name:</strong> {selectedClaim.patientName}</p>
@@ -382,7 +382,7 @@ export const ClaimsDashboard = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Authorized Approved Value (₱)</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Authorized Approved Value (₱)</label>
                 <input
                   type="number"
                   value={approvedAmount}
@@ -394,7 +394,7 @@ export const ClaimsDashboard = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Insurance Remarks</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Insurance Remarks</label>
                 <textarea
                   value={remarks}
                   onChange={e => setRemarks(e.target.value)}
@@ -407,7 +407,7 @@ export const ClaimsDashboard = () => {
               </div>
 
               {updateError && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-xl text-xs" role="alert" data-testid="update-error">
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 px-3 py-2 rounded-md text-xs" role="alert" data-testid="update-error">
                   {updateError}
                 </div>
               )}
@@ -425,7 +425,7 @@ export const ClaimsDashboard = () => {
               <button
                 disabled={isUpdating}
                 onClick={handleSaveReconciliation}
-                className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 disabled:bg-indigo-300"
+                className="btn btn-primary bg-sky-600 hover:bg-sky-700 text-white text-xs px-4 py-2 disabled:bg-sky-300"
                 data-testid="save-reconciliation"
               >
                 {isUpdating ? "Saving…" : "Save Reconciliation"}

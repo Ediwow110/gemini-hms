@@ -1,9 +1,7 @@
 import { useMemo } from 'react';
-import { Clock, CreditCard, DollarSign, FileText, TrendingUp, Users } from 'lucide-react';
+import { Clock, CreditCard, FileText, TrendingUp, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AnalyticsMetricCard,
-  ChartCard,
   StatusDonutChart,
   TrendLineChart,
 } from '../../components/analytics';
@@ -13,6 +11,7 @@ import {
   HmsDashboardShell,
   HmsDataSourceBadge,
   HmsEmptyState,
+  HmsKpiStrip,
   HmsQuickActions,
   HmsToolbar,
 } from '../../components/hms-dashboard';
@@ -90,16 +89,17 @@ export const CashierDashboard = () => {
       />
 
       {(invoicesError || sessionError) && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
+        <div className="rounded-md border border-slate-300 border-l-[3px] border-l-amber-500 bg-white px-4 py-3 text-xs text-amber-800 shadow-sm">
           {invoicesError || sessionError}
         </div>
       )}
 
-      <div className={`flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${session ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+      {/* Session Status Alert */}
+      <div className={`flex flex-col gap-3 rounded-md border border-slate-300 border-l-[3px] bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between ${session ? 'border-l-emerald-600' : 'border-l-amber-500'}`}>
         <div className="flex items-start gap-3">
-          <Clock className={`mt-0.5 h-5 w-5 shrink-0 ${session ? 'text-emerald-600' : 'text-amber-600'}`} />
+          <Clock className={`mt-0.5 h-5 w-5 shrink-0 ${session ? 'text-emerald-600' : 'text-amber-500'}`} />
           <div>
-            <p className="text-sm font-semibold text-slate-900">
+            <p className="text-sm font-bold text-slate-900">
               {sessionLoading
                 ? 'Loading cashier session…'
                 : session
@@ -116,76 +116,58 @@ export const CashierDashboard = () => {
         <button
           type="button"
           onClick={() => navigate('/cashier/session')}
-          className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
+          className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-sky-600 hover:bg-sky-50"
         >
           {session ? 'Manage session' : 'Open session'}
         </button>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
-        <AnalyticsMetricCard
-          title="Total invoices"
-          value={invoicesLoading ? '—' : invoices.length}
-          icon={FileText}
-          severity="info"
-          href="/cashier/invoices"
-        />
-        <AnalyticsMetricCard
-          title="Pending payment"
-          value={invoicesLoading ? '—' : pendingCount}
-          icon={CreditCard}
-          severity={pendingCount > 0 ? 'warning' : 'success'}
-          href="/cashier/invoices"
-        />
-        <AnalyticsMetricCard
-          title="Paid invoices"
-          value={invoicesLoading ? '—' : paidCount}
-          icon={DollarSign}
-          severity="success"
-          href="/cashier/payments"
-        />
-        <AnalyticsMetricCard
-          title="Outstanding balance"
-          value={invoicesLoading ? '—' : peso(totalOutstanding)}
-          icon={TrendingUp}
-          severity={totalOutstanding > 0 ? 'critical' : 'success'}
-          href="/cashier/invoices"
-        />
-      </div>
+      {/* KPI Strip */}
+      <HmsKpiStrip
+        metrics={[
+          { id: 'total-invoices', label: 'Total Invoices', value: invoicesLoading ? '—' : invoices.length, severity: 'info' as const, href: '/cashier/invoices' },
+          { id: 'pending-payment', label: 'Pending Payment', value: invoicesLoading ? '—' : pendingCount, severity: (pendingCount > 0 ? 'warning' : 'success') as 'warning' | 'success', href: '/cashier/invoices' },
+          { id: 'paid-invoices', label: 'Paid Invoices', value: invoicesLoading ? '—' : paidCount, severity: 'success' as const, href: '/cashier/payments' },
+          { id: 'outstanding-balance', label: 'Outstanding Balance', value: invoicesLoading ? '—' : peso(totalOutstanding), severity: (totalOutstanding > 0 ? 'critical' : 'success') as 'critical' | 'success', href: '/cashier/invoices' },
+        ]}
+      />
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-5">
         <section className="col-span-12 xl:col-span-8" aria-labelledby="recent-invoices-heading">
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-100 px-5 py-4">
-              <h2 id="recent-invoices-heading" className="text-sm font-semibold text-slate-900">Recent invoices</h2>
-              <p className="mt-1 text-xs text-slate-500">Live invoice records requiring collection or reconciliation.</p>
+          <div className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+            <div className="flex items-center gap-2 border-b border-slate-300 bg-slate-50 px-4 py-3">
+              <div className="h-4 w-1 rounded-full bg-sky-600" />
+              <div>
+                <h2 id="recent-invoices-heading" className="text-xs font-bold uppercase tracking-wide text-slate-800">Recent Invoices</h2>
+                <p className="mt-0.5 text-[11px] text-slate-500">Live invoice records requiring collection or reconciliation.</p>
+              </div>
             </div>
             {invoicesLoading ? (
               <div className="min-h-56 animate-pulse bg-slate-50" />
             ) : invoices.length === 0 ? (
-              <div className="p-5">
+              <div className="p-4">
                 <HmsEmptyState title="No invoices found" description="Invoices will appear after billable services are posted." />
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[680px] text-left text-xs">
-                  <thead className="border-b border-slate-100 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  <thead className="border-b border-slate-300 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                     <tr>
-                      <th className="px-5 py-3">Invoice</th>
+                      <th className="px-4 py-3">Invoice</th>
                       <th className="px-4 py-3">Created</th>
                       <th className="px-4 py-3">Status</th>
-                      <th className="px-5 py-3 text-right">Amount</th>
+                      <th className="px-4 py-3 text-right">Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {invoices.slice(0, 8).map((invoice) => (
                       <tr key={invoice.id} className="hover:bg-slate-50">
-                        <td className="px-5 py-3.5 font-semibold text-slate-900">{invoice.invoiceNumber}</td>
-                        <td className="px-4 py-3.5 text-slate-500">{new Date(invoice.createdAt).toLocaleDateString()}</td>
-                        <td className="px-4 py-3.5">
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-700">{invoice.status}</span>
+                        <td className="px-4 py-3 font-semibold text-slate-900">{invoice.invoiceNumber}</td>
+                        <td className="px-4 py-3 text-slate-500">{new Date(invoice.createdAt).toLocaleDateString()}</td>
+                        <td className="px-4 py-3">
+                          <span className="rounded-md border border-slate-300 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-700">{invoice.status}</span>
                         </td>
-                        <td className="px-5 py-3.5 text-right font-mono font-semibold text-slate-900">{peso(safeMoney(invoice.totalAmount))}</td>
+                        <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{peso(safeMoney(invoice.totalAmount))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -208,29 +190,40 @@ export const CashierDashboard = () => {
         </div>
 
         <div className="col-span-12 xl:col-span-7">
-          <ChartCard
-            title="Collections trend"
-            description="Synthetic daily collections used for dashboard layout review."
-            emphasis="primary"
-          >
-            <TrendLineChart
-              data={demoFinanceDashboard.revenueTrend}
-              title="Collections trend"
-              valueLabel="Collections"
-              valueFormatter={peso}
-            />
-          </ChartCard>
+          <div className="rounded-md border border-slate-300 bg-white shadow-sm">
+            <div className="flex items-center gap-2 border-b border-slate-300 bg-slate-50 px-4 py-3">
+              <div className="h-4 w-1 rounded-full bg-sky-600" />
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-slate-800">Collections Trend</h3>
+                <p className="mt-0.5 text-[11px] text-slate-500">Synthetic daily collections used for dashboard layout review.</p>
+              </div>
+            </div>
+            <div className="px-4 py-3">
+              <TrendLineChart
+                data={demoFinanceDashboard.revenueTrend}
+                title="Collections trend"
+                valueLabel="Collections"
+                valueFormatter={peso}
+              />
+            </div>
+          </div>
         </div>
         <div className="col-span-12 xl:col-span-5">
-          <ChartCard
-            title="Payment method mix"
-            description="Synthetic settlement composition for closeout planning."
-          >
-            <StatusDonutChart
-              data={demoFinanceDashboard.paymentMethods}
-              title="Payment method mix"
-            />
-          </ChartCard>
+          <div className="rounded-md border border-slate-300 bg-white shadow-sm">
+            <div className="flex items-center gap-2 border-b border-slate-300 bg-slate-50 px-4 py-3">
+              <div className="h-4 w-1 rounded-full bg-sky-600" />
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-slate-800">Payment Method Mix</h3>
+                <p className="mt-0.5 text-[11px] text-slate-500">Synthetic settlement composition for closeout planning.</p>
+              </div>
+            </div>
+            <div className="px-4 py-3">
+              <StatusDonutChart
+                data={demoFinanceDashboard.paymentMethods}
+                title="Payment method mix"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </HmsDashboardShell>

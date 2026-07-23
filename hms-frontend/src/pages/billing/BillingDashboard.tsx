@@ -36,12 +36,12 @@ export const BillingDashboard: React.FC = () => {
   if (errorObj && !isLoading) {
     return (
       <div className="flex h-screen items-center justify-center p-6 bg-slate-50">
-        <div className="flex flex-col items-center gap-3 text-center max-w-md p-6 bg-white border border-slate-200 rounded-lg shadow-sm">
-          <AlertCircle className="h-12 w-12 text-rose-500" />
+        <div className="flex flex-col items-center gap-3 text-center max-w-md p-6 bg-white border border-slate-300 rounded-md shadow-sm">
+          <AlertCircle className="h-12 w-12 text-rose-600" />
           <h2 className="text-lg font-bold text-slate-900">Failed to load billing dashboard data.</h2>
           <button
             onClick={handleRetry}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors"
+            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-700 transition-colors"
           >
             Retry
           </button>
@@ -165,20 +165,20 @@ export const BillingDashboard: React.FC = () => {
       <HmsKpiStrip metrics={kpis} loading={isLoading} />
 
       {isLoading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div className="lg:col-span-2 space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-2 space-y-5">
             <HmsLoadingSkeleton variant="table" />
             <HmsLoadingSkeleton variant="table" />
           </div>
-          <div className="space-y-3">
+          <div className="space-y-5">
             <HmsLoadingSkeleton variant="panel" />
             <HmsLoadingSkeleton variant="panel" />
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Main Content (2/3) */}
-          <div className="lg:col-span-2 space-y-3">
+          <div className="lg:col-span-2 space-y-5">
             {/* Highest Outstanding Accounts */}
             {highestOutstanding.length > 0 ? (
               <HmsDrilldownTable
@@ -284,7 +284,7 @@ export const BillingDashboard: React.FC = () => {
           </div>
 
           {/* SLA / Risk Sidebar (1/3) */}
-          <div className="space-y-3">
+          <div className="space-y-5">
             {/* SLA Panel */}
             <HmsSlaPanel
               title="Collection Risk Thresholds"
@@ -302,9 +302,9 @@ export const BillingDashboard: React.FC = () => {
             <HmsQuickActions
               title="Quick Actions"
               actions={[
-                { id: 'inv-reg', label: 'Invoice Registry', icon: <DollarSign className="h-4 w-4 text-blue-500" />, href: '/cashier/invoices' },
+                { id: 'inv-reg', label: 'Invoice Registry', icon: <DollarSign className="h-4 w-4 text-sky-600" />, href: '/cashier/invoices' },
                 { id: 'cash-close', label: 'Cashier closing', icon: <Coins className="h-4 w-4 text-amber-500" />, href: '/cashier/session' },
-                ...(hasPermission('billing.claim.view') ? [{ id: 'claims-db', label: 'Claims Dashboard', icon: <CreditCard className="h-4 w-4 text-emerald-500" />, href: '/claims' }] : []),
+                ...(hasPermission('billing.claim.view') ? [{ id: 'claims-db', label: 'Claims Dashboard', icon: <CreditCard className="h-4 w-4 text-emerald-600" />, href: '/claims' }] : []),
               ]}
             />
           </div>

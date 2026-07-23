@@ -126,11 +126,17 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "coverageThreshold": {
-      "src/audit/audit.service.ts": {
-        "statements": 80,
+      "global": {
+        "branches": 60,
+        "functions": 60,
+        "lines": 60,
+        "statements": 60
+      },
+      "./src/audit/audit.service.ts": {
         "branches": 80,
         "functions": 80,
-        "lines": 80
+        "lines": 80,
+        "statements": 80
       }
     }
   },

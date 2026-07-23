@@ -11,6 +11,7 @@ import {
   type AdminUserItem,
   type AdminUserListParams,
 } from '../../services/admin.service';
+import { logger } from '../../lib/logger';
 
 const MIN_REASON_LENGTH = 8;
 const PRIVILEGED_PERMISSION = 'admin.role.change';
@@ -109,7 +110,7 @@ export const UsersPage: React.FC = () => {
       );
       setUsers(response.data.map(mapAdminUser));
     } catch (err) {
-      console.error('Failed to fetch users:', err);
+      logger.error('Failed to fetch users:', err);
       setError('Could not load user directory from server.');
       setUsers([]);
     } finally {
@@ -130,7 +131,7 @@ export const UsersPage: React.FC = () => {
       );
       setBranches(branchRows.data.filter((branch) => Boolean(branch.id)));
     } catch (err) {
-      console.error('Failed to load admin create-user options:', err);
+      logger.error('Failed to load admin create-user options:', err);
       setCreateError('Could not load branch and role options for account creation.');
     }
   }, []);

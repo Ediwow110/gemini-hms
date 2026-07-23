@@ -58,7 +58,10 @@ export class MetricsService {
       });
     } catch (err) {
       // Fallback if table not initialized in migrations/unit tests
-      console.warn('[Metrics] SLA alert count unavailable (table may not exist):', err);
+      console.warn(
+        '[Metrics] SLA alert count unavailable (table may not exist):',
+        err,
+      );
     }
 
     // Compute percentile durations for each endpoint

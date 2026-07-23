@@ -182,7 +182,7 @@ export const AdminExecutiveDashboard: React.FC = () => {
       />
 
       {error && !isDemo && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
           {error}
         </div>
       )}

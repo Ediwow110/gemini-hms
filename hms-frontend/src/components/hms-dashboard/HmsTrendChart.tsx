@@ -20,15 +20,18 @@ export const HmsTrendChart = ({
   empty,
 }: HmsTrendChartProps) => {
   const header = (
-    <div className="border-b border-slate-100 px-5 py-4">
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-      {description && <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>}
+    <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+      <div className="h-4 w-1 rounded-full bg-sky-600" aria-hidden="true" />
+      <div>
+        <h3 className="text-[13px] font-bold uppercase tracking-wide text-slate-800">{title}</h3>
+        {description && <p className="text-[11px] text-slate-500">{description}</p>}
+      </div>
     </div>
   );
 
   if (loading) {
     return (
-      <div className="h-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="h-full overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
         {header}
         <div className="p-4" style={{ height }}>
           <HmsLoadingSkeleton variant="panel" />
@@ -39,7 +42,7 @@ export const HmsTrendChart = ({
 
   if (empty) {
     return (
-      <div className="h-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="h-full overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
         {header}
         <div className="p-4" style={{ minHeight: height }}>
           <HmsDataUnavailable sectionName={title} expectedApi="Chart data" />
@@ -49,7 +52,7 @@ export const HmsTrendChart = ({
   }
 
   return (
-    <section className="h-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="h-full overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
       {header}
       <div className="min-w-0 p-4" style={{ height }}>
         {chart}

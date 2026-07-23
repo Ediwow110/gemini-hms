@@ -50,13 +50,13 @@ export const ClinicalOperationsDashboard: React.FC = () => {
   if (error) {
     return (
       <HmsDashboardShell>
-        <div className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-sm">
-          <AlertCircle className="h-10 w-10 text-rose-500" />
+        <div className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-md border border-red-600 bg-white p-8 text-center shadow-sm">
+          <AlertCircle className="h-10 w-10 text-red-600" />
           <h2 className="text-lg font-semibold text-slate-900">{error}</h2>
           <button
             type="button"
             onClick={() => void fetchDashboardData(true)}
-            className="min-h-10 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            className="min-h-10 rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
           >
             Retry
           </button>
@@ -87,7 +87,7 @@ export const ClinicalOperationsDashboard: React.FC = () => {
         actions={<HmsDataSourceBadge mode="live" />}
       />
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-5">
         {(data?.kpis ?? []).map((kpi, index) => {
           const Icon = kpiIcons[index % kpiIcons.length];
           return (
@@ -103,14 +103,14 @@ export const ClinicalOperationsDashboard: React.FC = () => {
         })}
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-5">
         <section className="col-span-12 space-y-4 xl:col-span-4" aria-labelledby="urgent-clinical-actions">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 id="urgent-clinical-actions" className="text-sm font-semibold text-slate-900">Urgent actions</h2>
               <p className="mt-1 text-xs text-slate-500">Items requiring immediate clinical attention.</p>
             </div>
-            <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-700">
+            <span className="rounded-md border border-red-600 bg-red-50 px-2.5 py-1 text-[10px] font-semibold text-red-700">
               {data?.alerts.length ?? 0} urgent
             </span>
           </div>
@@ -129,7 +129,7 @@ export const ClinicalOperationsDashboard: React.FC = () => {
         </section>
 
         <section className="col-span-12 xl:col-span-8" aria-labelledby="active-patient-queue">
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="overflow-hidden rounded-md border border-slate-300 bg-white p-5 shadow-sm">
             <h2 id="active-patient-queue" className="text-sm font-semibold text-slate-900">Pending Clinical Queue</h2>
             <p className="mt-1 text-xs text-slate-500">Patients waiting for the next clinical step.</p>
             <div className="mt-4">

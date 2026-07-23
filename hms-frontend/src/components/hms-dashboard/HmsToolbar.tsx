@@ -18,18 +18,18 @@ export const HmsToolbar = ({
   refreshing = false,
   children,
 }: HmsToolbarProps) => (
-  <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+  <div className="flex min-w-0 flex-col gap-3 rounded-md border border-slate-300 bg-white px-4 py-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
     <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
       {branchName && (
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="text-[11px] font-medium text-slate-400">Branch</span>
-          <span className="truncate text-xs font-semibold text-slate-700">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Branch</span>
+          <span className="truncate text-[12px] font-bold text-slate-800">
             {branchName}
           </span>
         </div>
       )}
       {role && (
-        <span className="inline-flex min-h-7 items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+        <span className="inline-flex min-h-6 items-center rounded-sm border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800">
           {role}
         </span>
       )}
@@ -39,7 +39,7 @@ export const HmsToolbar = ({
       {children && <div className="flex min-w-0 flex-wrap items-end gap-2">{children}</div>}
       <div className="flex shrink-0 items-center gap-3">
         {lastRefreshed && (
-          <span className="text-[11px] font-mono text-slate-400">
+          <span className="text-[10px] font-mono font-medium text-slate-400">
             Updated {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         )}
@@ -48,7 +48,7 @@ export const HmsToolbar = ({
             type="button"
             onClick={onRefresh}
             disabled={refreshing}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-8 items-center gap-1.5 rounded-sm border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-700 transition-colors hover:border-sky-400 hover:bg-sky-50 hover:text-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Refresh dashboard data"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />

@@ -59,6 +59,11 @@ export class PatientJwtGuard implements CanActivate {
         );
       }
 
+      // Validate token version (revocation check)
+      if (payload.tokenVersion !== patientUser.tokenVersion) {
+        throw new UnauthorizedException('Token has been revoked');
+      }
+
       // Attach patientContext to request. Use patientUser.id as the auditable identity
       // for audit logging, removing the false requirement to map to a staff User.
       request.patientUser = {

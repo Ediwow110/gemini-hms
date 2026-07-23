@@ -6,7 +6,7 @@ import {
   sanitizeDraftFormData,
 } from "./types";
 
-const DB_NAME = "gemini-hms-autodrafts";
+const DB_NAME = "hms-autodrafts";
 const DB_VERSION = 1;
 const STORE_NAME = "drafts";
 

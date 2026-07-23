@@ -75,7 +75,7 @@ export const LoginForm = () => {
     defaultValues: isDev ? {
       tenantCode: "Central Hospital (Main Branch)",
       email: "admin@hospital.com",
-      password: "Admin@123",
+      password: import.meta.env.VITE_DEMO_PASSWORD ?? "",
     } : {
       tenantCode: "",
       email: "",
@@ -132,7 +132,7 @@ export const LoginForm = () => {
       const response = await apiClient.post(
         "/v1/auth/mfa/verify", 
         { code: mfaCode },
-        { headers: { Authorization: `Bearer ${mfaToken}` } }
+        { headers: { 'X-MFA-Token': mfaToken } }
       );
       
       if (response.data.requiresBranchSelection) {
@@ -164,7 +164,7 @@ export const LoginForm = () => {
 
   const selectDemoAccount = (account: typeof DEMO_ACCOUNTS[0]) => {
     setValue("email", account.email);
-    setValue("password", "Admin@123");
+    setValue("password", import.meta.env.VITE_DEMO_PASSWORD ?? "");
     setValue("tenantCode", "Central Hospital (Main Branch)");
     setShowDemoSelector(false);
   };

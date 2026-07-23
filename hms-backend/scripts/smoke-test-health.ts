@@ -2,16 +2,17 @@ import * as speakeasy from 'speakeasy';
 
 async function run() {
   const baseUrl = 'http://localhost:3000';
+  const loginCredentials = {
+    tenantCode: 'Central Hospital (Main Branch)',
+    email: 'admin@hospital.com',
+    password: process.env.SEED_PASSWORD ?? 'seed-demo-password-change-me',
+  };
   
   console.log('1. Logging in...');
   const loginRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tenantCode: 'Central Hospital (Main Branch)',
-      email: 'admin@hospital.com',
-      password: 'Admin@123'
-    })
+    body: JSON.stringify(loginCredentials)
   });
   
   if (!loginRes.ok) {

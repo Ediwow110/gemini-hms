@@ -197,52 +197,67 @@ export class AuditService {
     }
 
     // Fetch the latest head in the tenant chain (ignoring transient logs)
-    const lastLog =
-      typeof db.auditLog?.findFirst === 'function'
-        ? await db.auditLog.findFirst({
-            where: { tenantId: data.tenantId, hash: { not: null } },
-            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          })
-        : null;
+    // When no external transaction is provided, wrap in a Serializable transaction
+    // to prevent concurrent writes from reading the same chain head.
+    const appendToChain = async (
+      txDb: Prisma.TransactionClient | typeof this.prisma,
+    ) => {
+      const lastLog =
+        typeof txDb.auditLog?.findFirst === 'function'
+          ? await txDb.auditLog.findFirst({
+              where: { tenantId: data.tenantId, hash: { not: null } },
+              orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            })
+          : null;
 
-    const previousHash = lastLog ? lastLog.hash : null;
+      const previousHash = lastLog ? lastLog.hash : null;
 
-    const hash = this.computeHash({
-      tenantId: data.tenantId,
-      userId: userId,
-      eventKey: data.eventKey,
-      recordType: data.recordType,
-      recordId: data.recordId,
-      branchId: branchId || null,
-      oldValues: data.oldValues,
-      newValues: data.newValues,
-      createdAt,
-      previousHash,
-    });
-
-    const secret = this.getAuditSecret();
-
-    const signature = createHmac('sha256', secret).update(hash).digest('hex');
-
-    return db.auditLog.create({
-      data: {
+      const hash = this.computeHash({
         tenantId: data.tenantId,
-        branchId: branchId,
         userId: userId,
         eventKey: data.eventKey,
         recordType: data.recordType,
         recordId: data.recordId,
+        branchId: branchId || null,
         oldValues: data.oldValues,
         newValues: data.newValues,
-        ipAddress: ipAddress || null,
-        userAgent: userAgent || null,
-        activeRole: activeRole || null,
-        sessionId: sessionId || null,
         createdAt,
         previousHash,
-        hash,
-        signature,
-      },
+      });
+
+      const secret = this.getAuditSecret();
+
+      const signature = createHmac('sha256', secret).update(hash).digest('hex');
+
+      return txDb.auditLog.create({
+        data: {
+          tenantId: data.tenantId,
+          branchId: branchId,
+          userId: userId,
+          eventKey: data.eventKey,
+          recordType: data.recordType,
+          recordId: data.recordId,
+          oldValues: data.oldValues,
+          newValues: data.newValues,
+          ipAddress: ipAddress || null,
+          userAgent: userAgent || null,
+          activeRole: activeRole || null,
+          sessionId: sessionId || null,
+          createdAt,
+          previousHash,
+          hash,
+          signature,
+        },
+      });
+    };
+
+    if (tx) {
+      // Caller-provided transaction already ensures isolation
+      return appendToChain(tx);
+    }
+
+    return this.prisma.$transaction(appendToChain, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
   }
 

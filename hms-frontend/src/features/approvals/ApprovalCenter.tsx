@@ -6,6 +6,7 @@ import { AlertTriangle, ShieldCheck, RefreshCw, Loader2, Info } from "lucide-rea
 import { useUser } from "../../hooks/use-user";
 import { RequirePermission } from "../../components/ui/RequirePermission";
 import { approvalService, ApprovalRequest } from "../../services/approval.service";
+import { logger } from "../../lib/logger";
 
 // Helper to normalize backend status/risk for the UI components
 const normalize = (val: string) => {
@@ -44,7 +45,7 @@ export const ApprovalCenter = () => {
         if (updatedSelected) setSelected(updatedSelected);
       }
     } catch (error) {
-      console.error("Failed to fetch approvals:", error);
+      logger.error("Failed to fetch approvals:", error);
       setListError('Failed to load approval requests. Please retry.');
       setRequests([]);
     } finally {
@@ -104,7 +105,7 @@ export const ApprovalCenter = () => {
         resetApprovalConfirmation();
       }
     } catch (error) {
-      console.error(`Failed to ${modals.mode.toLowerCase()} request:`, error);
+      logger.error(`Failed to ${modals.mode.toLowerCase()} request:`, error);
       setActionError(getActionErrorMessage(modals.mode, error));
     } finally {
       setIsProcessing(false);

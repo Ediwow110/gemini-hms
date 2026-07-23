@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { billingFrontendService, InvoiceDto, OpenSessionDto, CloseSessionDto, CreatePaymentDto, MyReversalDto } from '../services/billing-frontend.service';
 import { useUser } from './use-user';
+import { createError } from '../lib/error-utils';
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
 const billingKeys = {
@@ -84,10 +85,7 @@ export function useActiveSession() {
       const result = await openSessionMutation.mutateAsync(dto);
       return result;
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to open session'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to open session'), err);
     }
   };
 
@@ -95,10 +93,7 @@ export function useActiveSession() {
     try {
       await closeSessionMutation.mutateAsync({ id, dto });
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to close session'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to close session'), err);
     }
   };
 
@@ -179,10 +174,7 @@ export function useCreatePayment() {
     try {
       return await mutation.mutateAsync({ dto, idempotencyKey });
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to post payment'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to post payment'), err);
     }
   };
 
@@ -206,10 +198,7 @@ export function useConfirmPayment() {
     try {
       return await mutation.mutateAsync({ paymentId, dto });
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to confirm payment'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to confirm payment'), err);
     }
   };
 
@@ -233,10 +222,7 @@ export function useFailPayment() {
     try {
       return await mutation.mutateAsync({ paymentId, dto });
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to fail payment'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to fail payment'), err);
     }
   };
 
@@ -260,10 +246,7 @@ export function useExpirePayment() {
     try {
       return await mutation.mutateAsync({ paymentId, dto });
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to expire payment'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to expire payment'), err);
     }
   };
 
@@ -286,10 +269,7 @@ export function useRequestRefund() {
     try {
       return await mutation.mutateAsync(dto);
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to request refund'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to request refund'), err);
     }
   };
 
@@ -317,10 +297,7 @@ export function useRequestVoid() {
     try {
       return await mutation.mutateAsync(dto);
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to request void'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to request void'), err);
     }
   };
 
@@ -349,10 +326,7 @@ export function useApproveVoid() {
     try {
       return await mutation.mutateAsync({ reversalId, remarks });
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to approve void'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to approve void'), err);
     }
   };
 
@@ -375,10 +349,7 @@ export function useRejectVoid() {
     try {
       return await mutation.mutateAsync({ reversalId, remarks });
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to reject void'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to reject void'), err);
     }
   };
 
@@ -402,10 +373,7 @@ export function useApproveRefund() {
     try {
       return await mutation.mutateAsync({ reversalId, remarks });
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to approve refund'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to approve refund'), err);
     }
   };
 
@@ -428,10 +396,7 @@ export function useRejectRefund() {
     try {
       return await mutation.mutateAsync({ reversalId, remarks });
     } catch (err) {
-      throw new (Error as new (msg: string, opts?: { cause: unknown }) => Error)(
-        extractMessage(err, 'Failed to reject refund'),
-        { cause: err },
-      );
+      throw createError(extractMessage(err, 'Failed to reject refund'), err);
     }
   };
 

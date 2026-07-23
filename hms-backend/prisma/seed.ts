@@ -13,9 +13,17 @@ import {
 } from '../src/auth/authorization-catalog';
 import { validateDemoEnvironment } from '../scripts/demo-safety-guard';
 
+const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'seed-demo-password-change-me';
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://hms_local_user:hms_secure_pass@localhost:5432/gemini_hms_local?schema=public',
+  connectionString: process.env.DATABASE_URL,
 });
+
+if (!process.env.DATABASE_URL) {
+  console.error('ERROR: DATABASE_URL environment variable is required. Set it to point to your database.');
+  process.exit(1);
+}
+
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
@@ -81,29 +89,29 @@ async function main() {
   // 4. USERS & EMPLOYEES
   // 4. USERS & EMPLOYEES
   const staff = [
-    { name: 'Admin User', email: 'admin@hospital.com', role: 'Super Admin', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Dr. Alice Smith', email: 'alice.smith@stjude.med', role: 'Doctor', password: 'Admin@123', dept: 'Cardiology', branchIdx: 0 },
-    { name: 'Dr. Bob Jones', email: 'bob.jones@stjude.med', role: 'Doctor', password: 'Admin@123', dept: 'Neurology', branchIdx: 1 },
-    { name: 'Nurse Clara', email: 'clara.n@stjude.med', role: 'Nurse', password: 'Admin@123', dept: 'Pediatrics', branchIdx: 0 },
-    { name: 'Nurse David', email: 'david.n@stjude.med', role: 'Nurse', password: 'Admin@123', dept: 'Radiology', branchIdx: 2 },
-    { name: 'Cashier Eve', email: 'eve.c@stjude.med', role: 'Cashier', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
+    { name: 'Admin User', email: 'admin@hospital.com', role: 'Super Admin', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Dr. Alice Smith', email: 'alice.smith@stjude.med', role: 'Doctor', password: SEED_PASSWORD, dept: 'Cardiology', branchIdx: 0 },
+    { name: 'Dr. Bob Jones', email: 'bob.jones@stjude.med', role: 'Doctor', password: SEED_PASSWORD, dept: 'Neurology', branchIdx: 1 },
+    { name: 'Nurse Clara', email: 'clara.n@stjude.med', role: 'Nurse', password: SEED_PASSWORD, dept: 'Pediatrics', branchIdx: 0 },
+    { name: 'Nurse David', email: 'david.n@stjude.med', role: 'Nurse', password: SEED_PASSWORD, dept: 'Radiology', branchIdx: 2 },
+    { name: 'Cashier Eve', email: 'eve.c@stjude.med', role: 'Cashier', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
     
     // Playwright/Demo dropdown accounts
-    { name: 'Branch Admin User', email: 'branch.admin@hospital.com', role: 'Branch Admin', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Receptionist User', email: 'receptionist@hospital.com', role: 'Receptionist', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Cashier Demo User', email: 'cashier@hospital.com', role: 'Cashier', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Med Tech User', email: 'medtech@hospital.com', role: 'Med-Tech', password: 'Admin@123', dept: 'Radiology', branchIdx: 0 },
-    { name: 'Doctor Demo User', email: 'doctor@hospital.com', role: 'Doctor', password: 'Admin@123', dept: 'Cardiology', branchIdx: 0 },
-    { name: 'Pharmacist User', email: 'pharmacist@hospital.com', role: 'Pharmacist', password: 'Admin@123', dept: 'Pharmacy', branchIdx: 0 },
-    { name: 'Nurse Demo User', email: 'nurse@hospital.com', role: 'Nurse', password: 'Admin@123', dept: 'Pediatrics', branchIdx: 0 },
-    { name: 'Supplier User', email: 'supplier@hospital.com', role: 'Supplier', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Procurement User', email: 'procurement@hospital.com', role: 'Procurement Officer', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'HR Staff User', email: 'hr@hospital.com', role: 'HR Staff', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'HR Manager User', email: 'hr.manager@hospital.com', role: 'HR Manager', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'IT Support User', email: 'it.support@hospital.com', role: 'IT Support', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Compliance User', email: 'compliance@hospital.com', role: 'Compliance Officer', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Field Tech User', email: 'field.tech@hospital.com', role: 'Field Technician', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Marketplace Admin User', email: 'marketplace.admin@hospital.com', role: 'Marketplace Admin', password: 'Admin@123', dept: 'Admin', branchIdx: 0 }
+    { name: 'Branch Admin User', email: 'branch.admin@hospital.com', role: 'Branch Admin', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Receptionist User', email: 'receptionist@hospital.com', role: 'Receptionist', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Cashier Demo User', email: 'cashier@hospital.com', role: 'Cashier', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Med Tech User', email: 'medtech@hospital.com', role: 'Med-Tech', password: SEED_PASSWORD, dept: 'Radiology', branchIdx: 0 },
+    { name: 'Doctor Demo User', email: 'doctor@hospital.com', role: 'Doctor', password: SEED_PASSWORD, dept: 'Cardiology', branchIdx: 0 },
+    { name: 'Pharmacist User', email: 'pharmacist@hospital.com', role: 'Pharmacist', password: SEED_PASSWORD, dept: 'Pharmacy', branchIdx: 0 },
+    { name: 'Nurse Demo User', email: 'nurse@hospital.com', role: 'Nurse', password: SEED_PASSWORD, dept: 'Pediatrics', branchIdx: 0 },
+    { name: 'Supplier User', email: 'supplier@hospital.com', role: 'Supplier', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Procurement User', email: 'procurement@hospital.com', role: 'Procurement Officer', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'HR Staff User', email: 'hr@hospital.com', role: 'HR Staff', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'HR Manager User', email: 'hr.manager@hospital.com', role: 'HR Manager', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'IT Support User', email: 'it.support@hospital.com', role: 'IT Support', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Compliance User', email: 'compliance@hospital.com', role: 'Compliance Officer', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Field Tech User', email: 'field.tech@hospital.com', role: 'Field Technician', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Marketplace Admin User', email: 'marketplace.admin@hospital.com', role: 'Marketplace Admin', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 }
   ];
 
   const createdEmployees = [];
@@ -235,7 +243,7 @@ async function main() {
 
   // Create multi-branch user specifically for E2E branch-selection tests
   const multiBranchUserEmail = 'branch.multi@hospital.com';
-  const multiBranchPasswordHash = await bcrypt.hash('Admin@123', 10);
+  const multiBranchPasswordHash = await bcrypt.hash(SEED_PASSWORD, 10);
   const multiUser = await prisma.user.create({
     data: {
       email: multiBranchUserEmail,
@@ -292,7 +300,7 @@ async function main() {
 
   // Seed PatientUser for patient@hospital.com
   const patientEmail = 'patient@hospital.com';
-  const patientPasswordHash = await bcrypt.hash('Admin@123', 10);
+  const patientPasswordHash = await bcrypt.hash(SEED_PASSWORD, 10);
   if (patients.length > 0) {
     await prisma.patientUser.create({
       data: {

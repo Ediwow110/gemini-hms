@@ -126,7 +126,7 @@ export const PatientDashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/patient/profile')}
-              className="min-h-10 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
+              className="min-h-10 rounded-md bg-sky-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-sky-700"
             >
               My profile
             </button>
@@ -135,7 +135,7 @@ export const PatientDashboard: React.FC = () => {
       />
 
       {error && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
+        <div className="rounded-md border border-amber-500 bg-amber-50 p-4 text-xs text-amber-800">
           Some portal information could not be loaded. Use Refresh to try again.
         </div>
       )}
@@ -143,7 +143,7 @@ export const PatientDashboard: React.FC = () => {
       {loading ? (
         <HmsLoadingSkeleton variant="kpi" />
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-5">
           <AnalyticsMetricCard
             title="Released lab results"
             value={safeResults.length}
@@ -192,8 +192,8 @@ export const PatientDashboard: React.FC = () => {
         ]}
       />
 
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-12 space-y-6 xl:col-span-8">
+      <div className="grid grid-cols-12 gap-5">
+        <div className="col-span-12 space-y-5 xl:col-span-8">
           <HmsDataUnavailable
             sectionName="Upcoming appointments"
             expectedApi="Patient appointment schedule"
@@ -212,7 +212,7 @@ export const PatientDashboard: React.FC = () => {
           )}
         </div>
 
-        <div className="col-span-12 space-y-6 xl:col-span-4">
+        <div className="col-span-12 space-y-5 xl:col-span-4">
           <PatientHomeCard
             title="Patient information"
             icon={Heart}

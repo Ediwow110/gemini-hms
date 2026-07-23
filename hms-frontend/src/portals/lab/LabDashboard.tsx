@@ -93,7 +93,7 @@ export const LabDashboard = () => {
   if (hasError && !isLoading) {
     return (
       <div className="mx-auto py-16 text-center space-y-4">
-        <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center border border-rose-100">
+        <div className="mx-auto w-14 h-14 bg-rose-50 text-rose-600 rounded-md flex items-center justify-center border border-rose-200">
           <AlertTriangle className="h-7 w-7" />
         </div>
         <h2 className="text-lg font-bold text-slate-800">Connection Error</h2>
@@ -107,23 +107,23 @@ export const LabDashboard = () => {
   // ──── Loading State ────
   if (isLoading) {
     return (
-      <div className="mx-auto py-4 space-y-6">
+      <div className="mx-auto py-4 space-y-5">
         <div className="flex flex-wrap gap-x-6 gap-y-3 animate-pulse">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-1 border-l-2 border-l-slate-200 pl-3">
+            <div key={i} className="flex flex-col gap-1 border-l-2 border-l-slate-300 pl-3">
               <div className="h-3 w-20 rounded bg-slate-100" />
               <div className="h-5 w-16 rounded bg-slate-100" />
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-12 xl:col-span-8 space-y-6">
-            <div className="h-48 animate-pulse rounded-lg bg-slate-100" />
-            <div className="h-32 animate-pulse rounded-lg bg-slate-100" />
+        <div className="grid grid-cols-12 gap-5">
+          <div className="col-span-12 xl:col-span-8 space-y-5">
+            <div className="h-48 animate-pulse rounded-md bg-slate-100" />
+            <div className="h-32 animate-pulse rounded-md bg-slate-100" />
           </div>
-          <div className="col-span-12 xl:col-span-4 space-y-6">
-            <div className="h-48 animate-pulse rounded-lg bg-slate-100" />
-            <div className="h-24 animate-pulse rounded-lg bg-slate-100" />
+          <div className="col-span-12 xl:col-span-4 space-y-5">
+            <div className="h-48 animate-pulse rounded-md bg-slate-100" />
+            <div className="h-24 animate-pulse rounded-md bg-slate-100" />
           </div>
         </div>
       </div>
@@ -198,9 +198,9 @@ export const LabDashboard = () => {
       <HmsKpiStrip metrics={metrics} />
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-5">
         {/* Left Column — 8/12 cols desktop, 12 cols tablet/mobile */}
-        <div className="col-span-12 xl:col-span-8 space-y-6">
+        <div className="col-span-12 xl:col-span-8 space-y-5">
           {/* Specimen Work Queue */}
           <HmsWorkQueue
             title="Specimen Work Queue"
@@ -222,7 +222,7 @@ export const LabDashboard = () => {
               { key: 'status', header: 'Status', width: 'w-24', render: (item) => (
                 <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
                   item.status === 'Received'
-                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    ? 'bg-sky-50 text-sky-700 border-sky-200'
                     : 'bg-amber-50 text-amber-700 border-amber-200'
                 }`}>
                   {item.status}
@@ -232,7 +232,7 @@ export const LabDashboard = () => {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); navigate(`/lab/specimens?specimenId=${item.id}`); }}
-                  className="text-[12px] font-semibold text-blue-600 hover:text-blue-700"
+                  className="text-[12px] font-semibold text-sky-600 hover:text-sky-700"
                 >
                   Process →
                 </button>
@@ -284,7 +284,7 @@ export const LabDashboard = () => {
         </div>
 
         {/* Right Column — 4/12 cols desktop, 12 cols tablet/mobile */}
-        <div className="col-span-12 xl:col-span-4 space-y-6">
+        <div className="col-span-12 xl:col-span-4 space-y-5">
           {/* TAT SLA Compliance */}
           {tatCards.length > 0 ? (
             <HmsSlaPanel title="TAT SLA Compliance" items={tatCards} />

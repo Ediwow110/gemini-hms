@@ -7,6 +7,7 @@ import {
   Search, Filter, RefreshCw, Mail, MessageSquare, Eye, ChevronRight,
 } from "lucide-react";
 import { apiClient } from "../../lib/api";
+import { logger } from "../../lib/logger";
 
 type NotificationStatus = "PENDING" | "SENT" | "FAILED" | "READ" | "CANCELLED";
 type NotificationPriority = "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
@@ -181,7 +182,7 @@ export const NotificationCenter = () => {
                   await apiClient.post('/v1/notifications/dispatch-pending'); 
                   await fetchNotifications(); 
                 } catch (e) { 
-                  console.error('Failed to dispatch pending notifications', e); 
+                  logger.error('Failed to dispatch pending notifications', e); 
                   setError('Failed to dispatch pending. Please try again.'); 
                 } 
               }}
@@ -195,7 +196,7 @@ export const NotificationCenter = () => {
                   await apiClient.post('/v1/notifications/read-all'); 
                   await fetchNotifications(); 
                 } catch (e) { 
-                  console.error('Failed to mark all read', e); 
+                  logger.error('Failed to mark all read', e); 
                   setError('Failed to mark all as read. Please try again.'); 
                 } 
               }}
@@ -280,7 +281,7 @@ export const NotificationCenter = () => {
                             await fetchNotifications();
                             setSelected(null);
                           } catch (e) { 
-                            console.error('Failed to mark notification read', e); 
+                            logger.error('Failed to mark notification read', e); 
                             setError('Failed to mark as read.'); 
                           }
                         }}
@@ -297,7 +298,7 @@ export const NotificationCenter = () => {
                             await fetchNotifications();
                             setSelected(null);
                           } catch (e) { 
-                            console.error('Failed to retry notification', e); 
+                            logger.error('Failed to retry notification', e); 
                             setError('Failed to retry.'); 
                           }
                         }}

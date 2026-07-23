@@ -58,7 +58,7 @@ export const SupplierDashboard: React.FC = () => (
           <HmsDataSourceBadge mode="demo" label="Live queues + synthetic summary" />
           <Link
             to="/supplier/listings"
-            className="inline-flex min-h-10 items-center rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
+            className="inline-flex min-h-10 items-center rounded-md bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
           >
             New listing
           </Link>
