@@ -3,6 +3,9 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env.test') });
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
+}
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
