@@ -70,6 +70,7 @@ jobs:
       - name: Backend Install & Test
         working-directory: ./hms-backend
         env:
+          NODE_ENV: test
           DATABASE_URL: postgresql://postgres:password@localhost:5432/hms_test?schema=public
         run: |
           npm ci

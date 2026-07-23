@@ -23,7 +23,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "npx tsx test/setup-db.ts && jest --config ./test/jest-e2e.json --runInBand",
+    "test:e2e": "cross-env NODE_ENV=test npx tsx test/setup-db.ts && jest --config ./test/jest-e2e.json --runInBand",
     "test:migrations": "npx tsx scripts/verify-migration-upgrade.ts",
     "test:migrations:local": "npx tsx scripts/run-local-migration-upgrade.ts",
     "db:check:demo": "npx tsx scripts/check-demo-data.ts",
