@@ -149,9 +149,13 @@ export class HipaaComplianceService {
       individualProtectionSteps:
         'Individuals should monitor credit reports and contact the compliance department for identity protection support.',
       contactChannel: {
-        phone: '+1 (555) 019-2911',
-        email: 'privacy-officer@hospital-hms.local',
-        website: 'https://security.hospital-hms.local',
+        phone: process.env.HIPAA_CONTACT_PHONE || '+1 (555) 019-2911',
+        email:
+          process.env.HIPAA_CONTACT_EMAIL ||
+          'privacy-officer@hospital-hms.local',
+        website:
+          process.env.HIPAA_CONTACT_URL ||
+          'https://security.hospital-hms.local',
       },
       regulatoryReportedStatus: 'PENDING_HHS_NOTIFICATION',
     };
