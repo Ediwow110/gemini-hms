@@ -63,13 +63,13 @@ describe('Patient Portal Login Throttle (e2e)', () => {
 
     for (let i = 0; i < 5; i++) {
       await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .send(loginData)
         .expect(401);
     }
 
     const res = await request(app.getHttpServer())
-      .post('/patient-portal/auth/login')
+      .post('/api/v1/patient-portal/auth/login')
       .send(loginData);
 
     expect(res.status).toBe(429);
