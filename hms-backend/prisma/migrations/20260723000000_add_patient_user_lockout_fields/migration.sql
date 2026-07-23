@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "patient_users" ADD COLUMN IF NOT EXISTS "failed_login_attempts" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "lock_until" TIMESTAMP(3),
+ADD COLUMN IF NOT EXISTS "token_version" INTEGER NOT NULL DEFAULT 0;
