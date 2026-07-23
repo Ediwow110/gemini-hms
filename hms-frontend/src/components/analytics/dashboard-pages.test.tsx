@@ -156,7 +156,7 @@ describe('dashboard intelligence pages', () => {
     vi.useRealTimers();
     renderPage(<SuperAdminDashboard />);
     expect(screen.getByText('Platform Command Center')).toBeInTheDocument();
-    expect(await screen.findByText('Tenant overview')).toBeInTheDocument();
+    expect(await screen.findByText('Tenant Overview')).toBeInTheDocument();
     expect(screen.queryByText(/Not yet implemented in this release/i)).not.toBeInTheDocument();
   });
 

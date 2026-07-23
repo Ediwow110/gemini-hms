@@ -41,7 +41,8 @@ export const ReportsAnalyticsPage: React.FC = () => {
         const d = await analyticsService.getTopDiagnoses();
         setDiagnoses(d);
         status.diagnoses = 'success';
-      } catch {
+      } catch (err) {
+        console.error('[ReportsAnalytics] Failed to fetch top diagnoses:', err);
         setDiagnoses([]);
         status.diagnoses = 'error';
       }
@@ -50,7 +51,8 @@ export const ReportsAnalyticsPage: React.FC = () => {
         const o = await analyticsService.getBedOccupancy();
         setOccupancy(o);
         status.occupancy = 'success';
-      } catch {
+      } catch (err) {
+        console.error('[ReportsAnalytics] Failed to fetch bed occupancy:', err);
         setOccupancy([]);
         status.occupancy = 'error';
       }
@@ -59,7 +61,8 @@ export const ReportsAnalyticsPage: React.FC = () => {
         const w = await analyticsService.getWaitTime();
         setWaitTimes(w);
         status.waitTimes = 'success';
-      } catch {
+      } catch (err) {
+        console.error('[ReportsAnalytics] Failed to fetch wait times:', err);
         setWaitTimes([]);
         status.waitTimes = 'error';
       }
@@ -68,7 +71,8 @@ export const ReportsAnalyticsPage: React.FC = () => {
         const r = await analyticsService.getRevenue();
         setRevenue(r);
         status.revenue = 'success' as const;
-      } catch {
+      } catch (err) {
+        console.error('[ReportsAnalytics] Failed to fetch revenue:', err);
         setRevenue(null);
         status.revenue = 'error';
       }

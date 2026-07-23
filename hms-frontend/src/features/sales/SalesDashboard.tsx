@@ -11,7 +11,6 @@ import {
   FileText, 
   CheckCircle2, 
   Sliders, 
-  Database,
   CloudOff,
   CloudLightning
 } from 'lucide-react';
@@ -99,7 +98,12 @@ export const SalesDashboard: React.FC = () => {
       // Network failure, trigger cache fallback
       const cached = localStorage.getItem('hms_sales_cached_data');
       if (cached) {
-        setData(JSON.parse(cached));
+        try {
+          setData(JSON.parse(cached));
+        } catch (parseErr) {
+          console.warn('[SalesDashboard] Corrupt cache, clearing:', parseErr);
+          localStorage.removeItem('hms_sales_cached_data');
+        }
         setIsOffline(true);
       } else {
         setError('Unable to fetch sales summary and no local offline data was found.');
@@ -142,10 +146,10 @@ export const SalesDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6">
       
-      {/* Premium Title Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200/80 pb-5 space-y-4 md:space-y-0">
+      {/* Title Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-300 pb-5 space-y-4 md:space-y-0">
         <PageHeader 
           title="B2B Sales Summary" 
           description="Real-time B2B Quote Conversion, Assets, & Pipeline Analytics" 
@@ -154,12 +158,12 @@ export const SalesDashboard: React.FC = () => {
         {/* Offline / Online System Sync Indicator */}
         <div className="flex items-center space-x-3 self-start md:self-auto">
           {isOffline ? (
-            <div className="flex items-center space-x-2 bg-amber-50 text-amber-700 border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm">
-              <CloudOff className="h-4 w-4 animate-pulse" />
+            <div className="flex items-center space-x-2 bg-amber-50 text-amber-700 border border-amber-200 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide shadow-sm">
+              <CloudOff className="h-4 w-4" />
               <span>Offline Mode</span>
             </div>
           ) : (
-            <div className="flex items-center space-x-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm">
+            <div className="flex items-center space-x-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-md text-xs font-bold uppercase tracking-wide shadow-sm">
               <CloudLightning className="h-4 w-4" />
               <span>System Connected</span>
             </div>
@@ -172,45 +176,45 @@ export const SalesDashboard: React.FC = () => {
           <button 
             onClick={fetchSalesData}
             disabled={loading}
-            className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors shadow-sm cursor-pointer flex items-center justify-center min-h-[38px] min-w-[38px]"
+            className="p-2 bg-white border border-slate-300 rounded-md hover:bg-slate-50 text-slate-600 transition-colors shadow-sm cursor-pointer flex items-center justify-center min-h-[38px] min-w-[38px]"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-indigo-500' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-sky-600' : ''}`} />
           </button>
         </div>
       </div>
 
       {/* Dynamic Analytics Filter Panel */}
-      <form onSubmit={handleApplyFilters} className="card p-6 shadow-sm border border-slate-200/80 bg-white">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <form onSubmit={handleApplyFilters} className="rounded-md border border-slate-300 bg-white p-6 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
           <div className="flex flex-col space-y-2">
-            <label className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center space-x-2">
-              <Calendar className="h-3.5 w-3.5 text-indigo-500" />
+            <label className="text-slate-500 text-[10px] font-bold uppercase tracking-wide flex items-center space-x-2">
+              <Calendar className="h-3.5 w-3.5 text-sky-600" />
               <span>Start Date</span>
             </label>
             <input 
               type="date" 
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="bg-slate-50/80 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all duration-300 w-full"
+              className="bg-slate-50 border border-slate-300 rounded-md px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-sky-600/20 focus:border-sky-600 transition-all w-full"
             />
           </div>
 
           <div className="flex flex-col space-y-2">
-            <label className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center space-x-2">
-              <Calendar className="h-3.5 w-3.5 text-indigo-500" />
+            <label className="text-slate-500 text-[10px] font-bold uppercase tracking-wide flex items-center space-x-2">
+              <Calendar className="h-3.5 w-3.5 text-sky-600" />
               <span>End Date</span>
             </label>
             <input 
               type="date" 
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="bg-slate-50/80 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all duration-300 w-full"
+              className="bg-slate-50 border border-slate-300 rounded-md px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-sky-600/20 focus:border-sky-600 transition-all w-full"
             />
           </div>
 
           <div className="flex flex-col space-y-2">
-            <label className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center space-x-2">
-              <Sliders className="h-3.5 w-3.5 text-indigo-500" />
+            <label className="text-slate-500 text-[10px] font-bold uppercase tracking-wide flex items-center space-x-2">
+              <Sliders className="h-3.5 w-3.5 text-sky-600" />
               <span>Branch Filter</span>
             </label>
             <input 
@@ -218,21 +222,21 @@ export const SalesDashboard: React.FC = () => {
               placeholder="Enter Branch UUID..."
               value={branchId}
               onChange={(e) => setBranchId(e.target.value)}
-              className="bg-slate-50/80 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-300 focus:bg-white transition-all duration-300 w-full font-mono placeholder:text-slate-300"
+              className="bg-slate-50 border border-slate-300 rounded-md px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-sky-600/20 focus:border-sky-600 transition-all w-full font-mono placeholder:text-slate-300"
             />
           </div>
 
           <div className="flex items-end space-x-3">
             <button 
               type="submit"
-              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-widest py-3.5 px-4 rounded-xl transition-all shadow-sm cursor-pointer text-center"
+              className="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs uppercase tracking-wide py-3.5 px-4 rounded-md transition-all shadow-sm cursor-pointer text-center"
             >
               Apply Filter
             </button>
             <button 
               type="button"
               onClick={handleResetFilters}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-widest py-3.5 px-4 rounded-xl transition-all cursor-pointer"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wide py-3.5 px-4 rounded-md transition-all cursor-pointer"
             >
               Reset
             </button>
@@ -242,8 +246,8 @@ export const SalesDashboard: React.FC = () => {
 
       {/* error display */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm font-semibold flex items-center space-x-3 animate-fade-in">
-          <AlertTriangle className="h-5 w-5 text-red-500" />
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm font-semibold flex items-center space-x-3">
+          <AlertTriangle className="h-5 w-5 text-red-600" />
           <span>{error}</span>
         </div>
       )}
@@ -251,97 +255,86 @@ export const SalesDashboard: React.FC = () => {
       {/* Main KPI Matrix Dashboard */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <RefreshCw className="h-10 w-10 text-indigo-600 animate-spin" />
-          <span className="text-slate-400 text-sm font-bold uppercase tracking-widest animate-pulse">
+          <RefreshCw className="h-10 w-10 text-sky-600 animate-spin" />
+          <span className="text-slate-400 text-sm font-bold uppercase tracking-wide">
             Analyzing Transactions & Pipelines...
           </span>
         </div>
       ) : data ? (
-        <div className="space-y-8">
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="animate-slide-up stagger-1">
-              <MetricCard 
-                title="Quote Conversion Rate" 
-                value={`${data.conversionRate.toFixed(2)}%`}
-                description="Accepted vs eligible quotes"
-                icon={TrendingUp}
-                color="indigo"
-                trend={{ value: "conversion health", isPositive: data.conversionRate >= 50 }}
-              />
-            </div>
-            <div className="animate-slide-up stagger-2">
-              <MetricCard 
-                title="Eligible Quotes" 
-                value={data.totalEligibleQuotes}
-                description="Pipeline quote volume"
-                icon={FileText}
-                color="slate"
-              />
-            </div>
-            <div className="animate-slide-up stagger-3">
-              <MetricCard 
-                title="Converted Orders" 
-                value={data.totalConvertedQuotes}
-                description="Handovers with linked sales orders"
-                icon={CheckCircle2}
-                color="emerald"
-              />
-            </div>
-            <div className="animate-slide-up stagger-4">
-              <MetricCard 
-                title="Stalled Quotes Alert" 
-                value={data.stalledQuotesCount}
-                description="Quotes pending > 5 days"
-                icon={AlertTriangle}
-                color={data.stalledQuotesCount > 0 ? "rose" : "slate"}
-              />
-            </div>
+            <MetricCard 
+              title="Quote Conversion Rate" 
+              value={`${data.conversionRate.toFixed(2)}%`}
+              description="Accepted vs eligible quotes"
+              icon={TrendingUp}
+              color="indigo"
+              trend={{ value: "conversion health", isPositive: data.conversionRate >= 50 }}
+            />
+            <MetricCard 
+              title="Eligible Quotes" 
+              value={data.totalEligibleQuotes}
+              description="Pipeline quote volume"
+              icon={FileText}
+              color="slate"
+            />
+            <MetricCard 
+              title="Converted Orders" 
+              value={data.totalConvertedQuotes}
+              description="Handovers with linked sales orders"
+              icon={CheckCircle2}
+              color="emerald"
+            />
+            <MetricCard 
+              title="Stalled Quotes Alert" 
+              value={data.stalledQuotesCount}
+              description="Quotes pending > 5 days"
+              icon={AlertTriangle}
+              color={data.stalledQuotesCount > 0 ? "rose" : "slate"}
+            />
           </div>
 
           {/* Drill-down Quotes Pipeline Ledger Table */}
-          <div className="card overflow-hidden border border-slate-200/80 bg-white shadow-sm flex flex-col">
+          <div className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm flex flex-col">
             
-            <div className="px-6 py-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <div className="p-1.5 bg-indigo-50 rounded-lg">
-                  <Database className="h-4 w-4 text-indigo-500" />
-                </div>
+            <div className="px-4 py-3 border-b border-slate-300 bg-slate-50 flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                <div className="h-4 w-1 rounded-full bg-sky-600" />
                 Quotes Pipeline Ledger
-                <span className="text-xs font-medium text-slate-400">verification source</span>
               </h3>
-              <span className="bg-indigo-55 bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-bold px-3 py-1.5 rounded-lg font-mono">
+              <span className="bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold px-3 py-1.5 rounded-md font-mono">
                 {data.quotes.length} total transaction records
               </span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse table-premium">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/30">
-                    <th className="py-4 px-6">Quote ID</th>
-                    <th className="py-4 px-6">RFQ Title</th>
-                    <th className="py-4 px-6">Status</th>
-                    <th className="py-4 px-6">Total Amount</th>
-                    <th className="py-4 px-6">Created At</th>
-                    <th className="py-4 px-6">Converted At</th>
+                  <tr className="border-b border-slate-300 text-[10px] font-bold text-slate-500 uppercase tracking-wide bg-slate-100/80">
+                    <th className="py-3 px-4">Quote ID</th>
+                    <th className="py-3 px-4">RFQ Title</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Total Amount</th>
+                    <th className="py-3 px-4">Created At</th>
+                    <th className="py-3 px-4">Converted At</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
+                <tbody className="divide-y divide-slate-200 text-sm">
                   {data.quotes.length > 0 ? (
                     data.quotes.map((quote) => (
-                      <tr key={quote.id} className="hover:bg-indigo-50/30 transition-colors duration-150 cursor-pointer">
-                        <td className="py-4 px-6 font-mono text-xs text-indigo-600 font-bold">
+                      <tr key={quote.id} className="hover:bg-slate-50 transition-colors cursor-pointer">
+                        <td className="py-3 px-4 font-mono text-xs text-sky-600 font-bold">
                           {quote.id}
                         </td>
-                        <td className="py-4 px-6 font-semibold text-slate-800">
+                        <td className="py-3 px-4 font-semibold text-slate-800">
                           {quote.rfqTitle || <span className="text-slate-400 font-normal italic">No RFQ Attached</span>}
                         </td>
-                        <td className="py-4 px-6">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${
                             quote.status === 'ACCEPTED' 
                               ? 'bg-emerald-50 text-emerald-700'
                               : quote.status === 'SENT'
-                              ? 'bg-indigo-50 text-indigo-700'
+                              ? 'bg-sky-50 text-sky-700'
                               : quote.status === 'DRAFT'
                               ? 'bg-slate-100 text-slate-600'
                               : 'bg-rose-50 text-rose-700'
@@ -349,13 +342,13 @@ export const SalesDashboard: React.FC = () => {
                             {quote.status}
                           </span>
                         </td>
-                        <td className="py-4 px-6 font-mono font-bold text-slate-900">
+                        <td className="py-3 px-4 font-mono font-bold text-slate-900">
                           {formatCurrency(quote.totalAmount)}
                         </td>
-                        <td className="py-4 px-6 text-xs text-slate-500 font-mono">
+                        <td className="py-3 px-4 text-xs text-slate-500 font-mono">
                           {new Date(quote.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="py-4 px-6 text-xs text-slate-500 font-mono">
+                        <td className="py-3 px-4 text-xs text-slate-500 font-mono">
                           {quote.convertedAt 
                             ? new Date(quote.convertedAt).toLocaleDateString()
                             : <span className="text-slate-300">-</span>

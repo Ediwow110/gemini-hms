@@ -24,6 +24,10 @@ describe('AuditService', () => {
         findFirst: jest.fn(),
         create: jest.fn(),
       },
+      $transaction: jest.fn().mockImplementation((cb) => {
+        if (typeof cb === 'function') return cb(prisma);
+        return Promise.all(cb.map((c: any) => c(prisma)));
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({

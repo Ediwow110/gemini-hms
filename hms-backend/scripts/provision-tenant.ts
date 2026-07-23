@@ -20,7 +20,7 @@ async function main() {
   const name = getArg('--name');
   const branchName = getArg('--branch');
   const adminEmail = getArg('--adminEmail');
-  const adminPassword = getArg('--adminPassword') || 'ClinicAdmin@123';
+  const adminPassword = getArg('--adminPassword') || (process.env.SEED_PASSWORD ?? 'seed-demo-password-change-me');
 
   if (!name || !branchName || !adminEmail) {
     console.error('Usage: npx tsx scripts/provision-tenant.ts --name "Clinic Name" --branch "Primary Branch" --adminEmail "admin@clinic.com" [--adminPassword "securePass"]');
