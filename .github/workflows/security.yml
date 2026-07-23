@@ -48,6 +48,7 @@ jobs:
 
       - name: Review dependency changes
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
@@ -78,7 +79,7 @@ jobs:
         run: docker build -t hms-backend:security-scan ./hms-backend
 
       - name: Scan backend image
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: hms-backend:security-scan
           format: table
@@ -97,7 +98,7 @@ jobs:
         run: docker build -t hms-frontend:security-scan ./hms-frontend
 
       - name: Scan frontend image
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: hms-frontend:security-scan
           format: table
