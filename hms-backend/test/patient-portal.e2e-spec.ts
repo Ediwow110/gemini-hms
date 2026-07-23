@@ -316,7 +316,7 @@ describe('Patient Portal E2E', () => {
   describe('Patient Login & Authentication', () => {
     it('should successfully login and return only safe patient info + set httpOnly + CSRF cookies', async () => {
       const res = await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .send({
           tenantCode: tenant.name,
           email: 'alice@portal.local',
@@ -344,15 +344,16 @@ describe('Patient Portal E2E', () => {
         : cookies;
       expect(csrfCookie).toBeDefined();
 
-      // Cookies are scoped to /patient-portal
+      // Cookies are scoped to /api/v1/patient-portal
       if (patientCookie)
-        expect(patientCookie).toContain('Path=/patient-portal');
-      if (csrfCookie) expect(csrfCookie).toContain('Path=/patient-portal');
+        expect(patientCookie).toContain('Path=/api/v1/patient-portal');
+      if (csrfCookie)
+        expect(csrfCookie).toContain('Path=/api/v1/patient-portal');
     });
 
     it('should never return accessToken in login response body even with X-Request-Access-Token header', async () => {
       const res = await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .set('X-Request-Access-Token', 'true')
         .send({
           tenantCode: tenant.name,
@@ -368,7 +369,7 @@ describe('Patient Portal E2E', () => {
 
     it('should reject login for incorrect passwords with 401', async () => {
       await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .send({
           tenantCode: tenant.name,
           email: 'alice@portal.local',
@@ -379,7 +380,7 @@ describe('Patient Portal E2E', () => {
 
     it('should reject login for non-existent tenants with 401', async () => {
       await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .send({
           tenantCode: 'NonExistentTenant',
           email: 'alice@portal.local',
@@ -395,7 +396,7 @@ describe('Patient Portal E2E', () => {
 
     beforeAll(async () => {
       const resA = await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .send({
           tenantCode: tenant.name,
           email: 'alice@portal.local',
@@ -405,7 +406,7 @@ describe('Patient Portal E2E', () => {
       tokenA = extractPatientToken(resA);
 
       const resB = await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .send({
           tenantCode: tenant.name,
           email: 'bob@portal.local',
@@ -416,7 +417,7 @@ describe('Patient Portal E2E', () => {
 
     it('should fetch own profile via Bearer token (programmatic)', async () => {
       const res = await request(app.getHttpServer())
-        .get('/patient-portal/profile')
+        .get('/api/v1/patient-portal/profile')
         .set('Authorization', `Bearer ${tokenA}`)
         .expect(200);
 
@@ -427,7 +428,7 @@ describe('Patient Portal E2E', () => {
 
     it('should fetch own profile via httpOnly cookie (browser)', async () => {
       const loginRes = await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .send({
           tenantCode: tenant.name,
           email: 'alice@portal.local',
@@ -436,7 +437,7 @@ describe('Patient Portal E2E', () => {
       const cookieToken = extractPatientToken(loginRes);
 
       const res = await request(app.getHttpServer())
-        .get('/patient-portal/profile')
+        .get('/api/v1/patient-portal/profile')
         .set('Cookie', `patient_token=${cookieToken}`)
         .expect(200);
 
@@ -446,7 +447,7 @@ describe('Patient Portal E2E', () => {
 
     it("should fetch own released lab results, excluding unreleased results and other patients' results", async () => {
       const res = await request(app.getHttpServer())
-        .get('/patient-portal/lab-results')
+        .get('/api/v1/patient-portal/lab-results')
         .set('Authorization', `Bearer ${tokenA}`)
         .expect(200);
 
@@ -471,7 +472,7 @@ describe('Patient Portal E2E', () => {
 
     it("should fetch own invoices with calculated balances and isolate other patients' invoices", async () => {
       const res = await request(app.getHttpServer())
-        .get('/patient-portal/invoices')
+        .get('/api/v1/patient-portal/invoices')
         .set('Authorization', `Bearer ${tokenA}`)
         .expect(200);
 
@@ -492,7 +493,7 @@ describe('Patient Portal E2E', () => {
 
     it("should fetch own active prescriptions, excluding cancelled prescriptions and other patients' prescriptions", async () => {
       const res = await request(app.getHttpServer())
-        .get('/patient-portal/prescriptions')
+        .get('/api/v1/patient-portal/prescriptions')
         .set('Authorization', `Bearer ${tokenA}`)
         .expect(200);
 
@@ -526,7 +527,7 @@ describe('Patient Portal E2E', () => {
 
     it('should reject logout without CSRF token with 403', async () => {
       const loginRes = await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .send({
           tenantCode: tenant.name,
           email: 'alice@portal.local',
@@ -536,14 +537,14 @@ describe('Patient Portal E2E', () => {
 
       // Logout without CSRF token should be rejected
       await request(app.getHttpServer())
-        .post('/patient-portal/auth/logout')
+        .post('/api/v1/patient-portal/auth/logout')
         .set('Cookie', `patient_token=${cookieToken}`)
         .expect(403);
     });
 
     it('should reject logout with invalid CSRF token with 403', async () => {
       const loginRes = await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .send({
           tenantCode: tenant.name,
           email: 'alice@portal.local',
@@ -554,7 +555,7 @@ describe('Patient Portal E2E', () => {
 
       // Send both cookies but wrong CSRF header value
       await request(app.getHttpServer())
-        .post('/patient-portal/auth/logout')
+        .post('/api/v1/patient-portal/auth/logout')
         .set(
           'Cookie',
           `patient_token=${cookieToken}; patient_csrf=${csrfToken}`,
@@ -565,7 +566,7 @@ describe('Patient Portal E2E', () => {
 
     it('should logout and clear cookies when valid CSRF token is provided', async () => {
       const loginRes = await request(app.getHttpServer())
-        .post('/patient-portal/auth/login')
+        .post('/api/v1/patient-portal/auth/login')
         .send({
           tenantCode: tenant.name,
           email: 'alice@portal.local',
@@ -576,7 +577,7 @@ describe('Patient Portal E2E', () => {
 
       // Logout with both cookies and matching CSRF header
       const logoutRes = await request(app.getHttpServer())
-        .post('/patient-portal/auth/logout')
+        .post('/api/v1/patient-portal/auth/logout')
         .set(
           'Cookie',
           `patient_token=${cookieToken}; patient_csrf=${csrfToken}`,
@@ -604,13 +605,13 @@ describe('Patient Portal E2E', () => {
 
     it('should block patient portal requests without auth with 401', async () => {
       await request(app.getHttpServer())
-        .get('/patient-portal/profile')
+        .get('/api/v1/patient-portal/profile')
         .expect(401);
     });
 
     it('should block patient portal requests using invalid tokens with 401', async () => {
       await request(app.getHttpServer())
-        .get('/patient-portal/profile')
+        .get('/api/v1/patient-portal/profile')
         .set('Authorization', 'Bearer invalidtokenstring')
         .expect(401);
     });
@@ -619,7 +620,7 @@ describe('Patient Portal E2E', () => {
       // Generate a staff-like token (without isPatientPortal claim)
       const staffToken = 'mock-staff-token';
       await request(app.getHttpServer())
-        .get('/patient-portal/profile')
+        .get('/api/v1/patient-portal/profile')
         .set('Authorization', `Bearer ${staffToken}`)
         .expect(401);
     });

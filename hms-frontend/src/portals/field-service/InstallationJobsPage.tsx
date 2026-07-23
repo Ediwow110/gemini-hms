@@ -10,7 +10,9 @@ import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } 
 
 export const InstallationJobsPage: React.FC = () => {
   const user = useUser();
-  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
+  const isAdmin = Boolean(
+    user?.permissions.includes('field_service.job.assign'),
+  );
   const { data: jobs, isLoading, error } = useFieldServiceInstallations();
   const { mutate: updateStatus, isPending: mutating } = useUpdateInstallationStatus();
 

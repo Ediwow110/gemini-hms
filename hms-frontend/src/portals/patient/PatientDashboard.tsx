@@ -1,161 +1,243 @@
 import React from 'react';
 import {
-  Pill, 
-  CreditCard, 
-  MessageSquare, 
-  Heart,
-  ShieldCheck,
-  Bell,
   Calendar,
+  CreditCard,
   FileText,
-  UserCircle
+  Heart,
+  MessageSquare,
+  Pill,
+  ShieldCheck,
+  UserCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import PatientHomeCard from './components/PatientHomeCard';
-import AppointmentSummaryCard from './components/AppointmentSummaryCard';
-import ReleasedResultCard from './components/ReleasedResultCard';
 import { AnalyticsMetricCard } from '../../components/analytics';
-import { usePatientProfile, usePatientLabResults, usePatientPrescriptions } from '../../hooks/use-patient-portal';
 import { HmsPageHeader } from '../../components/hms-page';
-import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } from '../../components/hms-dashboard';
+import {
+  HmsAuditFooter,
+  HmsDashboardShell,
+  HmsDataSourceBadge,
+  HmsDataUnavailable,
+  HmsEmptyState,
+  HmsLoadingSkeleton,
+  HmsQuickActions,
+  HmsToolbar,
+} from '../../components/hms-dashboard';
+import {
+  usePatientInvoices,
+  usePatientLabResults,
+  usePatientPrescriptions,
+  usePatientProfile,
+} from '../../hooks/use-patient-portal';
+import PatientHomeCard from './components/PatientHomeCard';
+import ReleasedResultCard from './components/ReleasedResultCard';
+
+const peso = (value: number) =>
+  new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    maximumFractionDigits: 0,
+  }).format(value);
 
 export const PatientDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, loading: profileLoading } = usePatientProfile();
-  const { results, loading: resultsLoading } = usePatientLabResults();
-  const { prescriptions, loading: rxLoading } = usePatientPrescriptions();
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+    refetch: refetchProfile,
+  } = usePatientProfile();
+  const {
+    results,
+    loading: resultsLoading,
+    error: resultsError,
+    refetch: refetchResults,
+  } = usePatientLabResults();
+  const {
+    prescriptions,
+    loading: prescriptionsLoading,
+    error: prescriptionsError,
+    refetch: refetchPrescriptions,
+  } = usePatientPrescriptions();
+  const {
+    invoices,
+    loading: invoicesLoading,
+    error: invoicesError,
+    refetch: refetchInvoices,
+  } = usePatientInvoices();
 
-  const rawResults = Array.isArray(results) ? results : [];
-  const rawPrescriptions = Array.isArray(prescriptions) ? prescriptions : [];
+  const safeResults = Array.isArray(results) ? results : [];
+  const safePrescriptions = Array.isArray(prescriptions) ? prescriptions : [];
+  const safeInvoices = Array.isArray(invoices) ? invoices : [];
 
-  const displayResults = rawResults.slice(0, 3).map(r => ({
-    id: r.id,
-    testName: `Lab Result #${r.id.substring(0, 8)}`,
-    dateReleased: r.lockedAt ? new Date(r.lockedAt).toLocaleDateString() : new Date(r.createdAt).toLocaleDateString(),
-    doctorName: 'Attending Physician',
+  const displayResults = safeResults.slice(0, 3).map((result) => ({
+    id: result.id,
+    testName: `Lab Result #${result.id.substring(0, 8)}`,
+    dateReleased: result.lockedAt
+      ? new Date(result.lockedAt).toLocaleDateString()
+      : new Date(result.createdAt).toLocaleDateString(),
+    doctorName: 'Care team',
     status: 'NORMAL' as const,
     isReleased: true,
-    doctorNotes: r.remarks || '',
+    doctorNotes: result.remarks || '',
   }));
 
-  const displayPrescriptions = rawPrescriptions.slice(0, 3).map(p => ({
-    id: p.id,
-    medication: p.medicationName,
-    dosage: p.dosage,
-    frequency: p.frequency,
-    prescribedBy: 'Attending Physician',
-    expiryDate: '',
-    remainingRefills: p.status === 'ACTIVE' ? 1 : 0,
-  }));
+  const activePrescriptions = safePrescriptions.filter(
+    (prescription) => prescription.status === 'ACTIVE',
+  );
+  const outstandingBalance = safeInvoices.reduce((sum, invoice) => {
+    const total = Number(invoice.totalAmount ?? 0);
+    const paid = Number(invoice.paidAmount ?? 0);
+    return sum + Math.max(0, total - paid);
+  }, 0);
 
-  const patientActions = [
-    { title: 'Upcoming Appointment', value: 'Book', description: 'Schedule or review visits', icon: Calendar, severity: 'info' as const, href: '/patient/appointments' },
-    { title: 'Latest Lab Result', value: resultsLoading ? '…' : displayResults.length, description: 'Released results only', icon: ShieldCheck, severity: 'success' as const, href: '/patient/lab-results' },
-    { title: 'Active Prescriptions', value: rxLoading ? '…' : displayPrescriptions.length, description: 'Current medication list', icon: Pill, severity: 'info' as const, href: '/patient/prescriptions' },
-    { title: 'Outstanding Balance', value: 'View', description: 'Invoices and receipts', icon: CreditCard, severity: 'warning' as const, href: '/patient/billing' },
-    { title: 'Record Requests', value: 'Open', description: 'Documents and exports', icon: FileText, severity: 'info' as const, href: '/patient/medical-records' },
-  ];
+  const loading =
+    profileLoading || resultsLoading || prescriptionsLoading || invoicesLoading;
+  const error =
+    profileError || resultsError || prescriptionsError || invoicesError;
 
-  const isPatientLoading = profileLoading || resultsLoading || rxLoading;
+  const refresh = async () => {
+    await Promise.all([
+      refetchProfile(),
+      refetchResults(),
+      refetchPrescriptions(),
+      refetchInvoices(),
+    ]);
+  };
 
   return (
-    <HmsDashboardShell widthTier="standard">
-      <div className="space-y-6 pb-12">
-        <HmsPageHeader
-          title={profileLoading ? 'Loading...' : `Hello, ${profile?.firstName || 'Welcome Back'}`}
-          description="Access your medical records, appointments, and care team"
-          actions={
-            <div className="flex items-center gap-3">
-              <button className="p-2 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors relative shadow-sm">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-2 right-2 h-2 w-2 bg-rose-500 rounded-full border-2 border-white" />
-              </button>
-              <button
-                onClick={() => navigate('/patient/profile')}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md"
-              >
-                My Profile
-              </button>
-            </div>
-          }
+    <HmsDashboardShell
+      widthTier="standard"
+      toolbar={
+        <HmsToolbar
+          role="Patient Portal"
+          onRefresh={() => void refresh()}
+          refreshing={loading}
         />
+      }
+      footer={<HmsAuditFooter dataSource="Patient portal APIs" />}
+    >
+      <HmsPageHeader
+        eyebrow="My care"
+        title={profileLoading ? 'Loading your portal…' : `Hello, ${profile?.firstName || 'welcome'}`}
+        description="Your next care steps, released results, prescriptions and billing information."
+        actions={
+          <>
+            <HmsDataSourceBadge mode="live" />
+            <button
+              type="button"
+              onClick={() => navigate('/patient/profile')}
+              className="min-h-10 rounded-md bg-sky-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-sky-700"
+            >
+              My profile
+            </button>
+          </>
+        }
+      />
 
-        {isPatientLoading ? (
-          <HmsLoadingSkeleton />
-        ) : patientActions.length > 0 ? (
-          <div className="grid grid-cols-10 gap-6">
-            {patientActions.map(action => (
-              <div key={action.title} className="col-span-10 sm:col-span-5 xl:col-span-2">
-                <AnalyticsMetricCard {...action} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <HmsEmptyState title="No portal actions available" description="Your care-team actions will appear here when records are available." />
-        )}
+      {error && (
+        <div className="rounded-md border border-amber-500 bg-amber-50 p-4 text-xs text-amber-800">
+          Some portal information could not be loaded. Use Refresh to try again.
+        </div>
+      )}
 
-        {/* Quick Actions Section */}
-        <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-5">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Quick Actions</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-            {[
-              { label: 'Book Visit', icon: Calendar, path: '/patient/appointments' },
-              { label: 'Get Records', icon: FileText, path: '/patient/medical-records' },
-              { label: 'Messages', icon: MessageSquare, path: '/patient/messages' },
-              { label: 'Lab Results', icon: ShieldCheck, path: '/patient/lab-results' },
-              { label: 'Prescriptions', icon: Pill, path: '/patient/prescriptions' },
-              { label: 'Billing', icon: CreditCard, path: '/patient/billing' },
-              { label: 'Profile', icon: UserCircle, path: '/patient/profile' },
-            ].map((item) => (
-              <button key={item.path} onClick={() => navigate(item.path)}
-                className="flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-indigo-50 border border-slate-100 hover:border-indigo-100 rounded-xl transition-all group"
-              >
-                <item.icon className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 mb-1.5" />
-                <span className="text-[10px] font-black text-slate-600 group-hover:text-indigo-700">{item.label}</span>
-              </button>
-            ))}
-          </div>
+      {loading ? (
+        <HmsLoadingSkeleton variant="kpi" />
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-5">
+          <AnalyticsMetricCard
+            title="Released lab results"
+            value={safeResults.length}
+            description="Results available to view"
+            icon={ShieldCheck}
+            severity="success"
+            href="/patient/lab-results"
+          />
+          <AnalyticsMetricCard
+            title="Active prescriptions"
+            value={activePrescriptions.length}
+            description="Current medications"
+            icon={Pill}
+            severity="info"
+            href="/patient/prescriptions"
+          />
+          <AnalyticsMetricCard
+            title="Outstanding balance"
+            value={peso(outstandingBalance)}
+            description="Invoices and receipts"
+            icon={CreditCard}
+            severity={outstandingBalance > 0 ? 'warning' : 'success'}
+            href="/patient/billing"
+          />
+          <AnalyticsMetricCard
+            title="Record requests"
+            value="Open"
+            description="Documents and exports"
+            icon={FileText}
+            severity="info"
+            href="/patient/medical-records"
+          />
+        </div>
+      )}
+
+      <HmsQuickActions
+        title="Common actions"
+        actions={[
+          { id: 'appointments', label: 'Appointments', icon: <Calendar className="h-4 w-4" />, href: '/patient/appointments' },
+          { id: 'records', label: 'Medical records', icon: <FileText className="h-4 w-4" />, href: '/patient/medical-records' },
+          { id: 'messages', label: 'Messages', icon: <MessageSquare className="h-4 w-4" />, href: '/patient/messages' },
+          { id: 'results', label: 'Lab results', icon: <ShieldCheck className="h-4 w-4" />, href: '/patient/lab-results' },
+          { id: 'prescriptions', label: 'Prescriptions', icon: <Pill className="h-4 w-4" />, href: '/patient/prescriptions' },
+          { id: 'billing', label: 'Billing', icon: <CreditCard className="h-4 w-4" />, href: '/patient/billing' },
+          { id: 'profile', label: 'Profile', icon: <UserCircle className="h-4 w-4" />, href: '/patient/profile' },
+        ]}
+      />
+
+      <div className="grid grid-cols-12 gap-5">
+        <div className="col-span-12 space-y-5 xl:col-span-8">
+          <HmsDataUnavailable
+            sectionName="Upcoming appointments"
+            expectedApi="Patient appointment schedule"
+            expectedPhase="No appointment summary endpoint is connected to this dashboard"
+          />
+
+          {resultsLoading ? (
+            <HmsLoadingSkeleton variant="table" />
+          ) : displayResults.length > 0 ? (
+            <ReleasedResultCard results={displayResults} />
+          ) : (
+            <HmsEmptyState
+              title="No released lab results"
+              description="Released results from your care team will appear here."
+            />
+          )}
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-12 gap-6">
-          {/* Left Column (8/12 cols desktop, 12 cols tablet/mobile) */}
-          <div className="col-span-12 xl:col-span-8 space-y-6">
-            {/* Appointments */}
-            <AppointmentSummaryCard appointments={[]} />
-
-            {/* Recent Lab Results */}
-            {resultsLoading ? (
-              <div className="card bg-white border border-slate-200/80 shadow-sm rounded-2xl p-6 text-center text-xs text-slate-400">
-                Loading lab results...
-              </div>
-            ) : displayResults.length > 0 ? (
-              <ReleasedResultCard results={displayResults} />
-            ) : null}
-
-            {/* Active Prescriptions */}
-            {!rxLoading && displayPrescriptions.length > 0 && (
-              <PatientHomeCard
-                icon={Pill}
-                title="Active Prescriptions"
-                value={displayPrescriptions.length}
-                description="View your active medications"
-                actionLabel="View All"
-                onClick={() => navigate('/patient/prescriptions')}
-              />
-            )}
-          </div>
-
-          {/* Right Column (4/12 cols desktop, 12 cols tablet/mobile) */}
-          <div className="col-span-12 xl:col-span-4 space-y-6">
-            <PatientHomeCard title="Quick Info" icon={Heart} value={profile?.patientNumber || '...'} description={`Status: ${profile?.status || '...'}`} />
-          </div>
+        <div className="col-span-12 space-y-5 xl:col-span-4">
+          <PatientHomeCard
+            title="Patient information"
+            icon={Heart}
+            value={profile?.patientNumber || 'Unavailable'}
+            description={`Status: ${profile?.status || 'Unavailable'}`}
+          />
+          {!prescriptionsLoading && activePrescriptions.length > 0 ? (
+            <PatientHomeCard
+              icon={Pill}
+              title="Active prescriptions"
+              value={activePrescriptions.length}
+              description="Review dosage and refill information"
+              actionLabel="View prescriptions"
+              onClick={() => navigate('/patient/prescriptions')}
+            />
+          ) : (
+            <HmsEmptyState
+              title="No active prescriptions"
+              description="Current medications will appear here when prescribed."
+            />
+          )}
         </div>
       </div>
-      <HmsAuditFooter />
     </HmsDashboardShell>
   );
 };
 
 export default PatientDashboard;
-

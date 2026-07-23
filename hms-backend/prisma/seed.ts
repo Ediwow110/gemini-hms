@@ -1,54 +1,46 @@
-import { PrismaClient, ListingStatus, OrderStatus, ShipmentStatus, DeliveryJobStatus, TaskStatus } from '@prisma/client';
+import {
+  EncounterStatus,
+  ListingStatus,
+  PrescriptionStatus,
+  PrismaClient,
+} from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
+import {
+  AUTHORIZATION_PERMISSIONS,
+  SYSTEM_ROLE_PERMISSIONS,
+} from '../src/auth/authorization-catalog';
+import { validateDemoEnvironment } from '../scripts/demo-safety-guard';
+
+const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'seed-demo-password-change-me';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://hms_local_user:hms_secure_pass@localhost:5432/gemini_hms_local?schema=public',
+  connectionString: process.env.DATABASE_URL,
 });
+
+if (!process.env.DATABASE_URL) {
+  console.error('ERROR: DATABASE_URL environment variable is required. Set it to point to your database.');
+  process.exit(1);
+}
+
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🚀 Starting System-Wide Real-Data Seeding...');
+  validateDemoEnvironment({ isDestructive: true });
+  console.log('🚀 Starting deterministic synthetic dashboard seeding...');
 
-  // 1. CLEANUP: Start fresh
-  console.log('🧹 Cleaning database...');
-  await prisma.queueEntry.deleteMany();
-  await prisma.serviceItem.deleteMany();
-  await prisma.serviceCategory.deleteMany();
-  await prisma.supplier.deleteMany();
-  await prisma.notificationOutbox.deleteMany();
-  await prisma.auditLog.deleteMany();
-  await prisma.marketplaceOrderItem.deleteMany();
-  await prisma.marketplaceOrder.deleteMany();
-  await prisma.marketplaceListing.deleteMany();
-  await prisma.shipment.deleteMany();
-  await prisma.deliveryJob.deleteMany();
-  await prisma.salesOrder.deleteMany();
-  await prisma.quote.deleteMany();
-  await prisma.rFQ.deleteMany();
-  await prisma.nurseTask.deleteMany();
-  await prisma.attendanceLog.deleteMany();
-  await prisma.leaveRequest.deleteMany();
-  await prisma.licenseRecord.deleteMany();
-  await prisma.employeeBranch.deleteMany();
-  await prisma.employee.deleteMany();
-  await prisma.patientUser.deleteMany();
-  await prisma.prescription.deleteMany();
-  await prisma.labResult.deleteMany();
-  await prisma.labSpecimen.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.patient.deleteMany();
-  await prisma.userRole.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.rolePermission.deleteMany();
-  await prisma.role.deleteMany();
-  await prisma.permission.deleteMany();
-  await prisma.branch.deleteMany();
-  await prisma.department.deleteMany();
-  await prisma.tenant.deleteMany();
+  // 1. SAFETY: Seeding owns data creation only. The guarded reset wrapper owns
+  // destructive schema reset, which avoids brittle model-by-model deletion and
+  // restrictive-foreign-key failures when demo workflows created extra records.
+  const existingTenantCount = await prisma.tenant.count();
+  if (existingTenantCount > 0) {
+    throw new Error(
+      'Synthetic seed requires an empty database. Run npm run db:reset:demo:safe ' +
+        'with the demo safety confirmation instead of invoking the seed directly.',
+    );
+  }
 
   // 2. TENANT & BRANCHES
   const tenant = await prisma.tenant.create({
@@ -61,30 +53,13 @@ async function main() {
 
   // 2B. PERMISSIONS
   console.log('🔑 Creating permissions...');
-  const permissionNames = [
-    'patient.view', 'encounter.update', 'patient.create',
-    'queue.view', 'queue.manage',
-    'lab.result.view',
-    'inventory.stock.dispense', 'inventory.item.view', 'inventory.stock.receive',
-    'billing.invoice.view',
-    'order.create',
-    'approval.request.view',
-    'admin.role.change', 'admin.health.view', 'admin.user.view', 'admin.branch.view',
-    'report.export',
-    'audit.view', 'audit.self', 'audit.export',
-    'compliance.audit.review',
-    'it.system.view',
-    'integration.view',
-    'hr.employee.manage',
-    'procurement.request.view', 'procurement.supplier.manage',
-    'patient.self_service', 'patient.merge.request', 'patient.merge.approve',
-    'marketplace.buyer', 'marketplace.supplier', 'marketplace.admin',
-    'field_service.manage',
-  ];
   const createdPermissions = await Promise.all(
-    permissionNames.map(name =>
+    AUTHORIZATION_PERMISSIONS.map((definition) =>
       prisma.permission.create({
-        data: { name, tenantId: tenant.id, riskLevel: 'PRIVILEGED' },
+        data: {
+          ...definition,
+          tenantId: tenant.id,
+        },
       }),
     ),
   );
@@ -114,34 +89,34 @@ async function main() {
   // 4. USERS & EMPLOYEES
   // 4. USERS & EMPLOYEES
   const staff = [
-    { name: 'Admin User', email: 'admin@hospital.com', role: 'Super Admin', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Dr. Alice Smith', email: 'alice.smith@stjude.med', role: 'Doctor', password: 'Admin@123', dept: 'Cardiology', branchIdx: 0 },
-    { name: 'Dr. Bob Jones', email: 'bob.jones@stjude.med', role: 'Doctor', password: 'Admin@123', dept: 'Neurology', branchIdx: 1 },
-    { name: 'Nurse Clara', email: 'clara.n@stjude.med', role: 'Nurse', password: 'Admin@123', dept: 'Pediatrics', branchIdx: 0 },
-    { name: 'Nurse David', email: 'david.n@stjude.med', role: 'Nurse', password: 'Admin@123', dept: 'Radiology', branchIdx: 2 },
-    { name: 'Cashier Eve', email: 'eve.c@stjude.med', role: 'Cashier', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
+    { name: 'Admin User', email: 'admin@hospital.com', role: 'Super Admin', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Dr. Alice Smith', email: 'alice.smith@stjude.med', role: 'Doctor', password: SEED_PASSWORD, dept: 'Cardiology', branchIdx: 0 },
+    { name: 'Dr. Bob Jones', email: 'bob.jones@stjude.med', role: 'Doctor', password: SEED_PASSWORD, dept: 'Neurology', branchIdx: 1 },
+    { name: 'Nurse Clara', email: 'clara.n@stjude.med', role: 'Nurse', password: SEED_PASSWORD, dept: 'Pediatrics', branchIdx: 0 },
+    { name: 'Nurse David', email: 'david.n@stjude.med', role: 'Nurse', password: SEED_PASSWORD, dept: 'Radiology', branchIdx: 2 },
+    { name: 'Cashier Eve', email: 'eve.c@stjude.med', role: 'Cashier', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
     
     // Playwright/Demo dropdown accounts
-    { name: 'Branch Admin User', email: 'branch.admin@hospital.com', role: 'Branch Admin', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Receptionist User', email: 'receptionist@hospital.com', role: 'Receptionist', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Cashier Demo User', email: 'cashier@hospital.com', role: 'Cashier', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Med Tech User', email: 'medtech@hospital.com', role: 'Med-Tech', password: 'Admin@123', dept: 'Radiology', branchIdx: 0 },
-    { name: 'Doctor Demo User', email: 'doctor@hospital.com', role: 'Doctor', password: 'Admin@123', dept: 'Cardiology', branchIdx: 0 },
-    { name: 'Pharmacist User', email: 'pharmacist@hospital.com', role: 'Pharmacist', password: 'Admin@123', dept: 'Pharmacy', branchIdx: 0 },
-    { name: 'Nurse Demo User', email: 'nurse@hospital.com', role: 'Nurse', password: 'Admin@123', dept: 'Pediatrics', branchIdx: 0 },
-    { name: 'Supplier User', email: 'supplier@hospital.com', role: 'Supplier', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Procurement User', email: 'procurement@hospital.com', role: 'Procurement Officer', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'HR Staff User', email: 'hr@hospital.com', role: 'HR Staff', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'HR Manager User', email: 'hr.manager@hospital.com', role: 'HR Manager', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'IT Support User', email: 'it.support@hospital.com', role: 'IT Support', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Compliance User', email: 'compliance@hospital.com', role: 'Compliance Officer', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Field Tech User', email: 'field.tech@hospital.com', role: 'Field Technician', password: 'Admin@123', dept: 'Admin', branchIdx: 0 },
-    { name: 'Marketplace Admin User', email: 'marketplace.admin@hospital.com', role: 'Marketplace Admin', password: 'Admin@123', dept: 'Admin', branchIdx: 0 }
+    { name: 'Branch Admin User', email: 'branch.admin@hospital.com', role: 'Branch Admin', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Receptionist User', email: 'receptionist@hospital.com', role: 'Receptionist', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Cashier Demo User', email: 'cashier@hospital.com', role: 'Cashier', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Med Tech User', email: 'medtech@hospital.com', role: 'Med-Tech', password: SEED_PASSWORD, dept: 'Radiology', branchIdx: 0 },
+    { name: 'Doctor Demo User', email: 'doctor@hospital.com', role: 'Doctor', password: SEED_PASSWORD, dept: 'Cardiology', branchIdx: 0 },
+    { name: 'Pharmacist User', email: 'pharmacist@hospital.com', role: 'Pharmacist', password: SEED_PASSWORD, dept: 'Pharmacy', branchIdx: 0 },
+    { name: 'Nurse Demo User', email: 'nurse@hospital.com', role: 'Nurse', password: SEED_PASSWORD, dept: 'Pediatrics', branchIdx: 0 },
+    { name: 'Supplier User', email: 'supplier@hospital.com', role: 'Supplier', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Procurement User', email: 'procurement@hospital.com', role: 'Procurement Officer', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'HR Staff User', email: 'hr@hospital.com', role: 'HR Staff', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'HR Manager User', email: 'hr.manager@hospital.com', role: 'HR Manager', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'IT Support User', email: 'it.support@hospital.com', role: 'IT Support', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Compliance User', email: 'compliance@hospital.com', role: 'Compliance Officer', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Field Tech User', email: 'field.tech@hospital.com', role: 'Field Technician', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 },
+    { name: 'Marketplace Admin User', email: 'marketplace.admin@hospital.com', role: 'Marketplace Admin', password: SEED_PASSWORD, dept: 'Admin', branchIdx: 0 }
   ];
 
   const createdEmployees = [];
   const createdUsers = [];
-  for (const s of staff) {
+  for (const [staffIndex, s] of staff.entries()) {
     const passwordHash = await bcrypt.hash(s.password, 10);
     const user = await prisma.user.create({
       data: {
@@ -158,7 +133,7 @@ async function main() {
         tenantId: tenant.id,
         branchId: createdBranches[s.branchIdx].id,
         userId: user.id,
-        employeeNumber: `EMP-${crypto.randomInt(1000, 9999)}`,
+        employeeNumber: `EMP-${String(staffIndex + 1).padStart(4, '0')}`,
         department: s.dept,
         position: s.role,
         hireDate: new Date('2023-01-01'),
@@ -191,79 +166,34 @@ async function main() {
   }
 
   // Define role->permission mappings
-  const rolePermissions: Record<string, string[]> = {
-    'Super Admin': allPermissions.map((p) => p.name),
-    'Branch Admin': [
-      'patient.view', 'patient.create', 'queue.view', 'queue.manage',
-      'billing.invoice.view', 'inventory.item.view', 'inventory.stock.receive',
-      'inventory.stock.dispense', 'order.create', 'approval.request.view',
-      'admin.user.view', 'admin.branch.view', 'report.export', 'audit.view', 'audit.self',
-      'hr.employee.manage', 'procurement.request.view'
-    ],
-    'Doctor': [
-      'patient.view', 'encounter.update', 'patient.create',
-      'queue.view', 'queue.manage', 'lab.result.view',
-      'order.create', 'audit.self', 'billing.invoice.view',
-      'inventory.item.view',
-    ],
-    'Nurse': [
-      'patient.view', 'encounter.update', 'patient.create',
-      'queue.view', 'queue.manage', 'lab.result.view',
-      'order.create', 'audit.self', 'inventory.stock.dispense',
-      'inventory.item.view',
-    ],
-    'Cashier': [
-      'patient.view', 'queue.view', 'billing.invoice.view',
-      'audit.self', 'inventory.item.view',
-    ],
-    'Receptionist': [
-      'patient.view', 'queue.view', 'queue.manage'
-    ],
-    'Med-Tech': [
-      'patient.view', 'lab.result.view', 'audit.self'
-    ],
-    'Pharmacist': [
-      'patient.view', 'inventory.item.view', 'inventory.stock.dispense', 'audit.self'
-    ],
-    'Supplier': [
-      'marketplace.supplier', 'audit.self'
-    ],
-    'Procurement Officer': [
-      'procurement.request.view', 'procurement.supplier.manage', 'inventory.item.view', 'audit.self'
-    ],
-    'HR Staff': [
-      'hr.employee.manage', 'audit.self'
-    ],
-    'HR Manager': [
-      'hr.employee.manage', 'audit.self'
-    ],
-    'IT Support': [
-      'it.system.view', 'audit.view', 'audit.self'
-    ],
-    'Compliance Officer': [
-      'compliance.audit.review', 'audit.view', 'audit.self'
-    ],
-    'Field Technician': [
-      'field_service.manage', 'audit.self'
-    ],
-    'Marketplace Admin': [
-      'marketplace.admin', 'audit.self'
-    ],
-    'Patient': [
-      'patient.self_service', 'audit.self'
-    ]
-  };
+  const rolePermissions = SYSTEM_ROLE_PERMISSIONS;
 
   for (const [roleName, permNames] of Object.entries(rolePermissions)) {
     // Upsert the role
     const role = await prisma.role.upsert({
       where: { tenantId_name: { tenantId: tenant.id, name: roleName } },
-      update: { status: 'ACTIVE' },
+      update: {
+        status: 'ACTIVE',
+        isSystem: true,
+        archivedAt: null,
+        archivedReason: null,
+      },
       create: {
         tenantId: tenant.id,
         name: roleName,
         status: 'ACTIVE',
-        isSystem: roleName === 'Super Admin',
+        isSystem: true,
+      },
+    });
+
+    const canonicalPermissionIds = permNames
+      .map((permName) => permissionMap.get(permName))
+      .filter((permissionId): permissionId is string => Boolean(permissionId));
+
+    await prisma.rolePermission.deleteMany({
+      where: {
+        roleId: role.id,
+        permissionId: { notIn: canonicalPermissionIds },
       },
     });
 
@@ -313,7 +243,7 @@ async function main() {
 
   // Create multi-branch user specifically for E2E branch-selection tests
   const multiBranchUserEmail = 'branch.multi@hospital.com';
-  const multiBranchPasswordHash = await bcrypt.hash('Admin@123', 10);
+  const multiBranchPasswordHash = await bcrypt.hash(SEED_PASSWORD, 10);
   const multiUser = await prisma.user.create({
     data: {
       email: multiBranchUserEmail,
@@ -359,9 +289,9 @@ async function main() {
       data: {
         tenantId: tenant.id,
         patientNumber: `PAT-${1000 + i}`,
-        firstName: `Patient ${i}`,
-        lastName: `Lastname ${i}`,
-        dob: new Date(1960 + Math.floor(Math.random() * 40), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)),
+        firstName: `[SYNTHETIC] Patient ${i}`,
+        lastName: `Demo ${i}`,
+        dob: new Date(1960 + (i % 40), i % 12, (i % 27) + 1),
         status: 'ACTIVE',
       },
     });
@@ -370,7 +300,7 @@ async function main() {
 
   // Seed PatientUser for patient@hospital.com
   const patientEmail = 'patient@hospital.com';
-  const patientPasswordHash = await bcrypt.hash('Admin@123', 10);
+  const patientPasswordHash = await bcrypt.hash(SEED_PASSWORD, 10);
   if (patients.length > 0) {
     await prisma.patientUser.create({
       data: {
@@ -384,19 +314,116 @@ async function main() {
     console.log(`  ✅ PatientUser "${patientEmail}" linked to Patient "${patients[0].patientNumber}"`);
   }
 
-  // 6. CLINICAL FLOW: Orders -> Results
+  // 6. CLINICAL + FINANCIAL FLOW
+  // Synthetic dates are distributed so dashboards show meaningful trends.
+  const doctorUser = createdUsers.find((entry) => entry.roleName === 'Doctor')?.user;
+  const cashierUser = createdUsers.find((entry) => entry.roleName === 'Cashier')?.user;
+  if (!doctorUser || !cashierUser) {
+    throw new Error('Synthetic Doctor and Cashier users are required for dashboard seeding.');
+  }
+
+  const cashierSession = await prisma.cashierSession.create({
+    data: {
+      tenantId: tenant.id,
+      branchId: createdBranches[0].id,
+      userId: cashierUser.id,
+      status: 'OPEN',
+      openingBalance: 5000,
+      openedAt: new Date(Date.now() - 7 * 86400000),
+    },
+  });
+
+  const encounters = [];
+  for (let i = 0; i < 24; i++) {
+    const occurredAt = new Date(Date.now() - (23 - i) * 86400000 - (i % 5) * 3600000);
+    const encounter = await prisma.encounter.create({
+      data: {
+        tenantId: tenant.id,
+        branchId: createdBranches[i % createdBranches.length].id,
+        patientId: patients[i % patients.length].id,
+        attendingId: doctorUser.id,
+        doctorId: doctorUser.id,
+        encounteredAt: occurredAt,
+        startedAt: occurredAt,
+        endedAt: i % 4 === 0 ? new Date(occurredAt.getTime() + 55 * 60000) : null,
+        chiefComplaint: ['Routine follow-up', 'Fever and cough', 'Medication review', 'Diagnostic workup'][i % 4],
+        reason: 'Synthetic dashboard scenario',
+        status: i % 4 === 0 ? EncounterStatus.FINISHED : EncounterStatus.OPEN,
+        type: ['OUTPATIENT', 'EMERGENCY', 'OUTPATIENT', 'TELEHEALTH'][i % 4],
+        createdBy: doctorUser.id,
+        updatedBy: doctorUser.id,
+        createdAt: occurredAt,
+      },
+    });
+    encounters.push(encounter);
+  }
+
   for (let i = 0; i < 15; i++) {
     const patient = patients[i];
+    const occurredAt = new Date(Date.now() - (14 - i) * 86400000);
     const order = await prisma.order.create({
       data: {
         tenantId: tenant.id,
         patientId: patient.id,
         branchId: createdBranches[0].id,
+        encounterId: encounters[i].id,
         orderNumber: `ORD-${2000 + i}`,
+        orderType: i % 2 === 0 ? 'LAB' : 'CONSULTATION',
+        priority: i % 5 === 0 ? 'URGENT' : 'ROUTINE',
+        clinicalIndication: 'Synthetic dashboard scenario',
+        requestedById: doctorUser.id,
+        requestedAt: occurredAt,
         status: i % 3 === 0 ? 'COMPLETED' : 'PENDING',
-        createdAt: new Date(),
+        createdById: doctorUser.id,
+        updatedById: doctorUser.id,
+        createdAt: occurredAt,
       },
     });
+
+    const totalAmount = 1800 + (i % 5) * 650;
+    const paymentAmount = i < 10 ? totalAmount : i < 13 ? Math.round(totalAmount * 0.45) : 0;
+    const invoice = await prisma.invoice.create({
+      data: {
+        tenantId: tenant.id,
+        orderId: order.id,
+        invoiceNumber: `INV-DEMO-${String(i + 1).padStart(4, '0')}`,
+        totalAmount,
+        paidAmount: paymentAmount,
+        status: paymentAmount === totalAmount ? 'PAID' : paymentAmount > 0 ? 'PARTIALLY_PAID' : 'UNPAID',
+        createdById: cashierUser.id,
+        updatedById: cashierUser.id,
+        createdAt: occurredAt,
+      },
+    });
+
+    if (paymentAmount > 0) {
+      const payment = await prisma.payment.create({
+        data: {
+          tenantId: tenant.id,
+          branchId: createdBranches[0].id,
+          invoiceId: invoice.id,
+          cashierSessionId: cashierSession.id,
+          receiptNumber: `RCT-DEMO-${String(i + 1).padStart(4, '0')}`,
+          amount: paymentAmount,
+          paymentMethod: ['CASH', 'CARD', 'HMO', 'BANK_TRANSFER'][i % 4],
+          status: 'POSTED',
+          idempotencyKey: `demo-payment-${i + 1}`,
+          createdById: cashierUser.id,
+          updatedById: cashierUser.id,
+          createdAt: new Date(Math.max(occurredAt.getTime(), Date.now() - 6 * 86400000 + i * 1800000)),
+        },
+      });
+      await prisma.cashierLedgerEntry.create({
+        data: {
+          tenantId: tenant.id,
+          cashierSessionId: cashierSession.id,
+          type: 'PAYMENT',
+          amount: paymentAmount,
+          referenceId: payment.id,
+          createdAt: payment.createdAt,
+        },
+      });
+    }
 
     if (order.status === 'COMPLETED') {
       await prisma.labResult.create({
@@ -404,16 +431,38 @@ async function main() {
           tenantId: tenant.id,
           orderId: order.id,
           status: i % 2 === 0 ? 'RELEASED' : 'APPROVED',
-          results: { glucose: 110, cholesterol: 200 },
-          remarks: 'Patient stable',
+          results: { glucose: 92 + i, cholesterol: 168 + i * 3 },
+          remarks: 'Synthetic result for dashboard and portal review',
           encodedById: createdEmployees[3].id,
-          encodedAt: new Date(),
+          encodedAt: occurredAt,
           validatedById: createdEmployees[1].id,
-          validatedAt: new Date(),
-          releasedAt: i % 2 === 0 ? new Date() : null,
+          validatedAt: new Date(occurredAt.getTime() + 3600000),
+          releasedAt: i % 2 === 0 ? new Date(occurredAt.getTime() + 7200000) : null,
           releasedById: createdEmployees[1].id,
-          isCritical: i === 0, // Make first one critical
+          lockedAt: i % 2 === 0 ? new Date(occurredAt.getTime() + 7200000) : null,
+          isCritical: i === 0,
           criticalStatus: i === 0 ? 'OPEN' : undefined,
+        },
+      });
+    }
+
+    if (i < 8) {
+      await prisma.prescription.create({
+        data: {
+          tenantId: tenant.id,
+          branchId: createdBranches[0].id,
+          encounterId: encounters[i].id,
+          prescribedById: doctorUser.id,
+          patientId: patient.id,
+          medicationName: ['Amoxicillin', 'Losartan', 'Metformin', 'Paracetamol'][i % 4],
+          dosage: ['500 mg', '50 mg', '500 mg', '500 mg'][i % 4],
+          frequency: ['Every 8 hours', 'Once daily', 'Twice daily', 'As needed'][i % 4],
+          duration: ['7 days', '30 days', '30 days', '5 days'][i % 4],
+          notes: 'Synthetic prescription for portal review',
+          status: i < 6 ? PrescriptionStatus.ACTIVE : PrescriptionStatus.DISPENSED,
+          createdById: doctorUser.id,
+          updatedById: doctorUser.id,
+          createdAt: occurredAt,
         },
       });
     }
@@ -437,7 +486,7 @@ async function main() {
   }
 
   // 8. HR: Attendance & Licenses
-  for (const emp of createdEmployees) {
+  for (const [employeeIndex, emp] of createdEmployees.entries()) {
     // 30 days of attendance
     for (let d = 30; d > 0; d--) {
       await prisma.attendanceLog.create({
@@ -457,7 +506,7 @@ async function main() {
         tenantId: tenant.id,
         employeeId: emp.id,
         licenseType: 'Board Certification',
-        licenseNumber: `LIC-${crypto.randomInt(10000, 99999)}`,
+        licenseNumber: `LIC-${String(employeeIndex + 1).padStart(5, '0')}`,
         issuedAt: new Date('2022-01-01'),
         expiresAt: new Date(Date.now() + 15 * 86400000), // 15 days from now
         status: 'ACTIVE',
@@ -501,8 +550,9 @@ async function main() {
     { name: 'COVID-19 Vaccine', price: 450, stock: 200 },
   ];
 
+  const createdListings = [];
   for (const l of listings) {
-    await prisma.marketplaceListing.create({
+    const listing = await prisma.marketplaceListing.create({
       data: {
         tenantId: tenant.id,
         serviceItemId: serviceItem.id,
@@ -513,9 +563,37 @@ async function main() {
         status: ListingStatus.APPROVED,
       },
     });
+    createdListings.push(listing);
   }
 
-  console.log('✅ Database successfully seeded with realistic data!');
+  const marketplaceBuyer = createdUsers.find((entry) => entry.roleName === 'Branch Admin')?.user ?? createdUsers[0].user;
+  for (let i = 0; i < 18; i++) {
+    const listing = createdListings[i % createdListings.length];
+    const quantity = 1 + (i % 4);
+    const unitPrice = Number(listing.basePrice);
+    const subtotal = quantity * unitPrice;
+    const order = await prisma.marketplaceOrder.create({
+      data: {
+        tenantId: tenant.id,
+        buyerId: marketplaceBuyer.id,
+        totalAmount: subtotal,
+        status: ['PENDING', 'PAID', 'SHIPPED', 'DELIVERED'][i % 4],
+        paymentStatus: i % 4 === 0 ? 'UNPAID' : 'PAID',
+        createdAt: new Date(Date.now() - (17 - i) * 86400000),
+      },
+    });
+    await prisma.marketplaceOrderItem.create({
+      data: {
+        orderId: order.id,
+        listingId: listing.id,
+        quantity,
+        unitPrice,
+        subtotal,
+      },
+    });
+  }
+
+  console.log('✅ Database successfully seeded with realistic synthetic data!');
   process.exit(0);
 }
 

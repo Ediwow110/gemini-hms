@@ -1,17 +1,16 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { BackButton } from './back-button';
-import { Breadcrumbs, BreadcrumbItem } from './breadcrumbs';
+import { Breadcrumbs, type BreadcrumbItem } from './breadcrumbs';
 
 interface PageHeaderProps {
   title: string;
   description?: string;
-  // Enhanced options
   backLabel?: string;
   backFallback?: string;
   breadcrumbs?: BreadcrumbItem[];
-  actions?: React.ReactNode;
-  statusBadge?: React.ReactNode;
-  metadata?: React.ReactNode;
+  actions?: ReactNode;
+  statusBadge?: ReactNode;
+  metadata?: ReactNode;
 }
 
 export const PageHeader = ({
@@ -23,39 +22,36 @@ export const PageHeader = ({
   actions,
   statusBadge,
   metadata,
-}: PageHeaderProps) => {
-  return (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 animate-fade-in">
-      <div className="space-y-1.5 flex-1">
-        {breadcrumbs && breadcrumbs.length > 0 && (
+}: PageHeaderProps) => (
+  <header className="flex min-w-0 flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+    <div className="min-w-0 flex-1">
+      {breadcrumbs && breadcrumbs.length > 0 && (
+        <div className="mb-2">
           <Breadcrumbs items={breadcrumbs} />
-        )}
-        
-        {backFallback && (
-          <div className="mb-2">
-            <BackButton label={backLabel} fallback={backFallback} />
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <h1
-            className="text-2xl font-extrabold text-slate-900 tracking-tight"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-          >
-            {title}
-          </h1>
-          {statusBadge && <div className="mt-0.5">{statusBadge}</div>}
-        </div>
-
-        {description && <p className="text-slate-500 text-sm mt-1">{description}</p>}
-        {metadata && <div className="text-xs text-slate-400 mt-1">{metadata}</div>}
-      </div>
-
-      {actions && (
-        <div className="flex items-center gap-3 self-start md:self-center">
-          {actions}
         </div>
       )}
+      {backFallback && (
+        <div className="mb-3">
+          <BackButton label={backLabel} fallback={backFallback} />
+        </div>
+      )}
+      <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+        <h1 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
+          {title}
+        </h1>
+        {statusBadge}
+      </div>
+      {description && (
+        <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-600">
+          {description}
+        </p>
+      )}
+      {metadata && <div className="mt-2 text-xs text-slate-500">{metadata}</div>}
     </div>
-  );
-};
+    {actions && (
+      <div className="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+        {actions}
+      </div>
+    )}
+  </header>
+);

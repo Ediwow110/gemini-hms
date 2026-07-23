@@ -29,3 +29,9 @@ backups/
 # Local dev server logs
 **/backend-dev*.log
 **/frontend-dev*.log
+nul
+
+# Agent artifacts
+runtime-qa-logs/
+temp_repo_hms/
+*.log

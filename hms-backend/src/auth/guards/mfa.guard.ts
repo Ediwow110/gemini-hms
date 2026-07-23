@@ -6,19 +6,13 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
+import { SENSITIVE_ROLES } from '../constants';
 
 import { SKIP_MFA_KEY } from '../decorators/skip-mfa.decorator';
 
 @Injectable()
 export class MfaGuard implements CanActivate {
-  private readonly SENSITIVE_ROLES = [
-    'Super Admin',
-    'Branch Admin',
-    'Doctor',
-    'Cashier',
-    'HR',
-    'Finance',
-  ];
+  private readonly SENSITIVE_ROLES = SENSITIVE_ROLES;
 
   constructor(private reflector: Reflector) {}
 
@@ -41,7 +35,7 @@ export class MfaGuard implements CanActivate {
     if (!user) return false;
 
     const isSensitive = user.roles?.some((role: string) =>
-      this.SENSITIVE_ROLES.includes(role),
+      (this.SENSITIVE_ROLES as readonly string[]).includes(role),
     );
 
     // If user has a sensitive role but hasn't verified MFA in this session, block.

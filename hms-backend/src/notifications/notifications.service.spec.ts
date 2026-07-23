@@ -14,6 +14,12 @@ import {
   NotificationProviderFactory,
 } from './notification-providers';
 
+function requestBodyToText(body: BodyInit | null | undefined): string {
+  if (typeof body === 'string') return body;
+  if (body instanceof URLSearchParams) return body.toString();
+  throw new Error('Expected a string or URLSearchParams request body.');
+}
+
 describe('NotificationsService write isolation', () => {
   let service: NotificationsService;
   let prisma: any;
@@ -168,11 +174,11 @@ describe('Mock Providers', () => {
   });
 });
 
-describe('Provider Validation', () => {
+describe('Provider Validation and Delivery', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    process.env = { ...originalEnv };
+    process.env = { ...originalEnv, NODE_ENV: 'test' };
   });
 
   afterAll(() => {
@@ -185,79 +191,121 @@ describe('Provider Validation', () => {
     expect(provider).toBeInstanceOf(MockEmailProvider);
   });
 
-  it('rejects mock provider in production (no fake success in live envs)', () => {
+  it('rejects mock email and SMS providers in production', () => {
+    process.env.NODE_ENV = 'production';
     process.env.EMAIL_PROVIDER = 'mock';
-    process.env.NODE_ENV = 'production';
-    expect(() => {
-      NotificationProviderFactory.createEmailProvider();
-    }).toThrow(
-      'EMAIL_PROVIDER=mock is not allowed in production environment. Configure a real provider (mailrelay, ses) before proceeding to staging or production.',
-    );
-  });
-
-  it('rejects mock SMS provider in production', () => {
     process.env.SMS_PROVIDER = 'mock';
-    process.env.NODE_ENV = 'production';
-    expect(() => {
-      NotificationProviderFactory.createSmsProvider();
-    }).toThrow(
-      'SMS_PROVIDER=mock is not allowed in production environment. Configure a real provider (semaphore) before proceeding to staging or production.',
+
+    expect(() => NotificationProviderFactory.createEmailProvider()).toThrow(
+      'EMAIL_PROVIDER=mock is not allowed in production environment.',
+    );
+    expect(() => NotificationProviderFactory.createSmsProvider()).toThrow(
+      'SMS_PROVIDER=mock is not allowed in production environment.',
     );
   });
 
-  it('fails if mailrelay is missing credentials', () => {
+  it('fails closed when Mailrelay TLS SMTP credentials are incomplete', () => {
     process.env.EMAIL_PROVIDER = 'mailrelay';
-    delete process.env.MAILRELAY_API_KEY;
-    delete process.env.MAILRELAY_SMTP_PASS;
-    expect(() => {
-      NotificationProviderFactory.createEmailProvider();
-    }).toThrow('Mailrelay API Key or SMTP Pass is missing');
+    delete process.env.MAILRELAY_SMTP_HOST;
+
+    expect(() => NotificationProviderFactory.createEmailProvider()).toThrow(
+      'MAILRELAY_SMTP_HOST is required.',
+    );
   });
 
-  it('fails if ses is missing credentials', () => {
-    process.env.EMAIL_PROVIDER = 'ses';
-    delete process.env.AWS_REGION;
-    expect(() => {
-      NotificationProviderFactory.createEmailProvider();
-    }).toThrow('AWS_REGION is missing for SES provider');
-  });
-
-  it('MailrelayProvider.sendEmail throws honest "not implemented" instead of fake success', async () => {
-    process.env.EMAIL_PROVIDER = 'mailrelay';
-    process.env.MAILRELAY_API_KEY = 'test-key';
-    process.env.MAILRELAY_SENDER_EMAIL = 'noreply@hms.local';
-    process.env.MAILRELAY_SENDER_NAME = 'HMS';
-    const provider = NotificationProviderFactory.createEmailProvider();
-    await expect(
-      provider.sendEmail({
-        to: 'patient@hms.local',
-        subject: 'Test',
-        body: 'Hello',
-      }),
-    ).rejects.toThrow('Mailrelay email delivery is not yet implemented');
-  });
-
-  it('SesProvider.sendEmail throws honest "not implemented" instead of fake success', async () => {
+  it('fails closed when SES signing credentials are incomplete', () => {
     process.env.EMAIL_PROVIDER = 'ses';
     process.env.AWS_REGION = 'ap-southeast-1';
     process.env.SES_SENDER_EMAIL = 'noreply@hms.local';
+    delete process.env.AWS_ACCESS_KEY_ID;
+    delete process.env.AWS_SECRET_ACCESS_KEY;
+
+    expect(() => NotificationProviderFactory.createEmailProvider()).toThrow(
+      'AWS_ACCESS_KEY_ID is required.',
+    );
+  });
+
+  it('Mailrelay rejects invalid recipient input before opening a connection', async () => {
+    process.env.EMAIL_PROVIDER = 'mailrelay';
+    process.env.MAILRELAY_SMTP_HOST = 'smtp.example.com';
+    process.env.MAILRELAY_SMTP_PORT = '465';
+    process.env.MAILRELAY_SMTP_USER = 'smtp-user';
+    process.env.MAILRELAY_SMTP_PASS = 'smtp-password';
+    process.env.MAILRELAY_SENDER_EMAIL = 'noreply@hms.local';
+    process.env.MAILRELAY_SENDER_NAME = 'HMS';
     const provider = NotificationProviderFactory.createEmailProvider();
+
     await expect(
       provider.sendEmail({
-        to: 'patient@hms.local',
+        to: 'invalid-address',
         subject: 'Test',
         body: 'Hello',
       }),
-    ).rejects.toThrow('AWS SES email delivery is not yet implemented');
+    ).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        error: 'Recipient email address is invalid.',
+      }),
+    );
   });
 
-  it('SemaphoreProvider.sendSms throws honest "not implemented" instead of fake success', async () => {
+  it('SES signs and sends a real HTTPS API request', async () => {
+    process.env.EMAIL_PROVIDER = 'ses';
+    process.env.AWS_REGION = 'ap-southeast-1';
+    process.env.SES_SENDER_EMAIL = 'noreply@hms.local';
+    process.env.AWS_ACCESS_KEY_ID = 'AKIATEST';
+    process.env.AWS_SECRET_ACCESS_KEY = 'test-secret-access-key';
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ MessageId: 'ses-message-1' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const provider = NotificationProviderFactory.createEmailProvider();
+
+    await expect(
+      provider.sendEmail({
+        to: 'patient@hms.local',
+        subject: 'Result ready',
+        body: 'Your result is ready.',
+      }),
+    ).resolves.toEqual({ success: true, messageId: 'ses-message-1' });
+
+    const [url, request] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+      'https://email.ap-southeast-1.amazonaws.com/v2/email/outbound-emails',
+    );
+    expect(request?.headers).toEqual(
+      expect.objectContaining({
+        authorization: expect.stringContaining('AWS4-HMAC-SHA256 Credential='),
+      }),
+    );
+    expect(requestBodyToText(request?.body)).toContain('patient@hms.local');
+    fetchMock.mockRestore();
+  });
+
+  it('Semaphore submits an HTTPS form and returns the provider message ID', async () => {
     process.env.SMS_PROVIDER = 'semaphore';
     process.env.SEMAPHORE_API_KEY = 'test-key';
+    process.env.SEMAPHORE_SENDER_NAME = 'HMS';
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify([{ message_id: 'sms-message-1' }]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
     const provider = NotificationProviderFactory.createSmsProvider();
+
     await expect(
       provider.sendSms({ to: '+639171234567', body: 'Test' }),
-    ).rejects.toThrow('Semaphore SMS delivery is not yet implemented');
+    ).resolves.toEqual({ success: true, messageId: 'sms-message-1' });
+
+    const [url, request] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.semaphore.co/api/v4/messages');
+    const requestBody = requestBodyToText(request?.body);
+    expect(requestBody).toContain('apikey=test-key');
+    expect(requestBody).toContain('number=%2B639171234567');
+    fetchMock.mockRestore();
   });
 });
 

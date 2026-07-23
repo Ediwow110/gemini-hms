@@ -13,8 +13,10 @@ import * as crypto from 'crypto';
 import { SessionService } from './session.service';
 import { MfaService } from './mfa.service';
 import { AuditService } from '../audit/audit.service';
+import { SENSITIVE_ROLES } from './constants';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
+import { resolveDefaultPortalPath } from './portal-resolver';
 
 type UserWithRoles = Prisma.UserGetPayload<{
   include: {
@@ -33,14 +35,7 @@ type UserRoleWithName = {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly SENSITIVE_ROLES = [
-    'Super Admin',
-    'Branch Admin',
-    'Doctor',
-    'Cashier',
-    'HR',
-    'Finance',
-  ];
+  private readonly SENSITIVE_ROLES = SENSITIVE_ROLES;
 
   constructor(
     private prisma: PrismaService,
@@ -97,6 +92,7 @@ export class AuthService {
 
     // Check account lockout
     if (user.lockedUntil && user.lockedUntil > new Date()) {
+      this.logger.warn(`Locked account login attempt: ${email}`);
       throw new UnauthorizedException({
         statusCode: 401,
         message: 'Account locked due to too many failed attempts',
@@ -105,9 +101,7 @@ export class AuthService {
       });
     }
 
-    const bypassAuth = process.env.DISABLE_AUTH_VERIFICATION === 'true';
-    const passwordValid =
-      bypassAuth || (await bcrypt.compare(pass, user.passwordHash));
+    const passwordValid = await bcrypt.compare(pass, user.passwordHash);
 
     if (
       user.status !== 'ACTIVE' ||
@@ -209,13 +203,8 @@ export class AuthService {
     );
 
     // 2. Handle MFA Step-Up
-    const mfaDisabled = process.env.DISABLE_AUTH_VERIFICATION === 'true';
-    if (mfaDisabled) {
-      this.logger.warn(
-        'MFA step-up is DISABLED — this should only occur in test environments',
-      );
-    }
-    if (isSensitive && !mfaDisabled) {
+    const disableMfa = process.env.DISABLE_MFA === 'true';
+    if (isSensitive && !disableMfa) {
       const challenge = user.mfaEnabled ? 'MFA_VERIFY' : 'MFA_SETUP';
 
       // Issue a restricted mfaToken (short-lived, limited scope)
@@ -440,45 +429,11 @@ export class AuthService {
     return assignments.map((a) => a.branch);
   }
 
-  private getDefaultPortalPath(roles: string[]): string {
-    const portalMap: Record<string, { path: string; priority: number }> = {
-      'Super Admin': { path: '/admin', priority: 100 },
-      'Branch Admin': { path: '/branch-admin', priority: 90 },
-      'Procurement Manager': { path: '/procurement', priority: 85 },
-      'Procurement Officer': { path: '/procurement', priority: 85 },
-      'Procurement Agent': { path: '/procurement', priority: 85 },
-      'HR Manager': { path: '/hr', priority: 80 },
-      'Compliance Officer': { path: '/compliance', priority: 75 },
-      'Marketplace Admin': { path: '/marketplace-admin', priority: 70 },
-      Doctor: { path: '/doctor', priority: 60 },
-      Nurse: { path: '/nurse', priority: 55 },
-      Pharmacist: { path: '/pharmacy', priority: 50 },
-      'Med-Tech': { path: '/lab', priority: 45 },
-      'Lab Technician': { path: '/lab', priority: 45 },
-      Cashier: { path: '/cashier', priority: 40 },
-      Finance: { path: '/cashier', priority: 40 },
-      Receptionist: { path: '/queue', priority: 35 },
-      'IT Support': { path: '/it', priority: 30 },
-      'Field Technician': { path: '/field-service', priority: 25 },
-      'HR Staff': { path: '/hr', priority: 20 },
-      'Supplier Admin': { path: '/supplier', priority: 15 },
-      Supplier: { path: '/supplier', priority: 15 },
-      'Marketplace Supplier': { path: '/supplier', priority: 15 },
-      'Marketplace Buyer': { path: '/marketplace', priority: 10 },
-      Customer: { path: '/marketplace', priority: 10 },
-      Patient: { path: '/patient', priority: 10 },
-    };
-
-    let bestMatch = { path: '/unauthorized', priority: -1 };
-
-    for (const role of roles) {
-      const match = portalMap[role];
-      if (match && match.priority > bestMatch.priority) {
-        bestMatch = match;
-      }
-    }
-
-    return bestMatch.path;
+  private getDefaultPortalPath(
+    roles: string[],
+    permissions: string[] = [],
+  ): string {
+    return resolveDefaultPortalPath(roles, permissions);
   }
 
   async getMe(userId: string, tenantId: string) {
@@ -529,7 +484,10 @@ export class AuthService {
       tenantId: user.tenantId,
       roles,
       permissions: Array.from(permissions),
-      defaultPortalPath: this.getDefaultPortalPath(roles),
+      defaultPortalPath: this.getDefaultPortalPath(
+        roles,
+        Array.from(permissions),
+      ),
     };
   }
 
@@ -544,7 +502,31 @@ export class AuthService {
     refreshTokenPlain: string,
     branchId?: string,
   ) {
-    const defaultPortalPath = this.getDefaultPortalPath(roles);
+    let defaultPortalPath = this.getDefaultPortalPath(roles);
+
+    // Custom roles are permission-defined. Resolve a landing page from their active
+    // grants only when no built-in role name produced a portal.
+    if (defaultPortalPath === '/unauthorized') {
+      const activeRoleIds = user.userRoles
+        .filter(
+          (assignment) =>
+            assignment.status === 'ACTIVE' &&
+            assignment.role.status === 'ACTIVE' &&
+            assignment.role.archivedAt === null,
+        )
+        .map((assignment) => assignment.role.id);
+
+      if (activeRoleIds.length > 0) {
+        const grants = await this.prisma.rolePermission.findMany({
+          where: { roleId: { in: activeRoleIds } },
+          select: { permission: { select: { name: true } } },
+        });
+        defaultPortalPath = this.getDefaultPortalPath(
+          roles,
+          grants.map((grant) => grant.permission.name),
+        );
+      }
+    }
 
     // Determine branch selection requirement
     const userBranches = await this.prisma.userBranch.findMany({

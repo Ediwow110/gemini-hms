@@ -1,237 +1,212 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Activity, AlertCircle, Clock, Stethoscope, Users } from 'lucide-react';
 import {
-  DashboardKpiCard,
-  DashboardAlertCard,
-  DashboardDataTable,
-  DashboardFilterBar
-} from '../../components/dashboard';
-import { clinicalOpsDashboardService } from '../../services/clinical-ops-dashboard.service';
-import type { ClinicalOpsDashboardData } from '../../types/clinical-ops-dashboard';
-import type { ClinicalWorkQueueDto } from '../../services/clinicalWorkflow.service';
-import {
-  Activity,
-  Users,
-  Clock,
-  AlertCircle,
-  Stethoscope,
-  Loader2
-} from 'lucide-react';
-import {
+  AnalyticsMetricCard,
+  ChartCard,
+  ComparisonBarChart,
   StatusDonutChart,
-  ComparisonBarChart
-} from '../../components/analytics/charts';
-import type { StatusBreakdown, TrendPoint } from '../../types/analytics';
+} from '../../components/analytics';
+import { DashboardAlertCard, DashboardDataTable } from '../../components/dashboard';
+import { HmsPageHeader } from '../../components/hms-page';
+import {
+  HmsAuditFooter,
+  HmsDashboardShell,
+  HmsDataSourceBadge,
+  HmsEmptyState,
+  HmsToolbar,
+} from '../../components/hms-dashboard';
+import { clinicalOpsDashboardService } from '../../services/clinical-ops-dashboard.service';
+import type { ClinicalWorkQueueDto } from '../../services/clinicalWorkflow.service';
+import type { ClinicalOpsDashboardData } from '../../types/clinical-ops-dashboard';
 
 export const ClinicalOperationsDashboard: React.FC = () => {
   const [data, setData] = useState<ClinicalOpsDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
-  const [dateRange, setDateRange] = useState({
-    from: new Date().toISOString().split('T')[0],
-    to: new Date().toISOString().split('T')[0]
-  });
+  const [lastUpdated, setLastUpdated] = useState<Date | undefined>();
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const result = await clinicalOpsDashboardService.getDashboardData();
-        setData(result);
-        setLastUpdated(new Date());
-      } catch (err) {
-        console.warn('Failed to load clinical operations data from backend:', err);
-        setData(null);
-        setError('Unable to load clinical operations data. Please retry.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
+  const fetchDashboardData = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const result = await clinicalOpsDashboardService.getDashboardData();
+      setData(result);
+      setLastUpdated(new Date());
+    } catch {
+      setData(null);
+      setError('Unable to load clinical operations data. Please retry.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    void fetchDashboardData();
+  }, [fetchDashboardData]);
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <AlertCircle className="h-12 w-12 text-rose-500" />
-          <h2 className="text-lg font-bold text-slate-900">{error}</h2>
+      <HmsDashboardShell>
+        <div className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-md border border-red-600 bg-white p-8 text-center shadow-sm">
+          <AlertCircle className="h-10 w-10 text-red-600" />
+          <h2 className="text-lg font-semibold text-slate-900">{error}</h2>
           <button
-            onClick={() => window.location.reload()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800"
+            type="button"
+            onClick={() => void fetchDashboardData(true)}
+            className="min-h-10 rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
           >
             Retry
           </button>
         </div>
-      </div>
+      </HmsDashboardShell>
     );
   }
 
-  if (!data) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center text-slate-500">
-        No operational data available.
-      </div>
-    );
-  }
+  const kpiIcons = [Users, Stethoscope, Clock, Activity];
 
   return (
-    <div className="p-6 space-y-8 bg-slate-50 min-h-screen pb-12">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">Clinical Operations</h1>
-          </div>
-          <p className="text-sm font-medium text-slate-500">Patient flow and clinical workload monitoring</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <DashboardFilterBar
-            dateRange={dateRange}
-            onDateRangeChange={setDateRange}
-          />
-          <div className="text-right">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Last Updated</p>
-            <p className="text-xs font-bold text-slate-600">{lastUpdated.toLocaleTimeString()}</p>
-          </div>
-        </div>
+    <HmsDashboardShell
+      toolbar={
+        <HmsToolbar
+          branchName="Current clinical branch"
+          role="Clinical Operations"
+          lastRefreshed={lastUpdated}
+          onRefresh={() => void fetchDashboardData(true)}
+          refreshing={refreshing}
+        />
+      }
+      footer={<HmsAuditFooter dataSource="Clinical workflow and nursing APIs" />}
+    >
+      <HmsPageHeader
+        eyebrow="Clinical operations"
+        title="Clinical Operations"
+        description="Patient flow, queue pressure and urgent clinical workload in a single live operational view."
+        actions={<HmsDataSourceBadge mode="live" />}
+      />
+
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-5">
+        {(data?.kpis ?? []).map((kpi, index) => {
+          const Icon = kpiIcons[index % kpiIcons.length];
+          return (
+            <AnalyticsMetricCard
+              key={kpi.title}
+              title={kpi.title}
+              value={loading ? '—' : kpi.value}
+              description={kpi.description}
+              severity={kpi.severity}
+              icon={Icon}
+            />
+          );
+        })}
       </div>
 
-      {/* Top KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {data.kpis.map((kpi, idx) => (
-          <DashboardKpiCard
-            key={idx}
-            title={kpi.title}
-            value={kpi.value}
-            description={kpi.description}
-            severity={kpi.severity}
-            icon={kpi.title.includes('Patients') ? Users : kpi.title.includes('Triage') ? Stethoscope : kpi.title.includes('Doctor') ? Clock : Activity}
-          />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Action Panel */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Urgent Actions</h2>
-            <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 text-[10px] font-black">
-              {data.alerts.length} URGENT
+      <div className="grid grid-cols-12 gap-5">
+        <section className="col-span-12 space-y-4 xl:col-span-4" aria-labelledby="urgent-clinical-actions">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 id="urgent-clinical-actions" className="text-sm font-semibold text-slate-900">Urgent actions</h2>
+              <p className="mt-1 text-xs text-slate-500">Items requiring immediate clinical attention.</p>
+            </div>
+            <span className="rounded-md border border-red-600 bg-red-50 px-2.5 py-1 text-[10px] font-semibold text-red-700">
+              {data?.alerts.length ?? 0} urgent
             </span>
           </div>
-          <div className="space-y-3">
-            {data.alerts.length > 0 ? (
-              data.alerts.map((alert) => (
-                <DashboardAlertCard
-                  key={alert.id}
-                  title={alert.title}
-                  message={alert.message}
-                  severity={alert.severity}
-                />
-              ))
-            ) : (
-              <div className="text-center py-8 text-slate-400 text-sm font-medium">No urgent actions required.</div>
-            )}
-          </div>
+          {data?.alerts.length ? (
+            data.alerts.map((alert) => (
+              <DashboardAlertCard
+                key={alert.id}
+                title={alert.title}
+                message={alert.message}
+                severity={alert.severity}
+              />
+            ))
+          ) : (
+            <HmsEmptyState title="No urgent actions" description="No urgent clinical alerts are currently open." />
+          )}
+        </section>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-sm font-black tracking-tight text-slate-900 mb-3">Department Pressure</h3>
-            {data.topDepartments.length === 0 ? (
-              <p
-                data-testid="clinical-ops-departments-empty"
-                className="text-xs text-slate-400 py-3 text-center"
-              >
-                Department pressure data is not available yet.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {data.topDepartments.map((dept) => (
-                  <div key={dept.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-                    <span className="text-sm text-slate-600">{dept.label}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-slate-900">{dept.value}</span>
-                      <span className={`text-xs ${dept.trend === '↑' ? 'text-red-500' : dept.trend === '↓' ? 'text-green-500' : 'text-slate-400'}`}>
-                        {dept.trend}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        <section className="col-span-12 xl:col-span-8" aria-labelledby="active-patient-queue">
+          <div className="overflow-hidden rounded-md border border-slate-300 bg-white p-5 shadow-sm">
+            <h2 id="active-patient-queue" className="text-sm font-semibold text-slate-900">Pending Clinical Queue</h2>
+            <p className="mt-1 text-xs text-slate-500">Patients waiting for the next clinical step.</p>
+            <div className="mt-4">
+              <DashboardDataTable
+                title="Active Patient Queue"
+                columns={[
+                  { header: 'Queue #', accessor: 'queueNumber' },
+                  { header: 'Patient', accessor: 'patientName' },
+                  { header: 'Category', accessor: 'category' },
+                  { header: 'Service', accessor: 'serviceType' },
+                  { header: 'Wait Time', accessor: (item: ClinicalWorkQueueDto) => `${item.waitTimeMinutes}m` },
+                  { header: 'Status', accessor: 'status' },
+                ]}
+                data={data?.pendingQueue ?? []}
+                emptyMessage="No patients currently in queue."
+              />
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* Main Queue / Flow */}
-        <div className="lg:col-span-2 space-y-8">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-black tracking-tight text-slate-900 mb-4 px-1">Pending Clinical Queue</h2>
-            <DashboardDataTable
-              title="Active Patient Queue"
-              columns={[
-                { header: 'Queue #', accessor: 'queueNumber' },
-                { header: 'Patient', accessor: 'patientName' },
-                { header: 'Category', accessor: 'category' },
-                { header: 'Service', accessor: 'serviceType' },
-                { header: 'Wait Time', accessor: (item: ClinicalWorkQueueDto) => `${item.waitTimeMinutes}m` },
-                { header: 'Status', accessor: 'status' },
-              ]}
-              data={data.pendingQueue}
-              emptyMessage="No patients currently in queue."
+        <div className="col-span-12 xl:col-span-7">
+          <ChartCard
+            title="Patient Flow Distribution"
+            description="Current live distribution of patients across clinical workflow states."
+            emphasis="primary"
+            loading={loading}
+          >
+            <StatusDonutChart
+              data={(data?.flowDistribution ?? []).map((item) => ({
+                label: item.label,
+                value: item.value,
+              }))}
+              title="Patient Flow Distribution"
             />
-          </div>
+          </ChartCard>
+        </div>
+        <div className="col-span-12 xl:col-span-5">
+          <ChartCard
+            title="Workload by Specialty"
+            description="Live workload percentage when the backend aggregation is available."
+            loading={loading}
+            empty={(data?.workloadDistribution.length ?? 0) === 0}
+          >
+            <ComparisonBarChart
+              data={(data?.workloadDistribution ?? []).map((item) => ({
+                label: item.label,
+                value: item.value,
+              }))}
+              title="Workload by Specialty"
+              valueLabel="Workload"
+              valueFormatter={(value) => `${value}%`}
+              yDomain={[0, 100]}
+              horizontal
+            />
+          </ChartCard>
+        </div>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-              <h3 className="text-sm font-black tracking-tight text-slate-900 mb-4">
-                Patient Flow Distribution
-              </h3>
-              <div className="h-[calc(100%-3rem)]">
-                <StatusDonutChart
-                  data={data.flowDistribution.map(f => ({ label: f.label, value: f.value })) as StatusBreakdown[]}
-                />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm h-72">
-              <h3 className="text-sm font-black tracking-tight text-slate-900 mb-4">
-                Workload by Specialty
-              </h3>
-              <div className="h-[calc(100%-3rem)] flex items-center justify-center text-xs text-slate-400 text-center px-6">
-                {data.workloadDistribution.length === 0 ? (
-                  <p data-testid="clinical-ops-workload-empty">
-                    Workload by specialty is not available yet. The backend does not
-                    expose an aggregation endpoint for this view.
-                  </p>
-                ) : (
-                  <ComparisonBarChart
-                    data={data.workloadDistribution.map(w => ({ label: w.label, value: w.value })) as TrendPoint[]}
-                    valueLabel="Workload %"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
+        <div className="col-span-12">
+          <ChartCard
+            title="Department pressure"
+            description="Current department workload ranking from the live clinical operations endpoint."
+            emphasis="compact"
+            empty={(data?.topDepartments.length ?? 0) === 0}
+          >
+            <ComparisonBarChart
+              data={(data?.topDepartments ?? []).map((department) => ({
+                label: department.label,
+                value: Number(department.value) || 0,
+              }))}
+              title="Department pressure"
+              valueLabel="Pressure"
+              horizontal
+            />
+          </ChartCard>
         </div>
       </div>
-
-      {/* Data Label */}
-      <div className="flex justify-center">
-        <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-          Live operations data from HMS clinical-workflow and nursing APIs
-        </span>
-      </div>
-    </div>
+    </HmsDashboardShell>
   );
 };
 

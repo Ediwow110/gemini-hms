@@ -3,6 +3,7 @@ import { PatientIdentityHeader } from "../../components/ui/patient-identity-head
 import { PageHeader } from "../../components/ui/page-header";
 import { PlusCircle, Receipt, Search, Save } from "lucide-react";
 import { apiClient } from "../../lib/api";
+import { logger } from "../../lib/logger";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../hooks/use-user";
 
@@ -37,7 +38,7 @@ export const CreateOrder = () => {
         const res = await apiClient.get('/v1/catalog');
         setServices(res.data);
       } catch (err) {
-        console.error("Failed to fetch services:", err);
+        logger.error("Failed to fetch services:", err);
         setServicesError('Failed to load services catalog. Please retry.');
         setServices([]);
       } finally {
@@ -70,7 +71,7 @@ export const CreateOrder = () => {
         setPatient(null);
       }
     } catch (err) {
-      console.error("Patient search failed:", err);
+      logger.error("Patient search failed:", err);
       setPatient(null);
     }
   };
@@ -83,7 +84,7 @@ export const CreateOrder = () => {
         const res = await apiClient.get('/v1/catalog');
         setServices(res.data);
       } catch (err) {
-        console.error("Failed to fetch services:", err);
+        logger.error("Failed to fetch services:", err);
         setServicesError('Failed to load services catalog. Please retry.');
         setServices([]);
       } finally {

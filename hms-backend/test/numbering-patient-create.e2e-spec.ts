@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import * as path from 'path';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../src/prisma/prisma.module';
@@ -37,7 +37,11 @@ describe('NumberingService patient-creation chain (e2e runtime proof)', () => {
     await cleanupDatabase(bootstrapPrisma);
     await bootstrapModule.close();
 
-    execSync('npx ts-node prisma/seed.ts', {
+    const tsNodeCli = path.resolve(
+      __dirname,
+      '../node_modules/ts-node/dist/bin.js',
+    );
+    execFileSync(process.execPath, [tsNodeCli, 'prisma/seed.ts'], {
       cwd: path.resolve(__dirname, '..'),
       env: { ...process.env, NODE_ENV: 'test' },
       stdio: 'pipe',
@@ -61,7 +65,9 @@ describe('NumberingService patient-creation chain (e2e runtime proof)', () => {
   });
 
   afterAll(async () => {
-    await prisma.$disconnect();
+    if (prisma) {
+      await prisma.$disconnect();
+    }
   });
 
   it('POST /api/v1/patients must succeed for a Nurse with patient.create', async () => {

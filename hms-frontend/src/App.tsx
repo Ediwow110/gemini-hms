@@ -5,7 +5,6 @@ import { AppShell } from './app/AppShell';
 import { LoginPage } from './app/LoginPage';
 import { ProtectedRoute } from './app/ProtectedRoute';
 import { PermissionRoute } from './app/PermissionRoute';
-import { GuardMode } from './app/types';
 import { RouteErrorBoundary } from './app/RouteErrorBoundary';
 import { AuthDiagnosticsPanel } from './components/debug/AuthDiagnosticsPanel';
 import { AuthProvider } from './hooks/use-user';
@@ -283,7 +282,7 @@ const router = createBrowserRouter([
            { path: 'billing/dashboard', element: <PermissionRoute permission="billing.invoice.view"><LazyPage><BillingDashboard /></LazyPage></PermissionRoute> },
            { path: 'billing', element: <PermissionRoute permission="billing.invoice.view"><LazyPage><Billing /></LazyPage></PermissionRoute> },
 
-          { path: 'billing/cashier-closing', element: <PermissionRoute allowedRoles={['Cashier']}><LazyPage><CashierClosing /></LazyPage></PermissionRoute> },
+          { path: 'billing/cashier-closing', element: <PermissionRoute permission="billing.invoice.view" isBranchScoped><LazyPage><CashierClosing /></LazyPage></PermissionRoute> },
           { path: 'approvals', element: <PermissionRoute permission="approval.request.view"><LazyPage><ApprovalCenter /></LazyPage></PermissionRoute> },
           { path: 'audit-logs', element: <PermissionRoute permission="audit.view"><LazyPage><AuditLogViewer /></LazyPage></PermissionRoute> },
           { path: 'my-audit-log', element: <PermissionRoute permission="audit.self"><LazyPage><MyAuditLogPage /></LazyPage></PermissionRoute> },
@@ -325,7 +324,7 @@ const router = createBrowserRouter([
            { path: 'pharmacy', element: <PermissionRoute permission="inventory.stock.dispense"><LazyPage><PharmacyHub /></LazyPage></PermissionRoute> },
 
           { path: 'claims', element: <PermissionRoute permission="billing.claim.view"><LazyPage><ClaimsDashboard /></LazyPage></PermissionRoute> },
-          { path: 'admin/patient-merges', element: <PermissionRoute permission="patient.merge.approve"><LazyPage><PatientMergeRequests /></LazyPage></PermissionRoute> },
+           { path: 'admin/patient-merges', element: <PermissionRoute allowedRoles={['Super Admin']} permission="patient.merge.approve"><LazyPage><PatientMergeRequests /></LazyPage></PermissionRoute> },
           
           // Branch Admin routes (branch-scoped)
           { path: 'branch-admin', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin']} isBranchScoped><LazyPage><BranchAdminDashboard /></LazyPage></PermissionRoute> },
@@ -337,11 +336,11 @@ const router = createBrowserRouter([
            { path: 'admin/tenants', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><TenantsPage /></LazyPage></PermissionRoute> },
 
           { path: 'admin/branches', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><BranchesPage /></LazyPage></PermissionRoute> },
-          { path: 'admin/users', element: <PermissionRoute permission="admin.role.change"><LazyPage><UsersPage /></LazyPage></PermissionRoute> },
-          { path: 'admin/roles-permissions', element: <PermissionRoute permission="admin.role.change"><LazyPage><RolesPermissionsPage /></LazyPage></PermissionRoute> },
+           { path: 'admin/users', element: <PermissionRoute allowedRoles={['Super Admin']} permission="admin.role.change"><LazyPage><UsersPage /></LazyPage></PermissionRoute> },
+           { path: 'admin/roles-permissions', element: <PermissionRoute allowedRoles={['Super Admin']} permission="admin.role.change"><LazyPage><RolesPermissionsPage /></LazyPage></PermissionRoute> },
           { path: 'admin/security', element: <PermissionRoute allowedRoles={['Super Admin']}><LazyPage><SecurityCenterPage /></LazyPage></PermissionRoute> },
           { path: 'admin/audit-logs', element: <PermissionRoute permission="audit.view"><LazyPage><AuditLogsPage /></LazyPage></PermissionRoute> },
-          { path: 'admin/settings', element: <PermissionRoute permission="admin.role.change"><LazyPage><SystemSettingsPage /></LazyPage></PermissionRoute> },
+           { path: 'admin/settings', element: <PermissionRoute allowedRoles={['Super Admin']} permission="admin.role.change"><LazyPage><SystemSettingsPage /></LazyPage></PermissionRoute> },
           { path: 'admin/reports', element: <PermissionRoute permission="report.export"><LazyPage><ReportsAnalyticsPage /></LazyPage></PermissionRoute> },
 
           // Compliance Portal
@@ -429,26 +428,26 @@ const router = createBrowserRouter([
           { path: 'marketplace-admin/reports', element: <PermissionRoute permission="marketplace.admin.view"><LazyPage><MarketplaceReportsPage /></LazyPage></PermissionRoute> },
 
           // Field Service Portal
-          { path: 'field-service', element: <PermissionRoute allowedRoles={['Field Technician']}><LazyPage><FieldServiceDashboard /></LazyPage></PermissionRoute> },
-          { path: 'field-service/deliveries', element: <PermissionRoute permission="field_service.job.view"><LazyPage><DeliveryJobsPage /></LazyPage></PermissionRoute> },
-          { path: 'field-service/installations', element: <PermissionRoute permission="field_service.installation.update"><LazyPage><InstallationJobsPage /></LazyPage></PermissionRoute> },
-          { path: 'field-service/schedule', element: <PermissionRoute permission="field_service.job.view"><LazyPage><TechnicianSchedulePage /></LazyPage></PermissionRoute> },
-          { path: 'field-service/handover', element: <PermissionRoute permission="field_service.delivery.proof_create"><LazyPage><MobileHandoverChecklistPage /></LazyPage></PermissionRoute> },
-          { path: 'field-service/proof-of-delivery', element: <PermissionRoute permission="field_service.delivery.proof_create"><LazyPage><ProofOfDeliveryPage /></LazyPage></PermissionRoute> },
-          { path: 'field-service/warranty-activation', element: <PermissionRoute permission="field_service.installation.update"><LazyPage><WarrantyActivationPage /></LazyPage></PermissionRoute> },
-          { path: 'field-service/preventive-maintenance', element: <PermissionRoute permission="field_service.maintenance.update"><LazyPage><PreventiveMaintenancePage /></LazyPage></PermissionRoute> },
-          { path: 'field-service/service-worklog', element: <PermissionRoute permission="field_service.job.update"><LazyPage><ServiceTicketWorklogPage /></LazyPage></PermissionRoute> },
-          { path: 'field-service/offline-sync', element: <PermissionRoute allowedRoles={['Field Technician']}><LazyPage><OfflineSyncQueuePage /></LazyPage></PermissionRoute> },
+          { path: 'field-service', element: <PermissionRoute permission="field_service.job.view" isBranchScoped><LazyPage><FieldServiceDashboard /></LazyPage></PermissionRoute> },
+          { path: 'field-service/deliveries', element: <PermissionRoute permission="field_service.job.view" isBranchScoped><LazyPage><DeliveryJobsPage /></LazyPage></PermissionRoute> },
+          { path: 'field-service/installations', element: <PermissionRoute permission="field_service.installation.update" isBranchScoped><LazyPage><InstallationJobsPage /></LazyPage></PermissionRoute> },
+          { path: 'field-service/schedule', element: <PermissionRoute permission="field_service.job.view" isBranchScoped><LazyPage><TechnicianSchedulePage /></LazyPage></PermissionRoute> },
+          { path: 'field-service/handover', element: <PermissionRoute permission="field_service.delivery.proof_create" isBranchScoped><LazyPage><MobileHandoverChecklistPage /></LazyPage></PermissionRoute> },
+          { path: 'field-service/proof-of-delivery', element: <PermissionRoute permission="field_service.delivery.proof_create" isBranchScoped><LazyPage><ProofOfDeliveryPage /></LazyPage></PermissionRoute> },
+          { path: 'field-service/warranty-activation', element: <PermissionRoute permission="field_service.installation.update" isBranchScoped><LazyPage><WarrantyActivationPage /></LazyPage></PermissionRoute> },
+          { path: 'field-service/preventive-maintenance', element: <PermissionRoute permission="field_service.maintenance.update" isBranchScoped><LazyPage><PreventiveMaintenancePage /></LazyPage></PermissionRoute> },
+          { path: 'field-service/service-worklog', element: <PermissionRoute permission="field_service.job.update" isBranchScoped><LazyPage><ServiceTicketWorklogPage /></LazyPage></PermissionRoute> },
+          { path: 'field-service/offline-sync', element: <PermissionRoute permission="field_service.job.view" isBranchScoped><LazyPage><OfflineSyncQueuePage /></LazyPage></PermissionRoute> },
 
           // Integration Portal
-          { path: 'integration', element: <PermissionRoute allowedRoles={['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin']}><LazyPage><IntegrationDashboard /></LazyPage></PermissionRoute> },
-          { path: 'integration/notifications', element: <PermissionRoute allowedRoles={['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin']}><LazyPage><NotificationCenterPage /></LazyPage></PermissionRoute> },
-          { path: 'integration/approvals', element: <PermissionRoute allowedRoles={['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin']}><LazyPage><IntegrationApprovalCenterPage /></LazyPage></PermissionRoute> },
-          { path: 'integration/global-search', element: <PermissionRoute allowedRoles={['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin']}><LazyPage><GlobalSearchPage /></LazyPage></PermissionRoute> },
-          { path: 'integration/patient-timeline', element: <PermissionRoute allowedRoles={['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin']}><LazyPage><PatientTimelinePage /></LazyPage></PermissionRoute> },
-          { path: 'integration/asset-timeline', element: <PermissionRoute allowedRoles={['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin']}><LazyPage><AssetTimelinePage /></LazyPage></PermissionRoute> },
-          { path: 'integration/reconciliation', element: <PermissionRoute allowedRoles={['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin']}><LazyPage><ReconciliationMonitorPage /></LazyPage></PermissionRoute> },
-          { path: 'integration/activity-audit', element: <PermissionRoute allowedRoles={['Super Admin', 'IT Support', 'Marketplace Admin', 'Branch Admin']}><LazyPage><ActivityAuditContextPage /></LazyPage></PermissionRoute> },
+          { path: 'integration', element: <PermissionRoute permission="integration.view"><LazyPage><IntegrationDashboard /></LazyPage></PermissionRoute> },
+          { path: 'integration/notifications', element: <PermissionRoute permission="integration.view"><LazyPage><NotificationCenterPage /></LazyPage></PermissionRoute> },
+          { path: 'integration/approvals', element: <PermissionRoute permission="integration.view"><LazyPage><IntegrationApprovalCenterPage /></LazyPage></PermissionRoute> },
+          { path: 'integration/global-search', element: <PermissionRoute permission="integration.view"><LazyPage><GlobalSearchPage /></LazyPage></PermissionRoute> },
+          { path: 'integration/patient-timeline', element: <PermissionRoute permission="integration.view"><LazyPage><PatientTimelinePage /></LazyPage></PermissionRoute> },
+          { path: 'integration/asset-timeline', element: <PermissionRoute permission="integration.view"><LazyPage><AssetTimelinePage /></LazyPage></PermissionRoute> },
+          { path: 'integration/reconciliation', element: <PermissionRoute permission="integration.view"><LazyPage><ReconciliationMonitorPage /></LazyPage></PermissionRoute> },
+          { path: 'integration/activity-audit', element: <PermissionRoute permission="integration.view"><LazyPage><ActivityAuditContextPage /></LazyPage></PermissionRoute> },
 
           // Patient Portal
           { path: 'patient', element: <PermissionRoute permission="patient.portal.view_own"><LazyPage><PatientDashboard /></LazyPage></PermissionRoute> },
@@ -461,40 +460,40 @@ const router = createBrowserRouter([
           { path: 'patient/profile', element: <PermissionRoute permission="patient.portal.view_own"><LazyPage><PatientProfilePage /></LazyPage></PermissionRoute> },
 
           // Doctor Portal (branch-scoped)
-          { path: 'doctor', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Doctor']} isBranchScoped><LazyPage><DoctorDashboard /></LazyPage></PermissionRoute> },
-          { path: 'doctor/queue', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Doctor']} isBranchScoped><LazyPage><DoctorQueuePage /></LazyPage></PermissionRoute> },
-          { path: 'doctor/patients', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Doctor']} isBranchScoped><LazyPage><DoctorPatientsPage /></LazyPage></PermissionRoute> },
-          { path: 'doctor/emr', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Doctor']} isBranchScoped><LazyPage><DoctorEMRPage /></LazyPage></PermissionRoute> },
+          { path: 'doctor', element: <PermissionRoute allowedRoles={['Doctor']} isBranchScoped><LazyPage><DoctorDashboard /></LazyPage></PermissionRoute> },
+          { path: 'doctor/queue', element: <PermissionRoute allowedRoles={['Doctor']} isBranchScoped><LazyPage><DoctorQueuePage /></LazyPage></PermissionRoute> },
+          { path: 'doctor/patients', element: <PermissionRoute allowedRoles={['Doctor']} isBranchScoped><LazyPage><DoctorPatientsPage /></LazyPage></PermissionRoute> },
+          { path: 'doctor/emr', element: <PermissionRoute allowedRoles={['Doctor']} isBranchScoped><LazyPage><DoctorEMRPage /></LazyPage></PermissionRoute> },
 
           // Nurse Portal (branch-scoped)
-          { path: 'nurse', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Nurse']} isBranchScoped><LazyPage><NurseDashboard /></LazyPage></PermissionRoute> },
-          { path: 'nurse/triage', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Nurse']} isBranchScoped><LazyPage><NurseTriageQueuePage /></LazyPage></PermissionRoute> },
-          { path: 'nurse/intake', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Nurse']} isBranchScoped><LazyPage><NursePatientIntakePage /></LazyPage></PermissionRoute> },
-          { path: 'nurse/vitals', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Nurse']} isBranchScoped><LazyPage><NurseVitalsPage /></LazyPage></PermissionRoute> },
-          { path: 'nurse/tasks', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Nurse']} isBranchScoped><LazyPage><NurseTasksPage /></LazyPage></PermissionRoute> },
-          { path: 'nurse/specimens', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Nurse']} isBranchScoped><LazyPage><NurseSpecimenCollectionPage /></LazyPage></PermissionRoute> },
+          { path: 'nurse', element: <PermissionRoute allowedRoles={['Nurse']} isBranchScoped><LazyPage><NurseDashboard /></LazyPage></PermissionRoute> },
+          { path: 'nurse/triage', element: <PermissionRoute allowedRoles={['Nurse']} isBranchScoped><LazyPage><NurseTriageQueuePage /></LazyPage></PermissionRoute> },
+          { path: 'nurse/intake', element: <PermissionRoute allowedRoles={['Nurse']} isBranchScoped><LazyPage><NursePatientIntakePage /></LazyPage></PermissionRoute> },
+          { path: 'nurse/vitals', element: <PermissionRoute allowedRoles={['Nurse']} isBranchScoped><LazyPage><NurseVitalsPage /></LazyPage></PermissionRoute> },
+          { path: 'nurse/tasks', element: <PermissionRoute allowedRoles={['Nurse']} isBranchScoped><LazyPage><NurseTasksPage /></LazyPage></PermissionRoute> },
+          { path: 'nurse/specimens', element: <PermissionRoute allowedRoles={['Nurse']} isBranchScoped><LazyPage><NurseSpecimenCollectionPage /></LazyPage></PermissionRoute> },
 
           // Lab Portal (branch-scoped)
-          { path: 'lab', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><LabDashboard /></LazyPage></PermissionRoute> },
-          { path: 'lab/orders', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><LabOrdersPage /></LazyPage></PermissionRoute> },
-          { path: 'lab/specimens', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><SpecimenReceivingPage /></LazyPage></PermissionRoute> },
-          { path: 'lab/encoding', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><ResultEncodingPage /></LazyPage></PermissionRoute> },
-          { path: 'lab/validation', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><ResultValidationPage /></LazyPage></PermissionRoute> },
-          { path: 'lab/critical-results', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><CriticalResultsPage /></LazyPage></PermissionRoute> },
-          { path: 'lab/turnaround', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><TurnaroundMonitorPage /></LazyPage></PermissionRoute> },
+          { path: 'lab', element: <PermissionRoute allowedRoles={['Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><LabDashboard /></LazyPage></PermissionRoute> },
+          { path: 'lab/orders', element: <PermissionRoute allowedRoles={['Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><LabOrdersPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/specimens', element: <PermissionRoute allowedRoles={['Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><SpecimenReceivingPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/encoding', element: <PermissionRoute allowedRoles={['Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><ResultEncodingPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/validation', element: <PermissionRoute allowedRoles={['Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><ResultValidationPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/critical-results', element: <PermissionRoute allowedRoles={['Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><CriticalResultsPage /></LazyPage></PermissionRoute> },
+          { path: 'lab/turnaround', element: <PermissionRoute allowedRoles={['Lab Technician', 'Med-Tech']} isBranchScoped><LazyPage><TurnaroundMonitorPage /></LazyPage></PermissionRoute> },
 
           // Cashier Portal (branch-scoped)
-          { path: 'cashier', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Cashier', 'Finance']} isBranchScoped><LazyPage><CashierDashboard /></LazyPage></PermissionRoute> },
-          { path: 'cashier/billing', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Cashier', 'Finance']} isBranchScoped><LazyPage><CashierPatientBillingPage /></LazyPage></PermissionRoute> },
-          { path: 'cashier/invoices', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Cashier', 'Finance']} isBranchScoped><LazyPage><InvoicesPage /></LazyPage></PermissionRoute> },
-          { path: 'cashier/payments', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Cashier', 'Finance']} isBranchScoped><LazyPage><PaymentsPage /></LazyPage></PermissionRoute> },
-          { path: 'cashier/session', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Cashier', 'Finance']} isBranchScoped><LazyPage><CashierSessionPage /></LazyPage></PermissionRoute> },
-          { path: 'cashier/refunds-voids', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Cashier', 'Finance']} isBranchScoped><LazyPage><RefundVoidQueuePage /></LazyPage></PermissionRoute> },
-          { path: 'cashier/hmo-claims', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Cashier', 'Finance']} isBranchScoped><LazyPage><HMOClaimsPage /></LazyPage></PermissionRoute> },
-          { path: 'cashier/reconciliation', element: <PermissionRoute allowedRoles={['Super Admin', 'Branch Admin', 'Cashier', 'Finance']} isBranchScoped><LazyPage><DailyReconciliationPage /></LazyPage></PermissionRoute> },
+          { path: 'cashier', element: <PermissionRoute allowedRoles={['Cashier', 'Finance']} isBranchScoped><LazyPage><CashierDashboard /></LazyPage></PermissionRoute> },
+          { path: 'cashier/billing', element: <PermissionRoute allowedRoles={['Cashier', 'Finance']} isBranchScoped><LazyPage><CashierPatientBillingPage /></LazyPage></PermissionRoute> },
+          { path: 'cashier/invoices', element: <PermissionRoute allowedRoles={['Cashier', 'Finance']} isBranchScoped><LazyPage><InvoicesPage /></LazyPage></PermissionRoute> },
+          { path: 'cashier/payments', element: <PermissionRoute allowedRoles={['Cashier', 'Finance']} isBranchScoped><LazyPage><PaymentsPage /></LazyPage></PermissionRoute> },
+          { path: 'cashier/session', element: <PermissionRoute allowedRoles={['Cashier', 'Finance']} isBranchScoped><LazyPage><CashierSessionPage /></LazyPage></PermissionRoute> },
+          { path: 'cashier/refunds-voids', element: <PermissionRoute allowedRoles={['Cashier', 'Finance']} isBranchScoped><LazyPage><RefundVoidQueuePage /></LazyPage></PermissionRoute> },
+          { path: 'cashier/hmo-claims', element: <PermissionRoute allowedRoles={['Cashier', 'Finance']} isBranchScoped><LazyPage><HMOClaimsPage /></LazyPage></PermissionRoute> },
+          { path: 'cashier/reconciliation', element: <PermissionRoute allowedRoles={['Cashier', 'Finance']} isBranchScoped><LazyPage><DailyReconciliationPage /></LazyPage></PermissionRoute> },
 
           // Other Features
-          { path: 'telehealth', element: <PermissionRoute permission="encounter.create"><LazyPage><TelehealthConsole /></LazyPage></PermissionRoute> },
+          { path: 'telehealth', element: <PermissionRoute permission="encounter.create" isBranchScoped><LazyPage><TelehealthConsole /></LazyPage></PermissionRoute> },
           { path: 'spatial', element: <PermissionRoute permission="it.system.view"><LazyPage><SpatialConsole /></LazyPage></PermissionRoute> },
           { path: 'sales-dashboard', element: <PermissionRoute permission="report.export"><LazyPage><SalesDashboard /></LazyPage></PermissionRoute> },
           { path: 'logistics-checklist', element: <PermissionRoute permission="field_service.job.view"><LazyPage><InstallationChecklist /></LazyPage></PermissionRoute> },
@@ -502,9 +501,9 @@ const router = createBrowserRouter([
           // Pharmacy Sub-routes (branch-scoped) — dispense/inventory sub views not yet implemented (see PharmacyHub for live surface)
 
           // Notifications
-          { path: 'notifications', element: <PermissionRoute mode={GuardMode.ANY} permissions={['it.system.view', 'compliance.audit.review']}><LazyPage><NotificationCenter /></LazyPage></PermissionRoute> },
+          { path: 'notifications', element: <PermissionRoute permission="notification.view"><LazyPage><NotificationCenter /></LazyPage></PermissionRoute> },
           { path: 'notifications/templates', element: <PermissionRoute permission="admin.role.change"><LazyPage><NotificationTemplates /></LazyPage></PermissionRoute> },
-          { path: 'notifications/settings', element: <PermissionRoute mode={GuardMode.ANY} permissions={['it.system.view', 'admin.role.change']}><LazyPage><NotificationSettingsPage /></LazyPage></PermissionRoute> },
+          { path: 'notifications/settings', element: <PermissionRoute permission="notification.manage"><LazyPage><NotificationSettingsPage /></LazyPage></PermissionRoute> },
         ],
       },
     ],

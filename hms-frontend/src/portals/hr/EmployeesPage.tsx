@@ -76,6 +76,7 @@ export const EmployeesPage: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [branchError, setBranchError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState<CreateEmployeePayload>(initialCreateForm);
   const [branches, setBranches] = useState<{ id: string; name: string; code: string }[]>([]);
@@ -109,6 +110,7 @@ export const EmployeesPage: React.FC = () => {
       const res = await adminService.listBranches({ limit: 200 });
       setBranches(res.data.map((b) => ({ id: b.id, name: b.name, code: b.code })));
     } catch {
+      setBranchError('Failed to load branch list');
       setBranches([]);
     }
   }, []);
@@ -241,6 +243,16 @@ export const EmployeesPage: React.FC = () => {
         >
           <AlertCircle className="h-4 w-4" />
           {fetchError}
+        </div>
+      )}
+
+      {branchError && (
+        <div
+          role="alert"
+          className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-800 font-semibold flex items-center gap-2"
+        >
+          <AlertCircle className="h-4 w-4" />
+          {branchError}
         </div>
       )}
 

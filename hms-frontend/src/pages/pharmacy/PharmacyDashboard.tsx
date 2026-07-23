@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Pill, AlertCircle } from 'lucide-react';
+import { HmsPageHeader } from '../../components/hms-page';
 import {
   HmsDashboardShell,
   HmsToolbar,
@@ -13,6 +14,7 @@ import {
   HmsQuickActions,
   HmsDataUnavailable,
   HmsLoadingSkeleton,
+  HmsDataSourceBadge,
 } from '../../components/hms-dashboard';
 import { usePrescriptionQueue, useDrugCatalog, useLowStockAlerts } from '../../hooks/use-pharmacy';
 import { usePermissions } from '../../hooks/use-user';
@@ -23,27 +25,32 @@ export const PharmacyDashboard: React.FC = () => {
   const { hasPermission } = usePermissions();
   const canDispense = hasPermission('inventory.stock.dispense');
 
-  const { data: prescriptionQueue, isLoading: queueLoading, error: queueError } = usePrescriptionQueue();
-  const { data: drugCatalog, isLoading: catalogLoading, error: catalogError } = useDrugCatalog();
-  const { data: lowStockAlerts, isLoading: alertsLoading, error: alertsError } = useLowStockAlerts();
+  const { data: prescriptionQueue, isLoading: queueLoading, isFetching: queueFetching, error: queueError, refetch: refetchQueue } = usePrescriptionQueue();
+  const { data: drugCatalog, isLoading: catalogLoading, isFetching: catalogFetching, error: catalogError, refetch: refetchCatalog } = useDrugCatalog();
+  const { data: lowStockAlerts, isLoading: alertsLoading, isFetching: alertsFetching, error: alertsError, refetch: refetchAlerts } = useLowStockAlerts();
 
   const isLoading = queueLoading || catalogLoading || alertsLoading;
   const errorObj = queueError || catalogError || alertsError;
 
+  const refresh = async () => {
+    await Promise.all([refetchQueue(), refetchCatalog(), refetchAlerts()]);
+  };
+
   if (errorObj && !isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center p-6 bg-slate-50">
-        <div className="flex flex-col items-center gap-3 text-center max-w-md p-6 bg-white border border-slate-200 rounded-lg shadow-sm">
-          <AlertCircle className="h-12 w-12 text-rose-500" />
-          <h2 className="text-lg font-bold text-slate-900">Failed to load pharmacy dashboard data.</h2>
+      <HmsDashboardShell>
+        <div className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-md border border-slate-300 bg-white p-8 text-center shadow-sm">
+          <AlertCircle className="h-10 w-10 text-rose-500" />
+          <h2 className="text-lg font-semibold text-slate-900">Failed to load pharmacy dashboard data.</h2>
           <button
-            onClick={() => window.location.reload()}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 transition-colors"
+            type="button"
+            onClick={() => void refresh()}
+            className="min-h-10 rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
           >
             Retry
           </button>
         </div>
-      </div>
+      </HmsDashboardShell>
     );
   }
 
@@ -144,7 +151,8 @@ export const PharmacyDashboard: React.FC = () => {
         <HmsToolbar
           role="Pharmacy Dashboard"
           lastRefreshed={lastUpdated}
-          onRefresh={() => window.location.reload()}
+          onRefresh={() => void refresh()}
+          refreshing={queueFetching || catalogFetching || alertsFetching}
         />
       }
       footer={
@@ -154,6 +162,13 @@ export const PharmacyDashboard: React.FC = () => {
         />
       }
     >
+      <HmsPageHeader
+        eyebrow="Medication operations"
+        title="Pharmacy Workspace"
+        description="Dispensing demand, stock risk and pharmacy actions centered on the current branch workflow."
+        actions={<HmsDataSourceBadge mode="live" />}
+      />
+
       {/* Top Alert Rail for Stock Risks */}
       <HmsAlertRail alerts={railAlerts} loading={isLoading} />
 
@@ -161,20 +176,20 @@ export const PharmacyDashboard: React.FC = () => {
       <HmsKpiStrip metrics={kpis} loading={isLoading} />
 
       {isLoading ? (
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-12 xl:col-span-8 space-y-6">
+        <div className="grid grid-cols-12 gap-5">
+          <div className="col-span-12 xl:col-span-8 space-y-5">
             <HmsLoadingSkeleton variant="table" />
             <HmsLoadingSkeleton variant="table" />
           </div>
-          <div className="col-span-12 xl:col-span-4 space-y-6">
+          <div className="col-span-12 xl:col-span-4 space-y-5">
             <HmsLoadingSkeleton variant="panel" />
             <HmsLoadingSkeleton variant="panel" />
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-12 gap-5">
           {/* Main Work Content (8/12 cols desktop, 12 cols tablet/mobile) */}
-          <div className="col-span-12 xl:col-span-8 space-y-6">
+          <div className="col-span-12 xl:col-span-8 space-y-5">
             {/* Active Prescriptions Queue */}
             {prescriptionItems.length > 0 ? (
               <HmsWorkQueue
@@ -217,7 +232,7 @@ export const PharmacyDashboard: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => navigate('/pharmacy')}
-                          className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 focus:underline"
+                          className="text-[12px] font-semibold text-sky-600 hover:text-sky-700 focus:underline"
                         >
                           Dispense →
                         </button>
@@ -303,7 +318,7 @@ export const PharmacyDashboard: React.FC = () => {
           </div>
 
           {/* Operational Metrics and Quick Actions (4/12 cols desktop, 12 cols tablet/mobile) */}
-          <div className="col-span-12 xl:col-span-4 space-y-6">
+          <div className="col-span-12 xl:col-span-4 space-y-5">
             {/* SLA Risk Panel */}
             <HmsSlaPanel
               title="Operational Risks"
@@ -328,8 +343,8 @@ export const PharmacyDashboard: React.FC = () => {
             <HmsQuickActions
               title="Quick Actions"
               actions={[
-                { id: 'disp-hub', label: 'Dispense Queue', icon: <Pill className="h-4 w-4 text-blue-500" />, href: '/pharmacy', permission: 'inventory.stock.dispense' },
-                { id: 'inv-mgr', label: 'Drug Inventory', icon: <Package className="h-4 w-4 text-emerald-500" />, href: '/pharmacy', permission: 'inventory.stock.dispense' },
+                { id: 'disp-hub', label: 'Dispense Queue', icon: <Pill className="h-4 w-4 text-sky-600" />, href: '/pharmacy', permission: 'inventory.stock.dispense' },
+                { id: 'inv-mgr', label: 'Drug Inventory', icon: <Package className="h-4 w-4 text-emerald-600" />, href: '/pharmacy', permission: 'inventory.stock.dispense' },
               ]}
             />
           </div>

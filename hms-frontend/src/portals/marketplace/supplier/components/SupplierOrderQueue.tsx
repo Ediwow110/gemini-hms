@@ -1,98 +1,138 @@
-import React, { useEffect, useState } from 'react';
-import { Package, ArrowRight, Loader2, AlertTriangle } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AlertTriangle, Loader2, Package } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { apiClient } from '../../../../lib/api';
 
+interface SupplierSalesOrder {
+  id: string;
+  orderNumber?: string | null;
+  status: string;
+  totalAmount: string | number;
+  quote?: {
+    rfq?: {
+      title?: string | null;
+    } | null;
+  } | null;
+}
+
+interface SupplierOrdersResponse {
+  salesOrders?: SupplierSalesOrder[];
+}
+
+const peso = (value: string | number) =>
+  new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+
 export const SupplierOrderQueue: React.FC = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<SupplierSalesOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        const response = await apiClient.get('/marketplace/supplier/orders');
-        setOrders(response.data.salesOrders || []);
-        setError(null);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
-        console.error('Failed to fetch supplier orders:', err);
-        setError('Failed to load orders');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.get<SupplierOrdersResponse>(
+        '/marketplace/supplier/orders',
+      );
+      setOrders(
+        Array.isArray(response.data?.salesOrders)
+          ? response.data.salesOrders
+          : [],
+      );
+    } catch {
+      setError('Supplier orders could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void fetchOrders();
+  }, [fetchOrders]);
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-3xl shadow-sm">
-        <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-4" />
-        <p className="text-sm font-bold text-slate-500 tracking-tight uppercase">Loading orders...</p>
+      <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
+        <p className="mt-3 text-xs font-semibold text-slate-500">Loading supplier orders…</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-10 bg-rose-50 border border-rose-100 rounded-3xl text-center">
-        <AlertTriangle className="h-10 w-10 text-rose-500 mx-auto mb-4" />
-        <p className="text-sm font-black text-rose-800 tracking-tight uppercase">{error}</p>
-      </div>
-    );
-  }
-
-  if (orders.length === 0) {
-    return (
-      <div className="p-20 bg-slate-50 border border-dashed border-slate-200 rounded-3xl text-center">
-        <Package className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-        <p className="text-sm font-black text-slate-500 tracking-tight uppercase">No active orders</p>
+      <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-sm">
+        <AlertTriangle className="h-8 w-8 text-rose-500" />
+        <p className="mt-3 text-sm font-semibold text-rose-800">{error}</p>
+        <button
+          type="button"
+          onClick={() => void fetchOrders()}
+          className="mt-4 min-h-10 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-      <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-        <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Order Queue</h3>
+    <section className="h-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="supplier-order-heading">
+      <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <div>
+          <h3 id="supplier-order-heading" className="text-sm font-semibold text-slate-900">Order queue</h3>
+          <p className="mt-1 text-xs text-slate-500">Live sales orders associated with this supplier account.</p>
+        </div>
+        <Link to="/supplier/orders" className="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+          View all
+        </Link>
       </div>
-      <div className="divide-y divide-slate-100">
-        {orders.map((order) => (
-          <div key={order.id} className="p-5 hover:bg-slate-50 transition-colors flex items-center justify-between group cursor-pointer">
-            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-xl flex items-center justify-center border bg-indigo-50 text-indigo-600 border-indigo-100">
-                <Package className="h-5 w-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-black text-slate-800">
-                  {order.quote?.rfq?.title || 'Marketplace Order'}
-                </h4>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                  {order.orderNumber} · {order.id.substring(0, 8)}
-                </p>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-6">
-              <div className="text-right">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                <div className="flex items-center gap-1.5 text-xs font-black text-slate-500 uppercase">
-                  {order.status}
+      {orders.length === 0 ? (
+        <div className="flex min-h-56 flex-col items-center justify-center px-6 text-center">
+          <Package className="h-9 w-9 text-slate-300" />
+          <p className="mt-3 text-sm font-semibold text-slate-700">No active orders</p>
+          <p className="mt-1 text-xs text-slate-500">Accepted buyer orders will appear here.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-100">
+          {orders.slice(0, 5).map((order) => (
+            <div key={order.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="shrink-0 rounded-xl border border-indigo-100 bg-indigo-50 p-2.5 text-indigo-600">
+                  <Package className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {order.quote?.rfq?.title || 'Marketplace order'}
+                  </p>
+                  <p className="mt-1 font-mono text-[10px] text-slate-500">
+                    {order.orderNumber || order.id.slice(0, 8)}
+                  </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total</p>
-                <p className="text-xs font-black text-slate-800">₱{Number(order.totalAmount).toLocaleString()}</p>
+              <div className="flex items-center justify-between gap-4 sm:justify-end">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-700">
+                  {order.status}
+                </span>
+                <span className="font-mono text-xs font-semibold text-slate-900">
+                  {peso(order.totalAmount)}
+                </span>
+                <Link
+                  to="/supplier/orders"
+                  className="min-h-9 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-50"
+                >
+                  Review
+                </Link>
               </div>
-              <ArrowRight className="h-5 w-5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 };
 

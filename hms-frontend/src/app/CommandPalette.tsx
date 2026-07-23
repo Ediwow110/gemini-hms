@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, ShieldAlert, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { roleNavigation } from '../config/roleNavigation';
+import { getPortalRouteConfig } from '../config/portalRoutes';
 import { usePermissions } from '../hooks/use-user';
 import type { NavItemConfig } from '../config/roleNavigation';
 
@@ -28,11 +29,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         if (item.isHiddenForDemo) return false;
         if (item.isComingSoon) return false;
 
+        const route = getPortalRouteConfig(item.to);
         return canAccess({
-          permission: item.permission,
-          allowedRoles: item.allowedRoles,
-          isBranchScoped: item.isBranchScoped,
-          zone: item.zone,
+          permission: route ? route.requiredPermission : item.permission,
+          allowedRoles: route ? route.allowedRoles : item.allowedRoles,
+          isBranchScoped: route ? Boolean(route.isBranchScoped) : item.isBranchScoped,
+          zone: route ? route.zone : item.zone,
         });
       })
       .filter((item, index, self) =>

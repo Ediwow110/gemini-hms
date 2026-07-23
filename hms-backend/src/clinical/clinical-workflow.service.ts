@@ -2287,7 +2287,7 @@ export class ClinicalWorkflowService {
     }
 
     const labResult = await this.prisma.labResult.findFirst({
-      where: { orderId, archivedAt: null },
+      where: { orderId, order: { tenantId }, archivedAt: null },
       include: {
         order: {
           include: {

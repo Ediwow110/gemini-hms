@@ -3,35 +3,65 @@ name: Staging Deployment
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
 jobs:
   docker-build:
-    name: Build Staging Docker Images
+    name: Build Immutable Staging Images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Build Staging Backend Container
-        uses: docker/build-push-action@v5
+      - name: Build staging backend image
+        uses: docker/build-push-action@v6
         with:
           context: ./hms-backend
           file: ./hms-backend/Dockerfile
-          push: false
-          tags: hms-login-design-backend:staging
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          load: true
+          tags: hms-backend:staging-${{ github.sha }}
+          cache-from: type=gha,scope=backend-staging
+          cache-to: type=gha,mode=max,scope=backend-staging
 
-      - name: Build Staging Frontend Container
-        uses: docker/build-push-action@v5
+      - name: Build staging frontend image
+        uses: docker/build-push-action@v6
         with:
           context: ./hms-frontend
           file: ./hms-frontend/Dockerfile
-          push: false
-          tags: hms-login-design-frontend:staging
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          load: true
+          tags: hms-frontend:staging-${{ github.sha }}
+          cache-from: type=gha,scope=frontend-staging
+          cache-to: type=gha,mode=max,scope=frontend-staging
+
+      - name: Package exact CI-built images
+        run: |
+          docker save hms-backend:staging-${GITHUB_SHA} | gzip -9 > hms-backend.tar.gz
+          docker save hms-frontend:staging-${GITHUB_SHA} | gzip -9 > hms-frontend.tar.gz
+          sha256sum hms-backend.tar.gz hms-frontend.tar.gz > images.sha256
+
+      - name: Attest backend staging artifact
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: hms-backend.tar.gz
+
+      - name: Attest frontend staging artifact
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: hms-frontend.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hms-staging-${{ github.sha }}
+          path: |
+            hms-backend.tar.gz
+            hms-frontend.tar.gz
+            images.sha256
+          if-no-files-found: error
+          retention-days: 7
 
   cd-deploy-staging:
     name: SSH Staging Delivery
@@ -41,15 +71,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Staging Host
+      - uses: actions/download-artifact@v4
+        with:
+          name: hms-staging-${{ github.sha }}
+          path: release-images
+
+      - name: Deploy exact CI-built images to staging
         env:
           SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
           SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
           SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          BACKEND_IMAGE: hms-backend:staging-${{ github.sha }}
+          FRONTEND_IMAGE: hms-frontend:staging-${{ github.sha }}
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
           JWT_REFRESH_SECRET: ${{ secrets.STAGING_JWT_REFRESH_SECRET }}
           MASTER_MFA_KEY: ${{ secrets.STAGING_MASTER_MFA_KEY }}
+          AUDIT_CHAIN_SECRET: ${{ secrets.STAGING_AUDIT_CHAIN_SECRET }}
+          REDIS_URL: ${{ secrets.STAGING_REDIS_URL }}
+          REDIS_TLS_CA_BASE64: ${{ secrets.STAGING_REDIS_TLS_CA_BASE64 }}
           DB_USER: ${{ secrets.STAGING_DB_USER }}
           DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
           DB_NAME: ${{ secrets.STAGING_DB_NAME }}
@@ -58,47 +98,39 @@ jobs:
           SMS_PROVIDER: ${{ secrets.STAGING_SMS_PROVIDER }}
           AWS_REGION: ${{ secrets.STAGING_AWS_REGION }}
           SES_SENDER_EMAIL: ${{ secrets.STAGING_SES_SENDER_EMAIL }}
-          MAILRELAY_API_KEY: ${{ secrets.STAGING_MAILRELAY_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.STAGING_AWS_SESSION_TOKEN }}
+          MAILRELAY_SMTP_HOST: ${{ secrets.STAGING_MAILRELAY_SMTP_HOST }}
+          MAILRELAY_SMTP_PORT: ${{ secrets.STAGING_MAILRELAY_SMTP_PORT }}
+          MAILRELAY_SMTP_USER: ${{ secrets.STAGING_MAILRELAY_SMTP_USER }}
           MAILRELAY_SMTP_PASS: ${{ secrets.STAGING_MAILRELAY_SMTP_PASS }}
           MAILRELAY_SENDER_EMAIL: ${{ secrets.STAGING_MAILRELAY_SENDER_EMAIL }}
           MAILRELAY_SENDER_NAME: ${{ secrets.STAGING_MAILRELAY_SENDER_NAME }}
           SEMAPHORE_API_KEY: ${{ secrets.STAGING_SEMAPHORE_API_KEY }}
+          SEMAPHORE_API_URL: ${{ secrets.STAGING_SEMAPHORE_API_URL }}
+          SEMAPHORE_SENDER_NAME: ${{ secrets.STAGING_SEMAPHORE_SENDER_NAME }}
+          SENTRY_DSN: ${{ secrets.STAGING_SENTRY_DSN }}
         run: |
-          echo "=== STAGING DEPLOYMENT ==="
-          echo "Target: $SSH_USER@$SSH_HOST"
-          echo "Environment: staging"
-
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          printf '%s' "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
-          ssh -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST "mkdir -p /tmp/app"
-          rsync -avz -e "ssh -i ~/.ssh/id_rsa" \
-            --exclude 'node_modules' \
-            --exclude '.git' \
-            ./hms-backend \
-            ./hms-frontend \
-            docker-compose.staging.yml \
-            $SSH_USER@$SSH_HOST:/tmp/app/
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "mkdir -p /tmp/app/hms-backend/scripts"
+          scp -i ~/.ssh/id_rsa release-images/* "$SSH_USER@$SSH_HOST:/tmp/app/"
+          scp -i ~/.ssh/id_rsa docker-compose.staging.yml "$SSH_USER@$SSH_HOST:/tmp/app/"
+          scp -i ~/.ssh/id_rsa hms-backend/scripts/remote-deploy-staging.sh "$SSH_USER@$SSH_HOST:/tmp/app/hms-backend/scripts/"
+          scp -i ~/.ssh/id_rsa hms-backend/scripts/load-deploy-environment.sh "$SSH_USER@$SSH_HOST:/tmp/app/hms-backend/scripts/"
 
-          ssh -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST \
-            "cd /tmp/app && \
-             export DB_USER='$DB_USER' \
-             DB_PASSWORD='$DB_PASSWORD' \
-             DB_NAME='$DB_NAME' \
-             CORS_ALLOWED_ORIGINS='$CORS_ALLOWED_ORIGINS' \
-             DATABASE_URL='$DATABASE_URL' \
-             JWT_SECRET='$JWT_SECRET' \
-             JWT_REFRESH_SECRET='$JWT_REFRESH_SECRET' \
-             MASTER_MFA_KEY='$MASTER_MFA_KEY' \
-             EMAIL_PROVIDER='$EMAIL_PROVIDER' \
-             SMS_PROVIDER='$SMS_PROVIDER' \
-             AWS_REGION='$AWS_REGION' \
-             SES_SENDER_EMAIL='$SES_SENDER_EMAIL' \
-             MAILRELAY_API_KEY='$MAILRELAY_API_KEY' \
-             MAILRELAY_SMTP_PASS='$MAILRELAY_SMTP_PASS' \
-             MAILRELAY_SENDER_EMAIL='$MAILRELAY_SENDER_EMAIL' \
-             MAILRELAY_SENDER_NAME='$MAILRELAY_SENDER_NAME' \
-             SEMAPHORE_API_KEY='$SEMAPHORE_API_KEY'; \
-             bash ./hms-backend/scripts/remote-deploy-staging.sh"
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "cd /tmp/app && sha256sum -c images.sha256 && gunzip -c hms-backend.tar.gz | docker load && gunzip -c hms-frontend.tar.gz | docker load"
+
+          deploy_env="$(mktemp)"
+          chmod 600 "$deploy_env"
+          for variable in BACKEND_IMAGE FRONTEND_IMAGE DATABASE_URL JWT_SECRET JWT_REFRESH_SECRET MASTER_MFA_KEY AUDIT_CHAIN_SECRET REDIS_URL REDIS_TLS_CA_BASE64 DB_USER DB_PASSWORD DB_NAME CORS_ALLOWED_ORIGINS EMAIL_PROVIDER SMS_PROVIDER AWS_REGION SES_SENDER_EMAIL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN MAILRELAY_SMTP_HOST MAILRELAY_SMTP_PORT MAILRELAY_SMTP_USER MAILRELAY_SMTP_PASS MAILRELAY_SENDER_EMAIL MAILRELAY_SENDER_NAME SEMAPHORE_API_KEY SEMAPHORE_API_URL SEMAPHORE_SENDER_NAME SENTRY_DSN; do
+            printf '%s_B64=%s\n' "$variable" "$(printf '%s' "${!variable:-}" | base64 -w0)" >> "$deploy_env"
+          done
+          scp -i ~/.ssh/id_rsa "$deploy_env" "$SSH_USER@$SSH_HOST:/tmp/app/.deploy-env"
+          rm -f "$deploy_env"
+
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "cd /tmp/app && bash ./hms-backend/scripts/load-deploy-environment.sh .deploy-env bash ./hms-backend/scripts/remote-deploy-staging.sh"

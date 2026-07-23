@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { PrismaModule } from '../src/prisma/prisma.module';
@@ -8,6 +9,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
 import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
+import { PERMISSIONS_KEY } from '../src/auth/decorators/permissions.decorator';
 import { LogisticsModule } from '../src/logistics/logistics.module';
 import { AuditModule } from '../src/audit/audit.module';
 import { randomUUID } from 'crypto';
@@ -20,6 +22,7 @@ describe('Logistics & Field Service (e2e)', () => {
   const techA_Id = randomUUID();
   const techB_Id = randomUUID();
 
+  let branchId: string;
   let assetId: string;
   let installationJobId: string;
   let shipmentId: string;
@@ -40,7 +43,24 @@ describe('Logistics & Field Service (e2e)', () => {
       .overrideGuard(JwtAuthGuard)
       .useClass(MockJwtAuthGuard)
       .overrideGuard(PermissionsGuard)
-      .useValue({ canActivate: () => true })
+      .useFactory({
+        factory: (reflector: Reflector) => ({
+          canActivate: (context: import('@nestjs/common').ExecutionContext) => {
+            const raw = reflector.getAllAndOverride<
+              string[] | { permissions: string[] }
+            >(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
+            if (!raw) return true;
+            const required = Array.isArray(raw) ? raw : raw.permissions;
+            if (!required || required.length === 0) return true;
+            const req = context.switchToHttp().getRequest();
+            const user = req.user;
+            if (!user || !user.permissions) return false;
+            if (user.permissions.includes('*')) return true;
+            return required.some((p: string) => user.permissions.includes(p));
+          },
+        }),
+        inject: [Reflector],
+      })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -72,7 +92,7 @@ describe('Logistics & Field Service (e2e)', () => {
     });
 
     // Create a SalesOrder and Asset to link jobs to
-    const branchId = randomUUID();
+    branchId = randomUUID();
     await prisma.branch.create({
       data: { id: branchId, tenantId, name: 'Main Branch', code: 'MAIN' },
     });
@@ -158,8 +178,10 @@ describe('Logistics & Field Service (e2e)', () => {
       userId: techA_Id,
       tenantId,
       roles: ['Field Technician'],
+      permissions: ['field_service.job.view'],
       email: 'techA@test.com',
-    } as any;
+      branchId,
+    };
 
     const res = await request(app.getHttpServer())
       .get('/api/v1/logistics/technician/jobs')
@@ -176,8 +198,10 @@ describe('Logistics & Field Service (e2e)', () => {
       userId: techB_Id,
       tenantId,
       roles: ['Field Technician'],
+      permissions: ['field_service.job.view'],
       email: 'techB@test.com',
-    } as any;
+      branchId,
+    };
 
     const res = await request(app.getHttpServer())
       .get('/api/v1/logistics/technician/jobs')
@@ -192,8 +216,10 @@ describe('Logistics & Field Service (e2e)', () => {
       userId: techA_Id,
       tenantId,
       roles: ['Field Technician'],
+      permissions: ['field_service.installation.update'],
       email: 'techA@test.com',
-    } as any;
+      branchId,
+    };
 
     const res = await request(app.getHttpServer())
       .patch(`/api/v1/logistics/installations/${installationJobId}/status`)
@@ -213,8 +239,10 @@ describe('Logistics & Field Service (e2e)', () => {
       userId: techA_Id,
       tenantId: otherTenantId,
       roles: ['Field Technician'],
+      permissions: ['field_service.job.view'],
       email: 'techA@test.com',
-    } as any;
+      branchId,
+    };
 
     const res = await request(app.getHttpServer())
       .get('/api/v1/logistics/technician/jobs')

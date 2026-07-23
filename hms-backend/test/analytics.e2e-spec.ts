@@ -1,13 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { Reflector } from '@nestjs/core';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { PrismaModule } from '../src/prisma/prisma.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
 import { MockJwtAuthGuard } from './helpers/mock-jwt-auth.guard';
-import { RolesGuard } from '../src/auth/guards/roles.guard';
+import { PermissionsGuard } from '../src/auth/guards/permissions.guard';
+import { PERMISSIONS_KEY } from '../src/auth/decorators/permissions.decorator';
 import { AnalyticsModule } from '../src/analytics/analytics.module';
 import { randomUUID } from 'crypto';
 
@@ -32,12 +34,28 @@ describe('Advanced Analytics Module (e2e)', () => {
           provide: APP_GUARD,
           useClass: MockJwtAuthGuard,
         },
-        {
-          provide: APP_GUARD,
-          useClass: RolesGuard,
-        },
       ],
-    }).compile();
+    })
+      .overrideGuard(PermissionsGuard)
+      .useFactory({
+        factory: (reflector: Reflector) => ({
+          canActivate: (context: import('@nestjs/common').ExecutionContext) => {
+            const raw = reflector.getAllAndOverride<
+              string[] | { permissions: string[] }
+            >(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
+            if (!raw) return true;
+            const required = Array.isArray(raw) ? raw : raw.permissions;
+            if (!required || required.length === 0) return true;
+            const req = context.switchToHttp().getRequest();
+            const user = req.user;
+            if (!user || !user.permissions) return false;
+            if (user.permissions.includes('*')) return true;
+            return required.some((p: string) => user.permissions.includes(p));
+          },
+        }),
+        inject: [Reflector],
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -63,7 +81,7 @@ describe('Advanced Analytics Module (e2e)', () => {
       tenantId: tenantId,
       email: 'test@hms.local',
       roles: ['Super Admin'],
-      permissions: ['*'],
+      permissions: ['admin.metrics.view'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
   });
@@ -88,8 +106,8 @@ describe('Advanced Analytics Module (e2e)', () => {
       userId: '11111111-1111-4111-8111-111111111112',
       tenantId: tenantId,
       email: 'analyst@hospital.com',
-      roles: ['Compliance Officer'], // Authorized role
-      permissions: [],
+      roles: ['Compliance Officer'],
+      permissions: ['admin.metrics.view'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 
@@ -107,7 +125,7 @@ describe('Advanced Analytics Module (e2e)', () => {
       tenantId: tenantId,
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
-      permissions: [],
+      permissions: ['admin.metrics.view'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 
@@ -125,7 +143,7 @@ describe('Advanced Analytics Module (e2e)', () => {
       tenantId: tenantId,
       email: 'analyst@hospital.com',
       roles: ['Compliance Officer'],
-      permissions: [],
+      permissions: ['admin.metrics.view'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 
@@ -144,7 +162,7 @@ describe('Advanced Analytics Module (e2e)', () => {
       tenantId: tenantId,
       email: 'analyst@hospital.com',
       roles: ['Compliance Officer'],
-      permissions: [],
+      permissions: ['admin.metrics.view'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 
@@ -162,7 +180,7 @@ describe('Advanced Analytics Module (e2e)', () => {
       tenantId: tenantId,
       email: 'analyst@hospital.com',
       roles: ['Compliance Officer'],
-      permissions: [],
+      permissions: ['admin.metrics.view'],
       branchId: '123e4567-e89b-12d3-a456-426614174001',
     };
 

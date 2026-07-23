@@ -46,7 +46,8 @@ export const BreachAlertsPage: React.FC = () => {
     try {
       const report = await complianceService.getBreachReport(id);
       setBreachReport(report as Record<string, unknown>);
-    } catch {
+    } catch (err) {
+      console.error('[BreachAlerts] Failed to load breach report:', err);
       setBreachReport({ error: 'Failed to load breach report' });
     }
   };

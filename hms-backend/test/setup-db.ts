@@ -1,56 +1,43 @@
-import { PrismaClient } from '@prisma/client';
-import { Pool } from 'pg';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// Load .env.test explicitly
 dotenv.config({ path: path.resolve(__dirname, '../.env.test') });
-
-const dbUrl = process.env.DATABASE_URL;
-console.log(`Setting up test database at ${dbUrl}...`);
-
-async function main() {
-  try {
-    // Push the schema
-    execSync('npx prisma db push --force-reset', {
-      stdio: 'inherit',
-      env: { ...process.env, DATABASE_URL: dbUrl },
-    });
-
-    // Apply the trigger
-    const pool = new Pool({ connectionString: dbUrl });
-    const adapter = new PrismaPg(pool);
-    const prisma = new PrismaClient({ adapter });
-
-    const sql = `
-      CREATE OR REPLACE FUNCTION prevent_audit_log_modification()
-      RETURNS TRIGGER AS $$
-      BEGIN
-        IF TG_OP = 'UPDATE' THEN
-          RAISE EXCEPTION 'Audit log records are immutable and cannot be updated. Record ID: %', OLD.id;
-        ELSIF TG_OP = 'DELETE' THEN
-          RAISE EXCEPTION 'Audit log records are immutable and cannot be deleted. Record ID: %', OLD.id;
-        END IF;
-        RETURN NULL;
-      END;
-      $$ LANGUAGE plpgsql;
-
-      DROP TRIGGER IF EXISTS audit_log_immutable ON audit_logs;
-      CREATE TRIGGER audit_log_immutable
-        BEFORE UPDATE OR DELETE ON audit_logs
-        FOR EACH ROW
-        EXECUTE FUNCTION prevent_audit_log_modification();
-    `;
-
-    await prisma.$executeRawUnsafe(sql);
-    console.log('Audit log immutability trigger applied to test database.');
-    await prisma.$disconnect();
-  } catch (error) {
-    console.error('Failed to set up test database:', error);
-    process.exit(1);
-  }
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
 }
 
-void main();
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required for E2E database setup.');
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  throw new Error('E2E database setup is allowed only when NODE_ENV=test.');
+}
+
+const parsedUrl = new URL(databaseUrl);
+const databaseName = parsedUrl.pathname.replace(/^\//, '');
+if (!databaseName || !databaseName.toLowerCase().includes('test')) {
+  throw new Error(
+    `Refusing to reset a database without "test" in its name: ${databaseName || '(empty)'}`,
+  );
+}
+
+console.log(
+  `Resetting isolated E2E database ${databaseName} at ${parsedUrl.hostname}:${parsedUrl.port || '5432'} using committed migrations.`,
+);
+
+try {
+  const prismaCli = path.resolve(
+    __dirname,
+    '../node_modules/prisma/build/index.js',
+  );
+  execFileSync(process.execPath, [prismaCli, 'migrate', 'reset', '--force'], {
+    stdio: 'inherit',
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+  });
+} catch (error) {
+  console.error('Failed to reset the isolated E2E database.', error);
+  process.exit(1);
+}

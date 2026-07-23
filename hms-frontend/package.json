@@ -1,8 +1,11 @@
 {
   "name": "hms-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0-rc.1",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -12,6 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "playwright test e2e/production-readiness-smoke.spec.ts",
+    "test:dashboard-layout": "playwright test --config=playwright.dashboard.config.ts",
     "test:staging-smoke": "playwright test e2e/staging-smoke.spec.ts",
     "verify:smoke": "npx tsx scripts/verify-smoke.ts",
     "verify:clinical": "npx tsx scripts/verify-clinical-readonly-wiring.ts",
@@ -23,11 +27,9 @@
     "@fontsource/ibm-plex-sans": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@sentry/react": "^10.63.0",
-    "@sentry/tracing": "^7.120.4",
     "@tanstack/react-query": "^5.100.9",
     "@tanstack/react-table": "^8.21.3",
-    "axios": "^1.16.0",
-    "axios-cookiejar-support": "^7.0.0",
+    "axios": "^1.18.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^1.14.0",
@@ -35,12 +37,10 @@
     "react-day-picker": "^10.0.0",
     "react-dom": "^19.2.5",
     "react-hook-form": "^7.75.0",
-    "react-router-dom": "^7.15.0",
+    "react-router-dom": "^7.18.1",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0",
-    "tough-cookie": "^6.0.1",
-    "zod": "^4.4.3",
-    "zustand": "^5.0.13"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -65,7 +65,11 @@
     "tsx": "^4.22.3",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.10",
+    "vite": "8.0.16",
     "vitest": "^4.1.7"
+  },
+  "overrides": {
+    "@babel/core": "7.29.7",
+    "esbuild": "0.28.1"
   }
 }

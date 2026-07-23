@@ -2,10 +2,11 @@ name: Production CD Ingress Deployment
 
 on:
   workflow_dispatch:
-  # Disable automatic push-to-deploy to prevent accidental production release
-  # push:
-  #   branches:
-  #     - main
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
 
 jobs:
   ci-verification:
@@ -25,16 +26,19 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
+      NODE_ENV: test
       DATABASE_URL: postgresql://test:test@localhost:5432/gemini_test?schema=public
       JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.CI_JWT_REFRESH_SECRET }}
+      MASTER_MFA_KEY: ci-master-mfa-key-that-is-at-least-32-characters
+      AUDIT_CHAIN_SECRET: ci-audit-chain-key-that-is-at-least-32-characters
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       # A. Frontend CI
       - name: Install Frontend Dependencies
@@ -45,9 +49,12 @@ jobs:
         working-directory: ./hms-frontend
         run: npm run lint
 
-      - name: Build Frontend
+      - name: Verify Frontend
         working-directory: ./hms-frontend
-        run: npm run build
+        run: |
+          npm run typecheck
+          npm run test -- --run
+          npm run build
 
       # B. Backend CI
       - name: Install Backend Dependencies
@@ -66,9 +73,12 @@ jobs:
         working-directory: ./hms-backend
         run: npm run lint
 
-      - name: Build Backend
+      - name: Verify Backend Types and Build
         working-directory: ./hms-backend
-        run: npm run build
+        run: |
+          npm run typecheck
+          npm run typecheck:tests
+          npm run build
 
       - name: Deploy Prisma Migrations on Test DB
         working-directory: ./hms-backend
@@ -83,50 +93,86 @@ jobs:
         run: npm run test:e2e -- --runInBand
 
   docker-compile:
-    name: Multi-stage Production Docker Image Compilation
+    name: Build Immutable Release Images
     runs-on: ubuntu-latest
     needs: ci-verification
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Build Production Backend Container
-        uses: docker/build-push-action@v5
+      - name: Build backend release image
+        uses: docker/build-push-action@v6
         with:
           context: ./hms-backend
           file: ./hms-backend/Dockerfile
-          push: false
-          tags: hms-login-design-backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          load: true
+          tags: hms-backend:${{ github.sha }}
+          cache-from: type=gha,scope=backend-production
+          cache-to: type=gha,mode=max,scope=backend-production
 
-      - name: Build Production Frontend Container
-        uses: docker/build-push-action@v5
+      - name: Build frontend release image
+        uses: docker/build-push-action@v6
         with:
           context: ./hms-frontend
           file: ./hms-frontend/Dockerfile
-          push: false
-          tags: hms-login-design-frontend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          load: true
+          tags: hms-frontend:${{ github.sha }}
+          cache-from: type=gha,scope=frontend-production
+          cache-to: type=gha,mode=max,scope=frontend-production
+
+      - name: Package exact CI-built images
+        run: |
+          docker save hms-backend:${GITHUB_SHA} | gzip -9 > hms-backend.tar.gz
+          docker save hms-frontend:${GITHUB_SHA} | gzip -9 > hms-frontend.tar.gz
+          sha256sum hms-backend.tar.gz hms-frontend.tar.gz > images.sha256
+
+      - name: Attest backend release artifact
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: hms-backend.tar.gz
+
+      - name: Attest frontend release artifact
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: hms-frontend.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hms-release-${{ github.sha }}
+          path: |
+            hms-backend.tar.gz
+            hms-frontend.tar.gz
+            images.sha256
+          if-no-files-found: error
+          retention-days: 7
 
   cd-deploy:
-    name: SSH Production Cloud Ingress Delivery
+    name: Deploy Exact CI-Built Images
     runs-on: ubuntu-latest
     needs: docker-compile
+    environment: Production
     steps:
       - uses: actions/checkout@v4
 
-      - name: Execute SSH Delivery & Target Orchestrator
+      - uses: actions/download-artifact@v4
+        with:
+          name: hms-release-${{ github.sha }}
+          path: release-images
+
+      - name: Execute immutable image deployment
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
+          BACKEND_IMAGE: hms-backend:${{ github.sha }}
+          FRONTEND_IMAGE: hms-frontend:${{ github.sha }}
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
           MASTER_MFA_KEY: ${{ secrets.MASTER_MFA_KEY }}
+          AUDIT_CHAIN_SECRET: ${{ secrets.PROD_AUDIT_CHAIN_SECRET }}
+          REDIS_URL: ${{ secrets.PROD_REDIS_URL }}
+          REDIS_TLS_CA_BASE64: ${{ secrets.PROD_REDIS_TLS_CA_BASE64 }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: ${{ secrets.DB_NAME }}
@@ -135,22 +181,40 @@ jobs:
           SMS_PROVIDER: ${{ secrets.PROD_SMS_PROVIDER }}
           AWS_REGION: ${{ secrets.PROD_AWS_REGION }}
           SES_SENDER_EMAIL: ${{ secrets.PROD_SES_SENDER_EMAIL }}
-          MAILRELAY_API_KEY: ${{ secrets.PROD_MAILRELAY_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.PROD_AWS_SESSION_TOKEN }}
+          MAILRELAY_SMTP_HOST: ${{ secrets.PROD_MAILRELAY_SMTP_HOST }}
+          MAILRELAY_SMTP_PORT: ${{ secrets.PROD_MAILRELAY_SMTP_PORT }}
+          MAILRELAY_SMTP_USER: ${{ secrets.PROD_MAILRELAY_SMTP_USER }}
           MAILRELAY_SMTP_PASS: ${{ secrets.PROD_MAILRELAY_SMTP_PASS }}
           MAILRELAY_SENDER_EMAIL: ${{ secrets.PROD_MAILRELAY_SENDER_EMAIL }}
           MAILRELAY_SENDER_NAME: ${{ secrets.PROD_MAILRELAY_SENDER_NAME }}
           SEMAPHORE_API_KEY: ${{ secrets.PROD_SEMAPHORE_API_KEY }}
+          SEMAPHORE_API_URL: ${{ secrets.PROD_SEMAPHORE_API_URL }}
+          SEMAPHORE_SENDER_NAME: ${{ secrets.PROD_SEMAPHORE_SENDER_NAME }}
+          SENTRY_DSN: ${{ secrets.PROD_SENTRY_DSN }}
         run: |
-          # Setup SSH keys agent
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          printf '%s' "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
-          # Transfer workspace configuration and compose manifests
-          ssh -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST "mkdir -p /tmp/app"
-          rsync -avz -e "ssh -i ~/.ssh/id_rsa" --exclude 'node_modules' --exclude '.git' ./hms-backend ./hms-frontend docker-compose.prod.yml $SSH_USER@$SSH_HOST:/tmp/app/
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "mkdir -p /tmp/app/hms-backend/scripts"
+          scp -i ~/.ssh/id_rsa release-images/* "$SSH_USER@$SSH_HOST:/tmp/app/"
+          scp -i ~/.ssh/id_rsa docker-compose.prod.yml "$SSH_USER@$SSH_HOST:/tmp/app/"
+          scp -i ~/.ssh/id_rsa hms-backend/scripts/remote-deploy.sh "$SSH_USER@$SSH_HOST:/tmp/app/hms-backend/scripts/"
+          scp -i ~/.ssh/id_rsa hms-backend/scripts/load-deploy-environment.sh "$SSH_USER@$SSH_HOST:/tmp/app/hms-backend/scripts/"
 
-          # Execute Remote Deploy Orchestrator cleanly
-          ssh -i ~/.ssh/id_rsa $SSH_USER@$SSH_HOST "cd /tmp/app && export DB_USER='$DB_USER' DB_PASSWORD='$DB_PASSWORD' DB_NAME='$DB_NAME' CORS_ALLOWED_ORIGINS='$CORS_ALLOWED_ORIGINS' DATABASE_URL='$DATABASE_URL' JWT_SECRET='$JWT_SECRET' MASTER_MFA_KEY='$MASTER_MFA_KEY' EMAIL_PROVIDER='$EMAIL_PROVIDER' SMS_PROVIDER='$SMS_PROVIDER' AWS_REGION='$AWS_REGION' SES_SENDER_EMAIL='$SES_SENDER_EMAIL' MAILRELAY_API_KEY='$MAILRELAY_API_KEY' MAILRELAY_SMTP_PASS='$MAILRELAY_SMTP_PASS' MAILRELAY_SENDER_EMAIL='$MAILRELAY_SENDER_EMAIL' MAILRELAY_SENDER_NAME='$MAILRELAY_SENDER_NAME' SEMAPHORE_API_KEY='$SEMAPHORE_API_KEY'; bash ./hms-backend/scripts/remote-deploy.sh"
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "cd /tmp/app && sha256sum -c images.sha256 && gunzip -c hms-backend.tar.gz | docker load && gunzip -c hms-frontend.tar.gz | docker load"
+
+          deploy_env="$(mktemp)"
+          chmod 600 "$deploy_env"
+          for variable in BACKEND_IMAGE FRONTEND_IMAGE DATABASE_URL JWT_SECRET MASTER_MFA_KEY AUDIT_CHAIN_SECRET REDIS_URL REDIS_TLS_CA_BASE64 DB_USER DB_PASSWORD DB_NAME CORS_ALLOWED_ORIGINS EMAIL_PROVIDER SMS_PROVIDER AWS_REGION SES_SENDER_EMAIL AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN MAILRELAY_SMTP_HOST MAILRELAY_SMTP_PORT MAILRELAY_SMTP_USER MAILRELAY_SMTP_PASS MAILRELAY_SENDER_EMAIL MAILRELAY_SENDER_NAME SEMAPHORE_API_KEY SEMAPHORE_API_URL SEMAPHORE_SENDER_NAME SENTRY_DSN; do
+            printf '%s_B64=%s\n' "$variable" "$(printf '%s' "${!variable:-}" | base64 -w0)" >> "$deploy_env"
+          done
+          scp -i ~/.ssh/id_rsa "$deploy_env" "$SSH_USER@$SSH_HOST:/tmp/app/.deploy-env"
+          rm -f "$deploy_env"
+
+          ssh -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "cd /tmp/app && bash ./hms-backend/scripts/load-deploy-environment.sh .deploy-env bash ./hms-backend/scripts/remote-deploy.sh"
 

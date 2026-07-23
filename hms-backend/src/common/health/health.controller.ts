@@ -1,59 +1,50 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Inject, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Public } from '../decorators/public.decorator';
-import * as fs from 'fs';
-import * as path from 'path';
+import { REDIS_CLIENT } from '../redis/redis.provider';
 
 class HealthResponse {
-  status: string;
-  timestamp: string;
-  uptime: number;
-  version: string;
-  environment: string;
-  database: { status: string; latencyMs: number };
+  status: 'UP' | 'DEGRADED';
+}
+
+interface RedisHealthClient {
+  ping(): Promise<string>;
 }
 
 @ApiTags('System')
 @Controller('api/v1')
 export class HealthController {
-  private readonly startTime = Date.now();
-  private readonly version: string;
-
-  constructor(private readonly prisma: PrismaService) {
-    try {
-      const pkgPath = path.resolve(process.cwd(), 'package.json');
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-      this.version = pkg.version || '0.0.0';
-    } catch {
-      this.version = '0.0.0';
-    }
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisHealthClient,
+  ) {}
 
   @Public()
   @Get('health')
-  @ApiOperation({ summary: 'System health check with dependency verification' })
+  @ApiOperation({ summary: 'Public readiness check' })
   @ApiOkResponse({
-    description: 'Health status with DB connectivity',
+    description: 'Minimal readiness response',
     type: HealthResponse,
   })
-  async getHealth(): Promise<HealthResponse> {
-    const dbStart = Date.now();
-    let dbStatus = 'UP';
+  async getHealth(
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<HealthResponse> {
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      const [, redisResponse] = await Promise.all([
+        this.prisma.$queryRaw`SELECT 1`,
+        this.redis.ping(),
+      ]);
+      if (redisResponse !== 'PONG') {
+        throw new Error(
+          'Redis readiness check returned an unexpected response.',
+        );
+      }
+      return { status: 'UP' };
     } catch {
-      dbStatus = 'DOWN';
+      response.status(HttpStatus.SERVICE_UNAVAILABLE);
+      return { status: 'DEGRADED' };
     }
-    const dbLatency = Date.now() - dbStart;
-
-    return {
-      status: dbStatus === 'UP' ? 'UP' : 'DEGRADED',
-      timestamp: new Date().toISOString(),
-      uptime: Math.floor((Date.now() - this.startTime) / 1000),
-      version: this.version,
-      environment: process.env.NODE_ENV || 'development',
-      database: { status: dbStatus, latencyMs: dbLatency },
-    };
   }
 }

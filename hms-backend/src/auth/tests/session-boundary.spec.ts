@@ -15,7 +15,9 @@ describe('SessionService', () => {
     session: {
       create: jest.Mock;
       findUnique: jest.Mock;
+      findMany: jest.Mock;
       update: jest.Mock;
+      updateMany: jest.Mock;
       delete: jest.Mock;
       deleteMany: jest.Mock;
     };
@@ -26,7 +28,9 @@ describe('SessionService', () => {
       session: {
         create: jest.fn(),
         findUnique: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
         update: jest.fn(),
+        updateMany: jest.fn(),
         delete: jest.fn(),
         deleteMany: jest.fn(),
       },
@@ -187,11 +191,7 @@ describe('SessionService', () => {
         refreshTokenHash: validRtHash,
         lastRotatedAt: new Date(Date.now() - 60000),
       });
-      prisma.session.update.mockResolvedValue({
-        id: 'session-uuid',
-        refreshTokenHash: newRtHash,
-        lastRotatedAt: expect.any(Date),
-      });
+      prisma.session.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await service.rotateRefreshToken(
         'session-uuid',
@@ -202,8 +202,12 @@ describe('SessionService', () => {
       expect(result.rotated).toBe(true);
       expect(result.reason).toBe('rotated');
       expect(result.session).not.toBeNull();
-      expect(prisma.session.update).toHaveBeenCalledWith({
-        where: { id: 'session-uuid' },
+      expect(prisma.session.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'session-uuid',
+          refreshTokenHash: validRtHash,
+          lastRotatedAt: expect.any(Date),
+        },
         data: {
           refreshTokenHash: newRtHash,
           lastRotatedAt: expect.any(Date),

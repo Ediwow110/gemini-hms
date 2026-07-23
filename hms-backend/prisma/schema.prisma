@@ -1257,6 +1257,7 @@ model ApprovalRequest {
   paymentReversals PaymentReversal[]
 
   @@index([tenantId, branchId, status])
+  @@index([tenantId, status, type])
   @@map("approval_requests")
 }
 
@@ -1401,9 +1402,8 @@ model PatientMergeRequest {
   requester User   @relation("MergeRequested", fields: [requesterId], references: [id])
   approver  User?  @relation("MergeApproved", fields: [approverId], references: [id])
 
-  @@index([tenantId])
+  @@index([tenantId, status])
   @@index([branchId])
-  @@index([status])
   @@map("patient_merge_requests")
 }
 
@@ -1553,14 +1553,17 @@ model Referral {
 }
 
 model PatientUser {
-  id           String   @id @default(uuid()) @db.Uuid
-  tenantId     String   @map("tenant_id") @db.Uuid
-  patientId    String   @unique @map("patient_id") @db.Uuid
-  email        String
-  passwordHash String   @map("password_hash")
-  status       String   @default("ACTIVE")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid()) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  patientId           String    @unique @map("patient_id") @db.Uuid
+  email               String
+  passwordHash        String    @map("password_hash")
+  status              String    @default("ACTIVE")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockUntil           DateTime? @map("lock_until")
+  tokenVersion        Int       @default(0) @map("token_version")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -1631,6 +1634,8 @@ model AttendanceLog {
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
+  @@index([employeeId])
   @@map("attendance_logs")
 }
 
@@ -1649,6 +1654,8 @@ model LeaveRequest {
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
+  @@index([employeeId])
   @@map("leave_requests")
 }
 
@@ -1665,6 +1672,8 @@ model LicenseRecord {
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
+  @@index([employeeId])
   @@map("license_records")
 }
 

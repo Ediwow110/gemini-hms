@@ -11,7 +11,9 @@ import {
 import { LogisticsService } from './logistics.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { BranchGuard } from '../auth/guards/branch.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireBranchContext } from '../auth/decorators/branch-context.decorator';
 import {
   CreateShipmentDto,
   UpdateShipmentStatusDto,
@@ -21,7 +23,8 @@ import {
 import type { AuthenticatedRequest } from '../common/types/authenticated-request.type';
 
 @Controller('api/v1/logistics')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, BranchGuard)
+@RequireBranchContext()
 export class LogisticsController {
   constructor(private readonly logisticsService: LogisticsService) {}
 
@@ -33,6 +36,7 @@ export class LogisticsController {
   ) {
     return this.logisticsService.createShipment(
       req.user.tenantId,
+      req.user.branchId!,
       req.user.userId!,
       dto,
     );
@@ -41,7 +45,10 @@ export class LogisticsController {
   @Get('shipments')
   @RequirePermissions('fulfillment.view')
   async findAllShipments(@Req() req: AuthenticatedRequest) {
-    return this.logisticsService.findAllShipments(req.user.tenantId);
+    return this.logisticsService.findAllShipments(
+      req.user.tenantId,
+      req.user.branchId!,
+    );
   }
 
   @Get('shipments/:id')
@@ -50,7 +57,11 @@ export class LogisticsController {
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
   ) {
-    return this.logisticsService.findShipment(req.user.tenantId, id);
+    return this.logisticsService.findShipment(
+      req.user.tenantId,
+      req.user.branchId!,
+      id,
+    );
   }
 
   @Patch('shipments/:id/status')
@@ -62,9 +73,19 @@ export class LogisticsController {
   ) {
     return this.logisticsService.updateShipmentStatus(
       req.user.tenantId,
+      req.user.branchId!,
       req.user.userId!,
       id,
       dto,
+    );
+  }
+
+  @Get('technicians')
+  @RequirePermissions('field_service.job.assign')
+  async findEligibleTechnicians(@Req() req: AuthenticatedRequest) {
+    return this.logisticsService.findEligibleTechnicians(
+      req.user.tenantId,
+      req.user.branchId!,
     );
   }
 
@@ -76,6 +97,7 @@ export class LogisticsController {
   ) {
     return this.logisticsService.createDeliveryJob(
       req.user.tenantId,
+      req.user.branchId!,
       req.user.userId!,
       dto,
     );
@@ -90,6 +112,7 @@ export class LogisticsController {
   ) {
     return this.logisticsService.updateDeliveryJobStatus(
       req.user.tenantId,
+      req.user.branchId!,
       req.user.userId!,
       id,
       dto,
@@ -101,6 +124,7 @@ export class LogisticsController {
   async findTechnicianJobs(@Req() req: AuthenticatedRequest) {
     return this.logisticsService.findTechnicianJobs(
       req.user.tenantId,
+      req.user.branchId!,
       req.user.userId!,
     );
   }

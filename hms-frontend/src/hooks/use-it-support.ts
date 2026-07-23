@@ -82,29 +82,32 @@ export interface ItTicket {
   createdAt: string;
 }
 
-export const useTicketStats = () => {
-  const { data, isLoading, error } = useQuery({
+export const useTicketStats = (enabled = true) => {
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['it-support-ticket-stats'],
     queryFn: async () => {
-      const res = await apiClient.get('/it-support/tickets/stats');
+      const res = await apiClient.get('/v1/it-support/tickets/stats');
       return res.data as { open: number; inProgress: number; total: number; urgent: number };
     },
+    enabled,
   });
 
   return {
     stats: data || { open: 0, inProgress: 0, total: 0, urgent: 0 },
     loading: isLoading,
     statsError: error?.message || null,
+    refetch,
   };
 };
 
-export const useSupportTickets = () => {
+export const useSupportTickets = (enabled = true) => {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['it-support-tickets'],
     queryFn: async () => {
-      const res = await apiClient.get('/it-support/tickets');
+      const res = await apiClient.get('/v1/it-support/tickets');
       return res.data as ItTicket[];
     },
+    enabled,
   });
 
   return {
@@ -119,7 +122,7 @@ export const useItSupport = () => {
   const { data: sessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ['it-sessions'],
     queryFn: async () => {
-      const res = await apiClient.get('/it-support/sessions');
+      const res = await apiClient.get('/v1/it-support/sessions');
       return res.data as ItSession[];
     },
   });
@@ -127,7 +130,7 @@ export const useItSupport = () => {
   const { data: integrations, isLoading: integrationsLoading } = useQuery({
     queryKey: ['it-integrations'],
     queryFn: async () => {
-      const res = await apiClient.get('/it-support/integrations');
+      const res = await apiClient.get('/v1/it-support/integrations');
       return res.data as ItIntegration[];
     },
   });
@@ -135,7 +138,7 @@ export const useItSupport = () => {
   const { data: backups, isLoading: backupsLoading } = useQuery({
     queryKey: ['it-backups'],
     queryFn: async () => {
-      const res = await apiClient.get('/it-support/backups');
+      const res = await apiClient.get('/v1/it-support/backups');
       return res.data as ItBackup[];
     },
   });
@@ -143,13 +146,13 @@ export const useItSupport = () => {
   const { data: health, isLoading: healthLoading } = useQuery({
     queryKey: ['it-health'],
     queryFn: async () => {
-      const res = await apiClient.get('/it-support/health');
+      const res = await apiClient.get('/v1/it-support/health');
       return res.data as ItHealth;
     },
   });
 
   const fetchLogs = async (bId: string) => {
-    const res = await apiClient.get(`/it-support/logs?branchId=${bId}`);
+    const res = await apiClient.get(`/v1/it-support/logs?branchId=${bId}`);
     return res.data as ItLog[];
   };
 

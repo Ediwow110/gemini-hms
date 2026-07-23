@@ -20,9 +20,7 @@ export class BranchGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!isRequired) {
-      return true;
-    }
+    if (!isRequired) return true;
 
     const bypassRoles =
       this.reflector.getAllAndOverride<string[]>(BRANCH_BYPASS_ROLES_KEY, [
@@ -32,55 +30,38 @@ export class BranchGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<any>();
     const user = request.user;
-
-    if (!user) {
-      throw new ForbiddenException('Access denied');
-    }
+    if (!user) throw new ForbiddenException('Access denied');
 
     const userRoles: string[] = user.roles || [];
     const isSuperAdmin = userRoles.includes('Super Admin');
-    const hasBypassRole = bypassRoles.some((r) => userRoles.includes(r));
+    const hasBypassRole = bypassRoles.some((role) => userRoles.includes(role));
 
-    if (!user.branchId && !isSuperAdmin && !hasBypassRole) {
+    const requestedBranchIds = [
+      request.params?.branchId,
+      request.body?.branchId,
+      request.query?.branchId,
+    ]
+      .filter(Boolean)
+      .map(String);
+    const distinctRequestedBranches = [...new Set(requestedBranchIds)];
+
+    if (distinctRequestedBranches.length > 1) {
       throw new ForbiddenException('Access denied');
     }
 
-    const fromParams =
-      request.params && request.params.branchId
-        ? String(request.params.branchId)
-        : undefined;
-    const fromBody =
-      request.body && request.body.branchId
-        ? String(request.body.branchId)
-        : undefined;
-    const fromQuery =
-      request.query && request.query.branchId
-        ? String(request.query.branchId)
-        : undefined;
+    const requestedBranchId = distinctRequestedBranches[0];
 
-    const branchIdsProvided = [fromParams, fromBody, fromQuery].filter(
-      Boolean,
-    ) as string[];
-
-    const distinct = [...new Set(branchIdsProvided)];
-    if (distinct.length > 1) {
-      throw new ForbiddenException('Access denied');
+    // Explicit decorator bypass roles are the only users allowed to operate without
+    // a branch selected into the authenticated session. Super Admin does not bypass
+    // this requirement for branch-bound data.
+    if (!user.branchId && !hasBypassRole) {
+      throw new ForbiddenException('Branch context is required');
     }
 
-    if (distinct.length === 1) {
-      if (!isSuperAdmin && distinct[0] !== user.branchId) {
+    if (requestedBranchId && !isSuperAdmin && !hasBypassRole) {
+      if (!user.branchId || requestedBranchId !== user.branchId) {
         throw new ForbiddenException('Access denied');
       }
-      // If Super Admin, they can target any branch as long as they are consistent
-      // across params/body/query. Tenant scoping is handled at service layer.
-    } else if (
-      isRequired &&
-      !user.branchId &&
-      !isSuperAdmin &&
-      !hasBypassRole
-    ) {
-      // No branchId provided in request and none in token
-      throw new ForbiddenException('Branch context is required');
     }
 
     return true;

@@ -5,9 +5,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProofOfDeliveryPage } from '../ProofOfDeliveryPage';
 import { useFieldServiceProofOfDelivery } from '../../../hooks/use-field-service';
+import { useFieldServiceDeliveryArchives } from '../../../hooks/use-field-service';
 
 vi.mock('../../../hooks/use-field-service', () => ({
   useFieldServiceProofOfDelivery: vi.fn(),
+  useFieldServiceDeliveryArchives: vi.fn(),
 }));
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -26,6 +28,7 @@ describe('ProofOfDeliveryPage Phase 14-C', () => {
 
   it('renders page header and shell', () => {
     vi.mocked(useFieldServiceProofOfDelivery).mockReturnValue({ data: undefined, isLoading: false, error: null } as unknown as ReturnType<typeof useFieldServiceProofOfDelivery>);
+    vi.mocked(useFieldServiceDeliveryArchives).mockReturnValue({ data: undefined, isLoading: false, error: null } as unknown as ReturnType<typeof useFieldServiceDeliveryArchives>);
 
     render(<ProofOfDeliveryPage />, { wrapper });
     expect(screen.getByText('Proof of Delivery')).toBeInTheDocument();
@@ -33,6 +36,7 @@ describe('ProofOfDeliveryPage Phase 14-C', () => {
 
   it('shows sandbox badge', () => {
     vi.mocked(useFieldServiceProofOfDelivery).mockReturnValue({ data: undefined, isLoading: false, error: null } as unknown as ReturnType<typeof useFieldServiceProofOfDelivery>);
+    vi.mocked(useFieldServiceDeliveryArchives).mockReturnValue({ data: [], isLoading: false, error: null } as unknown as ReturnType<typeof useFieldServiceDeliveryArchives>);
 
     render(<ProofOfDeliveryPage />, { wrapper });
     expect(screen.getByText('Sandbox')).toBeInTheDocument();

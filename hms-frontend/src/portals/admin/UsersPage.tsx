@@ -11,8 +11,14 @@ import {
   type AdminUserItem,
   type AdminUserListParams,
 } from '../../services/admin.service';
+import { logger } from '../../lib/logger';
 
 const MIN_REASON_LENGTH = 8;
+const PRIVILEGED_PERMISSION = 'admin.role.change';
+
+const isDirectlyAssignableRole = (role: AdminRoleListItem): boolean =>
+  role.name !== 'Super Admin' &&
+  !role.permissions.some((permission) => permission.name === PRIVILEGED_PERMISSION);
 
 interface UserItem {
   id: string;
@@ -104,7 +110,7 @@ export const UsersPage: React.FC = () => {
       );
       setUsers(response.data.map(mapAdminUser));
     } catch (err) {
-      console.error('Failed to fetch users:', err);
+      logger.error('Failed to fetch users:', err);
       setError('Could not load user directory from server.');
       setUsers([]);
     } finally {
@@ -118,10 +124,14 @@ export const UsersPage: React.FC = () => {
         adminService.listRoles(),
         adminService.listBranches({ limit: 100 }),
       ]);
-      setRoles(roleRows.filter((role) => role.status !== 'ARCHIVED'));
+      setRoles(
+        roleRows.filter(
+          (role) => role.status !== 'ARCHIVED' && isDirectlyAssignableRole(role),
+        ),
+      );
       setBranches(branchRows.data.filter((branch) => Boolean(branch.id)));
     } catch (err) {
-      console.error('Failed to load admin create-user options:', err);
+      logger.error('Failed to load admin create-user options:', err);
       setCreateError('Could not load branch and role options for account creation.');
     }
   }, []);
@@ -367,7 +377,7 @@ export const UsersPage: React.FC = () => {
               </label>
 
               <label className="block font-bold text-slate-700">
-                Roles (optional)
+                Operational roles (optional)
                 <select
                   multiple
                   value={createForm.roleIds}
@@ -382,6 +392,9 @@ export const UsersPage: React.FC = () => {
                     <option key={role.id} value={role.id}>{role.name}</option>
                   ))}
                 </select>
+                <span className="mt-1 block text-[10px] font-medium text-slate-400">
+                  Privileged roles are intentionally excluded and require the approval workflow.
+                </span>
               </label>
 
               <label className="inline-flex items-center gap-2 font-bold text-slate-700">

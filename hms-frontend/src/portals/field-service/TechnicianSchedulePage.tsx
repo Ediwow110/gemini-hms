@@ -9,7 +9,9 @@ import { HmsDashboardShell, HmsAuditFooter, HmsLoadingSkeleton, HmsEmptyState } 
 export const TechnicianSchedulePage: React.FC = () => {
   const user = useUser();
   const { data: schedule, isLoading } = useFieldServiceTechnicianSchedule();
-  const isAdmin = !!user && (user.roles.includes("Super Admin") || user.roles.includes("Branch Admin"));
+  const isAdmin = Boolean(
+    user?.permissions.includes('field_service.job.assign'),
+  );
 
   return (
     <HmsDashboardShell>

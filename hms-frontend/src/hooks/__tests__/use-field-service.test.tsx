@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   useFieldServiceJobs,
+  useFieldServiceAdminJobs,
   useFieldServiceInstallations,
   useFieldServiceShipments,
   useUpdateInstallationStatus,
@@ -15,6 +16,7 @@ vi.mock('../../services/field-service.service', () => ({
     getTechnicianJobs: vi.fn(),
     getInstallations: vi.fn(),
     getShipments: vi.fn(),
+    getEligibleTechnicians: vi.fn(),
     updateInstallationStatus: vi.fn(),
   },
 }));
@@ -33,8 +35,8 @@ describe('useFieldServiceJobs', () => {
 
   it('calls getTechnicianJobs and returns data', async () => {
     const mockData = {
-      deliveries: [{ id: '1', customer: 'Client A', address: 'Site 1', status: 'IN_PROGRESS' as const }],
-      installations: [{ id: '2', customer: 'Client B', address: 'Site 2', status: 'PENDING' as const }],
+      deliveries: [{ id: '1', customer: 'Client A', address: 'Site 1', status: 'IN_PROGRESS' as const, shipmentId: 'ship-1', orderId: 'order-1' }],
+      installations: [{ id: '2', customer: 'Client B', address: 'Site 2', status: 'ASSIGNED' as const, assetId: 'asset-1', assetModel: 'MRI' }],
     };
     vi.mocked(fieldServiceService.getTechnicianJobs).mockResolvedValue(mockData);
 
@@ -49,6 +51,50 @@ describe('useFieldServiceJobs', () => {
   });
 });
 
+describe('useFieldServiceAdminJobs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    queryClient.clear();
+  });
+
+  it('builds the branch admin queue from shipment and installation APIs, not the technician endpoint', async () => {
+    vi.mocked(fieldServiceService.getShipments).mockResolvedValue([
+      {
+        id: 'ship-1',
+        trackingNumber: 'TRK-1',
+        status: 'IN_TRANSIT',
+        salesOrder: {
+          id: 'order-1',
+          quote: { rfq: { title: 'CT scanner request', branch: { id: 'b1', name: 'Main' } } },
+        },
+        deliveryJobs: [{ id: 'delivery-1', status: 'ASSIGNED', assignedUser: { id: 'tech-1', email: 'tech@test' } }],
+      },
+    ]);
+    vi.mocked(fieldServiceService.getInstallations).mockResolvedValue([
+      {
+        id: 'installation-1',
+        status: 'IN_PROGRESS',
+        asset: {
+          id: 'asset-1',
+          model: 'MRI-X',
+          serialNumber: 'SN-1',
+          salesOrder: { quote: { rfq: { title: 'MRI request', branch: { id: 'b1', name: 'Main' } } } },
+        },
+      },
+    ]);
+
+    const Probe = () => {
+      const { data, isLoading } = useFieldServiceAdminJobs();
+      if (isLoading) return <div>loading</div>;
+      return <div data-testid="data">{data?.deliveries[0]?.customer} / {data?.installations[0]?.address}</div>;
+    };
+
+    render(<Probe />, { wrapper });
+    await waitFor(() => expect(screen.getByTestId('data')).toHaveTextContent('CT scanner request / Main'));
+    expect(fieldServiceService.getTechnicianJobs).not.toHaveBeenCalled();
+  });
+});
+
 describe('useFieldServiceInstallations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -56,7 +102,7 @@ describe('useFieldServiceInstallations', () => {
   });
 
   it('calls getInstallations and returns data', async () => {
-    const mockData = [{ id: 'inst-1', asset: { model: 'GE V10', serialNumber: 'SN-001' }, status: 'ASSIGNED' as const }];
+    const mockData = [{ id: 'inst-1', asset: { id: 'asset-1', model: 'GE V10', serialNumber: 'SN-001' }, status: 'ASSIGNED' as const }];
     vi.mocked(fieldServiceService.getInstallations).mockResolvedValue(mockData);
 
     const Probe = () => {

@@ -33,7 +33,7 @@ export class HrService {
   }
 
   private isBranchScopedHr(roles: string[]): boolean {
-    return roles.some((r) => ['Branch Admin', 'Branch Manager'].includes(r));
+    return roles.some((r) => ['Branch Admin'].includes(r));
   }
 
   async createDepartment(

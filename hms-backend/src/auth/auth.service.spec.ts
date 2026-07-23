@@ -1102,7 +1102,7 @@ describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
     expect((result as any).mfaToken).toBeDefined();
   });
 
-  it('should skip MFA challenge for sensitive roles when DISABLE_AUTH_VERIFICATION is true', async () => {
+  it('should always require MFA challenge for sensitive roles regardless of DISABLE_AUTH_VERIFICATION', async () => {
     process.env.DISABLE_AUTH_VERIFICATION = 'true';
     prisma.rolePermission.findFirst.mockResolvedValueOnce({
       roleId: 'role-123',
@@ -1111,7 +1111,7 @@ describe('DISABLE_AUTH_VERIFICATION Boundary', () => {
 
     const result = await service.login(mockUser);
 
-    expect((result as any).accessToken).toBeDefined();
-    expect((result as any).message).not.toBe('MFA_REQUIRED');
+    expect((result as any).message).toBe('MFA_REQUIRED');
+    expect((result as any).mfaToken).toBeDefined();
   });
 });

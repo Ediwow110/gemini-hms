@@ -4,6 +4,8 @@ import { Session } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import * as bcrypt from 'bcrypt';
 
+const MAX_CONCURRENT_SESSIONS = 5;
+
 @Injectable()
 export class SessionService {
   constructor(
@@ -19,12 +21,39 @@ export class SessionService {
     userAgent?: string,
     ip?: string,
   ): Promise<Session> {
+    // Enforce concurrent session limit — revoke oldest when exceeded
+    const activeSessions = await this.prisma.session.findMany({
+      where: { userId, expiresAt: { gt: new Date() } },
+      orderBy: { lastRotatedAt: 'asc' },
+    });
+
+    if (activeSessions.length >= MAX_CONCURRENT_SESSIONS) {
+      const sessionsToRevoke = activeSessions.slice(
+        0,
+        activeSessions.length - MAX_CONCURRENT_SESSIONS + 1,
+      );
+      await this.prisma.session.deleteMany({
+        where: { id: { in: sessionsToRevoke.map((s) => s.id) } },
+      });
+      await this.audit.log({
+        tenantId,
+        userId,
+        eventKey: 'SESSION_LIMIT_EXCEEDED',
+        recordType: 'Session',
+        recordId: sessionsToRevoke[0].id,
+        newValues: {
+          revokedCount: sessionsToRevoke.length,
+          maxConcurrent: MAX_CONCURRENT_SESSIONS,
+        },
+      });
+    }
+
     return this.prisma.session.create({
       data: {
         userId,
         tenantId,
         refreshTokenHash: initialRtHash,
-        isMfaVerified: false, // Default to false until step-up verification
+        isMfaVerified: false,
         expiresAt,
         userAgent,
         ipAddress: ip,
@@ -75,16 +104,62 @@ export class SessionService {
       return { rotated: false, reason: 'revoked', session: null };
     }
 
-    // 3. SUCCESSFUL ROTATION
-    const updatedSession = await this.prisma.session.update({
-      where: { id: sessionId },
+    // 3. Rotate only if the row still contains the hash and timestamp we read.
+    // This compare-and-swap prevents two concurrent refresh requests from both
+    // accepting the same refresh token.
+    const rotationTime = new Date();
+    const rotation = await this.prisma.session.updateMany({
+      where: {
+        id: sessionId,
+        refreshTokenHash: session.refreshTokenHash,
+        lastRotatedAt: session.lastRotatedAt,
+      },
       data: {
         refreshTokenHash: newRtHash,
-        lastRotatedAt: new Date(),
+        lastRotatedAt: rotationTime,
       },
     });
 
-    return { rotated: true, reason: 'rotated', session: updatedSession };
+    if (rotation.count !== 1) {
+      const currentSession = await this.prisma.session.findUnique({
+        where: { id: sessionId },
+      });
+
+      if (!currentSession) {
+        return {
+          rotated: false,
+          reason: 'expired_or_not_found',
+          session: null,
+        };
+      }
+
+      if (Date.now() - currentSession.lastRotatedAt.getTime() < 30000) {
+        return {
+          rotated: false,
+          reason: 'replay_within_leeway',
+          session: currentSession,
+        };
+      }
+
+      await this.revokeAllForUser(currentSession.userId);
+      await this.audit.log({
+        tenantId: currentSession.tenantId,
+        userId: currentSession.userId,
+        eventKey: 'SECURITY_BREACH',
+        recordType: 'Session',
+        recordId: sessionId,
+        newValues: { reason: 'REFRESH_TOKEN_REUSE_DETECTED' },
+      });
+      return { rotated: false, reason: 'revoked', session: null };
+    }
+
+    const updatedSession = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    return updatedSession
+      ? { rotated: true, reason: 'rotated', session: updatedSession }
+      : { rotated: false, reason: 'expired_or_not_found', session: null };
   }
 
   async findById(sessionId: string): Promise<Session | null> {

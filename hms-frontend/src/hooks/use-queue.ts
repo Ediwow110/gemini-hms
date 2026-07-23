@@ -63,7 +63,7 @@ export const useQueue = (branchId: string) => {
 
   const completeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await apiClient.patch(`/v1/queue/${id}/complete`);
+      const res = await apiClient.patch(`/v1/queue/${id}/complete?branchId=${branchId}`);
       return res.data;
     },
     onSuccess: () => {

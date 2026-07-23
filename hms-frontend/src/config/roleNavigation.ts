@@ -80,8 +80,8 @@ export const roleNavigation: NavGroupConfig[] = [
       { label: 'Executive View', to: '/admin/executive', icon: Activity, allowedRoles: ['Super Admin'], zone: 'staff' },
       { label: 'Tenants Manager', to: '/admin/tenants', icon: Building, allowedRoles: ['Super Admin'], zone: 'staff' },
       { label: 'Branches Manager', to: '/admin/branches', icon: GitMerge, allowedRoles: ['Super Admin'], zone: 'staff' },
-      { label: 'Users & Accounts', to: '/admin/users', icon: Users, allowedRoles: ['Super Admin', 'Admin'], zone: 'staff' },
-      { label: 'Roles & Permissions', to: '/admin/roles-permissions', icon: ShieldCheck, allowedRoles: ['Super Admin', 'Admin'], zone: 'staff' },
+      { label: 'Users & Accounts', to: '/admin/users', icon: Users, allowedRoles: ['Super Admin'], zone: 'staff' },
+      { label: 'Roles & Permissions', to: '/admin/roles-permissions', icon: ShieldCheck, allowedRoles: ['Super Admin'], zone: 'staff' },
     ],
   },
   {
@@ -146,7 +146,7 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Clinical Operations',
     items: [
-      { label: 'Ops Dashboard', to: '/clinical/ops', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Admin', 'Doctor', 'Nurse'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
+      { label: 'Ops Dashboard', to: '/clinical/ops', icon: LayoutDashboard, allowedRoles: ['Branch Admin', 'Doctor', 'Nurse'], zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
     ],
   },
   {
@@ -156,11 +156,11 @@ export const roleNavigation: NavGroupConfig[] = [
         label: 'Branch Dashboard',
         to: '/branch-admin',
         icon: LayoutDashboard,
-        allowedRoles: ['Super Admin', 'Branch Admin'],
+        allowedRoles: ['Branch Admin'],
         zone: 'staff',
         isBranchScoped: true,
         children: [
-          { label: 'Overview', to: '/branch-admin', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isBranchScoped: true },
+          { label: 'Overview', to: '/branch-admin', icon: LayoutDashboard, allowedRoles: ['Branch Admin'], zone: 'staff', isBranchScoped: true },
         ],
       },
     ],
@@ -168,9 +168,9 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Governance',
     items: [
-      { label: 'Approvals', to: '/approvals', icon: CheckSquare, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
-      { label: 'Branch Reports', to: '/reports', icon: BarChart3, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff', isHiddenForDemo: true },
-      { label: 'Branch Audit Logs', to: '/audit-logs', icon: History, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
+      { label: 'Approvals', to: '/approvals', icon: CheckSquare, allowedRoles: ['Branch Admin'], zone: 'staff' },
+      { label: 'Branch Reports', to: '/reports', icon: BarChart3, allowedRoles: ['Branch Admin'], zone: 'staff', isHiddenForDemo: true },
+      { label: 'Branch Audit Logs', to: '/audit-logs', icon: History, allowedRoles: ['Branch Admin'], zone: 'staff' },
       {
         label: 'Branch Settings',
         to: '/settings',
@@ -354,16 +354,16 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Field Service (Logistics)',
     items: [
-      { label: 'Service Dashboard', to: '/field-service', icon: LayoutDashboard, permission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
-      { label: 'Delivery Jobs', to: '/field-service/deliveries', icon: Truck, permission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-      { label: 'Installations', to: '/field-service/installations', icon: Wrench, permission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-      { label: 'My Schedule', to: '/field-service/schedule', icon: Calendar, permission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-      { label: 'Handover Checklists', to: '/field-service/handover', icon: ClipboardCheck, permission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-      { label: 'Proof of Delivery', to: '/field-service/proof-of-delivery', icon: FileBadge, permission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-      { label: 'Warranty Activation', to: '/field-service/warranty-activation', icon: ShieldCheck, permission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-      { label: 'Preventive Maintenance', to: '/field-service/preventive-maintenance', icon: SettingsIcon, permission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-      { label: 'Service Worklog', to: '/field-service/service-worklog', icon: FileText, permission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
-      { label: 'Offline Sync', to: '/field-service/offline-sync', icon: GitMerge, permission: PERMISSIONS.FIELD_SERVICE_MANAGE, zone: 'staff', isBranchScoped: true },
+      { label: 'Service Dashboard', to: '/field-service', icon: LayoutDashboard, permission: PERMISSIONS.FIELD_SERVICE_JOB_VIEW, zone: 'staff', isBranchScoped: true, isHiddenForDemo: true },
+      { label: 'Delivery Jobs', to: '/field-service/deliveries', icon: Truck, permission: PERMISSIONS.FIELD_SERVICE_JOB_VIEW, zone: 'staff', isBranchScoped: true },
+      { label: 'Installations', to: '/field-service/installations', icon: Wrench, permission: PERMISSIONS.FIELD_SERVICE_INSTALLATION_UPDATE, zone: 'staff', isBranchScoped: true },
+      { label: 'My Schedule', to: '/field-service/schedule', icon: Calendar, permission: PERMISSIONS.FIELD_SERVICE_JOB_VIEW, zone: 'staff', isBranchScoped: true },
+      { label: 'Handover Checklists', to: '/field-service/handover', icon: ClipboardCheck, permission: PERMISSIONS.FIELD_SERVICE_DELIVERY_PROOF_CREATE, zone: 'staff', isBranchScoped: true },
+      { label: 'Proof of Delivery', to: '/field-service/proof-of-delivery', icon: FileBadge, permission: PERMISSIONS.FIELD_SERVICE_DELIVERY_PROOF_CREATE, zone: 'staff', isBranchScoped: true },
+      { label: 'Warranty Activation', to: '/field-service/warranty-activation', icon: ShieldCheck, permission: PERMISSIONS.FIELD_SERVICE_INSTALLATION_UPDATE, zone: 'staff', isBranchScoped: true },
+      { label: 'Preventive Maintenance', to: '/field-service/preventive-maintenance', icon: SettingsIcon, permission: PERMISSIONS.FIELD_SERVICE_MAINTENANCE_UPDATE, zone: 'staff', isBranchScoped: true },
+      { label: 'Service Worklog', to: '/field-service/service-worklog', icon: FileText, permission: PERMISSIONS.FIELD_SERVICE_JOB_UPDATE, zone: 'staff', isBranchScoped: true },
+      { label: 'Offline Sync', to: '/field-service/offline-sync', icon: GitMerge, permission: PERMISSIONS.FIELD_SERVICE_JOB_VIEW, zone: 'staff', isBranchScoped: true },
     ],
   },
   {
@@ -435,7 +435,7 @@ export const roleNavigation: NavGroupConfig[] = [
   {
     label: 'Dashboard & Core',
     items: [
-      { label: 'Command Center', to: '/', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Branch Admin', 'Admin'], zone: 'staff' },
+      { label: 'Command Center', to: '/', icon: LayoutDashboard, allowedRoles: ['Super Admin', 'Branch Admin'], zone: 'staff' },
       { label: 'Spatial Tracking', to: '/spatial', icon: Map, permission: 'it.system.view', zone: 'staff' },
     ],
   },

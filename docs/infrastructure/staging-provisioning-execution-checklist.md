@@ -1,8 +1,8 @@
 # Staging Environment Provisioning Checklist (Execution-Ready)
 
-**Status as of audit:** Staging environment NOT PROVISIONED — all 7 required elements absent.
-**Authority:** `docs/infrastructure/staging-provisioning-handoff.md` (Sections 3–6).
-**Aligned to:** `.github/workflows/deploy-staging.yml` (committed in `72bd168`).
+**Status:** Operator execution checklist; verify live provisioning before every deployment.
+**Authority:** `docs/infrastructure/staging-provisioning-handoff.md` and the current staging workflow.
+**Aligned to:** `.github/workflows/deploy-staging.yml` in the current release candidate.
 
 This checklist is the execution-ready step-by-step for Platform/DevOps to provision
 the staging environment. Every secret name must match the literal references in
@@ -57,6 +57,9 @@ Verify: `psql "$STAGING_DATABASE_URL" -c "SELECT version();"` returns `PostgreSQ
 - [ ] `STAGING_JWT_SECRET` — 64-char hex (`openssl rand -hex 32`).
 - [ ] `STAGING_JWT_REFRESH_SECRET` — 64-char hex, **must differ from JWT_SECRET**.
 - [ ] `STAGING_MASTER_MFA_KEY` — 32-byte key (base64 or hex).
+- [ ] `STAGING_AUDIT_CHAIN_SECRET` — independent 32-byte audit signing key.
+- [ ] `STAGING_REDIS_URL` — dedicated staging Redis endpoint.
+- [ ] `STAGING_REDIS_TLS_CA_BASE64` — private CA only when the Redis service requires it.
 - [ ] `STAGING_CORS_ORIGINS` = exact staging frontend URL, e.g. `https://staging.gemini-hms.example.com`.
 
 **Hard rules (enforced by secret separation table in handoff doc §4.3):**
@@ -74,7 +77,7 @@ Verify: `psql "$STAGING_DATABASE_URL" -c "SELECT version();"` returns `PostgreSQ
 
 Verify:
 - `nslookup staging-api.gemini-hms.example.com` returns the public IP.
-- `curl -fI https://staging-api.gemini-hms.example.com/health` returns `HTTP/2 200` after deploy (post-step 8).
+- `curl -fI https://staging-api.gemini-hms.example.com/api/v1/health` returns `HTTP/2 200` only after PostgreSQL and Redis are ready.
 
 ---
 
@@ -82,8 +85,8 @@ Verify:
 
 - [ ] In repo https://github.com/Ediwow110/gemini-hms/settings/environments, click **New environment**.
 - [ ] Name: `Staging` (exact case).
-- [ ] Protection rules: **None required** for automated deploys.
-- [ ] Deployment branches: allow `main` (and optionally `remediation/production-readiness-lane-2` for the next deploy).
+- [ ] Require an approved reviewer for staging promotion where team policy requires it.
+- [ ] Restrict deployment branches to approved release branches.
 - [ ] Confirm with `gh api repos/Ediwow110/gemini-hms/environments | jq '.[].name'` — must list `["Preview", "Production", "Staging"]`.
 
 ---
@@ -101,16 +104,18 @@ Verify:
 | 5 | `STAGING_JWT_SECRET` | Step 3 | `JWT_SECRET` |
 | 6 | `STAGING_JWT_REFRESH_SECRET` | Step 3 | `JWT_REFRESH_SECRET` |
 | 7 | `STAGING_MASTER_MFA_KEY` | Step 3 | `MASTER_MFA_KEY` |
-| 8 | `STAGING_DB_USER` | Step 2 | `DB_USER` |
-| 9 | `STAGING_DB_PASSWORD` | Step 2 | `DB_PASSWORD` |
-| 10 | `STAGING_DB_NAME` | Step 2 | `DB_NAME` |
-| 11 | `STAGING_CORS_ORIGINS` | Step 3 | `CORS_ALLOWED_ORIGINS` |
-| 12 | `STAGING_EMAIL_PROVIDER` | Operator choice | `EMAIL_PROVIDER` — must be `ses` or `mailrelay` (mock forbidden) |
-| 13 | `STAGING_SMS_PROVIDER` | Operator choice | `SMS_PROVIDER` — must be `semaphore` (mock forbidden) |
-| 14 | `STAGING_AWS_REGION` | If `EMAIL_PROVIDER=ses` | `AWS_REGION` |
-| 15 | `STAGING_SES_SENDER_EMAIL` | If `EMAIL_PROVIDER=ses` | `SES_SENDER_EMAIL` |
-| 16 | `STAGING_SEMAPHORE_API_KEY` | If `SMS_PROVIDER=semaphore` | `SEMAPHORE_API_KEY` |
-| 17–20 | `STAGING_MAILRELAY_*` | If `EMAIL_PROVIDER=mailrelay` | `MAILRELAY_API_KEY`, `MAILRELAY_SMTP_PASS`, `MAILRELAY_SENDER_EMAIL`, `MAILRELAY_SENDER_NAME` |
+| 8 | `STAGING_AUDIT_CHAIN_SECRET` | Step 3 | `AUDIT_CHAIN_SECRET` |
+| 9 | `STAGING_REDIS_URL` | Step 3 | `REDIS_URL` |
+| 10 | `STAGING_REDIS_TLS_CA_BASE64` | Redis provider, if required | `REDIS_TLS_CA_BASE64` |
+| 11 | `STAGING_DB_USER` | Step 2 | `DB_USER` |
+| 12 | `STAGING_DB_PASSWORD` | Step 2 | `DB_PASSWORD` |
+| 13 | `STAGING_DB_NAME` | Step 2 | `DB_NAME` |
+| 14 | `STAGING_CORS_ORIGINS` | Step 3 | `CORS_ALLOWED_ORIGINS` |
+| 15 | `STAGING_EMAIL_PROVIDER` | Operator choice | `EMAIL_PROVIDER` — `ses` or `mailrelay` |
+| 16 | `STAGING_SMS_PROVIDER` | Operator choice | `SMS_PROVIDER` — `semaphore` |
+| 17–21 | `STAGING_AWS_*`, `STAGING_SES_SENDER_EMAIL` | If SES is selected | SES request-signing configuration |
+| 22–27 | `STAGING_MAILRELAY_SMTP_*`, sender fields | If TLS SMTP is selected | TLS SMTP configuration |
+| 28–30 | `STAGING_SEMAPHORE_*` | Semaphore provider | HTTPS SMS configuration |
 
 For each secret:
 - [ ] Settings → Environments → Staging → Add secret.
@@ -119,7 +124,7 @@ For each secret:
 
 Verify with `gh secret list --env Staging` — must show at least 14 entries (11 core + 3 notification minimum).
 
-> **Launch boundary:** Backend starts only with non-mock `EMAIL_PROVIDER`/`SMS_PROVIDER`. Actual send delivery is not implemented yet (`notification-providers.ts:103-108`, `138-143`) — notifications will fail honestly at dispatch, not fake SENT.
+> **Launch boundary:** Backend rejects mock providers and incomplete provider configuration. A staging acceptance run must verify actual SES/TLS-SMTP and Semaphore delivery with approved non-sensitive recipients and retain provider message IDs.
 
 ---
 
@@ -140,13 +145,13 @@ Without this step the workflow is invisible to GHA regardless of secrets.
 - [ ] Wait for `cd-deploy-staging` job to complete.
 - [ ] Confirm both jobs green.
 
-Verify via GHA logs: search for `🎉 STAGING DEPLOYMENT SWEEP SUCCESSFUL (EXIT 0)`.
+Verify via GitHub Actions logs that checksum verification, migration, backend readiness, frontend readiness, and the post-deployment flight probe all completed successfully.
 
 ---
 
 ### Step 9 — Run smoke tests (handoff doc §6.1, §6.2)
 
-- [ ] `curl -fI https://staging-api.gemini-hms.example.com/health` → HTTP 200.
+- [ ] `curl -fI https://staging-api.gemini-hms.example.com/api/v1/health` → HTTP 200.
 - [ ] `curl -fI https://staging.gemini-hms.example.com/` → HTTP 200 (or 30x).
 - [ ] Browser login flow at staging URL.
 - [ ] Navigate to dashboard, billing, audit — all load.
@@ -162,25 +167,19 @@ Verify via GHA logs: search for `🎉 STAGING DEPLOYMENT SWEEP SUCCESSFUL (EXIT 
 
 ---
 
-## B. What this audit confirmed is NOT yet present
+## B. Live Provisioning Verification
 
-| Item | Status | Evidence |
-|------|--------|----------|
-| GitHub `Staging` environment | ❌ Absent | `gh api repos/Ediwow110/gemini-hms/environments` → only Preview, Production |
-| Any `STAGING_*` secret | ❌ Absent | `gh secret list --env Staging` → HTTP 404; repo-level has 8 secrets, none `STAGING_*` |
-| `deploy-staging.yml` on `main` | ❌ Absent | `gh workflow list` shows 5 workflows, no staging; file is on local remediation branch only |
-| Staging VM reachable | ❌ Absent | `Test-NetConnection` to staging hostnames → `TcpTestSucceeded=False` |
-| Staging DB | ❌ Absent | Cannot test without VM; no record of provisioning |
-| DNS records | ❌ Absent | `nslookup` returns NXDOMAIN-style answer (placeholder names only) |
-| Health endpoint | ❌ Absent | No backend can respond without VM + DB + workflow run |
+Do not reuse an old audit result as evidence of the current environment. Immediately before deployment, verify and retain evidence that:
 
----
+- [ ] the GitHub `Staging` Environment exists and contains every variable referenced by the current workflow;
+- [ ] the workflow is active on the branch being deployed;
+- [ ] the deployment host is reachable and has the expected Docker and Compose versions;
+- [ ] PostgreSQL and Redis are reachable only from approved networks;
+- [ ] DNS and TLS resolve to the intended staging ingress;
+- [ ] the target backup has completed and a restore procedure is current;
+- [ ] alert routing reaches the responsible team;
+- [ ] the deployment and rollback exercises have named owners.
 
-## C. Boundary statement
+## C. Boundary Statement
 
-This audit was performed from a Windows dev workstation with `gh` CLI authenticated
-to the Ediwow110/gemini-hms repo. The agent has no authority or mechanism to
-provision VMs, databases, DNS records, or GitHub environments from this environment.
-
-**Until steps 1–7 are completed by Platform/DevOps, deployment to staging is impossible,
-regardless of how strong the local codebase is.**
+Repository validation proves the code and manifests can be exercised locally and in CI. It does not provision or certify the live staging host, GitHub Environment, third-party provider accounts, DNS, TLS, backups, monitoring, or alert routing. Platform/DevOps must complete and retain the live evidence above.

@@ -405,20 +405,13 @@ export class AdminService {
         );
       }
 
-      // Prohibit privileged/system roles for direct creation
+      // Built-in operational roles are immutable definitions but remain assignable.
+      // Only privileged roles (Super Admin or roles carrying admin.role.change)
+      // require the maker-checker flow.
       for (const role of validatedRoles) {
-        if (role.isSystem) {
+        if (this.isPrivilegedRole(role)) {
           throw new ForbiddenException(
-            `System role ${role.name} cannot be assigned directly`,
-          );
-        }
-        if (
-          role.rolePermissions.some(
-            (rp) => rp.permission.name === PRIVILEGED_PERMISSION,
-          )
-        ) {
-          throw new ForbiddenException(
-            `Privileged role ${role.name} requires maker-checker flow (deferred)`,
+            `Privileged role ${role.name} requires maker-checker approval`,
           );
         }
       }
@@ -1453,6 +1446,7 @@ export class AdminService {
         tx,
         actor.tenantId,
         normalizedRoleId,
+        true,
       );
       const activeRoleAssignments = this.getActiveUserRoleAssignments(target);
       const existingAssignment = activeRoleAssignments.find(
@@ -1558,6 +1552,7 @@ export class AdminService {
         tx,
         actor.tenantId,
         normalizedRoleId,
+        true,
       );
       const activeAssignment = this.getActiveUserRoleAssignments(target).find(
         (assignment) => assignment.roleId === normalizedRoleId,
@@ -2407,6 +2402,7 @@ export class AdminService {
     tx: Prisma.TransactionClient,
     tenantId: string,
     roleId: string,
+    allowSystemRoleAssignment = false,
   ): Promise<AdminRoleTarget> {
     const role = await tx.role.findFirst({
       where: { id: roleId, tenantId },
@@ -2425,9 +2421,9 @@ export class AdminService {
       );
     }
 
-    if (role.isSystem) {
+    if (role.isSystem && !allowSystemRoleAssignment) {
       throw new ForbiddenException(
-        'System roles cannot be directly assigned or revoked',
+        'Built-in system role definitions cannot be modified directly',
       );
     }
 
@@ -2460,12 +2456,6 @@ export class AdminService {
     if (role.name === 'Super Admin') {
       throw new ForbiddenException(
         'Super Admin role changes remain blocked for this maker-checker slice',
-      );
-    }
-
-    if (role.isSystem) {
-      throw new ForbiddenException(
-        'System role changes remain blocked for this maker-checker slice',
       );
     }
 

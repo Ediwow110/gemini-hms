@@ -18,6 +18,9 @@ vi.mock('../../../lib/api', () => ({
       if (url.includes('/patient-portal/prescriptions')) {
         return Promise.resolve({ data: [] });
       }
+      if (url.includes('/patient-portal/invoices')) {
+        return Promise.resolve({ data: [] });
+      }
       return Promise.resolve({ data: null });
     }),
     post: vi.fn(),
@@ -36,13 +39,13 @@ describe('PatientDashboard Isolation Tests', () => {
       </TestWrapper>
     );
 
-    // Wait for loading to complete — the heading shows "Hello, Welcome Back" when profile is null
+    // Wait for loading to complete. A missing profile falls back to a neutral greeting.
     await waitFor(() => {
-      expect(screen.getByText(/Hello, Welcome Back/i)).toBeInTheDocument();
+      expect(screen.getByText(/Hello, welcome/i)).toBeInTheDocument();
     });
 
     // Verify key dashboard elements exist
-    expect(screen.getByText('Quick Actions')).toBeInTheDocument();
+    expect(screen.getByText('Common actions')).toBeInTheDocument();
 
     // CONFIRM ISOLATION: Patient dashboard calls ONLY patient-portal endpoints,
     // NEVER staff clinical APIs (which live under /api/v1/clinical, /api/v1/patients, etc.)

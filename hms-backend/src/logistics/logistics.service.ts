@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ShipmentStatus, DeliveryJobStatus, OrderStatus } from '@prisma/client';
@@ -16,18 +20,39 @@ export class LogisticsService {
     private readonly audit: AuditService,
   ) {}
 
+  private shipmentScope(tenantId: string, branchId: string) {
+    return {
+      tenantId,
+      salesOrder: {
+        quote: {
+          rfq: { branchId },
+        },
+      },
+    };
+  }
+
+  private deliveryJobScope(tenantId: string, branchId: string) {
+    return {
+      tenantId,
+      shipment: this.shipmentScope(tenantId, branchId),
+    };
+  }
+
   async createShipment(
     tenantId: string,
+    branchId: string,
     userId: string,
     dto: CreateShipmentDto,
   ) {
     const order = await this.prisma.salesOrder.findFirst({
-      where: { id: dto.salesOrderId, tenantId },
+      where: {
+        id: dto.salesOrderId,
+        tenantId,
+        quote: { rfq: { branchId } },
+      },
     });
 
-    if (!order) {
-      throw new NotFoundException('Sales order not found');
-    }
+    if (!order) throw new NotFoundException('Sales order not found');
 
     const shipment = await this.prisma.shipment.create({
       data: {
@@ -39,32 +64,35 @@ export class LogisticsService {
       },
     });
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'SHIPMENT_CREATED',
-      recordType: 'Shipment',
-      recordId: shipment.id,
-      newValues: shipment,
-    });
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: 'SHIPMENT_CREATED',
+        recordType: 'Shipment',
+        recordId: shipment.id,
+        newValues: shipment,
+      },
+      undefined,
+      branchId,
+    );
 
     return shipment;
   }
 
   async updateShipmentStatus(
     tenantId: string,
+    branchId: string,
     userId: string,
     id: string,
     dto: UpdateShipmentStatusDto,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const shipment = await tx.shipment.findFirst({
-        where: { id, tenantId },
+        where: { id, ...this.shipmentScope(tenantId, branchId) },
       });
 
-      if (!shipment) {
-        throw new NotFoundException('Shipment not found');
-      }
+      if (!shipment) throw new NotFoundException('Shipment not found');
 
       const updated = await tx.shipment.update({
         where: { id, tenantId },
@@ -81,7 +109,6 @@ export class LogisticsService {
         },
       });
 
-      // Update SalesOrder status if shipment is delivered
       if (dto.status === ShipmentStatus.DELIVERED) {
         await tx.salesOrder.update({
           where: { id: shipment.salesOrderId, tenantId },
@@ -104,50 +131,133 @@ export class LogisticsService {
           newValues: { status: dto.status, note: dto.note },
         },
         tx,
+        branchId,
       );
 
       return updated;
     });
   }
 
-  async findAllShipments(tenantId: string) {
+  async findAllShipments(tenantId: string, branchId: string) {
     return this.prisma.shipment.findMany({
-      where: { tenantId },
-      include: { salesOrder: true },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
-  async findShipment(tenantId: string, id: string) {
-    return this.prisma.shipment.findFirst({
-      where: { id, tenantId },
+      where: this.shipmentScope(tenantId, branchId),
       include: {
         salesOrder: {
           include: {
             quote: {
-              include: { rfq: true },
+              include: {
+                rfq: { include: { branch: true } },
+              },
             },
           },
         },
         deliveryJobs: {
-          include: { assignedUser: true },
+          include: {
+            assignedUser: { select: { id: true, email: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findShipment(tenantId: string, branchId: string, id: string) {
+    return this.prisma.shipment.findFirst({
+      where: { id, ...this.shipmentScope(tenantId, branchId) },
+      include: {
+        salesOrder: {
+          include: {
+            quote: {
+              include: { rfq: { include: { branch: true } } },
+            },
+          },
+        },
+        deliveryJobs: {
+          include: {
+            assignedUser: { select: { id: true, email: true } },
+          },
         },
       },
     });
   }
 
-  // Delivery Jobs
+  async findEligibleTechnicians(tenantId: string, branchId: string) {
+    return this.prisma.user.findMany({
+      where: {
+        tenantId,
+        status: 'ACTIVE',
+        userBranches: { some: { branchId, isActive: true } },
+        userRoles: {
+          some: {
+            status: 'ACTIVE',
+            role: {
+              tenantId,
+              name: 'Field Technician',
+              status: 'ACTIVE',
+              archivedAt: null,
+            },
+          },
+        },
+      },
+      select: { id: true, email: true },
+      orderBy: { email: 'asc' },
+    });
+  }
+
   async createDeliveryJob(
     tenantId: string,
+    branchId: string,
     userId: string,
     dto: CreateDeliveryJobDto,
   ) {
-    const shipment = await this.prisma.shipment.findFirst({
-      where: { id: dto.shipmentId, tenantId },
-    });
+    const [shipment, technician] = await Promise.all([
+      this.prisma.shipment.findFirst({
+        where: {
+          id: dto.shipmentId,
+          ...this.shipmentScope(tenantId, branchId),
+        },
+      }),
+      this.prisma.user.findFirst({
+        where: {
+          id: dto.assignedUserId,
+          tenantId,
+          status: 'ACTIVE',
+          userBranches: { some: { branchId, isActive: true } },
+          userRoles: {
+            some: {
+              status: 'ACTIVE',
+              role: {
+                tenantId,
+                name: 'Field Technician',
+                status: 'ACTIVE',
+                archivedAt: null,
+              },
+            },
+          },
+        },
+        select: { id: true },
+      }),
+    ]);
 
-    if (!shipment) {
-      throw new NotFoundException('Shipment not found');
+    if (!shipment) throw new NotFoundException('Shipment not found');
+    if (!technician) {
+      throw new NotFoundException('Eligible field technician not found');
+    }
+
+    const existingJob = await this.prisma.deliveryJob.findFirst({
+      where: {
+        tenantId,
+        shipmentId: dto.shipmentId,
+        status: {
+          in: [DeliveryJobStatus.ASSIGNED, DeliveryJobStatus.IN_PROGRESS],
+        },
+      },
+      select: { id: true },
+    });
+    if (existingJob) {
+      throw new ConflictException(
+        'Shipment already has an active delivery job',
+      );
     }
 
     const job = await this.prisma.deliveryJob.create({
@@ -160,32 +270,35 @@ export class LogisticsService {
       },
     });
 
-    await this.audit.log({
-      tenantId,
-      userId,
-      eventKey: 'DELIVERY_JOB_CREATED',
-      recordType: 'DeliveryJob',
-      recordId: job.id,
-      newValues: job,
-    });
+    await this.audit.log(
+      {
+        tenantId,
+        userId,
+        eventKey: 'DELIVERY_JOB_CREATED',
+        recordType: 'DeliveryJob',
+        recordId: job.id,
+        newValues: job,
+      },
+      undefined,
+      branchId,
+    );
 
     return job;
   }
 
   async updateDeliveryJobStatus(
     tenantId: string,
+    branchId: string,
     userId: string,
     id: string,
     dto: UpdateDeliveryJobStatusDto,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const job = await tx.deliveryJob.findFirst({
-        where: { id, tenantId },
+        where: { id, ...this.deliveryJobScope(tenantId, branchId) },
       });
 
-      if (!job) {
-        throw new NotFoundException('Delivery job not found');
-      }
+      if (!job) throw new NotFoundException('Delivery job not found');
 
       const updatedJob = await tx.deliveryJob.update({
         where: { id, tenantId },
@@ -199,7 +312,7 @@ export class LogisticsService {
             dto.status === DeliveryJobStatus.COMPLETED
               ? new Date()
               : job.completedAt,
-          notes: dto.notes || job.notes,
+          notes: dto.notes ?? job.notes,
         },
       });
 
@@ -213,46 +326,89 @@ export class LogisticsService {
           newValues: { status: dto.status, notes: dto.notes },
         },
         tx,
+        branchId,
       );
 
       return updatedJob;
     });
   }
 
-  async findTechnicianJobs(tenantId: string, userId: string) {
-    // Both delivery and installation jobs
+  async findTechnicianJobs(tenantId: string, branchId: string, userId: string) {
     const [deliveries, installations] = await Promise.all([
       this.prisma.deliveryJob.findMany({
-        where: { tenantId, assignedUserId: userId },
-        include: { shipment: { include: { salesOrder: true } } },
+        where: {
+          assignedUserId: userId,
+          ...this.deliveryJobScope(tenantId, branchId),
+        },
+        include: {
+          shipment: {
+            include: {
+              salesOrder: {
+                include: {
+                  quote: {
+                    include: {
+                      rfq: { include: { branch: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         orderBy: { status: 'asc' },
       }),
       this.prisma.installationJob.findMany({
-        where: { tenantId, assignedUserId: userId },
-        include: { asset: true },
+        where: {
+          tenantId,
+          assignedUserId: userId,
+          asset: {
+            salesOrder: { quote: { rfq: { branchId } } },
+          },
+        },
+        include: {
+          asset: {
+            include: {
+              salesOrder: {
+                include: {
+                  quote: {
+                    include: {
+                      rfq: { include: { branch: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         orderBy: { status: 'asc' },
       }),
     ]);
 
     return {
-      deliveries: deliveries.map((d) => ({
-        id: d.id,
-        type: 'DELIVERY',
-        status: d.status,
-        customer: 'Hospital', // Should ideally come from Order/RFQ
-        address: 'Radiology Dept',
-        shipmentId: d.shipmentId,
-        orderId: d.shipment.salesOrderId,
-      })),
-      installations: installations.map((i) => ({
-        id: i.id,
-        type: 'INSTALLATION',
-        status: i.status,
-        customer: 'Hospital',
-        address: 'Radiology Dept',
-        assetId: i.assetId,
-        assetModel: i.asset.model,
-      })),
+      deliveries: deliveries.map((delivery) => {
+        const rfq = delivery.shipment.salesOrder.quote.rfq;
+        return {
+          id: delivery.id,
+          type: 'DELIVERY',
+          status: delivery.status,
+          customer: rfq.title,
+          address: rfq.branch.name,
+          shipmentId: delivery.shipmentId,
+          orderId: delivery.shipment.salesOrderId,
+        };
+      }),
+      installations: installations.map((installation) => {
+        const rfq = installation.asset.salesOrder.quote.rfq;
+        return {
+          id: installation.id,
+          type: 'INSTALLATION',
+          status: installation.status,
+          customer: rfq.title,
+          address: rfq.branch.name,
+          assetId: installation.assetId,
+          assetModel: installation.asset.model,
+        };
+      }),
     };
   }
 }

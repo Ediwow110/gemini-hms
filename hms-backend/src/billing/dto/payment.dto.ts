@@ -5,6 +5,8 @@ import {
   Min,
   IsString,
   IsOptional,
+  IsIn,
+  MaxLength,
 } from 'class-validator';
 
 export class CreatePaymentDto {
@@ -20,7 +22,7 @@ export class CreatePaymentDto {
   @Min(0.01)
   amount: number;
 
-  @IsString()
+  @IsIn(['CASH', 'CARD', 'GCASH', 'QRPH', 'BANK_TRANSFER'])
   @IsNotEmpty()
   paymentMethod: string; // CASH, CARD, GCASH, etc.
 }
@@ -42,6 +44,7 @@ export class CloseSessionDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(500)
   remarks?: string;
 }
 

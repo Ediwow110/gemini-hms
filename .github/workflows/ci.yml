@@ -9,7 +9,7 @@ on:
       - main
 
 env:
-  NODE_VERSION: '20.x'
+  NODE_VERSION: '22.x'
 
 jobs:
   static-analysis:
@@ -70,10 +70,12 @@ jobs:
       - name: Backend Install & Test
         working-directory: ./hms-backend
         env:
+          NODE_ENV: test
           DATABASE_URL: postgresql://postgres:password@localhost:5432/hms_test?schema=public
         run: |
           npm ci
           npx prisma generate
+          npx prisma migrate deploy
           npm run test
           npm run test:e2e
 
@@ -146,12 +148,6 @@ jobs:
           JWT_SECRET: test-secret-key-for-e2e-tests-that-is-long-enough
           JWT_REFRESH_SECRET: test-refresh-secret-for-e2e-tests
           NODE_ENV: test
-          # Smoke test is not a security test: skip MFA step-up so the
-          # Super Admin / sensitive-role accounts in the seed can complete
-          # /auth/login with a 200 instead of a 202 (MFA_REQUIRED). The
-          # backend already honors this env var and logs a warning when set.
-          # See: PR #229 Browser Smoke follow-up to ef024b36.
-          DISABLE_AUTH_VERIFICATION: 'true'
         run: |
           npm ci
           npx prisma generate
@@ -159,13 +155,20 @@ jobs:
           npx tsx prisma/seed.ts
           npm run build
           npm run start:prod &
+          backend_ready=false
           for i in $(seq 1 60); do
             if curl -sf http://localhost:3000/api/v1/health > /dev/null; then
               echo "Backend healthy"
+              backend_ready=true
               break
             fi
             sleep 2
           done
+          if [ "$backend_ready" != "true" ]; then
+            echo "ERROR: Backend failed to become healthy within 120s"
+            npm run stop:prod || true
+            exit 1
+          fi
           curl -sf http://localhost:3000/api/v1/health
 
       - name: Install frontend and Playwright
@@ -178,13 +181,19 @@ jobs:
         working-directory: ./hms-frontend
         run: |
           npm run dev &
+          frontend_ready=false
           for i in $(seq 1 45); do
             if curl -sf http://localhost:5173 > /dev/null; then
               echo "Frontend ready"
+              frontend_ready=true
               break
             fi
             sleep 2
           done
+          if [ "$frontend_ready" != "true" ]; then
+            echo "ERROR: Frontend failed to become ready within 90s"
+            exit 1
+          fi
           npm run test:smoke
 
   docker-build:

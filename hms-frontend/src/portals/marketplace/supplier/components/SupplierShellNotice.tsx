@@ -1,22 +1,18 @@
 import React from 'react';
 import { ShieldAlert } from 'lucide-react';
 
-export const SupplierShellNotice: React.FC = () => {
-  return (
-    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-4 items-start shadow-sm">
-      <div className="p-2 bg-amber-100 rounded-xl">
-        <ShieldAlert className="h-5 w-5 text-amber-600" />
-      </div>
-      <div>
-        <h4 className="text-sm font-black text-amber-900 tracking-tight">Supplier Center Sandbox</h4>
-        <p className="text-xs text-amber-700 font-medium leading-relaxed mt-0.5">
-          This supplier portal is a <strong>functional prototype shell</strong>. RFQs, orders, and fulfillment status 
-          are mock-generated for demonstration purposes. No real business transactions, listing updates, or payouts 
-          are processed in this phase.
-        </p>
-      </div>
+export const SupplierShellNotice: React.FC = () => (
+  <div className="flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4">
+    <div className="shrink-0 rounded-xl bg-sky-100 p-2 text-sky-700">
+      <ShieldAlert className="h-5 w-5" aria-hidden="true" />
     </div>
-  );
-};
+    <div>
+      <h4 className="text-sm font-semibold text-sky-950">Mixed supplier data source</h4>
+      <p className="mt-1 text-xs leading-5 text-sky-800">
+        Order and RFQ panels request the connected supplier APIs. KPI totals, trend charts and settlement values are deterministic synthetic data for non-production layout review and are not payout instructions.
+      </p>
+    </div>
+  </div>
+);
 
 export default SupplierShellNotice;

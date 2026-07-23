@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, LogOut } from 'lucide-react';
-import { useUser, useAuth, usePermissions } from '../hooks/use-user';
+import { ChevronDown } from 'lucide-react';
+import { useUser, usePermissions } from '../hooks/use-user';
 import { roleNavigation, NavItemConfig } from '../config/roleNavigation';
+import { getPortalRouteConfig } from '../config/portalRoutes';
 
 interface ActiveItemMatch {
   item: NavItemConfig;
@@ -70,9 +71,9 @@ interface RoleBasedSidebarProps {
 
 export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps) => {
   const user = useUser();
-  const { logout } = useAuth();
   const { canAccess } = usePermissions();
   const [manuallyExpanded, setManuallyExpanded] = useState<Set<string>>(new Set());
+  const [manuallyCollapsed, setManuallyCollapsed] = useState<Set<string>>(new Set());
 
   const isDemoHidden = (item: NavItemConfig) => {
     if (item.isHiddenForDemo) return true;
@@ -80,14 +81,17 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
     return false;
   };
 
-  const canView = useCallback((item: NavItemConfig) =>
-    !isDemoHidden(item) &&
-    canAccess({
-      permission: item.permission,
-      allowedRoles: item.allowedRoles,
-      isBranchScoped: item.isBranchScoped,
-      zone: item.zone,
-    }), [canAccess]);
+  const canView = useCallback((item: NavItemConfig) => {
+    if (isDemoHidden(item)) return false;
+
+    const route = getPortalRouteConfig(item.to);
+    return canAccess({
+      permission: route ? route.requiredPermission : item.permission,
+      allowedRoles: route ? route.allowedRoles : item.allowedRoles,
+      isBranchScoped: route ? Boolean(route.isBranchScoped) : item.isBranchScoped,
+      zone: route ? route.zone : item.zone,
+    });
+  }, [canAccess]);
 
   const getAllowedItems = useCallback((items: NavItemConfig[]): NavItemConfig[] => {
     const filterAndMap = (currentItems: NavItemConfig[]): NavItemConfig[] =>
@@ -145,23 +149,40 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
     item.children?.some((child) => isActive(child) || hasActiveDescendant(child)) ?? false;
 
   const isExpanded = (item: NavItemConfig) => {
-    const auto = Boolean(item.children?.length) && (isActive(item) || hasActiveDescendant(item));
-    if (auto) return true;
-    return manuallyExpanded.has(getItemKey(item));
+    const key = getItemKey(item);
+    if (manuallyCollapsed.has(key)) return false;
+    if (manuallyExpanded.has(key)) return true;
+    return Boolean(item.children?.length) && (isActive(item) || hasActiveDescendant(item));
   };
 
   const handleNavClick = (item: NavItemConfig) => {
     if (item.children?.length) {
-      // Don't toggle if auto-expanded — prevents silently polluting
-      // manuallyExpanded when the click has no visible effect.
-      if (isActive(item) || hasActiveDescendant(item)) return;
       const key = getItemKey(item);
-      setManuallyExpanded(prev => {
-        const next = new Set(prev);
-        if (next.has(key)) next.delete(key);
-        else next.add(key);
-        return next;
-      });
+      const expanded = isExpanded(item);
+
+      if (expanded) {
+        setManuallyExpanded((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        setManuallyCollapsed((prev) => {
+          const next = new Set(prev);
+          next.add(key);
+          return next;
+        });
+      } else {
+        setManuallyCollapsed((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        setManuallyExpanded((prev) => {
+          const next = new Set(prev);
+          next.add(key);
+          return next;
+        });
+      }
     } else {
       onNavClick?.();
     }
@@ -253,20 +274,23 @@ export const RoleBasedSidebar = ({ pathname, onNavClick }: RoleBasedSidebarProps
         })}
       </nav>
 
-      {/* User profile card */}
+      {/* User profile card — display-only.
+          Sign-out is handled exclusively by the explicit "Sign out" button in
+          the AppShell topbar (with a 2-step confirmation bar). This card must
+          NOT trigger logout on click; it is an identity display surface only. */}
       <div className="p-3 border-t border-slate-100 bg-white sticky bottom-0">
-        <div 
-          onClick={logout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100/80 hover:from-slate-100 hover:to-slate-100 transition-all duration-200 cursor-pointer group"
+        <div
+          data-testid="sidebar-user-card"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-slate-50 to-slate-100/80"
+          title={user?.email || 'Signed in'}
         >
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-indigo-200 uppercase">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-indigo-200 uppercase" aria-hidden="true">
             {user?.email?.[0] || 'U'}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-900 truncate">{user?.email}</p>
             <p className="text-[11px] text-slate-500 truncate">{user?.roles?.[0]}</p>
           </div>
-          <LogOut className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
         </div>
       </div>
     </>

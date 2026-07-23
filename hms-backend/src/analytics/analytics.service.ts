@@ -46,7 +46,10 @@ export class AnalyticsService {
 
   async getItMetrics(tenantId: string) {
     const totalSessions = await this.prisma.session.count({
-      where: { tenantId },
+      where: {
+        tenantId,
+        expiresAt: { gt: new Date() },
+      },
     });
 
     const activeIntegrations = await this.prisma.integration.count({
@@ -99,7 +102,7 @@ export class AnalyticsService {
     return {
       totalAuditEvents,
       securityAlerts: breachAlerts,
-      complianceScore: 100 - breachAlerts * 5, // Simple synthetic score
+      complianceScore: Math.max(0, Math.min(100, 100 - breachAlerts * 5)),
     };
   }
 

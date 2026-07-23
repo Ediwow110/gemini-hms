@@ -180,7 +180,7 @@ export class AuthController {
     };
   }
 
-  @SkipThrottle({ auth: true, sensitive: true, default: true })
+  @SkipThrottle({ auth: true })
   @Get('me')
   async getMe(
     @GetUser() user: RequestUser,

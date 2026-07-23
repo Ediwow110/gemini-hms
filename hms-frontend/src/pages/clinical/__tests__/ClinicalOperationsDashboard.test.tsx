@@ -60,7 +60,7 @@ describe('ClinicalOperationsDashboard Unit Tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Clinical Operations')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Clinical Operations' })).toBeInTheDocument();
       expect(screen.getByText('Active Patients')).toBeInTheDocument();
       expect(screen.getByText('Patient Flow Distribution')).toBeInTheDocument();
       expect(screen.getByText('Workload by Specialty')).toBeInTheDocument();

@@ -34,7 +34,7 @@ This document defines exactly what must be provisioned to unblock staging verifi
 
 A Linux VM or container host with:
 - Docker Engine 24+ and Docker Compose v2
-- Node.js 20.x (for build-time, not runtime — Docker images are self-contained)
+- Node.js 22.x for CI/build tooling; the deployment host runs the pinned container images
 - curl, wget, rsync (for deployment scripts)
 - SSH access for GitHub Actions runner
 - Domain or subdomain for frontend and backend
@@ -47,7 +47,7 @@ A Linux VM or container host with:
 |-----------|-------------|-------|
 | Frontend | `https://staging.gemini-hms.example.com` | Nginx reverse proxy to port 80 |
 | Backend API | `https://staging-api.gemini-hms.example.com` | Or same domain with /api/v1 path |
-| Health endpoint | `https://staging-api.gemini-hms.example.com/health` | Must respond 200 |
+| Health endpoint | `https://staging-api.gemini-hms.example.com/api/v1/health` | Must respond 200 only when PostgreSQL and Redis are ready |
 
 ### 3.3 Staging Database
 
@@ -65,11 +65,11 @@ A PostgreSQL 15 instance:
 ### 4.1 New Environment: `Staging`
 
 Create a GitHub environment named `Staging` with:
-- **Required reviewers:** Optional — can be removed for automated deploys
-- **Wait timer:** None (auto-deploy on push to main)
-- **Deployment branches:** `main` (auto-deploy) or a dedicated `staging` branch
+- **Required reviewers:** Recommended for deployment approval
+- **Wait timer:** Optional
+- **Deployment branches:** Restrict to the approved release branches
 
-> **Note:** The existing `deploy.yml` `cd-deploy` job does not use `environment: Production` — production secrets are currently at the repository level. While this is out of scope for the staging pass, consider creating a `Production` environment and migrating production secrets to it for parity and defense-in-depth.
+Both staging and production deployment jobs use their matching protected GitHub Environments and are triggered manually.
 
 ### 4.2 Required Secrets (Environment-Level)
 
@@ -83,7 +83,10 @@ Add these to the `Staging` environment:
 | `STAGING_DATABASE_URL` | Full PostgreSQL connection string | `postgresql://staging_user:SafePass123@localhost:5432/hms_staging?schema=public` |
 | `STAGING_JWT_SECRET` | JWT signing key (different from prod) | `(64-char hex or base64)` |
 | `STAGING_JWT_REFRESH_SECRET` | JWT refresh key (different from prod) | `(64-char hex or base64)` |
-| `STAGING_MASTER_MFA_KEY` | MFA encryption key (different from prod) | `(32-char key)` |
+| `STAGING_MASTER_MFA_KEY` | MFA encryption key (different from prod) | `(32+ random characters)` |
+| `STAGING_AUDIT_CHAIN_SECRET` | Dedicated audit-chain signing key | `(32+ random characters)` |
+| `STAGING_REDIS_URL` | Redis connection URL | `redis://redis-host:6379` |
+| `STAGING_REDIS_TLS_CA_BASE64` | Optional private Redis CA | `(base64 PEM)` |
 | `STAGING_DB_USER` | Database user | `staging_user` |
 | `STAGING_DB_PASSWORD` | Database password | `(auto-generated)` |
 | `STAGING_DB_NAME` | Database name | `hms_staging` |
@@ -91,14 +94,21 @@ Add these to the `Staging` environment:
 | `STAGING_EMAIL_PROVIDER` | Email provider (non-mock) | `ses` or `mailrelay` |
 | `STAGING_SMS_PROVIDER` | SMS provider (non-mock) | `semaphore` |
 | `STAGING_AWS_REGION` | AWS region (if `EMAIL_PROVIDER=ses`) | `ap-southeast-1` |
-| `STAGING_SES_SENDER_EMAIL` | SES verified sender (if `EMAIL_PROVIDER=ses`) | `noreply@staging.example.com` |
-| `STAGING_SEMAPHORE_API_KEY` | Semaphore API key (if `SMS_PROVIDER=semaphore`) | `(api key)` |
-| `STAGING_MAILRELAY_API_KEY` | Mailrelay key (if `EMAIL_PROVIDER=mailrelay`) | `(api key)` |
-| `STAGING_MAILRELAY_SMTP_PASS` | Mailrelay SMTP pass (alt to API key) | `(password)` |
-| `STAGING_MAILRELAY_SENDER_EMAIL` | Mailrelay sender email | `noreply@staging.example.com` |
-| `STAGING_MAILRELAY_SENDER_NAME` | Mailrelay sender display name | `HMS Staging` |
+| `STAGING_SES_SENDER_EMAIL` | SES verified sender | `noreply@staging.example.com` |
+| `STAGING_AWS_ACCESS_KEY_ID` | SES signing identity | `(secret)` |
+| `STAGING_AWS_SECRET_ACCESS_KEY` | SES signing secret | `(secret)` |
+| `STAGING_AWS_SESSION_TOKEN` | Optional temporary-session token | `(secret)` |
+| `STAGING_SEMAPHORE_API_KEY` | Semaphore API key | `(secret)` |
+| `STAGING_SEMAPHORE_API_URL` | Optional Semaphore HTTPS endpoint override | `https://api.semaphore.co/api/v4/messages` |
+| `STAGING_SEMAPHORE_SENDER_NAME` | Optional approved SMS sender | `HMS` |
+| `STAGING_MAILRELAY_SMTP_HOST` | TLS SMTP host | `smtp.example.com` |
+| `STAGING_MAILRELAY_SMTP_PORT` | TLS SMTP port | `465` |
+| `STAGING_MAILRELAY_SMTP_USER` | TLS SMTP user | `(secret)` |
+| `STAGING_MAILRELAY_SMTP_PASS` | TLS SMTP password | `(secret)` |
+| `STAGING_MAILRELAY_SENDER_EMAIL` | TLS SMTP sender email | `noreply@staging.example.com` |
+| `STAGING_MAILRELAY_SENDER_NAME` | TLS SMTP sender display name | `HMS Staging` |
 
-> **Notification launch boundary:** `NODE_ENV=production` (set in `docker-compose.staging.yml`) rejects `EMAIL_PROVIDER=mock` and `SMS_PROVIDER=mock` at backend startup (`notification-providers.ts:166-170`, `188-192`). Real provider classes (`SesProvider`, `SemaphoreProvider`, etc.) validate credentials at construction but their `sendEmail`/`sendSms` methods still throw `NotImplementedException` until external HTTP/SDK integration is wired (`notification-providers.ts:103-108`, `138-143`). Staging deploy requires non-mock provider **configuration** so the backend starts; actual email/SMS **delivery** remains blocked until provider send implementations are completed.
+> **Notification launch boundary:** staging rejects mock providers and missing provider-specific configuration at startup. SES uses a signed HTTPS request, Mailrelay uses certificate-verified TLS SMTP, and Semaphore uses HTTPS form delivery. A staging acceptance run must still capture real provider message IDs using approved non-sensitive recipients.
 
 ### 4.3 Secret Separation Rules
 

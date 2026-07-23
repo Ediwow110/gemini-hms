@@ -13,6 +13,14 @@ import { ComplianceDashboard } from '../../portals/compliance/ComplianceDashboar
 import { ITSupportDashboard } from '../../portals/it-support/ITSupportDashboard';
 import { PatientDashboard } from '../../portals/patient/PatientDashboard';
 
+vi.mock('../../lib/api', () => ({
+  apiClient: {
+    get: vi.fn().mockResolvedValue({ data: [] }),
+    post: vi.fn().mockResolvedValue({ data: {} }),
+    patch: vi.fn().mockResolvedValue({ data: {} }),
+  },
+}));
+
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div data-testid="responsive-chart">{children}</div>,
   LineChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -28,26 +36,41 @@ vi.mock('recharts', () => ({
   Tooltip: () => <div />,
   XAxis: () => <div />,
   YAxis: () => <div />,
+  Legend: () => <div />,
 }));
 
 vi.mock('../../hooks/use-patient-portal', () => ({
   usePatientProfile: () => ({ profile: { firstName: 'Ava', patientNumber: 'P-100', status: 'ACTIVE' }, loading: false }),
   usePatientLabResults: () => ({ results: [{ id: 'lab-result-1', createdAt: '2026-05-20T00:00:00Z', lockedAt: '2026-05-21T00:00:00Z', remarks: 'Normal' }], loading: false }),
-  usePatientPrescriptions: () => ({ prescriptions: [{ id: 'rx-1', medicationName: 'Amoxicillin', dosage: '500mg', frequency: 'BID', status: 'ACTIVE' }], loading: false }),
+  usePatientPrescriptions: () => ({ prescriptions: [{ id: 'rx-1', medicationName: 'Amoxicillin', dosage: '500mg', frequency: 'BID', status: 'ACTIVE' }], loading: false, error: null, refetch: vi.fn() }),
+  usePatientInvoices: () => ({ invoices: [{ id: 'inv-1', totalAmount: 2000, paidAmount: 500, status: 'PARTIAL' }], loading: false, error: null, refetch: vi.fn() }),
 }));
 
 vi.mock('../../hooks/use-compliance', () => ({
-  useAuditEvents: () => ({ events: [{ id: 'audit-1', createdAt: '2026-05-21T00:00:00Z', activeRole: 'Compliance Officer', recordType: 'Patient', recordId: 'PAT-1', eventKey: 'PHI_ACCESS' }], loading: false }),
-  useAccessReview: () => ({ report: { staleAccountsCount: 1, privilegeEscalationsCount: 0, complianceStatus: 'NEEDS_ATTENTION' }, loading: false, error: null }),
+  useAuditEvents: () => ({ events: [{ id: 'audit-1', createdAt: '2026-05-21T00:00:00Z', activeRole: 'Compliance Officer', recordType: 'Patient', recordId: 'PAT-1', eventKey: 'PHI_ACCESS' }], total: 1, loading: false, error: null, refetch: vi.fn() }),
+  useAccessReview: () => ({ report: { staleAccountsCount: 1, privilegeEscalationsCount: 0, complianceStatus: 'NEEDS_ATTENTION' }, loading: false, error: null, refetch: vi.fn() }),
 }));
 
 vi.mock('../../hooks/use-it-support', () => ({
-  useSupportTickets: () => ({ tickets: [{ id: 'ticket-1', reportedBy: { email: 'it@example.com' }, branch: { name: 'Metro' }, issueType: 'LOGIN', summary: 'Cannot login', status: 'OPEN', priority: 'HIGH', createdAt: '2026-05-21T00:00:00Z' }], loading: false }),
-  useTicketStats: () => ({ stats: { open: 1, urgent: 1, inProgress: 0, total: 1 }, loading: false }),
+  useSupportTickets: () => ({ tickets: [{ id: 'ticket-1', reportedBy: { email: 'it@example.com' }, branch: { name: 'Metro' }, issueType: 'LOGIN', summary: 'Cannot login', status: 'OPEN', priority: 'HIGH', createdAt: '2026-05-21T00:00:00Z' }], loading: false, error: null, refetch: vi.fn() }),
+  useTicketStats: () => ({ stats: { open: 1, urgent: 1, inProgress: 0, total: 1 }, loading: false, statsError: null, refetch: vi.fn() }),
 }));
 
 vi.mock('../../hooks/use-analytics', () => ({
-  useAnalytics: () => ({ isLoading: false }),
+  useAnalytics: () => ({
+    hr: { headcount: 1, pendingLeave: 0, expiredLicenses: 0, staffingGap: 0 },
+    it: { activeSessions: 4, healthyIntegrations: 3, backupFailures: 0, systemLatencyMs: 45 },
+    marketplace: { gmv: 100000, totalOrders: 12, approvedListings: 8, revenue: 5000 },
+    compliance: { totalAuditEvents: 120, securityAlerts: 1, complianceScore: 95 },
+    isLoading: false,
+    isFetching: false,
+    demoByScope: { hr: false, it: false, marketplace: false, compliance: false },
+    refetchAll: vi.fn(),
+  }),
+}));
+
+vi.mock('../../hooks/use-user', () => ({
+  usePermissions: () => ({ hasPermission: () => true }),
 }));
 
 vi.mock('../../services/dashboard.service', () => ({
@@ -57,6 +80,24 @@ vi.mock('../../services/dashboard.service', () => ({
     getAdminAlerts: () => Promise.resolve({ lowStock: [], criticalLabs: [] }),
     getAdminTopLists: () => Promise.resolve({ busiestDepts: [], unpaidBills: [] }),
     buildQueryParams: () => ({}),
+  },
+}));
+
+vi.mock('../../services/procurement.service', () => ({
+  procurementService: {
+    listSuppliers: () => Promise.resolve([
+      { id: 'supplier-1', name: 'Medical Supply Co.', status: 'ACTIVE' },
+      { id: 'supplier-2', name: 'Inactive Supplier', status: 'INACTIVE' },
+    ]),
+    listPurchaseRequests: () => Promise.resolve([
+      { id: 'pr-1', branchId: 'branch-1', requestedById: 'user-1', items: [], status: 'SUBMITTED', createdAt: '2026-07-01T00:00:00Z' },
+      { id: 'pr-2', branchId: 'branch-1', requestedById: 'user-1', items: [], status: 'APPROVED', createdAt: '2026-07-02T00:00:00Z' },
+      { id: 'pr-3', branchId: 'branch-1', requestedById: 'user-1', items: [], status: 'ORDERED', createdAt: '2026-07-03T00:00:00Z' },
+    ]),
+    listPurchaseOrders: () => Promise.resolve([
+      { id: 'po-1', branchId: 'branch-1', supplierId: 'supplier-1', purchaseRequestId: 'pr-2', orderNumber: 'PO-000001', status: 'SENT', supplier: { id: 'supplier-1', name: 'Medical Supply Co.', status: 'ACTIVE' } },
+      { id: 'po-2', branchId: 'branch-1', supplierId: 'supplier-1', purchaseRequestId: 'pr-3', orderNumber: 'PO-000002', status: 'RECEIVED', supplier: { id: 'supplier-1', name: 'Medical Supply Co.', status: 'ACTIVE' } },
+    ]),
   },
 }));
 
@@ -85,6 +126,7 @@ vi.mock('../../hooks/use-hr', () => ({
     leaveRequests: [],
     licenses: [],
     isLoading: false,
+    refetchAll: vi.fn(),
   }),
 }));
 
@@ -127,54 +169,58 @@ describe('dashboard intelligence pages', () => {
 
   it('HRDashboard renders workforce analytics components', () => {
     renderPage(<HRDashboard />);
-    expect(screen.getByText('HR Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Total Headcount')).toBeInTheDocument();
-    expect(screen.getByText('Workforce insights')).toBeInTheDocument();
+    expect(screen.getByText('Workforce Command Center')).toBeInTheDocument();
+    expect(screen.getByText('Total headcount')).toBeInTheDocument();
+    expect(screen.getByText('Workforce decisions')).toBeInTheDocument();
   });
 
-  it('ProcurementDashboard renders funnel and metrics', () => {
+  it('ProcurementDashboard renders live API totals without simulated alerts or dead actions', async () => {
+    vi.useRealTimers();
     renderPage(<ProcurementDashboard />);
     expect(screen.getByText('Procurement Officer')).toBeInTheDocument();
-    expect(screen.getByText('Open PRs')).toBeInTheDocument();
-    expect(screen.getByText(/PR → RFQ → PO → Receiving funnel/i)).toBeInTheDocument();
+    expect(screen.getByText('Open purchase requests')).toBeInTheDocument();
+    expect(await screen.findByText('PO-000001')).toBeInTheDocument();
+    expect(screen.getByText(/Source: Live Procurement API/i)).toBeInTheDocument();
+    expect(screen.queryByText(/CRITICAL STOCKOUTS DETECTED/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Auto-Generate RFQs/i })).not.toBeInTheDocument();
   });
 
   it('MarketplaceAdminDashboard renders governance metrics with honest prototype disclosure', () => {
     renderPage(<MarketplaceAdminDashboard />);
-    expect(screen.getByText('Marketplace Governance Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Approved Listings')).toBeInTheDocument();
-    expect(screen.getByText('Marketplace fraud/SLA insights')).toBeInTheDocument();
+    expect(screen.getByText('Marketplace Command Center')).toBeInTheDocument();
+    expect(screen.getByText('Approved listings')).toBeInTheDocument();
+    expect(screen.getByText('Governance decisions')).toBeInTheDocument();
     expect(screen.queryByTestId('marketplace-admin-sandbox-notice')).not.toBeInTheDocument();
     // Chart titles no longer carry misleading (mock) or sandbox language
     // Honest audit footer indicates live data source
-    expect(screen.getByText(/Source: Marketplace Analytics Database/i)).toBeInTheDocument();
+    expect(screen.getByText(/Live marketplace metrics with synthetic trend context/i)).toBeInTheDocument();
   });
 
   it('ComplianceDashboard renders governance analytics and drilldown table', () => {
     renderPage(<ComplianceDashboard />);
-    expect(screen.getByText('Compliance & Governance Workspace')).toBeInTheDocument();
-    expect(screen.getByText('Compliance alerts')).toBeInTheDocument();
-    expect(screen.getByText('Compliance report data is being aggregated from live logs.')).toBeInTheDocument();
+    expect(screen.getByText('Compliance Operations Center')).toBeInTheDocument();
+    expect(screen.getByText('Governance decisions')).toBeInTheDocument();
+    expect(screen.getByText('Recent PHI access')).toBeInTheDocument();
   });
 
   it('ITSupportDashboard renders operations analytics and insights', () => {
     renderPage(<ITSupportDashboard />);
-    expect(screen.getByText('IT & Infrastructure Support Workspace')).toBeInTheDocument();
-    expect(screen.getByText('IT operations insights')).toBeInTheDocument();
-    expect(screen.getAllByText('Open Tickets')[0]).toBeInTheDocument();
+    expect(screen.getByText('IT Reliability Workspace')).toBeInTheDocument();
+    expect(screen.getByText('Reliability decisions')).toBeInTheDocument();
+    expect(screen.getByText('Open support tickets')).toBeInTheDocument();
   });
 
   it('SupplierDashboard renders supplier intelligence charts and insights', () => {
     renderPage(<SupplierDashboard />);
     expect(screen.getByText('Supplier Command Center')).toBeInTheDocument();
-    expect(screen.getByText('Supplier action insights')).toBeInTheDocument();
-    expect(screen.getByText('Supplier revenue trend')).toBeInTheDocument();
+    expect(screen.getByText('Supplier decisions')).toBeInTheDocument();
+    expect(screen.getByText('Revenue trajectory')).toBeInTheDocument();
   });
 
   it('PatientDashboard remains action-focused instead of executive chart-heavy', () => {
     renderPage(<PatientDashboard />);
     expect(screen.getByText('Hello, Ava')).toBeInTheDocument();
-    expect(screen.getByText('Upcoming Appointment')).toBeInTheDocument();
+    expect(screen.getByText(/Upcoming appointments — data not available yet/i)).toBeInTheDocument();
     expect(screen.queryByText(/GMV trend/i)).not.toBeInTheDocument();
   });
 });

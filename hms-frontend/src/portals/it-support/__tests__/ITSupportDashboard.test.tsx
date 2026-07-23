@@ -1,28 +1,19 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ITSupportDashboard } from '../ITSupportDashboard';
-import { useSupportTickets, useTicketStats } from '../../../hooks/use-it-support';
-import { SupportTicketDto } from '../../../services/it-support.service';
+import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { ITSupportDashboard } from '../ITSupportDashboard';
+import { useAnalytics } from '../../../hooks/use-analytics';
+import { useSupportTickets, useTicketStats } from '../../../hooks/use-it-support';
 
-const mockNavigate = vi.fn();
 const mockHasPermission = vi.fn<(permission: string) => boolean>(() => true);
 
 vi.mock('../../../hooks/use-user', () => ({
   usePermissions: () => ({ hasPermission: mockHasPermission }),
 }));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual as Record<string, unknown>,
-    useNavigate: () => mockNavigate,
-  };
-});
-
 vi.mock('../../../hooks/use-analytics', () => ({
-  useAnalytics: () => ({ isLoading: false }),
+  useAnalytics: vi.fn(),
 }));
 
 vi.mock('../../../hooks/use-it-support', () => ({
@@ -30,102 +21,142 @@ vi.mock('../../../hooks/use-it-support', () => ({
   useTicketStats: vi.fn(),
 }));
 
-// Mock ResizeObserver for Recharts
-class MockResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-if (typeof window !== 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).ResizeObserver = MockResizeObserver;
-}
+vi.mock('recharts', () => ({
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  LineChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Line: () => <div />,
+  PieChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Pie: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Cell: () => <div />,
+  CartesianGrid: () => <div />,
+  Tooltip: () => <div />,
+  XAxis: () => <div />,
+  YAxis: () => <div />,
+  Legend: () => <div />,
+}));
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
+const analyticsResult = (overrides: Record<string, unknown> = {}) => ({
+  it: {
+    activeSessions: 42,
+    healthyIntegrations: 9,
+    backupFailures: 0,
+    systemLatencyMs: 48,
+  },
+  isLoading: false,
+  isFetching: false,
+  demoByScope: { it: false },
+  refetchAll: vi.fn().mockResolvedValue(undefined),
+  ...overrides,
 });
 
-const renderWithRouter = (ui: React.ReactElement) => render(ui, {
-  wrapper: ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter>{children}</MemoryRouter>
-    </QueryClientProvider>
-  ),
+const ticketsResult = (overrides: Record<string, unknown> = {}) => ({
+  tickets: [],
+  loading: false,
+  error: null,
+  refetch: vi.fn().mockResolvedValue(undefined),
+  ...overrides,
 });
 
-describe('ITSupportDashboard Redesign', () => {
+const statsResult = (overrides: Record<string, unknown> = {}) => ({
+  stats: { open: 0, inProgress: 0, urgent: 0, total: 0 },
+  loading: false,
+  statsError: null,
+  refetch: vi.fn().mockResolvedValue(undefined),
+  ...overrides,
+});
+
+const renderDashboard = () =>
+  render(
+    <MemoryRouter>
+      <ITSupportDashboard />
+    </MemoryRouter>,
+  );
+
+describe('ITSupportDashboard', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockHasPermission.mockReturnValue(true);
+    vi.mocked(useAnalytics).mockReturnValue(
+      analyticsResult() as unknown as ReturnType<typeof useAnalytics>,
+    );
+    vi.mocked(useSupportTickets).mockReturnValue(
+      ticketsResult() as unknown as ReturnType<typeof useSupportTickets>,
+    );
+    vi.mocked(useTicketStats).mockReturnValue(
+      statsResult() as unknown as ReturnType<typeof useTicketStats>,
+    );
   });
 
-  it('renders loading skeleton when fetching tickets', () => {
-    vi.mocked(useSupportTickets).mockReturnValue({ tickets: [], total: 0, loading: true, error: null, refetch: vi.fn() });
-    vi.mocked(useTicketStats).mockReturnValue({ stats: { open: 0, inProgress: 0, urgent: 0, total: 0 }, loading: false, statsError: null, refetch: vi.fn() });
-    
-    const { container } = renderWithRouter(<ITSupportDashboard />);
-    expect(container.querySelector('.animate-pulse')).toBeInTheDocument(); // Inside HmsLoadingSkeleton
-    expect(screen.getByText('IT & Infrastructure Support Workspace')).toBeInTheDocument(); // Header
+  it('renders the reliability workspace with live support data', () => {
+    vi.mocked(useSupportTickets).mockReturnValue(
+      ticketsResult({
+        tickets: [
+          {
+            id: 'ticket-1',
+            summary: 'Cannot sign in to the portal',
+            status: 'OPEN',
+            priority: 'HIGH',
+            issueType: 'AUTH',
+            createdAt: '2026-07-10T10:00:00Z',
+            branch: { name: 'Main Branch' },
+            reportedBy: { email: 'user@example.invalid' },
+          },
+        ],
+      }) as unknown as ReturnType<typeof useSupportTickets>,
+    );
+    vi.mocked(useTicketStats).mockReturnValue(
+      statsResult({ stats: { open: 1, inProgress: 0, urgent: 1, total: 1 } }) as unknown as ReturnType<typeof useTicketStats>,
+    );
+
+    renderDashboard();
+
+    expect(screen.getByText('IT Reliability Workspace')).toBeInTheDocument();
+    expect(screen.getByText('Cannot sign in to the portal')).toBeInTheDocument();
+    expect(screen.getByText('Open support tickets')).toBeInTheDocument();
+    expect(screen.getByText('Reliability decisions')).toBeInTheDocument();
   });
 
-  it('renders dashboard with real ticket data and HMS shell', () => {
-    vi.mocked(useSupportTickets).mockReturnValue({
-      tickets: [
-        {
-          id: 'TKT-123',
-          summary: 'Cannot login to Patient Portal',
-          status: 'OPEN',
-          priority: 'HIGH',
-          issueType: 'AUTH',
-          createdAt: '2026-05-21T10:00:00Z',
-          description: '',
-          branch: { id: 'b1', name: 'Main Branch' },
-          tenant: { id: 't1', name: 'System' },
-          reportedBy: { id: 'u1', email: 'john@example.com' },
-          logs: []
-        } as unknown as SupportTicketDto
-      ],
-      total: 1,
-      loading: false,
-      error: null,
-      refetch: vi.fn()
+  it('shows loading values without hiding the dashboard structure', () => {
+    vi.mocked(useAnalytics).mockReturnValue(
+      analyticsResult({ isLoading: true, isFetching: true }) as unknown as ReturnType<typeof useAnalytics>,
+    );
+    vi.mocked(useSupportTickets).mockReturnValue(
+      ticketsResult({ loading: true }) as unknown as ReturnType<typeof useSupportTickets>,
+    );
+
+    renderDashboard();
+
+    expect(screen.getByText('IT Reliability Workspace')).toBeInTheDocument();
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+  });
+
+  it('does not query or expose the user-support queue without support permission', () => {
+    mockHasPermission.mockImplementation(
+      (permission) => permission !== 'it.support.manage',
+    );
+
+    renderDashboard();
+
+    expect(useSupportTickets).toHaveBeenCalledWith(false);
+    expect(useTicketStats).toHaveBeenCalledWith(false);
+    expect(screen.getByText('Support queue restricted')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /Open support tickets/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('links authorized support users to the live ticket queue', () => {
+    renderDashboard();
+
+    const supportLink = screen.getByRole('link', {
+      name: /Open support tickets/i,
     });
-    vi.mocked(useTicketStats).mockReturnValue({ stats: { open: 1, inProgress: 0, urgent: 0, total: 1 }, loading: false, statsError: null, refetch: vi.fn() });
+    expect(supportLink).toHaveAttribute('href', '/it/user-support');
 
-    renderWithRouter(<ITSupportDashboard />);
-    expect(screen.getByText('IT & Infrastructure Support Workspace')).toBeInTheDocument();
-    expect(screen.getAllByText('Cannot login to Patient Portal')[0]).toBeInTheDocument();
-    expect(screen.getByText('Open Tickets')).toBeInTheDocument();
-  });
-
-  it('hides ticket queue actions from IT users without support-manage permission', () => {
-    mockHasPermission.mockImplementation((permission: string) => permission !== 'it.support.manage');
-    vi.mocked(useSupportTickets).mockReturnValue({ tickets: [], total: 0, loading: false, error: null, refetch: vi.fn() });
-    vi.mocked(useTicketStats).mockReturnValue({ stats: { open: 2, inProgress: 1, urgent: 0, total: 5 }, loading: false, statsError: null, refetch: vi.fn() });
-
-    renderWithRouter(<ITSupportDashboard />);
-
-    expect(screen.queryByRole('button', { name: /View Tickets/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /View Active/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /View All/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Ticket Queue' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Ticket Queue' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /View Health/i })).toBeInTheDocument();
-    expect(screen.getByText('System Health Monitor')).toBeInTheDocument();
-    expect(mockHasPermission).toHaveBeenCalledWith('it.support.manage');
-  });
-
-  it('allows navigating to user support only when support-manage permission is present', () => {
-    mockHasPermission.mockReturnValue(true);
-    vi.mocked(useSupportTickets).mockReturnValue({ tickets: [], total: 0, loading: false, error: null, refetch: vi.fn() });
-    vi.mocked(useTicketStats).mockReturnValue({ stats: { open: 2, inProgress: 1, urgent: 0, total: 5 }, loading: false, statsError: null, refetch: vi.fn() });
-
-    renderWithRouter(<ITSupportDashboard />);
-
-    fireEvent.click(screen.getByRole('button', { name: /View Tickets/i }));
-    expect(mockNavigate).toHaveBeenCalledWith('/it/user-support');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Ticket Queue' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/it/user-support');
+    const refresh = screen.getByRole('button', {
+      name: /Refresh dashboard data/i,
+    });
+    fireEvent.click(refresh);
+    expect(vi.mocked(useSupportTickets).mock.results[0]?.value.refetch).toBeDefined();
   });
 });

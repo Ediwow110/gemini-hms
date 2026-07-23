@@ -1,4 +1,6 @@
 export { HmsDashboardShell } from './HmsDashboardShell';
+export { HmsDataSourceBadge } from './HmsDataSourceBadge';
+export type { HmsDataSourceMode } from './HmsDataSourceBadge';
 export { HmsToolbar } from './HmsToolbar';
 export { HmsAuditFooter } from './HmsAuditFooter';
 export { HmsKpiStrip } from './HmsKpiStrip';

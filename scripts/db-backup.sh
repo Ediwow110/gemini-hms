@@ -42,6 +42,18 @@ docker compose -f "$COMPOSE_FILE" exec -T "$DB_SERVICE" \
   pg_dump -U "$DB_USER" -d "$DB_NAME" --clean --if-exists \
   > "$BACKUP_FILE" 2>/dev/null
 
+# Encrypt backup (requires GPG_KEY_ID environment variable)
+if [ -n "${GPG_KEY_ID:-}" ]; then
+  echo "Encrypting backup with GPG key: $GPG_KEY_ID"
+  gpg --batch --yes --recipient "$GPG_KEY_ID" --output "${BACKUP_FILE}.gpg" --encrypt "$BACKUP_FILE"
+  rm -f "$BACKUP_FILE"
+  BACKUP_FILE="${BACKUP_FILE}.gpg"
+  echo "Encrypted backup: $BACKUP_FILE"
+else
+  echo "WARNING: GPG_KEY_ID not set. Backup is UNENCRYPTED."
+  echo "Set GPG_KEY_ID for production backups containing PHI."
+fi
+
 # 6. Verify backup file
 if [ ! -s "$BACKUP_FILE" ]; then
   rm -f "$BACKUP_FILE"

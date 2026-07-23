@@ -51,30 +51,22 @@ export const usePermissions = () => {
   const isStaff = useCallback(() => !!(user && !user.roles.includes('Patient') && !user.roles.includes('Customer')), [user]);
 
   const canAccess = useCallback((opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
-    if (opts.zone === 'public') {
-      return true;
-    }
+    if (opts.zone === 'public') return true;
+    if (!user) return false;
 
-    // 0. Super Admin global-governance bypass (non-branch-scoped routes only)
-    if (isSuperAdmin && !opts.isBranchScoped) {
-      if (!opts.allowedRoles || opts.allowedRoles.length === 0) {
-        return true;
-      }
-    }
+    // Branch-scoped portals require the branch selected into the authenticated session.
+    // No role, including Super Admin, bypasses this context requirement.
+    if (opts.isBranchScoped && !user.branchId) return false;
 
-    // 1. Role check (ANY)
     if (opts.allowedRoles && opts.allowedRoles.length > 0) {
-      const hasAnyRole = opts.allowedRoles.some(r => hasRole(r));
+      const hasAnyRole = opts.allowedRoles.some((role) => hasRole(role));
       if (!hasAnyRole) return false;
     }
 
-    // 2. Permission check
-    if (opts.permission && !hasPermission(opts.permission)) {
-      return false;
-    }
+    if (opts.permission && !hasPermission(opts.permission)) return false;
 
     return true;
-  }, [isSuperAdmin, hasPermission, hasRole]);
+  }, [user, hasPermission, hasRole]);
 
   return { hasRole, hasPermission, isSuperAdmin, isBranchAdmin, isStaff, canAccess };
 };

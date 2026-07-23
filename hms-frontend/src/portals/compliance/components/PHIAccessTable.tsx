@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, AlertTriangle, FileSearch } from 'lucide-react';
+import { AlertTriangle, Eye, FileSearch } from 'lucide-react';
 import { StatusBadge } from '../../../components/feedback/StatusBadge';
 
 export interface PHIAccessEvent {
@@ -18,96 +18,83 @@ export interface PHIAccessEvent {
 
 interface PHIAccessTableProps {
   events: PHIAccessEvent[];
+  isDemo?: boolean;
 }
 
-export const PHIAccessTable: React.FC<PHIAccessTableProps> = ({ events }) => {
+const maskText = (text: string, type: 'name' | 'id') => {
+  if (type === 'name') {
+    return text
+      .split(' ')
+      .map((part) =>
+        part.length <= 2
+          ? `${part[0] ?? '*'}*`
+          : `${part[0]}${'*'.repeat(part.length - 2)}${part[part.length - 1]}`,
+      )
+      .join(' ');
+  }
+
+  if (text.length <= 4) return '*'.repeat(text.length);
+  return `${text.slice(0, 2)}${'*'.repeat(Math.max(3, text.length - 4))}${text.slice(-2)}`;
+};
+
+const AccessTypeBadge = ({ type }: { type: PHIAccessEvent['accessType'] }) => {
+  if (type === 'UNAUTHORIZED') return <StatusBadge status={type} type="danger" />;
+  if (type === 'EMERGENCY') return <StatusBadge status="EMERGENCY (BREAK-GLASS)" type="warning" />;
+  return <StatusBadge status={type} type="success" />;
+};
+
+export const PHIAccessTable: React.FC<PHIAccessTableProps> = ({
+  events,
+  isDemo = false,
+}) => {
   const [selectedEvent, setSelectedEvent] = useState<PHIAccessEvent | null>(null);
 
-  // Helper to mask patient name/ID for demo compliance
-  const maskText = (text: string, type: 'name' | 'id') => {
-    if (type === 'name') {
-      const parts = text.split(' ');
-      return parts.map(p => {
-        if (p.length <= 2) return p[0] + '*';
-        return p[0] + '*'.repeat(p.length - 2) + p[p.length - 1];
-      }).join(' ');
-    } else {
-      // Mask clinical IDs (e.g., PAT-12345 to P**-1**45)
-      return text.substring(0, 2) + '*'.repeat(3) + '-' + '*'.repeat(3) + text.slice(-2);
-    }
-  };
-
-  const getAccessTypeBadge = (type: string) => {
-    switch (type) {
-      case 'UNAUTHORIZED':
-        return <StatusBadge status={type} type="danger" />;
-      case 'EMERGENCY':
-        return <StatusBadge status="EMERGENCY (BREAK-GLASS)" type="warning" />;
-      default:
-        return <StatusBadge status={type} type="success" />;
-    }
-  };
-
   return (
-    <div className="space-y-4">
-      {/* Table Card */}
-      <div className="card overflow-hidden bg-white border border-slate-200/80 shadow-sm rounded-2xl">
+    <div className="space-y-3">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50/80 border-b border-slate-200">
+          <table className="w-full min-w-[980px] text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50">
               <tr>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Timestamp</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">User / Role</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Patient (Masked)</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Tenant / Branch</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Access Reason</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Risk Score</th>
-                <th className="px-6 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Actions</th>
+                {['Timestamp', 'User / role', 'Patient (masked)', 'Tenant / branch', 'Access reason', 'Risk', ''].map((header) => (
+                  <th key={header} className="px-5 py-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    {header}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {events.map((e) => (
-                <tr key={e.id} className={`hover:bg-indigo-50/10 ${e.riskScore >= 70 ? 'bg-rose-50/20' : ''}`}>
-                  <td className="px-6 py-4 font-mono text-slate-500">{e.timestamp}</td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-bold text-slate-800">{e.actorName}</p>
-                      <p className="text-[10px] text-slate-400 font-semibold">{e.actorRole}</p>
-                    </div>
+              {events.map((event) => (
+                <tr key={event.id} className={event.riskScore >= 70 ? 'bg-rose-50/30 hover:bg-rose-50/60' : 'hover:bg-slate-50'}>
+                  <td className="px-5 py-4 font-mono text-slate-500">{event.timestamp}</td>
+                  <td className="px-5 py-4">
+                    <p className="font-semibold text-slate-900">{event.actorName}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-500">{event.actorRole}</p>
                   </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-bold text-indigo-900">{maskText(e.patientName, 'name')}</p>
-                      <p className="text-[10px] text-slate-400 font-mono">ID: {maskText(e.patientId, 'id')}</p>
-                    </div>
+                  <td className="px-5 py-4">
+                    <p className="font-semibold text-indigo-900">{maskText(event.patientName, 'name')}</p>
+                    <p className="mt-0.5 font-mono text-[10px] text-slate-500">{maskText(event.patientId, 'id')}</p>
                   </td>
-                  <td className="px-6 py-4 text-slate-600 font-medium">
-                    <p>{e.tenantName}</p>
-                    <p className="text-[10px] text-slate-400 font-semibold">{e.branchName}</p>
+                  <td className="px-5 py-4 text-slate-600">
+                    <p className="font-medium">{event.tenantName || 'Current tenant'}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-500">{event.branchName || 'Branch context unavailable'}</p>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      {getAccessTypeBadge(e.accessType)}
-                      <p className="text-slate-500 font-medium">{e.reason}</p>
-                    </div>
+                  <td className="px-5 py-4">
+                    <AccessTypeBadge type={event.accessType} />
+                    <p className="mt-1 text-[10px] text-slate-500">{event.reason}</p>
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-block font-mono font-bold text-xs px-2.5 py-1 rounded-lg ${
-                      e.riskScore >= 75 
-                        ? 'bg-rose-100 text-rose-800 border border-rose-200 animate-pulse' 
-                        : e.riskScore >= 40 
-                        ? 'bg-amber-100 text-amber-800 border border-amber-200' 
-                        : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                    }`}>
-                      {e.riskScore}
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex min-w-10 justify-center rounded-lg border px-2 py-1 font-mono text-xs font-semibold ${event.riskScore >= 75 ? 'border-rose-200 bg-rose-100 text-rose-800' : event.riskScore >= 40 ? 'border-amber-200 bg-amber-100 text-amber-800' : 'border-emerald-200 bg-emerald-100 text-emerald-800'}`}>
+                      {event.riskScore}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-5 py-4 text-right">
                     <button
-                      onClick={() => setSelectedEvent(e)}
-                      className="btn border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                      type="button"
+                      onClick={() => setSelectedEvent(event)}
+                      className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                     >
-                      <Eye className="h-3.5 w-3.5 text-indigo-500" /> Detail
+                      <Eye className="h-3.5 w-3.5" /> Detail
                     </button>
                   </td>
                 </tr>
@@ -115,76 +102,63 @@ export const PHIAccessTable: React.FC<PHIAccessTableProps> = ({ events }) => {
             </tbody>
           </table>
         </div>
+        {isDemo && (
+          <div className="border-t border-sky-100 bg-sky-50 px-5 py-3 text-[10px] font-semibold text-sky-800">
+            Synthetic PHI events contain no real patient or workforce information.
+          </div>
+        )}
       </div>
 
-      {/* Detail Modal */}
       {selectedEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 animate-scale-in relative">
-            <div className="flex gap-3 mb-4">
-              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl h-fit border border-indigo-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-labelledby="phi-event-title" className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex gap-3">
+              <div className="h-fit rounded-2xl border border-indigo-100 bg-indigo-50 p-3 text-indigo-600">
                 <FileSearch className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider select-none">
-                  Access Incident Audit
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Mock Investigation Panel</p>
+                <h3 id="phi-event-title" className="text-sm font-semibold text-slate-900">PHI access event</h3>
+                <p className="mt-0.5 text-xs text-slate-500">Read-only audit context</p>
               </div>
             </div>
 
-            <div className="space-y-3.5 text-xs text-slate-600 leading-relaxed border-t border-b border-slate-100 py-4 my-2">
-              <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border">
-                <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Actor</p>
-                  <p className="font-bold text-slate-700">{selectedEvent.actorName}</p>
-                  <p className="text-[10px] text-slate-500">{selectedEvent.actorRole}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Patient Target</p>
-                  <p className="font-bold text-indigo-900">{maskText(selectedEvent.patientName, 'name')}</p>
-                  <p className="text-[10px] text-slate-500 font-mono">{maskText(selectedEvent.patientId, 'id')}</p>
-                </div>
+            <dl className="mt-5 grid grid-cols-2 gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-xs">
+              <div>
+                <dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Actor</dt>
+                <dd className="mt-1 font-semibold text-slate-800">{selectedEvent.actorName}</dd>
+                <dd className="text-[10px] text-slate-500">{selectedEvent.actorRole}</dd>
               </div>
+              <div>
+                <dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Patient</dt>
+                <dd className="mt-1 font-semibold text-indigo-900">{maskText(selectedEvent.patientName, 'name')}</dd>
+                <dd className="font-mono text-[10px] text-slate-500">{maskText(selectedEvent.patientId, 'id')}</dd>
+              </div>
+            </dl>
 
-              <div className="space-y-1.5">
-                <h5 className="font-bold text-slate-700">Access Rationale & Headers</h5>
-                <p className="bg-slate-50 border p-2.5 rounded-xl text-slate-500 font-medium">
-                  {selectedEvent.reason}
-                </p>
-              </div>
-
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2 text-[11px] text-amber-800">
-                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <p className="font-medium">
-                </p>
-              </div>
+            <div className="mt-4 rounded-2xl border border-slate-200 p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Recorded reason</p>
+              <p className="mt-1 text-xs font-medium text-slate-700">{selectedEvent.reason}</p>
             </div>
 
-            <p className="text-[10px] text-slate-500 font-medium">
-              Audit flagging is not yet wired to the backend; use the compliance audit review workflow for live incidents.
-            </p>
+            {selectedEvent.riskScore >= 40 && (
+              <div className="mt-4 flex gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <p>This event should be reviewed in the dedicated compliance workflow.</p>
+              </div>
+            )}
 
-            <div className="mt-5 flex gap-2">
-              <button
-                type="button"
-                disabled
-                title="Not yet implemented"
-                className="w-full btn bg-indigo-600 text-white font-bold py-2 rounded-xl text-xs cursor-not-allowed opacity-60"
-              >
-                Flag for Verification (not yet implemented)
-              </button>
-              <button 
-                onClick={() => setSelectedEvent(null)}
-                className="w-full btn border border-slate-200 hover:bg-slate-50 font-bold py-2 rounded-xl text-slate-700 transition-colors cursor-pointer"
-              >
-                Dismiss
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedEvent(null)}
+              className="mt-5 w-full min-h-10 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
     </div>
   );
 };
+
 export default PHIAccessTable;

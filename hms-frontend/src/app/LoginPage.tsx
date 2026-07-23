@@ -16,7 +16,11 @@ export const LoginPage = () => {
   }
 
   if (user) {
-    const destination = getSafePortalPath(user.defaultPortalPath, user.roles);
+    const destination = getSafePortalPath(
+      user.defaultPortalPath,
+      user.roles,
+      user.permissions,
+    );
     return <Navigate to={destination === '/' ? '/unauthorized' : destination} replace />;
   }
 
@@ -39,7 +43,7 @@ export const LoginPage = () => {
         <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/20 w-fit mb-8 animate-fade-in shadow-xl">
           <Hospital className="h-12 w-12 text-white" />
         </div>
-        <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 animate-slide-up leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 animate-slide-up leading-tight" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
           Next-Generation <br />
           <span className="text-blue-400 bg-clip-text">Healthcare Operations.</span>
         </h1>
@@ -72,11 +76,11 @@ export const LoginPage = () => {
             <div className="bg-indigo-600 p-3.5 rounded-2xl mb-4 shadow-lg shadow-indigo-600/30">
               <Hospital className="h-8 w-8 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>HMS Core</h2>
+            <h2 className="text-2xl font-bold text-slate-900" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>HMS Core</h2>
           </div>
 
           <div className="hidden lg:block mb-10 text-center">
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
               Secure Portal
             </h2>
             <p className="text-slate-500 font-medium mt-2">Please enter your credentials to access the system.</p>

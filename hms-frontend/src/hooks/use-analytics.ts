@@ -1,5 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/api';
+import {
+  dashboardDemoConfig,
+  demoComplianceDashboard,
+  demoHrDashboard,
+  demoItDashboard,
+  demoMarketplaceDashboard,
+  shouldUseDashboardDemo,
+} from '../data/dashboard-demo';
 
 export interface HrMetrics {
   headcount: number;
@@ -28,59 +36,171 @@ export interface ComplianceMetrics {
   complianceScore: number;
 }
 
-export const useAnalytics = () => {
-  const { data: revenue, isLoading: revLoading, error: revError } = useQuery({
-    queryKey: ['analytics-revenue'],
+export type AnalyticsScope =
+  | 'revenue'
+  | 'hr'
+  | 'it'
+  | 'marketplace'
+  | 'compliance';
+
+const EMPTY_HR: HrMetrics = {
+  headcount: 0,
+  pendingLeave: 0,
+  expiredLicenses: 0,
+  staffingGap: 0,
+};
+
+const EMPTY_IT: ItMetrics = {
+  activeSessions: 0,
+  healthyIntegrations: 0,
+  backupFailures: 0,
+  systemLatencyMs: 0,
+};
+
+const EMPTY_MARKETPLACE: MarketplaceMetrics = {
+  gmv: 0,
+  totalOrders: 0,
+  approvedListings: 0,
+  revenue: 0,
+};
+
+const EMPTY_COMPLIANCE: ComplianceMetrics = {
+  totalAuditEvents: 0,
+  securityAlerts: 0,
+  complianceScore: 0,
+};
+
+export const useAnalytics = (
+  requestedScopes: AnalyticsScope | AnalyticsScope[] = 'revenue',
+) => {
+  const scopes = Array.isArray(requestedScopes)
+    ? requestedScopes
+    : [requestedScopes];
+  const includes = (scope: AnalyticsScope) => scopes.includes(scope);
+  const canFetchLive = dashboardDemoConfig.mode !== 'force';
+
+  const revenueQuery = useQuery({
+    queryKey: ['analytics', 'revenue'],
     queryFn: async () => {
-      const res = await apiClient.get('/analytics/revenue');
-      return res.data;
+      const response = await apiClient.get('/v1/analytics/revenue');
+      return response.data as Array<{ date: string; total: number }>;
     },
+    enabled: includes('revenue') && canFetchLive,
     retry: false,
   });
 
-  const { data: hr, isLoading: hrLoading, error: hrError } = useQuery({
-    queryKey: ['analytics-hr'],
+  const hrQuery = useQuery({
+    queryKey: ['analytics', 'hr'],
     queryFn: async () => {
-      const res = await apiClient.get('/analytics/hr-metrics');
-      return res.data as HrMetrics;
+      const response = await apiClient.get('/v1/analytics/hr-metrics');
+      return response.data as HrMetrics;
     },
+    enabled: includes('hr') && canFetchLive,
     retry: false,
   });
 
-  const { data: it, isLoading: itLoading, error: itError } = useQuery({
-    queryKey: ['analytics-it'],
+  const itQuery = useQuery({
+    queryKey: ['analytics', 'it'],
     queryFn: async () => {
-      const res = await apiClient.get('/analytics/it-metrics');
-      return res.data as ItMetrics;
+      const response = await apiClient.get('/v1/analytics/it-metrics');
+      return response.data as ItMetrics;
     },
+    enabled: includes('it') && canFetchLive,
     retry: false,
   });
 
-  const { data: marketplace, isLoading: mpLoading, error: mpError } = useQuery({
-    queryKey: ['analytics-marketplace'],
+  const marketplaceQuery = useQuery({
+    queryKey: ['analytics', 'marketplace'],
     queryFn: async () => {
-      const res = await apiClient.get('/analytics/marketplace-metrics');
-      return res.data as MarketplaceMetrics;
+      const response = await apiClient.get('/v1/analytics/marketplace-metrics');
+      return response.data as MarketplaceMetrics;
     },
+    enabled: includes('marketplace') && canFetchLive,
     retry: false,
   });
 
-  const { data: compliance, isLoading: compLoading, error: compError } = useQuery({
-    queryKey: ['analytics-compliance'],
+  const complianceQuery = useQuery({
+    queryKey: ['analytics', 'compliance'],
     queryFn: async () => {
-      const res = await apiClient.get('/analytics/compliance-metrics');
-      return res.data as ComplianceMetrics;
+      const response = await apiClient.get('/v1/analytics/compliance-metrics');
+      return response.data as ComplianceMetrics;
     },
+    enabled: includes('compliance') && canFetchLive,
     retry: false,
   });
+
+  const hrHasLiveData = Boolean(
+    hrQuery.data && Object.values(hrQuery.data).some((value) => value > 0),
+  );
+  const itHasLiveData = Boolean(
+    itQuery.data && Object.values(itQuery.data).some((value) => value > 0),
+  );
+  const marketplaceHasLiveData = Boolean(
+    marketplaceQuery.data &&
+      Object.values(marketplaceQuery.data).some((value) => value > 0),
+  );
+  const complianceHasLiveData = Boolean(
+    complianceQuery.data &&
+      Object.values(complianceQuery.data).some((value) => value > 0),
+  );
+
+  const hrIsDemo =
+    includes('hr') &&
+    shouldUseDashboardDemo(hrHasLiveData, Boolean(hrQuery.error));
+  const itIsDemo =
+    includes('it') &&
+    shouldUseDashboardDemo(itHasLiveData, Boolean(itQuery.error));
+  const marketplaceIsDemo =
+    includes('marketplace') &&
+    shouldUseDashboardDemo(
+      marketplaceHasLiveData,
+      Boolean(marketplaceQuery.error),
+    );
+  const complianceIsDemo =
+    includes('compliance') &&
+    shouldUseDashboardDemo(
+      complianceHasLiveData,
+      Boolean(complianceQuery.error),
+    );
+
+  const selectedQueries = [
+    includes('revenue') ? revenueQuery : null,
+    includes('hr') ? hrQuery : null,
+    includes('it') ? itQuery : null,
+    includes('marketplace') ? marketplaceQuery : null,
+    includes('compliance') ? complianceQuery : null,
+  ].filter(Boolean);
 
   return {
-    revenue: revenue || [],
-    hr: hr || { headcount: 0, pendingLeave: 0, expiredLicenses: 0, staffingGap: 0 },
-    it: it || { activeSessions: 0, healthyIntegrations: 0, backupFailures: 0, systemLatencyMs: 0 },
-    marketplace: marketplace || { gmv: 0, totalOrders: 0, approvedListings: 0, revenue: 0 },
-    compliance: compliance || { totalAuditEvents: 0, securityAlerts: 0, complianceScore: 0 },
-    isLoading: revLoading || hrLoading || itLoading || mpLoading || compLoading,
-    errors: { revError, hrError, itError, mpError, compError },
+    revenue: revenueQuery.data ?? [],
+    hr: hrIsDemo ? demoHrDashboard.metrics : (hrQuery.data ?? EMPTY_HR),
+    it: itIsDemo ? demoItDashboard.metrics : (itQuery.data ?? EMPTY_IT),
+    marketplace: marketplaceIsDemo
+      ? demoMarketplaceDashboard.metrics
+      : (marketplaceQuery.data ?? EMPTY_MARKETPLACE),
+    compliance: complianceIsDemo
+      ? demoComplianceDashboard.metrics
+      : (complianceQuery.data ?? EMPTY_COMPLIANCE),
+    isLoading: selectedQueries.some((query) => query?.isLoading),
+    isFetching: selectedQueries.some((query) => query?.isFetching),
+    isDemo: hrIsDemo || itIsDemo || marketplaceIsDemo || complianceIsDemo,
+    demoByScope: {
+      hr: hrIsDemo,
+      it: itIsDemo,
+      marketplace: marketplaceIsDemo,
+      compliance: complianceIsDemo,
+    },
+    errors: {
+      revenue: revenueQuery.error,
+      hr: hrQuery.error,
+      it: itQuery.error,
+      marketplace: marketplaceQuery.error,
+      compliance: complianceQuery.error,
+    },
+    refetchAll: async () => {
+      await Promise.all(
+        selectedQueries.map((query) => query?.refetch()),
+      );
+    },
   };
 };

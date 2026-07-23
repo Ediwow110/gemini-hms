@@ -5,9 +5,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MobileHandoverChecklistPage } from '../MobileHandoverChecklistPage';
 import { useFieldServiceHandoverChecklist } from '../../../hooks/use-field-service';
+import { useFieldServiceHandoverLogs } from '../../../hooks/use-field-service';
 
 vi.mock('../../../hooks/use-field-service', () => ({
   useFieldServiceHandoverChecklist: vi.fn(),
+  useFieldServiceHandoverLogs: vi.fn(),
 }));
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -26,6 +28,7 @@ describe('MobileHandoverChecklistPage Phase 14-C', () => {
 
   it('renders loading skeleton while fetching', () => {
     vi.mocked(useFieldServiceHandoverChecklist).mockReturnValue({ data: undefined, isLoading: true, error: null } as unknown as ReturnType<typeof useFieldServiceHandoverChecklist>);
+    vi.mocked(useFieldServiceHandoverLogs).mockReturnValue({ data: undefined, isLoading: true, error: null } as unknown as ReturnType<typeof useFieldServiceHandoverLogs>);
 
     render(<MobileHandoverChecklistPage />, { wrapper });
     expect(screen.getByText('Handover Checklist')).toBeInTheDocument();
@@ -37,6 +40,7 @@ describe('MobileHandoverChecklistPage Phase 14-C', () => {
       isLoading: false,
       error: null,
     } as unknown as ReturnType<typeof useFieldServiceHandoverChecklist>);
+    vi.mocked(useFieldServiceHandoverLogs).mockReturnValue({ data: [], isLoading: false, error: null } as unknown as ReturnType<typeof useFieldServiceHandoverLogs>);
 
     render(<MobileHandoverChecklistPage />, { wrapper });
     await waitFor(() => {
@@ -47,6 +51,7 @@ describe('MobileHandoverChecklistPage Phase 14-C', () => {
 
   it('shows sandbox badge', () => {
     vi.mocked(useFieldServiceHandoverChecklist).mockReturnValue({ data: undefined, isLoading: false, error: null } as unknown as ReturnType<typeof useFieldServiceHandoverChecklist>);
+    vi.mocked(useFieldServiceHandoverLogs).mockReturnValue({ data: [], isLoading: false, error: null } as unknown as ReturnType<typeof useFieldServiceHandoverLogs>);
 
     render(<MobileHandoverChecklistPage />, { wrapper });
     expect(screen.getByText('Sandbox')).toBeInTheDocument();

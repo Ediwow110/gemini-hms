@@ -22,10 +22,11 @@ export class InsuranceClaimController {
   async createClaim(
     @GetUser('tenantId') tenantId: string,
     @GetUser('branchId') branchId: string,
+    @GetUser('userId') userId: string,
     @Body()
     dto: { invoiceId: string; providerCode: string; claimedAmount: number },
   ) {
-    return this.claimService.createClaim(tenantId, branchId, dto);
+    return this.claimService.createClaim(tenantId, branchId, userId, dto);
   }
 
   @Get(':id')
@@ -39,14 +40,16 @@ export class InsuranceClaimController {
   @Post(':id/submit')
   async submitClaim(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
     @Param('id') id: string,
   ) {
-    return this.claimService.submitClaim(tenantId, id);
+    return this.claimService.submitClaim(tenantId, userId, id);
   }
 
   @Patch(':id/status')
   async updateStatus(
     @GetUser('tenantId') tenantId: string,
+    @GetUser('userId') userId: string,
     @Param('id') id: string,
     @Body()
     dto: {
@@ -55,6 +58,6 @@ export class InsuranceClaimController {
       rejectionReason?: string;
     },
   ) {
-    return this.claimService.updateClaimStatus(tenantId, id, dto);
+    return this.claimService.updateClaimStatus(tenantId, userId, id, dto);
   }
 }

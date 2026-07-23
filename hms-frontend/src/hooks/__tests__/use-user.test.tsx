@@ -147,8 +147,14 @@ describe('canAccess authorization parity', () => {
     expect(res).toBe(false);
   });
 
-  it('allows Super Admin global route bypass', async () => {
+  it('does not give Super Admin an implicit permission bypass', async () => {
     const user = { roles: ['Super Admin'], permissions: [] };
+    const res = await testAccess(user, { permission: 'patient.view' });
+    expect(res).toBe(false);
+  });
+
+  it('allows Super Admin when the permission is explicitly granted', async () => {
+    const user = { roles: ['Super Admin'], permissions: ['patient.view'] };
     const res = await testAccess(user, { permission: 'patient.view' });
     expect(res).toBe(true);
   });

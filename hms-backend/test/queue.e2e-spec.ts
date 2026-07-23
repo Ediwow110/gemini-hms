@@ -107,7 +107,7 @@ describe('Queue Branch Scoping (e2e)', () => {
         .expect(403);
     });
 
-    it('should reject with 400 when patientId belongs to a different tenant', async () => {
+    it('should return 404 without disclosing a cross-tenant patient', async () => {
       // Create a patient in a DIFFERENT tenant
       const otherPatient = await prisma.patient.create({
         data: {
@@ -126,7 +126,7 @@ describe('Queue Branch Scoping (e2e)', () => {
           branchId,
           patientId: otherPatient.id,
         })
-        .expect(400);
+        .expect(404);
     });
 
     it('should accept and write audit log when patientId belongs to same tenant', async () => {

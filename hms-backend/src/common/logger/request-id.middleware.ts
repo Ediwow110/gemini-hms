@@ -16,7 +16,8 @@ export class RequestIdMiddleware implements NestMiddleware {
       {
         requestId,
         method: req.method,
-        path: req.originalUrl || req.url,
+        // Keep query strings out of request-context logs; they may contain PHI.
+        path: req.path || '/',
         ip: req.ip || req.socket?.remoteAddress || 'unknown',
       },
       () => {

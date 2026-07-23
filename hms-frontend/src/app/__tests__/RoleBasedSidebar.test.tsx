@@ -1,21 +1,18 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { RoleBasedSidebar } from '../RoleBasedSidebar';
 
-const mockUseAuth = vi.fn();
 const mockUsePermissions = vi.fn();
 const mockUseUser = vi.fn();
 
 vi.mock('../../hooks/use-user', () => ({
-  useAuth: () => mockUseAuth(),
   usePermissions: () => mockUsePermissions(),
   useUser: () => mockUseUser(),
 }));
 
 describe('RoleBasedSidebar — Navigation Active States', () => {
   beforeEach(() => {
-    mockUseAuth.mockReturnValue({ isLoading: false, logout: vi.fn() });
     mockUsePermissions.mockReturnValue({
       isSuperAdmin: false,
       canAccess: () => true, // Allow all items for testing
@@ -246,8 +243,7 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       isSuperAdmin: false,
       canAccess: (opts: { permission?: string; allowedRoles?: string[]; isBranchScoped?: boolean; zone?: string }) => {
         if (opts.permission === 'inventory.item.view') return false;
-        if (opts.allowedRoles?.includes('Doctor')) return true;
-        return false;
+        return ['patient.view', 'queue.view', 'encounter.view', 'lab.result.view', 'doctor.prescription.view', 'order.view'].includes(opts.permission || '');
       },
     });
 
@@ -257,8 +253,8 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
       </MemoryRouter>
     );
 
-    // Doctor should see "Patient Queue" (has allowedRoles ['Doctor']) but NOT "Catalog" (no inventory.item.view)
-    expect(screen.getByText('Patient Queue')).toBeInTheDocument();
+    // Doctor should see the permission-backed queue but NOT inventory catalog access.
+    expect(screen.getAllByText('Patient Queue').length).toBeGreaterThan(0);
     expect(screen.queryByText('Catalog')).not.toBeInTheDocument();
   });
 
@@ -316,33 +312,39 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     expect(orgBtns2[0]).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('clicking an auto-expanded parent does not corrupt manuallyExpanded', () => {
+  it('clicking an active auto-expanded parent toggles it closed and open', async () => {
     mockUseUser.mockReturnValue({
       id: 'sa-1',
       email: 'admin@hospital.com',
       roles: ['Super Admin'],
     });
 
-    const { rerender } = render(
+    render(
       <MemoryRouter initialEntries={['/settings/security']}>
         <RoleBasedSidebar pathname="/settings/security" />
       </MemoryRouter>
     );
 
-    // Click auto-expanded parent — should be a no-op
+    // On child route — Organization Settings parent button is initially expanded
     const orgBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
-    orgBtns[0].click();
+    expect(orgBtns[0]).toHaveAttribute('aria-expanded', 'true');
 
-    // Navigate to unrelated route
-    rerender(
-      <MemoryRouter initialEntries={['/settings/security']}>
-        <RoleBasedSidebar pathname="/admin" />
-      </MemoryRouter>
-    );
+    // Click active parent button — should collapse it!
+    fireEvent.click(orgBtns[0]);
 
-    // Parent should have collapsed (manuallyExpanded was NOT corrupted)
-    const orgBtns2 = screen.getAllByRole('button', { name: /Organization Settings/ });
-    expect(orgBtns2[0]).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => {
+      const collapsedBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+      expect(collapsedBtns[0]).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    // Click active parent button again — should expand it back!
+    const collapsedBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+    fireEvent.click(collapsedBtns[0]);
+
+    await waitFor(() => {
+      const reexpandedBtns = screen.getAllByRole('button', { name: /Organization Settings/ });
+      expect(reexpandedBtns[0]).toHaveAttribute('aria-expanded', 'true');
+    });
   });
 
   it('duplicate /settings entries (Organization Settings + Branch Settings) have independent expansion state', async () => {
@@ -437,5 +439,33 @@ describe('RoleBasedSidebar — Navigation Active States', () => {
     // Pharmacist should see "Catalog" (has inventory.item.view) but NOT "Stock Receiving" (no inventory.stock.receive)
     expect(screen.getByText('Catalog')).toBeInTheDocument();
     expect(screen.queryByText('Stock Receiving')).not.toBeInTheDocument();
+  });
+
+  it('sidebar profile card does NOT trigger logout on click (regression)', () => {
+    // Regression guard: the sidebar user-profile card must be display-only.
+    // Sign-out is handled exclusively by the AppShell topbar's explicit
+    // "Sign out" button with a 2-step confirmation bar.
+    mockUseUser.mockReturnValue({
+      id: 'sa-1',
+      email: 'admin@hospital.com',
+      roles: ['Super Admin'],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <RoleBasedSidebar pathname="/admin" />
+      </MemoryRouter>
+    );
+
+    // The profile card exists and is NOT a button or link
+    const profileCard = screen.getByTestId('sidebar-user-card');
+    expect(profileCard).toBeInTheDocument();
+    expect(profileCard.tagName).not.toBe('BUTTON');
+    expect(profileCard.tagName).not.toBe('A');
+
+    // Clicking the card must not navigate or trigger any action
+    fireEvent.click(profileCard);
+    // The card should still be present (no navigation/unmount)
+    expect(screen.getByTestId('sidebar-user-card')).toBeInTheDocument();
   });
 });

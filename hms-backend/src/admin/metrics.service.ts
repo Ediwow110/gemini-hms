@@ -46,7 +46,8 @@ export class MetricsService {
     let dbStatus = 'HEALTHY';
     try {
       await this.prisma.$queryRaw`SELECT 1`;
-    } catch {
+    } catch (err) {
+      console.error('[Metrics] Database health check failed:', err);
       dbStatus = 'UNHEALTHY';
     }
 
@@ -55,8 +56,12 @@ export class MetricsService {
       triggeredSlaAlertsCount = await this.prisma.slaAlert.count({
         where: { status: 'TRIGGERED' },
       });
-    } catch {
+    } catch (err) {
       // Fallback if table not initialized in migrations/unit tests
+      console.warn(
+        '[Metrics] SLA alert count unavailable (table may not exist):',
+        err,
+      );
     }
 
     // Compute percentile durations for each endpoint

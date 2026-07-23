@@ -4,6 +4,11 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { provisionSystemActor } from '../src/tenant/tenant-provisioning';
+import {
+  AUTHORIZATION_PERMISSIONS,
+  SYSTEM_ROLE_NAMES,
+  SYSTEM_ROLE_PERMISSIONS,
+} from '../src/auth/authorization-catalog';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -15,7 +20,7 @@ async function main() {
   const name = getArg('--name');
   const branchName = getArg('--branch');
   const adminEmail = getArg('--adminEmail');
-  const adminPassword = getArg('--adminPassword') || 'ClinicAdmin@123';
+  const adminPassword = getArg('--adminPassword') || (process.env.SEED_PASSWORD ?? 'seed-demo-password-change-me');
 
   if (!name || !branchName || !adminEmail) {
     console.error('Usage: npx tsx scripts/provision-tenant.ts --name "Clinic Name" --branch "Primary Branch" --adminEmail "admin@clinic.com" [--adminPassword "securePass"]');
@@ -59,62 +64,8 @@ async function main() {
       });
       console.log(`[PROVISION] Created primary corporate Branch: ${branch.name} (${branch.id})`);
 
-      // 3. Seed Permissions scoped exclusively to tenantId
-      const permissionsData = [
-        { name: 'patient.view', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'patient.create', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'patient.update', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'patient.merge.request', scope: 'tenant', riskLevel: 'HIGH' },
-        { name: 'patient.merge.approve', scope: 'tenant', riskLevel: 'PRIVILEGED' },
-        { name: 'order.create', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'order.cancel', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'order.view', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'billing.payment.create', scope: 'tenant/branch/cashier session', riskLevel: 'LOW' },
-        { name: 'billing.invoice.view', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'billing.refund.request', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
-        { name: 'billing.refund.approve', scope: 'tenant/branch', riskLevel: 'HIGH' },
-        { name: 'billing.payment.void.request', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
-        { name: 'billing.claim.view', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'billing.claim.create', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'billing.claim.process', scope: 'tenant/branch', riskLevel: 'HIGH' },
-        { name: 'lab.result.encode', scope: 'tenant/branch/department', riskLevel: 'LOW' },
-        { name: 'lab.result.validate', scope: 'tenant/branch/department', riskLevel: 'MEDIUM' },
-        { name: 'lab.result.approve', scope: 'tenant/branch/department', riskLevel: 'HIGH' },
-        { name: 'lab.result.release', scope: 'tenant/branch/department', riskLevel: 'HIGH' },
-        { name: 'lab.result.view', scope: 'tenant/branch/department', riskLevel: 'LOW' },
-        { name: 'lab.result.amend.request', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
-        { name: 'catalog.service.view', scope: 'tenant', riskLevel: 'LOW' },
-        { name: 'catalog.service.create', scope: 'tenant', riskLevel: 'MEDIUM' },
-        { name: 'catalog.service.update', scope: 'tenant', riskLevel: 'MEDIUM' },
-        { name: 'catalog.service.deactivate', scope: 'tenant', riskLevel: 'HIGH' },
-        { name: 'inventory.item.view', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'inventory.item.create', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'inventory.item.update', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'inventory.item.deactivate', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
-        { name: 'inventory.stock.receive', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'inventory.stock.dispense', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'inventory.adjust.request', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
-        { name: 'inventory.adjust.approve', scope: 'tenant/branch', riskLevel: 'HIGH' },
-        { name: 'report.export', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
-        { name: 'audit.view', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
-        { name: 'audit.self', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
-        { name: 'audit.export', scope: 'tenant/branch/role scope', riskLevel: 'HIGH' },
-        { name: 'admin.role.change', scope: 'tenant/system', riskLevel: 'PRIVILEGED' },
-        { name: 'approval.request.create', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
-        { name: 'approval.request.view', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
-        { name: 'approval.request.process', scope: 'tenant/branch', riskLevel: 'HIGH' },
-        { name: 'billing.reversal.apply', scope: 'tenant/branch', riskLevel: 'HIGH' },
-        { name: 'queue.view', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'queue.manage', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'notification.view', scope: 'tenant/user', riskLevel: 'LOW' },
-        { name: 'notification.manage', scope: 'tenant/branch', riskLevel: 'MEDIUM' },
-        { name: 'encounter.create', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'encounter.view', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'encounter.update', scope: 'tenant/branch', riskLevel: 'LOW' },
-        { name: 'admin.health.view', scope: 'tenant', riskLevel: 'HIGH' },
-        { name: 'admin.metrics.view', scope: 'tenant', riskLevel: 'HIGH' },
-      ];
-
+      // 3. Seed the canonical permission catalog for this tenant.
+      const permissionsData = AUTHORIZATION_PERMISSIONS;
       const createdPermissions = [];
       for (const p of permissionsData) {
         const createdPerm = await tx.permission.create({
@@ -130,7 +81,7 @@ async function main() {
       console.log(`[PROVISION] Seeded ${createdPermissions.length} tenant-scoped permissions.`);
 
       // 4. Seed system roles
-      const roleNames = ['Super Admin', 'Branch Admin', 'Doctor', 'Cashier', 'Nurse'];
+      const roleNames = SYSTEM_ROLE_NAMES;
       const seededRoles: Record<string, any> = {};
 
       for (const rName of roleNames) {
@@ -147,30 +98,7 @@ async function main() {
       console.log(`[PROVISION] Seeded ${roleNames.length} system roles.`);
 
       // 5. Map permissions to roles
-      const rolePermissionMap: Record<string, string[]> = {
-        'Super Admin': permissionsData.map(p => p.name),
-        'Branch Admin': [
-          'patient.view', 'patient.create', 'patient.update', 
-          'order.view', 'order.create', 'order.cancel',
-          'billing.invoice.view', 'billing.claim.view', 'billing.claim.create',
-          'inventory.item.view', 'inventory.item.create', 'inventory.stock.receive', 'inventory.stock.dispense',
-          'queue.view', 'queue.manage', 
-          'approval.request.view', 'approval.request.process',
-          'report.export', 'audit.view', 'audit.self',
-          'encounter.create', 'encounter.view', 'encounter.update'
-        ],
-        'Doctor': [
-          'patient.view', 'lab.result.view', 'lab.result.approve', 'lab.result.release',
-          'inventory.item.view', 'encounter.create', 'encounter.view', 'encounter.update'
-        ],
-        'Cashier': [
-          'patient.view', 'order.view', 'billing.invoice.view', 
-          'billing.payment.create', 'billing.refund.request', 'billing.claim.view'
-        ],
-        'Nurse': [
-          'patient.view', 'patient.create', 'patient.update', 'queue.view', 'queue.manage', 'encounter.create', 'encounter.view'
-        ]
-      };
+      const rolePermissionMap = SYSTEM_ROLE_PERMISSIONS;
 
       for (const [rName, perms] of Object.entries(rolePermissionMap)) {
         const role = seededRoles[rName];

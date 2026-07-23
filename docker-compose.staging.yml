@@ -1,8 +1,10 @@
+name: hms-staging
+
 services:
   # NOTE (staging): Backend uses DATABASE_URL. DB_* vars configure only the postgres service.
   # See docs/infrastructure/staging-provisioning-handoff.md and the plan 2026-06-20 for full secrets.
   db:
-    image: postgres:15-alpine
+    image: postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:?DB_USER is required}
@@ -19,16 +21,18 @@ services:
       - hms_staging
 
   backend:
-    build:
-      context: ./hms-backend
-      dockerfile: Dockerfile
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
     restart: unless-stopped
+    init: true
     environment:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       MASTER_MFA_KEY: ${MASTER_MFA_KEY:?MASTER_MFA_KEY is required}
+      AUDIT_CHAIN_SECRET: ${AUDIT_CHAIN_SECRET:?AUDIT_CHAIN_SECRET is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      REDIS_TLS_CA_BASE64: ${REDIS_TLS_CA_BASE64:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
       # Notification providers: mock is rejected at startup when NODE_ENV=production.
       # Operator must set non-mock values (ses/mailrelay + semaphore) before deploy.
@@ -36,11 +40,19 @@ services:
       SMS_PROVIDER: ${SMS_PROVIDER:?SMS_PROVIDER is required (semaphore; mock forbidden in production)}
       AWS_REGION: ${AWS_REGION:-}
       SES_SENDER_EMAIL: ${SES_SENDER_EMAIL:-}
-      MAILRELAY_API_KEY: ${MAILRELAY_API_KEY:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      MAILRELAY_SMTP_HOST: ${MAILRELAY_SMTP_HOST:-}
+      MAILRELAY_SMTP_PORT: ${MAILRELAY_SMTP_PORT:-465}
+      MAILRELAY_SMTP_USER: ${MAILRELAY_SMTP_USER:-}
       MAILRELAY_SMTP_PASS: ${MAILRELAY_SMTP_PASS:-}
       MAILRELAY_SENDER_EMAIL: ${MAILRELAY_SENDER_EMAIL:-}
       MAILRELAY_SENDER_NAME: ${MAILRELAY_SENDER_NAME:-}
       SEMAPHORE_API_KEY: ${SEMAPHORE_API_KEY:-}
+      SEMAPHORE_API_URL: ${SEMAPHORE_API_URL:-}
+      SEMAPHORE_SENDER_NAME: ${SEMAPHORE_SENDER_NAME:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       db:
         condition: service_healthy
@@ -56,17 +68,15 @@ services:
       - hms_staging
 
   frontend:
-    build:
-      context: ./hms-frontend
-      dockerfile: Dockerfile
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      - "${FRONTEND_PORT:-8080}:8080"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       start_period: 10s

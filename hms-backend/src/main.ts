@@ -2,12 +2,15 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { WinstonLoggerService } from './common/logger/winston-logger.service';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 // Sentry error monitoring (backend)
 import * as Sentry from '@sentry/node';
+import { validateRuntimeEnvironment } from './config/validate-runtime-environment';
 
 async function bootstrap() {
+  validateRuntimeEnvironment();
   const logger = new Logger('Bootstrap');
   const isProd = process.env.NODE_ENV === 'production';
 
@@ -56,57 +59,75 @@ async function bootstrap() {
   // --------------------------------------------------------
 
   // ---------- Swagger / OpenAPI ----------
-  const config = new DocumentBuilder()
-    .setTitle('Hospital Management System API')
-    .setDescription(
-      'Enterprise-grade HMS backend — modular, multi-tenant, HIPAA-aware',
-    )
-    .setVersion('1.0.0')
-    .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      'access-token',
-    )
-    .addCookieAuth('access_token', {
-      type: 'apiKey',
-      in: 'cookie',
-      name: 'access_token',
-    })
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: { persistAuthorization: true },
-    customSiteTitle: 'HMS API Docs',
-  });
-  winstonLogger.log('Swagger docs available at /api/docs', 'Bootstrap');
+  // API documentation is intentionally disabled in production. It exposes the
+  // complete route and schema surface and must not be anonymously discoverable.
+  if (!isProd) {
+    const config = new DocumentBuilder()
+      .setTitle('Hospital Management System API')
+      .setDescription(
+        'Enterprise-grade HMS backend — modular, multi-tenant, HIPAA-aware',
+      )
+      .setVersion('1.0.0')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        'access-token',
+      )
+      .addCookieAuth('access_token', {
+        type: 'apiKey',
+        in: 'cookie',
+        name: 'access_token',
+      })
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: { persistAuthorization: true },
+      customSiteTitle: 'HMS API Docs',
+    });
+    winstonLogger.log('Swagger docs available at /api/docs', 'Bootstrap');
+  }
 
   // ---------- Middleware ----------
   app.use((req: any, res: any, next: () => void) => {
-    const { method, url } = req;
+    const { method, path: requestPath } = req;
     const start = Date.now();
     res.on('finish', () => {
       const delay = Date.now() - start;
+      // Never log query strings: healthcare search/filter parameters may contain PHI.
       winstonLogger.log(
-        `${method} ${url} ${res.statusCode} - ${delay}ms`,
+        `${method} ${requestPath || '/'} ${res.statusCode} - ${delay}ms`,
         'HTTP',
       );
     });
     next();
   });
 
-  app.use((req: any, res: any, next: () => void) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader(
-      'Strict-Transport-Security',
-      'max-age=15552000; includeSubDomains',
-    );
-    const isDev = process.env.NODE_ENV !== 'production';
-    const csp = isDev
-      ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173; style-src 'self' 'unsafe-inline' http://localhost:5173; connect-src 'self' http://localhost:5173 ws://localhost:5173; img-src 'self' data: http://localhost:5173; font-src 'self' data: http://localhost:5173;"
-      : "default-src 'self'";
-    res.setHeader('Content-Security-Policy', csp);
-    next();
-  });
+  // Security headers via Helmet — environment-aware CSP replaces the old custom middleware.
+  const devCsp = {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        'http://localhost:5173',
+      ],
+      styleSrc: ["'self'", "'unsafe-inline'", 'http://localhost:5173'],
+      connectSrc: ["'self'", 'http://localhost:5173', 'ws://localhost:5173'],
+      imgSrc: ["'self'", 'data:', 'http://localhost:5173'],
+      fontSrc: ["'self'", 'data:', 'http://localhost:5173'],
+    },
+  };
+  const prodCsp = {
+    directives: {
+      defaultSrc: ["'self'"],
+    },
+  };
+  app.use(
+    helmet({
+      contentSecurityPolicy: isProd ? prodCsp : devCsp,
+      frameguard: { action: 'deny' },
+    }),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -155,6 +176,7 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT ?? 3000;
+  app.enableShutdownHooks();
   await app.listen(port, '0.0.0.0');
   winstonLogger.log(
     `Hospital Management System Backend running on port ${port}`,
