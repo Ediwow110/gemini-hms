@@ -347,7 +347,8 @@ describe('Patient Portal E2E', () => {
       // Cookies are scoped to /api/v1/patient-portal
       if (patientCookie)
         expect(patientCookie).toContain('Path=/api/v1/patient-portal');
-      if (csrfCookie) expect(csrfCookie).toContain('Path=/api/v1/patient-portal');
+      if (csrfCookie)
+        expect(csrfCookie).toContain('Path=/api/v1/patient-portal');
     });
 
     it('should never return accessToken in login response body even with X-Request-Access-Token header', async () => {
