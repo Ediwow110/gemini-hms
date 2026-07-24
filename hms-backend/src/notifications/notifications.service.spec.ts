@@ -5,7 +5,12 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationsService } from './notifications.service';
-import { SmsService, formatE164, sanitizeMessage, maskPhone } from './sms.service';
+import {
+  SmsService,
+  formatE164,
+  sanitizeMessage,
+  maskPhone,
+} from './sms.service';
 import { EmailService, maskEmail } from './email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
