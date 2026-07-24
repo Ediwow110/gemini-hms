@@ -114,7 +114,7 @@ export class SendGridEmailProvider implements EmailDriver {
     private readonly senderName: string = 'HMS Notifications',
   ) {}
 
-  private getClient() {
+  private async getClient() {
     if (!this.sgMail) {
       const sgMail = await import('@sendgrid/mail');
       this.sgMail = sgMail.default;
@@ -126,7 +126,7 @@ export class SendGridEmailProvider implements EmailDriver {
   async sendEmail(payload: EmailPayload): Promise<DeliveryResult> {
     try {
       validateEmailPayload(payload);
-      const sgMail = this.getClient();
+      const sgMail = await this.getClient();
 
       const msg = {
         to: payload.to,

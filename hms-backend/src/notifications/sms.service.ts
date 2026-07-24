@@ -31,7 +31,7 @@ export class TwilioSmsProvider implements SmsDriver {
     private readonly fromNumber: string,
   ) {}
 
-  private getClient() {
+  private async getClient() {
     if (!this.client) {
       const twilio = await import('twilio');
       this.client = twilio.default(this.accountSid, this.authToken);
@@ -42,7 +42,7 @@ export class TwilioSmsProvider implements SmsDriver {
   async sendSms(payload: SmsPayload): Promise<DeliveryResult> {
     try {
       validateSmsPayload(payload);
-      const client = this.getClient();
+      const client = await this.getClient();
 
       const message = await client.messages.create({
         body: payload.body,

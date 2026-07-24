@@ -5,8 +5,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationsService } from './notifications.service';
-import { SmsService } from './sms.service';
-import { EmailService } from './email.service';
+import { SmsService, formatE164, sanitizeMessage, maskPhone } from './sms.service';
+import { EmailService, maskEmail } from './email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -653,21 +653,17 @@ describe('EmailService', () => {
 // ===== SMS UTILITY FUNCTION TESTS =====
 describe('SMS Utility Functions', () => {
   it('formatE164 should handle Philippine numbers', () => {
-    // Import from the module
-    const { formatE164 } = await import('./sms.service');
     expect(formatE164('09171234567')).toBe('+639171234567');
     expect(formatE164('639171234567')).toBe('+639171234567');
     expect(formatE164('+639171234567')).toBe('+639171234567');
   });
 
   it('formatE164 should handle US numbers', () => {
-    const { formatE164 } = await import('./sms.service');
     expect(formatE164('5551234567')).toBe('+15551234567');
     expect(formatE164('+15551234567')).toBe('+15551234567');
   });
 
   it('sanitizeMessage should remove PHI patterns', () => {
-    const { sanitizeMessage } = await import('./sms.service');
     expect(sanitizeMessage('Patient P-1234 test')).toBe(
       'Patient [PATIENT_ID] test',
     );
@@ -677,7 +673,6 @@ describe('SMS Utility Functions', () => {
   });
 
   it('maskPhone should mask phone numbers for logging', () => {
-    const { maskPhone } = await import('./sms.service');
     expect(maskPhone('+639171234567')).toBe('+63*****67');
     expect(maskPhone('+15551234567')).toBe('+15*****67');
     expect(maskPhone('123')).toBe('*****');
@@ -687,7 +682,6 @@ describe('SMS Utility Functions', () => {
 // ===== EMAIL UTILITY FUNCTION TESTS =====
 describe('Email Utility Functions', () => {
   it('maskEmail should mask email addresses for logging', () => {
-    const { maskEmail } = await import('./email.service');
     expect(maskEmail('patient@gmail.com')).toBe('pa*****@gmail.com');
     expect(maskEmail('ab@domain.com')).toBe('ab*****@domain.com');
     expect(maskEmail('a@domain.com')).toBe('a*****@domain.com');
