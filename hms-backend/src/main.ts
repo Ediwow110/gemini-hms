@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import express from 'express';
 import { WinstonLoggerService } from './common/logger/winston-logger.service';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 // Sentry error monitoring (backend)
@@ -136,6 +137,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // Raw body parser for Stripe webhook (must be before cookieParser and other body parsers)
+  app.use('/api/v1/billing/webhooks/stripe', express.raw({ type: 'application/json' }));
 
   app.use(cookieParser());
 

@@ -9,7 +9,7 @@
 - 10 honest-UX mega-lane commits (b5df7498..bcb6548e) done between prior AGENTS.md update and this session: production-readiness mock purge, admin truth-gap contradiction removal, integration/field-service/marketplace hardcoded-data purge, body-level sandbox notices + audit footers across the 7-page family, pop-culture employee/provider placeholder removal.
 - This session: deep audit completed, PR #251 merged cleanly to `main` with 11/11 green CI & Security Gates workflow checks. Executed Phase 29 Gate 5 Database Backup & Restore Drill (`scripts/backup-restore-drill.ps1`) with 100% row-by-row count integrity verification across 11 core tables (`docs/evidence/phase29-backup-restore-drill-execution.md`). Polished Gate 9 operator runbooks and compiled Gate 10 Phase 29 Final Go/No-Go Report (`docs/evidence/phase29-final-go-no-go-report.md`).
 - CI green, local 97/97 backend (1,798 tests) + 135/135 frontend (896 tests) passing (**100% test pass rate**), **backend tsc --noEmit and frontend tsc --noEmit both 0 errors**.
-- Staging automation scripts created in `ops/` (provisioning, secrets generation, verification) — **repo-side work complete, external provisioning pending**.
+- Staging automation suite committed in `595ab83f` (`ops/` provisioning, secrets generation, verification) — **passed 11/11 CI & Security Gates workflow checks cleanly (Runs #30077388658 and #30077388646)**. External VM provisioning pending.
 
 ## Constraints & Preferences
 - Work on `main` unless branching off for a new task

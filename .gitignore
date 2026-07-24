@@ -17,6 +17,7 @@ runtime-qa-logs/
 
 # Backup artifacts
 backups/
+test-uploads/
 *.sql
 *.dump
 
