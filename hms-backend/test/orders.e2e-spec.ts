@@ -48,9 +48,9 @@ describe('Orders Branch Scoping (e2e)', () => {
 
     const tenant = await prisma.tenant.create({
       data: { name: `Orders-Tenant-${randomUUID()}` },
-    },
-  }, 30000););
+    });
     tenantId = tenant.id;
+
     const branch = await prisma.branch.create({
       data: {
         id: randomUUID(),
@@ -63,7 +63,7 @@ describe('Orders Branch Scoping (e2e)', () => {
 
     MockJwtAuthGuard.user.tenantId = tenantId;
     MockJwtAuthGuard.user.branchId = branchId;
-  });
+  }, 30000);
 
   beforeEach(() => {
     MockJwtAuthGuard.user = {

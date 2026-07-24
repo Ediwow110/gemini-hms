@@ -48,7 +48,6 @@ describe('Billing Branch Scoping (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     app.useGlobalGuards(new MockJwtAuthGuard());
     await app.init();
-  }, 30000);
 
     prisma = app.get(PrismaService);
     await cleanupDatabase(prisma);
@@ -73,7 +72,7 @@ describe('Billing Branch Scoping (e2e)', () => {
     MockJwtAuthGuard.user.userId = '11111111-1111-4111-8111-111111111111';
 
     await seedUser(prisma, tenantId, 'billing-test@hms.local');
-  });
+  }, 30000);
 
   describe('POST /api/v1/billing/sessions/open', () => {
     it('should pass with unique branch and tenant', async () => {
