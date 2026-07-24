@@ -33,8 +33,8 @@ export class TwilioSmsProvider implements SmsDriver {
 
   private getClient() {
     if (!this.client) {
-      const twilio = require('twilio');
-      this.client = twilio(this.accountSid, this.authToken);
+      const twilio = await import('twilio');
+      this.client = twilio.default(this.accountSid, this.authToken);
     }
     return this.client;
   }
@@ -157,7 +157,9 @@ export class SmsService {
   }
 
   private createDriver(): SmsDriver {
-    const provider = (this.config.get<string>('SMS_PROVIDER') || 'logger').toLowerCase();
+    const provider = (
+      this.config.get<string>('SMS_PROVIDER') || 'logger'
+    ).toLowerCase();
 
     switch (provider) {
       case 'twilio': {
@@ -224,7 +226,9 @@ export class SmsService {
       body: sanitizedMessage,
     };
 
-    this.logger.log(`Sending SMS to ${maskPhone(formattedTo)} via ${this.driver.constructor.name}`);
+    this.logger.log(
+      `Sending SMS to ${maskPhone(formattedTo)} via ${this.driver.constructor.name}`,
+    );
 
     const result = await this.driver.sendSms(payload);
 
@@ -232,7 +236,9 @@ export class SmsService {
     try {
       await this.audit.logSystemEvent({
         tenantId,
-        eventKey: result.success ? AUDIT_EVENT_KEYS.SMS_SENT : AUDIT_EVENT_KEYS.SMS_FAILED,
+        eventKey: result.success
+          ? AUDIT_EVENT_KEYS.SMS_SENT
+          : AUDIT_EVENT_KEYS.SMS_FAILED,
         recordType: 'Notification',
         recordId: result.messageId || `sms-${Date.now()}`,
         newValues: {
@@ -301,7 +307,7 @@ export class SmsService {
  * Format phone number to E.164 standard (+CCXXXXXXXXXX)
  */
 export function formatE164(phone: string): string {
-  const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  const cleaned = phone.replace(/[\s()-]/g, '');
 
   // Already in E.164 format
   if (cleaned.startsWith('+')) {
@@ -335,15 +341,24 @@ export function sanitizeMessage(message: string): string {
 
   // Remove potential PHI patterns
   // Patient IDs (P-XXXX, PAT-XXXX, etc.)
-  sanitized = sanitized.replace(/\bP(?:atient)?[-_ ]?\d{3,}\b/gi, '[PATIENT_ID]');
+  sanitized = sanitized.replace(
+    /\bP(?:atient)?[-_ ]?\d{3,}\b/gi,
+    '[PATIENT_ID]',
+  );
   // Medical record numbers (MRN-XXXX)
   sanitized = sanitized.replace(/\bMRN[-_ ]?\d{3,}\b/gi, '[MRN]');
   // Dates of birth in message
-  sanitized = sanitized.replace(/\b(?:DOB|Date of Birth)[:]\s*\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/gi, '[DOB]');
+  sanitized = sanitized.replace(
+    /\b(?:DOB|Date of Birth)[:]\s*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/gi,
+    '[DOB]',
+  );
   // Social security / national ID patterns
   sanitized = sanitized.replace(/\b\d{3}[-_]?\d{2}[-_]?\d{4}\b/g, '[SSN]');
   // Credit card numbers
-  sanitized = sanitized.replace(/\b\d{4}[-_\s]?\d{4}[-_\s]?\d{4}[-_\s]?\d{4}\b/g, '[CARD]');
+  sanitized = sanitized.replace(
+    /\b\d{4}[-_\s]?\d{4}[-_\s]?\d{4}[-_\s]?\d{4}\b/g,
+    '[CARD]',
+  );
 
   return sanitized;
 }
@@ -352,7 +367,10 @@ export function sanitizeMessage(message: string): string {
  * Validate SMS payload
  */
 function validateSmsPayload(payload: SmsPayload): void {
-  if (!payload.to || !/^\+?[1-9]\d{7,14}$/.test(payload.to.replace(/[\s\-\(\)]/g, ''))) {
+  if (
+    !payload.to ||
+    !/^\+?[1-9]\d{7,14}$/.test(payload.to.replace(/[\s()-]/g, ''))
+  ) {
     throw new Error('Recipient phone number is invalid.');
   }
   if (!payload.body?.trim()) {

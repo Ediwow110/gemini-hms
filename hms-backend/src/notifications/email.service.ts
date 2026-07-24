@@ -116,7 +116,8 @@ export class SendGridEmailProvider implements EmailDriver {
 
   private getClient() {
     if (!this.sgMail) {
-      this.sgMail = require('@sendgrid/mail');
+      const sgMail = await import('@sendgrid/mail');
+      this.sgMail = sgMail.default;
       this.sgMail.setApiKey(this.apiKey);
     }
     return this.sgMail;
@@ -137,7 +138,8 @@ export class SendGridEmailProvider implements EmailDriver {
 
       const response = await sgMail.send(msg);
       // SendGrid returns an array of responses, first element has messageId in headers
-      const messageId = response[0]?.headers?.['x-message-id'] || `sendgrid-${randomUUID()}`;
+      const messageId =
+        response[0]?.headers?.['x-message-id'] || `sendgrid-${randomUUID()}`;
 
       return { success: true, messageId };
     } catch (error) {
@@ -258,14 +260,22 @@ export class EmailService {
   }
 
   private createDriver(): EmailDriver {
-    const provider = (this.config.get<string>('EMAIL_PROVIDER') || 'logger').toLowerCase();
+    const provider = (
+      this.config.get<string>('EMAIL_PROVIDER') || 'logger'
+    ).toLowerCase();
 
     switch (provider) {
       case 'ses': {
-        const region = this.config.get<string>('AWS_SES_REGION') || this.config.get<string>('AWS_REGION');
-        const senderEmail = this.config.get<string>('SES_SENDER_EMAIL') || this.config.get<string>('EMAIL_FROM');
+        const region =
+          this.config.get<string>('AWS_SES_REGION') ||
+          this.config.get<string>('AWS_REGION');
+        const senderEmail =
+          this.config.get<string>('SES_SENDER_EMAIL') ||
+          this.config.get<string>('EMAIL_FROM');
         const accessKeyId = this.config.get<string>('AWS_ACCESS_KEY_ID');
-        const secretAccessKey = this.config.get<string>('AWS_SECRET_ACCESS_KEY');
+        const secretAccessKey = this.config.get<string>(
+          'AWS_SECRET_ACCESS_KEY',
+        );
         const sessionToken = this.config.get<string>('AWS_SESSION_TOKEN');
 
         if (!region || !senderEmail || !accessKeyId || !secretAccessKey) {
@@ -273,13 +283,23 @@ export class EmailService {
             'AWS SES provider requires AWS_SES_REGION (or AWS_REGION), SES_SENDER_EMAIL (or EMAIL_FROM), AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY',
           );
         }
-        return new SesEmailProvider(region, senderEmail, accessKeyId, secretAccessKey, sessionToken);
+        return new SesEmailProvider(
+          region,
+          senderEmail,
+          accessKeyId,
+          secretAccessKey,
+          sessionToken,
+        );
       }
 
       case 'sendgrid': {
         const apiKey = this.config.get<string>('SENDGRID_API_KEY');
-        const senderEmail = this.config.get<string>('SENDGRID_SENDER_EMAIL') || this.config.get<string>('EMAIL_FROM');
-        const senderName = this.config.get<string>('SENDGRID_SENDER_NAME') || 'HMS Notifications';
+        const senderEmail =
+          this.config.get<string>('SENDGRID_SENDER_EMAIL') ||
+          this.config.get<string>('EMAIL_FROM');
+        const senderName =
+          this.config.get<string>('SENDGRID_SENDER_NAME') ||
+          'HMS Notifications';
 
         if (!apiKey || !senderEmail) {
           throw new InternalServerErrorException(
@@ -292,11 +312,17 @@ export class EmailService {
       case 'smtp':
       case 'nodemailer': {
         const host = this.config.get<string>('SMTP_HOST');
-        const port = parseInt(this.config.get<string>('SMTP_PORT') || '587', 10);
+        const port = parseInt(
+          this.config.get<string>('SMTP_PORT') || '587',
+          10,
+        );
         const username = this.config.get<string>('SMTP_USER');
         const password = this.config.get<string>('SMTP_PASS');
-        const senderEmail = this.config.get<string>('SMTP_SENDER_EMAIL') || this.config.get<string>('EMAIL_FROM');
-        const senderName = this.config.get<string>('SMTP_SENDER_NAME') || 'HMS Notifications';
+        const senderEmail =
+          this.config.get<string>('SMTP_SENDER_EMAIL') ||
+          this.config.get<string>('EMAIL_FROM');
+        const senderName =
+          this.config.get<string>('SMTP_SENDER_NAME') || 'HMS Notifications';
         const secure = this.config.get<string>('SMTP_SECURE') === 'true';
 
         if (!host || !username || !password || !senderEmail) {
@@ -304,7 +330,15 @@ export class EmailService {
             'SMTP provider requires SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, and SMTP_SENDER_EMAIL (or EMAIL_FROM)',
           );
         }
-        return new NodemailerEmailProvider(host, port, username, password, senderEmail, senderName, secure);
+        return new NodemailerEmailProvider(
+          host,
+          port,
+          username,
+          password,
+          senderEmail,
+          senderName,
+          secure,
+        );
       }
 
       case 'logger':
@@ -334,12 +368,15 @@ export class EmailService {
     try {
       validateEmail({ to, subject, body: htmlContent });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Invalid email payload';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Invalid email payload';
       this.logger.warn(`Email validation failed: ${errorMessage}`);
       return { success: false, error: errorMessage };
     }
 
-    this.logger.log(`Sending email to ${maskEmail(to)} via ${this.driver.constructor.name}`);
+    this.logger.log(
+      `Sending email to ${maskEmail(to)} via ${this.driver.constructor.name}`,
+    );
 
     const payload: EmailPayload = {
       to,
@@ -353,7 +390,9 @@ export class EmailService {
     try {
       await this.audit.logSystemEvent({
         tenantId,
-        eventKey: result.success ? AUDIT_EVENT_KEYS.EMAIL_SENT : AUDIT_EVENT_KEYS.EMAIL_FAILED,
+        eventKey: result.success
+          ? AUDIT_EVENT_KEYS.EMAIL_SENT
+          : AUDIT_EVENT_KEYS.EMAIL_FAILED,
         recordType: 'Notification',
         recordId: result.messageId || `email-${Date.now()}`,
         newValues: {
@@ -367,7 +406,9 @@ export class EmailService {
         },
       });
     } catch (auditError) {
-      this.logger.warn(`Failed to log email audit event: ${auditError.message}`);
+      this.logger.warn(
+        `Failed to log email audit event: ${auditError.message}`,
+      );
     }
 
     return result;
@@ -396,7 +437,13 @@ export class EmailService {
       portalUrl,
     });
 
-    return this.sendEmail(patientEmail, `Appointment Confirmed - ${clinicName}`, htmlContent, tenantId, userId);
+    return this.sendEmail(
+      patientEmail,
+      `Appointment Confirmed - ${clinicName}`,
+      htmlContent,
+      tenantId,
+      userId,
+    );
   }
 
   /**
@@ -416,7 +463,13 @@ export class EmailService {
       hospitalName,
     });
 
-    return this.sendEmail(patientEmail, 'Your Lab Results Are Ready', htmlContent, tenantId, userId);
+    return this.sendEmail(
+      patientEmail,
+      'Your Lab Results Are Ready',
+      htmlContent,
+      tenantId,
+      userId,
+    );
   }
 
   /**

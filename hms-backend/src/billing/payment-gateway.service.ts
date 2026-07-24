@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { PrismaService } from '../prisma/prisma.service';
@@ -43,17 +48,22 @@ export class PaymentGatewayService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {
-    this.provider = (this.configService.get<string>('PAYMENT_GATEWAY_PROVIDER') || 'mock') as PaymentGatewayProvider;
+    this.provider = (this.configService.get<string>(
+      'PAYMENT_GATEWAY_PROVIDER',
+    ) || 'mock') as PaymentGatewayProvider;
     this.initializeProvider();
   }
 
   private initializeProvider(): void {
     if (this.provider === 'stripe') {
       const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
-      const apiVersion = this.configService.get<string>('STRIPE_API_VERSION') || '2023-10-16';
+      const apiVersion =
+        this.configService.get<string>('STRIPE_API_VERSION') || '2023-10-16';
 
       if (!secretKey) {
-        throw new Error('STRIPE_SECRET_KEY is required when PAYMENT_GATEWAY_PROVIDER=stripe');
+        throw new Error(
+          'STRIPE_SECRET_KEY is required when PAYMENT_GATEWAY_PROVIDER=stripe',
+        );
       }
 
       this.stripe = new Stripe(secretKey, {
@@ -63,7 +73,9 @@ export class PaymentGatewayService {
 
       this.logger.log('Stripe payment gateway initialized');
     } else if (this.provider === 'xendit') {
-      this.logger.log('Xendit payment gateway selected (not yet implemented, will use mock)');
+      this.logger.log(
+        'Xendit payment gateway selected (not yet implemented, will use mock)',
+      );
     } else {
       this.logger.log('Mock payment gateway initialized (development only)');
     }
@@ -73,14 +85,18 @@ export class PaymentGatewayService {
     return this.provider;
   }
 
-  async createPaymentIntent(params: CreatePaymentIntentParams): Promise<PaymentIntentResult> {
+  async createPaymentIntent(
+    params: CreatePaymentIntentParams,
+  ): Promise<PaymentIntentResult> {
     const idempotencyKey = `invoice_${params.invoiceId}_${Date.now()}`;
 
     switch (this.provider) {
       case 'stripe':
         return this.createStripePaymentIntent(params, idempotencyKey);
       case 'xendit':
-        throw new BadRequestException('Xendit payment gateway not yet implemented');
+        throw new BadRequestException(
+          'Xendit payment gateway not yet implemented',
+        );
       case 'mock':
       default:
         return this.createMockPaymentIntent(params, idempotencyKey);
@@ -116,7 +132,9 @@ export class PaymentGatewayService {
         },
       );
 
-      this.logger.log(`Created Stripe PaymentIntent: ${paymentIntent.id} for invoice ${params.invoiceId}`);
+      this.logger.log(
+        `Created Stripe PaymentIntent: ${paymentIntent.id} for invoice ${params.invoiceId}`,
+      );
 
       return {
         clientSecret: paymentIntent.client_secret!,
@@ -138,7 +156,9 @@ export class PaymentGatewayService {
     const mockPaymentIntentId = `pi_mock_${idempotencyKey}`;
     const mockClientSecret = `${mockPaymentIntentId}_secret_${Date.now()}`;
 
-    this.logger.log(`Created mock PaymentIntent: ${mockPaymentIntentId} for invoice ${params.invoiceId}`);
+    this.logger.log(
+      `Created mock PaymentIntent: ${mockPaymentIntentId} for invoice ${params.invoiceId}`,
+    );
 
     return {
       clientSecret: mockClientSecret,
@@ -153,18 +173,28 @@ export class PaymentGatewayService {
     signature: string,
   ): Promise<WebhookHandlerResult> {
     if (this.provider !== 'stripe') {
-      throw new BadRequestException('Webhook handler only available for Stripe provider');
+      throw new BadRequestException(
+        'Webhook handler only available for Stripe provider',
+      );
     }
 
-    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+    const webhookSecret = this.configService.get<string>(
+      'STRIPE_WEBHOOK_SECRET',
+    );
     if (!webhookSecret) {
-      throw new InternalServerErrorException('STRIPE_WEBHOOK_SECRET not configured');
+      throw new InternalServerErrorException(
+        'STRIPE_WEBHOOK_SECRET not configured',
+      );
     }
 
     let event: Stripe.Event;
 
     try {
-      event = this.stripe!.webhooks.constructEvent(rawBody, signature, webhookSecret);
+      event = this.stripe!.webhooks.constructEvent(
+        rawBody,
+        signature,
+        webhookSecret,
+      );
     } catch (err) {
       this.logger.error(`Webhook signature verification failed: ${err}`);
       throw new BadRequestException('Webhook signature verification failed');
@@ -174,13 +204,13 @@ export class PaymentGatewayService {
 
     // Handle payment_intent.succeeded event
     if (event.type === 'payment_intent.succeeded') {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      const paymentIntent = event.data.object;
       return this.handlePaymentIntentSucceeded(paymentIntent);
     }
 
     // Handle other events as needed
     if (event.type === 'payment_intent.payment_failed') {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      const paymentIntent = event.data.object;
       return this.handlePaymentIntentFailed(paymentIntent);
     }
 
@@ -240,7 +270,9 @@ export class PaymentGatewayService {
           throw new BadRequestException('Payment would overpay the invoice');
         }
 
-        const newStatus = newPaidAmount.equals(totalAmount) ? 'PAID' : 'PARTIALLY_PAID';
+        const newStatus = newPaidAmount.equals(totalAmount)
+          ? 'PAID'
+          : 'PARTIALLY_PAID';
 
         // Update invoice
         const updatedInvoice = await tx.invoice.update({
@@ -290,11 +322,16 @@ export class PaymentGatewayService {
         };
       });
 
-      this.logger.log(`Invoice ${invoiceId} updated to ${result.newStatus} via Stripe webhook`);
+      this.logger.log(
+        `Invoice ${invoiceId} updated to ${result.newStatus} via Stripe webhook`,
+      );
       return { success: true, ...result };
     } catch (error) {
       this.logger.error(`Failed to process payment_intent.succeeded: ${error}`);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 
@@ -321,7 +358,8 @@ export class PaymentGatewayService {
             gatewayProvider: 'stripe',
             gatewayReference: paymentIntent.id,
             gatewayStatus: 'failed',
-            errorMessage: paymentIntent.last_payment_error?.message || 'Unknown error',
+            errorMessage:
+              paymentIntent.last_payment_error?.message || 'Unknown error',
             invoiceId,
             branchId,
           },
@@ -330,11 +368,18 @@ export class PaymentGatewayService {
         branchId,
       );
 
-      this.logger.warn(`Payment failed for invoice ${invoiceId}: ${paymentIntent.last_payment_error?.message}`);
+      this.logger.warn(
+        `Payment failed for invoice ${invoiceId}: ${paymentIntent.last_payment_error?.message}`,
+      );
       return { success: true };
     } catch (error) {
-      this.logger.error(`Failed to process payment_intent.payment_failed: ${error}`);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      this.logger.error(
+        `Failed to process payment_intent.payment_failed: ${error}`,
+      );
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 }

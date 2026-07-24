@@ -82,15 +82,18 @@ export class StorageService {
   }
 
   private buildConfig(): StorageConfig {
-    const driver = (this.configService.get<string>('STORAGE_DRIVER') || 'local') as
-      | 's3'
-      | 'local';
+    const driver = (this.configService.get<string>('STORAGE_DRIVER') ||
+      'local') as 's3' | 'local';
 
     if (driver === 's3') {
       const region = this.configService.get<string>('AWS_S3_REGION');
       const bucket = this.configService.get<string>('AWS_S3_BUCKET');
-      const accessKeyId = this.configService.get<string>('AWS_S3_ACCESS_KEY_ID');
-      const secretAccessKey = this.configService.get<string>('AWS_S3_SECRET_ACCESS_KEY');
+      const accessKeyId = this.configService.get<string>(
+        'AWS_S3_ACCESS_KEY_ID',
+      );
+      const secretAccessKey = this.configService.get<string>(
+        'AWS_S3_SECRET_ACCESS_KEY',
+      );
 
       if (!region || !bucket || !accessKeyId || !secretAccessKey) {
         throw new Error(
@@ -107,8 +110,11 @@ export class StorageService {
           secretAccessKey,
           endpoint: this.configService.get<string>('AWS_S3_ENDPOINT'),
           forcePathStyle:
-            this.configService.get<string>('AWS_S3_FORCE_PATH_STYLE') === 'true',
-          publicUrlBase: this.configService.get<string>('AWS_S3_PUBLIC_URL_BASE'),
+            this.configService.get<string>('AWS_S3_FORCE_PATH_STYLE') ===
+            'true',
+          publicUrlBase: this.configService.get<string>(
+            'AWS_S3_PUBLIC_URL_BASE',
+          ),
         },
       };
     }
@@ -116,8 +122,12 @@ export class StorageService {
     return {
       driver: 'local',
       local: {
-        uploadDir: this.configService.get<string>('LOCAL_STORAGE_UPLOAD_DIR') || './uploads',
-        publicUrlBase: this.configService.get<string>('LOCAL_STORAGE_PUBLIC_URL_BASE'),
+        uploadDir:
+          this.configService.get<string>('LOCAL_STORAGE_UPLOAD_DIR') ||
+          './uploads',
+        publicUrlBase: this.configService.get<string>(
+          'LOCAL_STORAGE_PUBLIC_URL_BASE',
+        ),
       },
     };
   }
@@ -161,7 +171,10 @@ export class StorageService {
     }
   }
 
-  private generateFileKey(file: Express.Multer.File, prefix: string = 'uploads'): string {
+  private generateFileKey(
+    file: Express.Multer.File,
+    prefix: string = 'uploads',
+  ): string {
     const timestamp = Date.now();
     const randomSuffix = createHash('sha256')
       .update(`${timestamp}-${Math.random()}`)
@@ -310,7 +323,9 @@ export class StorageService {
       };
     } catch (error) {
       this.logger.error(`Local upload failed: ${error}`);
-      throw new InternalServerErrorException('Failed to upload file to local storage');
+      throw new InternalServerErrorException(
+        'Failed to upload file to local storage',
+      );
     }
   }
 
@@ -329,7 +344,10 @@ export class StorageService {
     return this.getLocalSignedUrl(key, expiresInSeconds);
   }
 
-  private async getS3SignedUrl(key: string, expiresInSeconds: number): Promise<string> {
+  private async getS3SignedUrl(
+    key: string,
+    expiresInSeconds: number,
+  ): Promise<string> {
     try {
       const command = new GetObjectCommand({
         Bucket: this.config.s3!.bucket,
@@ -352,18 +370,27 @@ export class StorageService {
     }
   }
 
-  private async getLocalSignedUrl(key: string, expiresInSeconds: number): Promise<string> {
+  private async getLocalSignedUrl(
+    key: string,
+    expiresInSeconds: number,
+  ): Promise<string> {
     const baseUrl = this.config.local?.publicUrlBase || 'http://localhost:3000';
     const expiry = Math.floor(Date.now() / 1000) + expiresInSeconds;
     const token = createHash('sha256')
-      .update(`${key}:${expiry}:${this.configService.get<string>('JWT_SECRET')}`)
+      .update(
+        `${key}:${expiry}:${this.configService.get<string>('JWT_SECRET')}`,
+      )
       .digest('hex')
       .substring(0, 32);
 
     return `${baseUrl}/api/v1/storage/files/${encodeURIComponent(key)}?expires=${expiry}&token=${token}`;
   }
 
-  async deleteFile(key: string, userId: string, tenantId: string): Promise<void> {
+  async deleteFile(
+    key: string,
+    userId: string,
+    tenantId: string,
+  ): Promise<void> {
     if (this.config.driver === 's3' && this.s3Client && this.config.s3) {
       await this.deleteFromS3(key, userId, tenantId);
     } else {
@@ -371,7 +398,11 @@ export class StorageService {
     }
   }
 
-  private async deleteFromS3(key: string, userId: string, tenantId: string): Promise<void> {
+  private async deleteFromS3(
+    key: string,
+    userId: string,
+    tenantId: string,
+  ): Promise<void> {
     try {
       await this.s3Client!.send(
         new DeleteObjectCommand({
@@ -401,7 +432,11 @@ export class StorageService {
     }
   }
 
-  private async deleteFromLocal(key: string, userId: string, tenantId: string): Promise<void> {
+  private async deleteFromLocal(
+    key: string,
+    userId: string,
+    tenantId: string,
+  ): Promise<void> {
     try {
       const uploadDir = this.config.local!.uploadDir;
       const fullPath = path.join(uploadDir, key);
@@ -427,11 +462,17 @@ export class StorageService {
       this.logger.log(`File deleted from local storage: ${key}`);
     } catch (error) {
       this.logger.error(`Local delete failed: ${error}`);
-      throw new InternalServerErrorException('Failed to delete file from local storage');
+      throw new InternalServerErrorException(
+        'Failed to delete file from local storage',
+      );
     }
   }
 
-  async logDownload(fileKey: string, userId: string, tenantId: string): Promise<void> {
+  async logDownload(
+    fileKey: string,
+    userId: string,
+    tenantId: string,
+  ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await this.audit.log(
         {
@@ -447,7 +488,9 @@ export class StorageService {
     });
   }
 
-  async getFileMetadata(key: string): Promise<{ hash: string; mimeType: string; size: number } | null> {
+  async getFileMetadata(
+    key: string,
+  ): Promise<{ hash: string; mimeType: string; size: number } | null> {
     if (this.config.driver === 's3' && this.s3Client && this.config.s3) {
       return this.getS3FileMetadata(key);
     }
@@ -455,7 +498,9 @@ export class StorageService {
     return this.getLocalFileMetadata(key);
   }
 
-  private async getS3FileMetadata(key: string): Promise<{ hash: string; mimeType: string; size: number } | null> {
+  private async getS3FileMetadata(
+    key: string,
+  ): Promise<{ hash: string; mimeType: string; size: number } | null> {
     try {
       const command = new HeadObjectCommand({
         Bucket: this.config.s3!.bucket,
@@ -475,7 +520,9 @@ export class StorageService {
     }
   }
 
-  private async getLocalFileMetadata(key: string): Promise<{ hash: string; mimeType: string; size: number } | null> {
+  private async getLocalFileMetadata(
+    key: string,
+  ): Promise<{ hash: string; mimeType: string; size: number } | null> {
     try {
       const uploadDir = this.config.local!.uploadDir;
       const metadataPath = path.join(uploadDir, `${key}.meta.json`);

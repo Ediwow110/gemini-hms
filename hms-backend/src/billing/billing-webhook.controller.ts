@@ -36,10 +36,15 @@ export class BillingWebhookController {
       throw new BadRequestException('Missing raw body');
     }
 
-    const result = await this.paymentGatewayService.handleStripeWebhook(rawBody, signature);
+    const result = await this.paymentGatewayService.handleStripeWebhook(
+      rawBody,
+      signature,
+    );
 
     if (!result.success) {
-      throw new BadRequestException(result.error || 'Webhook processing failed');
+      throw new BadRequestException(
+        result.error || 'Webhook processing failed',
+      );
     }
 
     return { received: true };

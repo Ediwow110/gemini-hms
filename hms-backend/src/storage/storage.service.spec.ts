@@ -75,7 +75,12 @@ describe('StorageService', () => {
   describe('uploadFile', () => {
     it('should upload a valid PDF file to local storage', async () => {
       const file = mockFile({ mimetype: 'application/pdf', size: 1024 });
-      const result = await service.uploadFile(file, 'uploads', 'user-1', 'tenant-1');
+      const result = await service.uploadFile(
+        file,
+        'uploads',
+        'user-1',
+        'tenant-1',
+      );
 
       expect(result).toMatchObject({
         bucket: 'local',
@@ -87,8 +92,17 @@ describe('StorageService', () => {
     });
 
     it('should upload a valid JPEG file', async () => {
-      const file = mockFile({ mimetype: 'image/jpeg', size: 2048, originalname: 'photo.jpg' });
-      const result = await service.uploadFile(file, 'images', 'user-1', 'tenant-1');
+      const file = mockFile({
+        mimetype: 'image/jpeg',
+        size: 2048,
+        originalname: 'photo.jpg',
+      });
+      const result = await service.uploadFile(
+        file,
+        'images',
+        'user-1',
+        'tenant-1',
+      );
 
       expect(result).toMatchObject({
         bucket: 'local',
@@ -99,15 +113,27 @@ describe('StorageService', () => {
     });
 
     it('should upload a valid PNG file', async () => {
-      const file = mockFile({ mimetype: 'image/png', size: 512, originalname: 'image.png' });
-      const result = await service.uploadFile(file, 'uploads', 'user-1', 'tenant-1');
+      const file = mockFile({
+        mimetype: 'image/png',
+        size: 512,
+        originalname: 'image.png',
+      });
+      const result = await service.uploadFile(
+        file,
+        'uploads',
+        'user-1',
+        'tenant-1',
+      );
 
       expect(result.mimeType).toBe('image/png');
       expect(result.key).toMatch(/\.png$/);
     });
 
     it('should reject disallowed MIME type', async () => {
-      const file = mockFile({ mimetype: 'application/x-executable', size: 1024 });
+      const file = mockFile({
+        mimetype: 'application/x-executable',
+        size: 1024,
+      });
 
       await expect(
         service.uploadFile(file, 'uploads', 'user-1', 'tenant-1'),
@@ -131,7 +157,12 @@ describe('StorageService', () => {
         size: 400 * 1024 * 1024, // 400MB < 500MB limit for DICOM
       });
 
-      const result = await service.uploadFile(file, 'dicom', 'user-1', 'tenant-1');
+      const result = await service.uploadFile(
+        file,
+        'dicom',
+        'user-1',
+        'tenant-1',
+      );
       expect(result).toBeDefined();
       expect(result.size).toBe(400 * 1024 * 1024);
     });
@@ -149,10 +180,17 @@ describe('StorageService', () => {
 
     it('should generate SHA-256 hash correctly', async () => {
       const file = mockFile({ buffer: Buffer.from('consistent content') });
-      const result = await service.uploadFile(file, 'uploads', 'user-1', 'tenant-1');
+      const result = await service.uploadFile(
+        file,
+        'uploads',
+        'user-1',
+        'tenant-1',
+      );
 
       // Verify hash matches expected SHA-256
-      const expectedHash = createHash('sha256').update('consistent content').digest('hex');
+      const expectedHash = createHash('sha256')
+        .update('consistent content')
+        .digest('hex');
       expect(result.hash).toBe(expectedHash);
     });
 
@@ -183,7 +221,12 @@ describe('StorageService', () => {
 
   describe('getSignedUrl', () => {
     it('should generate a signed URL for local storage', async () => {
-      const url = await service.getSignedUrl('uploads/test.pdf', 3600, 'user-1', 'tenant-1');
+      const url = await service.getSignedUrl(
+        'uploads/test.pdf',
+        3600,
+        'user-1',
+        'tenant-1',
+      );
 
       expect(url).toContain('http://localhost:3000/api/v1/storage/files/');
       expect(url).toContain('expires=');
@@ -191,7 +234,12 @@ describe('StorageService', () => {
     });
 
     it('should log download event when generating signed URL', async () => {
-      await service.getSignedUrl('uploads/test.pdf', 3600, 'user-1', 'tenant-1');
+      await service.getSignedUrl(
+        'uploads/test.pdf',
+        3600,
+        'user-1',
+        'tenant-1',
+      );
 
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(audit.log).toHaveBeenCalledWith(
@@ -205,7 +253,12 @@ describe('StorageService', () => {
     });
 
     it('should use custom expiry time', async () => {
-      const url = await service.getSignedUrl('uploads/test.pdf', 7200, 'user-1', 'tenant-1');
+      const url = await service.getSignedUrl(
+        'uploads/test.pdf',
+        7200,
+        'user-1',
+        'tenant-1',
+      );
 
       const expiresMatch = url.match(/expires=(\d+)/);
       expect(expiresMatch).toBeTruthy();
@@ -220,8 +273,13 @@ describe('StorageService', () => {
     it('should delete file from local storage and log audit event', async () => {
       // First create a test file
       const file = mockFile({ mimetype: 'application/pdf', size: 1024 });
-      const uploadResult = await service.uploadFile(file, 'uploads', 'user-1', 'tenant-1');
-      
+      const uploadResult = await service.uploadFile(
+        file,
+        'uploads',
+        'user-1',
+        'tenant-1',
+      );
+
       await service.deleteFile(uploadResult.key, 'user-1', 'tenant-1');
 
       // Check the last call (FILE_DELETED)

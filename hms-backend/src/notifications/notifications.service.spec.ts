@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import {
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationsService } from './notifications.service';
 import { SmsService } from './sms.service';
@@ -347,7 +350,10 @@ describe('SmsService', () => {
       providers: [
         SmsService,
         { provide: PrismaService, useValue: {} },
-        { provide: AuditService, useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: AuditService,
+          useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) },
+        },
         {
           provide: ConfigService,
           useValue: {
@@ -401,14 +407,23 @@ describe('SmsService', () => {
 
   it('should sanitize PHI from messages', async () => {
     const messageWithPhi =
-      'Patient P-1234 has MRN-56789 and DOB: 01/15/1990 and SSN 123-45-6789'; // eslint-disable-line @typescript-eslint/no-unused-vars
+      'Patient P-1234 has MRN-56789 and DOB: 01/15/1990 and SSN 123-45-6789';
     // The sanitization happens internally, we verify the service doesn't throw
-    const result = await service.sendSms('+639171234567', messageWithPhi, 'tenant-1');
+    const result = await service.sendSms(
+      '+639171234567',
+      messageWithPhi,
+      'tenant-1',
+    );
     expect(result.success).toBe(true);
   });
 
   it('should log SMS_SENT audit event on success', async () => {
-    await service.sendSms('+639171234567', 'Test message', 'tenant-1', 'user-1');
+    await service.sendSms(
+      '+639171234567',
+      'Test message',
+      'tenant-1',
+      'user-1',
+    );
 
     expect(audit.logSystemEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -425,7 +440,10 @@ describe('SmsService', () => {
       providers: [
         SmsService,
         { provide: PrismaService, useValue: {} },
-        { provide: AuditService, useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: AuditService,
+          useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) },
+        },
         {
           provide: ConfigService,
           useValue: {
@@ -445,7 +463,11 @@ describe('SmsService', () => {
       sendSms: jest.fn().mockResolvedValue({ success: false, error: 'Failed' }),
     };
 
-    const result = await failingService.sendSms('+639171234567', 'Test', 'tenant-1');
+    const result = await failingService.sendSms(
+      '+639171234567',
+      'Test',
+      'tenant-1',
+    );
     expect(result.success).toBe(false);
 
     const auditService = failingModule.get<AuditService>(AuditService);
@@ -502,7 +524,10 @@ describe('EmailService', () => {
       providers: [
         EmailService,
         { provide: PrismaService, useValue: {} },
-        { provide: AuditService, useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: AuditService,
+          useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) },
+        },
         {
           provide: ConfigService,
           useValue: {
@@ -562,7 +587,12 @@ describe('EmailService', () => {
   });
 
   it('should log EMAIL_SENT audit event on success', async () => {
-    await service.sendEmail('patient@hospital.com', 'Subject', '<p>Body</p>', 'tenant-1');
+    await service.sendEmail(
+      'patient@hospital.com',
+      'Subject',
+      '<p>Body</p>',
+      'tenant-1',
+    );
 
     expect(audit.logSystemEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -579,7 +609,10 @@ describe('EmailService', () => {
       providers: [
         EmailService,
         { provide: PrismaService, useValue: {} },
-        { provide: AuditService, useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: AuditService,
+          useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) },
+        },
         {
           provide: ConfigService,
           useValue: {
@@ -595,10 +628,17 @@ describe('EmailService', () => {
 
     const failingService = failingModule.get<EmailService>(EmailService);
     (failingService as any).driver = {
-      sendEmail: jest.fn().mockResolvedValue({ success: false, error: 'Failed' }),
+      sendEmail: jest
+        .fn()
+        .mockResolvedValue({ success: false, error: 'Failed' }),
     };
 
-    const result = await failingService.sendEmail('test@hospital.com', 'Subject', 'Body', 'tenant-1');
+    const result = await failingService.sendEmail(
+      'test@hospital.com',
+      'Subject',
+      'Body',
+      'tenant-1',
+    );
     expect(result.success).toBe(false);
 
     const auditService = failingModule.get<AuditService>(AuditService);
@@ -614,28 +654,30 @@ describe('EmailService', () => {
 describe('SMS Utility Functions', () => {
   it('formatE164 should handle Philippine numbers', () => {
     // Import from the module
-    const { formatE164 } = require('./sms.service');
+    const { formatE164 } = await import('./sms.service');
     expect(formatE164('09171234567')).toBe('+639171234567');
     expect(formatE164('639171234567')).toBe('+639171234567');
     expect(formatE164('+639171234567')).toBe('+639171234567');
   });
 
   it('formatE164 should handle US numbers', () => {
-    const { formatE164 } = require('./sms.service');
+    const { formatE164 } = await import('./sms.service');
     expect(formatE164('5551234567')).toBe('+15551234567');
     expect(formatE164('+15551234567')).toBe('+15551234567');
   });
 
   it('sanitizeMessage should remove PHI patterns', () => {
-    const { sanitizeMessage } = require('./sms.service');
-    expect(sanitizeMessage('Patient P-1234 test')).toBe('Patient [PATIENT_ID] test');
+    const { sanitizeMessage } = await import('./sms.service');
+    expect(sanitizeMessage('Patient P-1234 test')).toBe(
+      'Patient [PATIENT_ID] test',
+    );
     expect(sanitizeMessage('MRN-56789 check')).toBe('[MRN] check');
     expect(sanitizeMessage('SSN 123-45-6789')).toBe('SSN [SSN]');
     expect(sanitizeMessage('Card 1234-5678-9012-3456')).toBe('Card [CARD]');
   });
 
   it('maskPhone should mask phone numbers for logging', () => {
-    const { maskPhone } = require('./sms.service');
+    const { maskPhone } = await import('./sms.service');
     expect(maskPhone('+639171234567')).toBe('+63*****67');
     expect(maskPhone('+15551234567')).toBe('+15*****67');
     expect(maskPhone('123')).toBe('*****');
@@ -645,7 +687,7 @@ describe('SMS Utility Functions', () => {
 // ===== EMAIL UTILITY FUNCTION TESTS =====
 describe('Email Utility Functions', () => {
   it('maskEmail should mask email addresses for logging', () => {
-    const { maskEmail } = require('./email.service');
+    const { maskEmail } = await import('./email.service');
     expect(maskEmail('patient@gmail.com')).toBe('pa*****@gmail.com');
     expect(maskEmail('ab@domain.com')).toBe('ab*****@domain.com');
     expect(maskEmail('a@domain.com')).toBe('a*****@domain.com');

@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { PaymentGatewayService } from './payment-gateway.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -32,7 +35,11 @@ describe('PaymentGatewayService', () => {
               totalAmount: new Prisma.Decimal(10000),
               status: 'UNPAID',
               orderId: 'order-uuid',
-              order: { id: 'order-uuid', tenantId: mockTenantId, branchId: mockBranchId },
+              order: {
+                id: 'order-uuid',
+                tenantId: mockTenantId,
+                branchId: mockBranchId,
+              },
             }),
             update: jest.fn().mockResolvedValue({}),
           },
@@ -103,7 +110,9 @@ describe('PaymentGatewayService', () => {
         ],
       }).compile();
 
-      const stripeService = module.get<PaymentGatewayService>(PaymentGatewayService);
+      const stripeService = module.get<PaymentGatewayService>(
+        PaymentGatewayService,
+      );
       expect(stripeService.getProvider()).toBe('stripe');
     });
   });
@@ -206,8 +215,10 @@ describe('PaymentGatewayService', () => {
         ],
       }).compile();
 
-      const mockProviderService = mockService.get<PaymentGatewayService>(PaymentGatewayService);
-      
+      const mockProviderService = mockService.get<PaymentGatewayService>(
+        PaymentGatewayService,
+      );
+
       await expect(
         mockProviderService.handleStripeWebhook(Buffer.from('{}'), 'sig'),
       ).rejects.toThrow(BadRequestException);
@@ -235,8 +246,10 @@ describe('PaymentGatewayService', () => {
         ],
       }).compile();
 
-      const noSecretService = module.get<PaymentGatewayService>(PaymentGatewayService);
-      
+      const noSecretService = module.get<PaymentGatewayService>(
+        PaymentGatewayService,
+      );
+
       await expect(
         noSecretService.handleStripeWebhook(Buffer.from('{}'), 'sig'),
       ).rejects.toThrow(InternalServerErrorException);

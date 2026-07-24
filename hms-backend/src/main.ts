@@ -139,7 +139,10 @@ async function bootstrap() {
   );
 
   // Raw body parser for Stripe webhook (must be before cookieParser and other body parsers)
-  app.use('/api/v1/billing/webhooks/stripe', express.raw({ type: 'application/json' }));
+  app.use(
+    '/api/v1/billing/webhooks/stripe',
+    express.raw({ type: 'application/json' }),
+  );
 
   app.use(cookieParser());
 
