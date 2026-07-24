@@ -8,13 +8,20 @@ Document the procedure for restoring the HMS database from a backup. This runboo
 
 Automated backup and restore scripts are provided in the `scripts/` directory:
 
+- `scripts/backup-restore-drill.ps1` — PowerShell automated backup, isolated restore, and row-by-row count integrity verification drill (Phase 29 Gate 5)
 - `scripts/db-backup.sh` — Creates a timestamped SQL dump via Docker Compose
 - `scripts/db-restore.sh` — Restores from a backup file with explicit confirmation
 
-### Backup
+### Automated Drill Execution (Windows / PowerShell)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\backup-restore-drill.ps1
+```
+
+### Backup (POSIX)
 
 ```bash
-DB_USER=postgres DB_NAME=hms_db sh scripts/db-backup.sh
+DB_USER=hms_local_user DB_NAME=gemini_hms_local sh scripts/db-backup.sh
 ```
 
 The backup file is written to `./backups/` by default (overridable via `BACKUP_DIR`).
