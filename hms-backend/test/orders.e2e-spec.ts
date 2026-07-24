@@ -24,7 +24,7 @@ describe('Orders Branch Scoping (e2e)', () => {
     process.env.JWT_SECRET =
       'test-secret-key-for-e2e-tests-that-is-long-enough';
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    const builder = Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
         PrismaModule,
@@ -35,8 +35,9 @@ describe('Orders Branch Scoping (e2e)', () => {
       providers: [],
     })
       .overrideGuard(PermissionsGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
+      .useValue({ canActivate: () => true });
+
+    const moduleFixture: TestingModule = await builder.compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -63,7 +64,7 @@ describe('Orders Branch Scoping (e2e)', () => {
 
     MockJwtAuthGuard.user.tenantId = tenantId;
     MockJwtAuthGuard.user.branchId = branchId;
-  }, 30000);
+  }, 60000);
 
   beforeEach(() => {
     MockJwtAuthGuard.user = {

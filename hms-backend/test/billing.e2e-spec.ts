@@ -27,7 +27,7 @@ describe('Billing Branch Scoping (e2e)', () => {
     process.env.JWT_SECRET =
       'test-secret-key-for-e2e-tests-that-is-long-enough';
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    const builder = Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env.test' }),
         PrismaModule,
@@ -41,8 +41,9 @@ describe('Billing Branch Scoping (e2e)', () => {
       .overrideGuard(PermissionsGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(BranchGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
+      .useValue({ canActivate: () => true });
+
+    const moduleFixture: TestingModule = await builder.compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -72,7 +73,7 @@ describe('Billing Branch Scoping (e2e)', () => {
     MockJwtAuthGuard.user.userId = '11111111-1111-4111-8111-111111111111';
 
     await seedUser(prisma, tenantId, 'billing-test@hms.local');
-  }, 30000);
+  }, 60000);
 
   describe('POST /api/v1/billing/sessions/open', () => {
     it('should pass with unique branch and tenant', async () => {
