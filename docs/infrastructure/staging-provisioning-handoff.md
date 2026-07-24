@@ -301,3 +301,84 @@ Once staging is deployed, execute these checks:
 [ ] 12. Document staging URLs, access, and secrets location
 [ ] 13. Update AGENTS.md and handoff docs
 ```
+
+---
+
+## 10. AUTOMATED PROVISIONING SCRIPTS (NEW - 2026-07-24)
+
+The following automation scripts have been created in `ops/` to streamline staging provisioning:
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `ops/provision-staging-vm.sh` | Automated VM setup (Docker, deploy user, firewall) | `./provision-staging-vm.sh <VM_IP> <SSH_PUB> [DOMAIN]` |
+| `ops/generate-staging-secrets.sh` | Cryptographic secret generation for all 11+ GitHub secrets | `./generate-staging-secrets.sh [DOMAIN]` |
+| `ops/verify-staging-deployment.sh` | Post-deployment health verification | `./verify-staging-deployment.sh <STAGING_HOST>` |
+| `ops/staging-quickstart.sh` | End-to-end orchestration of all steps | `./staging-quickstart.sh <VM_IP> <DOMAIN>` |
+| `ops/STAGING-EXECUTION-CHECKLIST.md` | Detailed step-by-step execution guide | Read-only reference |
+
+### Quick Start (3 Commands)
+
+```bash
+# 1. Provision VM (requires Ubuntu 22.04 VM with SSH access)
+./ops/provision-staging-vm.sh 203.0.113.10 "ssh-rsa AAAA..." staging.yourhospital.org
+
+# 2. Generate secrets
+./ops/generate-staging-secrets.sh staging.yourhospital.org
+
+# 3. After adding secrets to GitHub, verify deployment
+./ops/verify-staging-deployment.sh staging.yourhospital.org
+```
+
+### Script Details
+
+#### provision-staging-vm.sh
+Automates Step A of the provisioning process:
+- Updates system packages
+- Installs Docker Engine 24+ and Docker Compose plugin
+- Creates `deploy` user with Docker group access
+- Configures SSH authorized_keys
+- Sets up UFW firewall (ports 22, 80, 443 open; 5432, 6379 blocked)
+- Creates staging directories
+
+#### generate-staging-secrets.sh
+Automates Step B - generates all required secrets:
+- SSH key pair for GitHub Actions deployment
+- Database credentials (user, password, database name, connection URL)
+- Application secrets (JWT, MFA, audit chain)
+- Redis configuration
+- CORS origins
+- Notification provider placeholders
+
+Output includes copy-paste ready format for GitHub Environment secrets.
+
+#### verify-staging-deployment.sh
+Automates Step C - comprehensive verification:
+- DNS resolution check
+- SSH connectivity test
+- Docker container status
+- Backend health endpoint (HTTP 200 + status UP)
+- Frontend availability (HTTP 200 + HTML)
+- CSRF token availability
+- Database connectivity
+- Error log scan
+- Port exposure verification (5432/6379 must be blocked)
+
+#### staging-quickstart.sh
+Orchestrates the entire flow:
+1. Provisions VM
+2. Generates secrets
+3. Provides GitHub setup instructions
+4. Adds SSH key to VM
+5. Provides deployment trigger instructions
+6. Provides verification commands
+
+### Manual Steps Remaining
+
+The following steps CANNOT be automated and require manual action:
+
+1. **Cloud VM Provisioning** - Create Ubuntu 22.04 VM via your cloud provider
+2. **DNS Configuration** - Point domain/subdomain to VM IP
+3. **GitHub Environment Creation** - Create `Staging` environment in repo settings
+4. **Secret Upload** - Copy generated secrets to GitHub Environment
+5. **Workflow Trigger** - Run `deploy-staging.yml` via workflow_dispatch
+6. **Provider Credentials** - Add real SES/Mailrelay + Semaphore credentials for notifications

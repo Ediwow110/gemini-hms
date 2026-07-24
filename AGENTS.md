@@ -9,7 +9,7 @@
 - 10 honest-UX mega-lane commits (b5df7498..bcb6548e) done between prior AGENTS.md update and this session: production-readiness mock purge, admin truth-gap contradiction removal, integration/field-service/marketplace hardcoded-data purge, body-level sandbox notices + audit footers across the 7-page family, pop-culture employee/provider placeholder removal.
 - This session: deep audit completed, PR #251 merged cleanly to `main` with 11/11 green CI & Security Gates workflow checks. Executed Phase 29 Gate 5 Database Backup & Restore Drill (`scripts/backup-restore-drill.ps1`) with 100% row-by-row count integrity verification across 11 core tables (`docs/evidence/phase29-backup-restore-drill-execution.md`). Polished Gate 9 operator runbooks and compiled Gate 10 Phase 29 Final Go/No-Go Report (`docs/evidence/phase29-final-go-no-go-report.md`).
 - CI green, local 97/97 backend (1,798 tests) + 135/135 frontend (896 tests) passing (**100% test pass rate**), **backend tsc --noEmit and frontend tsc --noEmit both 0 errors**.
-- Staging is **still NOT provisioned** — the hard external blocker remains (no VM, no DB, no DNS, no GitHub environment/secrets).
+- Staging automation scripts created in `ops/` (provisioning, secrets generation, verification) — **repo-side work complete, external provisioning pending**.
 
 ## Constraints & Preferences
 - Work on `main` unless branching off for a new task
@@ -43,6 +43,14 @@ Committed in `72bd168`:
 2. **`docker-compose.staging.yml`** — 3-service topology (db, backend, frontend) from prod template with isolated volume (`postgres_staging_data`) and network (`hms_staging`); same env var names as prod.
 3. **`hms-backend/scripts/remote-deploy-staging.sh`** — Separate 59-line deploy script (all 6 references use `docker-compose.staging.yml`). Zero production risk. Health probe path preserved.
 4. **`docs/infrastructure/staging-provisioning-handoff.md`** — SSH secrets renamed to `STAGING_SSH_*`; 11 secrets now consistent with workflow env references.
+
+### Done (This Session — Staging Automation Scripts, Uncommitted)
+Created in `ops/` directory (not yet committed — operator must execute before commit):
+1. **`ops/provision-staging-vm.sh`** — Automated VM provisioning (Docker, deploy user, UFW firewall). Usage: `./provision-staging-vm.sh <VM_IP> <SSH_PUB> [DOMAIN]`
+2. **`ops/generate-staging-secrets.sh`** — Cryptographic secret generation for all 11+ GitHub Environment secrets. Usage: `./generate-staging-secrets.sh [DOMAIN]`
+3. **`ops/verify-staging-deployment.sh`** — Post-deployment health verification (9 checks: DNS, SSH, Docker, health endpoints, CSRF, DB, logs, port exposure). Usage: `./verify-staging-deployment.sh <STAGING_HOST>`
+4. **`ops/staging-quickstart.sh`** — End-to-end orchestration combining all steps. Usage: `./staging-quickstart.sh <VM_IP> <DOMAIN>`
+5. **`ops/STAGING-EXECUTION-CHECKLIST.md`** — Detailed step-by-step execution guide with cloud provider commands (AWS, DigitalOcean, GCP)
 
 ### 10 Honest-UX Mega-Lane Commits (Between Prior AGENTS.md Update and This Session)
 **Mega-lane summary:** Eliminate every confirmed production-readiness blocker surfaced in source audit. No fake data, no fake success, no dead interactive shells, no misleading production semantics. Body-level sandbox notices + audit footers across the 7-page family. Pop-culture placeholder names replaced with neutral sandbox identifiers.
@@ -372,7 +380,12 @@ Rejected at the time (still rejected): IntegrationShellNotice text correction as
 - **Same env var names as prod in compose files**: Containers expect `DB_USER`, `DATABASE_URL`, `JWT_SECRET` etc.; staging workflow provides values from `STAGING_*` secrets.
 
 ## Next Steps
-1. **Provision staging environment** — see `docs/infrastructure/staging-provisioning-handoff.md` for exact requirements. Execution checklist at `docs/infrastructure/staging-provisioning-execution-checklist.md`.
+1. **Provision staging environment** — Automated scripts available in `ops/`:
+   - `ops/provision-staging-vm.sh` — VM setup (Docker, deploy user, firewall)
+   - `ops/generate-staging-secrets.sh` — Cryptographic secret generation
+   - `ops/verify-staging-deployment.sh` — Health verification (9 checks)
+   - `ops/staging-quickstart.sh` — End-to-end orchestration
+   - `ops/STAGING-EXECUTION-CHECKLIST.md` — Detailed execution guide
 2. After staging is healthy → deploy and run E2E / integration smoke tests against staging.
 3. After staging validated → trigger production deploy via `deploy.yml` (manual workflow_dispatch).
 4. **(Backend tsc is now genuinely clean.)** Next backend type-safety lanes to consider:
