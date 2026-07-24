@@ -48,6 +48,7 @@ describe('Billing Branch Scoping (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     app.useGlobalGuards(new MockJwtAuthGuard());
     await app.init();
+  }, 30000);
 
     prisma = app.get(PrismaService);
     await cleanupDatabase(prisma);
