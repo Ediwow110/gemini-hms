@@ -21,43 +21,40 @@ export const options = {
 };
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
-const TENANT_ID = __ENV.TENANT_ID || '00000000-0000-0000-0000-00000000000e';
+const TENANT_CODE = __ENV.TENANT_CODE || 'Central Hospital (Main Branch)';
 
 export default function () {
   const loginPayload = JSON.stringify({
-    tenantId: TENANT_ID,
+    tenantCode: TENANT_CODE,
     email: 'admin@hospital.com',
     password: 'Password123!',
   });
 
-  const params = {
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Tenant-ID': TENANT_ID,
-    },
-  };
+  // 1. Login (sets access_token, refresh_token, session_id, csrf_token cookies)
+  const loginRes = http.post(`${BASE_URL}/api/v1/auth/login`, loginPayload, {
+    headers: { 'Content-Type': 'application/json' },
+  });
 
-  // 1. Login
-  const loginRes = http.post(`${BASE_URL}/api/v1/auth/login`, loginPayload, params);
   const loginSuccess = check(loginRes, {
-    'login status is 201': (r) => r.status === 201,
-    'has access token': (r) => r.json().accessToken !== undefined,
+    'login status is 200': (r) => r.status === 200,
+    'auth cookies set': (r) => r.cookies.access_token && r.cookies.access_token.length > 0,
   });
 
   if (loginSuccess) {
-    const token = loginRes.json().accessToken;
+    const csrfToken = loginRes.json().csrfToken;
+
     const authParams = {
       headers: {
         'Content-Type': 'application/json',
-        'X-Tenant-ID': TENANT_ID,
-        'Authorization': `Bearer ${token}`,
+        'X-CSRF-Token': csrfToken,
       },
     };
 
     // 2. Fetch Profile
-    const profileRes = http.get(`${BASE_URL}/api/v1/auth/profile`, authParams);
+    const profileRes = http.get(`${BASE_URL}/api/v1/auth/me`, authParams);
     check(profileRes, {
       'profile status is 200': (r) => r.status === 200,
+      'has user data': (r) => r.json().id !== undefined,
     });
 
     sleep(1);
@@ -65,7 +62,7 @@ export default function () {
     // 3. Logout
     const logoutRes = http.post(`${BASE_URL}/api/v1/auth/logout`, null, authParams);
     check(logoutRes, {
-      'logout status is 201': (r) => r.status === 201 || r.status === 200,
+      'logout status is 204': (r) => r.status === 204,
     });
   }
 
