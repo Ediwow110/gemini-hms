@@ -461,7 +461,7 @@ function assertMockProviderAllowed(variable: string): void {
   }
 }
 
-function validateEmailPayload(payload: EmailPayload): void {
+export function validateEmailPayload(payload: EmailPayload): void {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.to)) {
     throw new Error('Recipient email address is invalid.');
   }

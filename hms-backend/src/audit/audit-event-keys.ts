@@ -87,6 +87,12 @@ export const AUDIT_EVENT_KEYS = {
   // ── Chain / Integrity ──
   CHAIN_VERIFICATION_RUN: 'CHAIN_VERIFICATION_RUN',
   CHAIN_CORRUPTION_DETECTED: 'CHAIN_CORRUPTION_DETECTED',
+
+  // ── Notifications ──
+  SMS_SENT: 'SMS_SENT',
+  SMS_FAILED: 'SMS_FAILED',
+  EMAIL_SENT: 'EMAIL_SENT',
+  EMAIL_FAILED: 'EMAIL_FAILED',
 } as const;
 
 export type AuditEventKey =

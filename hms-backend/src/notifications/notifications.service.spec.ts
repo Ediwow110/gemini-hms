@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NotificationsService } from './notifications.service';
+import { SmsService } from './sms.service';
+import { EmailService } from './email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -13,6 +16,7 @@ import {
   FailingMockEmailProvider,
   NotificationProviderFactory,
 } from './notification-providers';
+import { AUDIT_EVENT_KEYS } from '../audit/audit-event-keys';
 
 function requestBodyToText(body: BodyInit | null | undefined): string {
   if (typeof body === 'string') return body;
@@ -328,5 +332,324 @@ describe('NotificationsService ePHI Masking', () => {
     expect(NotificationsService.maskPhone('+1234567890')).toBe('+12*****90');
     expect(NotificationsService.maskPhone('123')).toBe('123');
     expect(NotificationsService.maskPhone('')).toBe('');
+  });
+});
+
+// ===== SMS SERVICE TESTS =====
+describe('SmsService', () => {
+  let service: SmsService;
+  let prisma: any;
+  let audit: any;
+  let config: any;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SmsService,
+        { provide: PrismaService, useValue: {} },
+        { provide: AuditService, useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              const env: Record<string, string> = {
+                SMS_PROVIDER: 'logger',
+                NODE_ENV: 'test',
+              };
+              return env[key];
+            }),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<SmsService>(SmsService);
+    prisma = module.get<PrismaService>(PrismaService);
+    audit = module.get<AuditService>(AuditService);
+    config = module.get(ConfigService);
+  });
+
+  it('should create SmsService instance', () => {
+    expect(service).toBeDefined();
+  });
+
+  it('should send SMS via logger provider in test environment', async () => {
+    const result = await service.sendSms(
+      '+639171234567',
+      'Test message',
+      'tenant-1',
+      'user-1',
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.messageId).toMatch(/^logger-sms-/);
+  });
+
+  it('should format phone numbers to E.164', async () => {
+    // Test Philippine mobile format
+    const result1 = await service.sendSms('09171234567', 'Test', 'tenant-1');
+    expect(result1.success).toBe(true);
+
+    // Test US format
+    const result2 = await service.sendSms('5551234567', 'Test', 'tenant-1');
+    expect(result2.success).toBe(true);
+
+    // Test already E.164
+    const result3 = await service.sendSms('+15551234567', 'Test', 'tenant-1');
+    expect(result3.success).toBe(true);
+  });
+
+  it('should sanitize PHI from messages', async () => {
+    const messageWithPhi =
+      'Patient P-1234 has MRN-56789 and DOB: 01/15/1990 and SSN 123-45-6789'; // eslint-disable-line @typescript-eslint/no-unused-vars
+    // The sanitization happens internally, we verify the service doesn't throw
+    const result = await service.sendSms('+639171234567', messageWithPhi, 'tenant-1');
+    expect(result.success).toBe(true);
+  });
+
+  it('should log SMS_SENT audit event on success', async () => {
+    await service.sendSms('+639171234567', 'Test message', 'tenant-1', 'user-1');
+
+    expect(audit.logSystemEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        eventKey: AUDIT_EVENT_KEYS.SMS_SENT,
+        recordType: 'Notification',
+      }),
+    );
+  });
+
+  it('should log SMS_FAILED audit event on failure', async () => {
+    // Create service with failing provider
+    const failingModule: TestingModule = await Test.createTestingModule({
+      providers: [
+        SmsService,
+        { provide: PrismaService, useValue: {} },
+        { provide: AuditService, useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              if (key === 'SMS_PROVIDER') return 'logger';
+              if (key === 'NODE_ENV') return 'test';
+              return undefined;
+            }),
+          },
+        },
+      ],
+    }).compile();
+
+    const failingService = failingModule.get<SmsService>(SmsService);
+    // Override driver to fail
+    (failingService as any).driver = {
+      sendSms: jest.fn().mockResolvedValue({ success: false, error: 'Failed' }),
+    };
+
+    const result = await failingService.sendSms('+639171234567', 'Test', 'tenant-1');
+    expect(result.success).toBe(false);
+
+    const auditService = failingModule.get<AuditService>(AuditService);
+    expect(auditService.logSystemEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventKey: AUDIT_EVENT_KEYS.SMS_FAILED,
+      }),
+    );
+  });
+
+  it('should send appointment confirmation SMS', async () => {
+    const result = await service.sendAppointmentConfirmation(
+      'tenant-1',
+      '+639171234567',
+      'Juan Dela Cruz',
+      '2024-01-15',
+      '10:00 AM',
+      'Main Clinic',
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('should send lab result ready SMS (PHI-safe)', async () => {
+    const result = await service.sendLabResultReady(
+      'tenant-1',
+      '+639171234567',
+      'Maria Santos',
+      'https://portal.hospital.com',
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('should send payment confirmation SMS', async () => {
+    const result = await service.sendPaymentConfirmation(
+      'tenant-1',
+      '+639171234567',
+      'Pedro Reyes',
+      '₱1,500.00',
+      'RCT-2024-001',
+    );
+    expect(result.success).toBe(true);
+  });
+});
+
+// ===== EMAIL SERVICE TESTS =====
+describe('EmailService', () => {
+  let service: EmailService;
+  let prisma: any;
+  let audit: any;
+  let config: any;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EmailService,
+        { provide: PrismaService, useValue: {} },
+        { provide: AuditService, useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              const env: Record<string, string> = {
+                EMAIL_PROVIDER: 'logger',
+                NODE_ENV: 'test',
+              };
+              return env[key];
+            }),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<EmailService>(EmailService);
+    prisma = module.get<PrismaService>(PrismaService);
+    audit = module.get<AuditService>(AuditService);
+    config = module.get(ConfigService);
+  });
+
+  it('should create EmailService instance', () => {
+    expect(service).toBeDefined();
+  });
+
+  it('should send email via logger provider in test environment', async () => {
+    const result = await service.sendEmail(
+      'patient@hospital.com',
+      'Test Subject',
+      '<h1>Test Body</h1>',
+      'tenant-1',
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.messageId).toMatch(/^logger-email-/);
+  });
+
+  it('should validate email payload', async () => {
+    // Invalid email format
+    const result1 = await service.sendEmail(
+      'invalid-email',
+      'Subject',
+      'Body',
+      'tenant-1',
+    );
+    expect(result1.success).toBe(false);
+    expect(result1.error).toContain('invalid');
+
+    // Empty body
+    const result2 = await service.sendEmail(
+      'test@hospital.com',
+      'Subject',
+      '',
+      'tenant-1',
+    );
+    expect(result2.success).toBe(false);
+  });
+
+  it('should log EMAIL_SENT audit event on success', async () => {
+    await service.sendEmail('patient@hospital.com', 'Subject', '<p>Body</p>', 'tenant-1');
+
+    expect(audit.logSystemEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        eventKey: AUDIT_EVENT_KEYS.EMAIL_SENT,
+        recordType: 'Notification',
+      }),
+    );
+  });
+
+  it('should log EMAIL_FAILED audit event on failure', async () => {
+    // Create service with failing driver
+    const failingModule: TestingModule = await Test.createTestingModule({
+      providers: [
+        EmailService,
+        { provide: PrismaService, useValue: {} },
+        { provide: AuditService, useValue: { logSystemEvent: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              if (key === 'EMAIL_PROVIDER') return 'logger';
+              if (key === 'NODE_ENV') return 'test';
+              return undefined;
+            }),
+          },
+        },
+      ],
+    }).compile();
+
+    const failingService = failingModule.get<EmailService>(EmailService);
+    (failingService as any).driver = {
+      sendEmail: jest.fn().mockResolvedValue({ success: false, error: 'Failed' }),
+    };
+
+    const result = await failingService.sendEmail('test@hospital.com', 'Subject', 'Body', 'tenant-1');
+    expect(result.success).toBe(false);
+
+    const auditService = failingModule.get<AuditService>(AuditService);
+    expect(auditService.logSystemEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventKey: AUDIT_EVENT_KEYS.EMAIL_FAILED,
+      }),
+    );
+  });
+});
+
+// ===== SMS UTILITY FUNCTION TESTS =====
+describe('SMS Utility Functions', () => {
+  it('formatE164 should handle Philippine numbers', () => {
+    // Import from the module
+    const { formatE164 } = require('./sms.service');
+    expect(formatE164('09171234567')).toBe('+639171234567');
+    expect(formatE164('639171234567')).toBe('+639171234567');
+    expect(formatE164('+639171234567')).toBe('+639171234567');
+  });
+
+  it('formatE164 should handle US numbers', () => {
+    const { formatE164 } = require('./sms.service');
+    expect(formatE164('5551234567')).toBe('+15551234567');
+    expect(formatE164('+15551234567')).toBe('+15551234567');
+  });
+
+  it('sanitizeMessage should remove PHI patterns', () => {
+    const { sanitizeMessage } = require('./sms.service');
+    expect(sanitizeMessage('Patient P-1234 test')).toBe('Patient [PATIENT_ID] test');
+    expect(sanitizeMessage('MRN-56789 check')).toBe('[MRN] check');
+    expect(sanitizeMessage('SSN 123-45-6789')).toBe('SSN [SSN]');
+    expect(sanitizeMessage('Card 1234-5678-9012-3456')).toBe('Card [CARD]');
+  });
+
+  it('maskPhone should mask phone numbers for logging', () => {
+    const { maskPhone } = require('./sms.service');
+    expect(maskPhone('+639171234567')).toBe('+63*****67');
+    expect(maskPhone('+15551234567')).toBe('+15*****67');
+    expect(maskPhone('123')).toBe('*****');
+  });
+});
+
+// ===== EMAIL UTILITY FUNCTION TESTS =====
+describe('Email Utility Functions', () => {
+  it('maskEmail should mask email addresses for logging', () => {
+    const { maskEmail } = require('./email.service');
+    expect(maskEmail('patient@gmail.com')).toBe('pa*****@gmail.com');
+    expect(maskEmail('ab@domain.com')).toBe('ab*****@domain.com');
+    expect(maskEmail('a@domain.com')).toBe('a*****@domain.com');
+    expect(maskEmail('')).toBe('');
+    expect(maskEmail('invalid')).toBe('invalid-email');
   });
 });
